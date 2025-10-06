@@ -1,0 +1,27 @@
+{
+  "cardNumber": "4242 4242 4242 4242",
+  "cvv": "123",
+  "expiry": "09/28",
+  "cardholderName": "John Doe",
+  "billingAddress": "123 Main St",
+  "city": "San Francisco",
+  "zip": "94210",
+  "country": "US",
+  "email": "john.doe@gmail.com",
+  "phone": "15555555555555",
+  "metadata": {
+    "url": "http://localhost:8080/checkout.html",
+    "timestamp": "2025-10-05T12:22:46.619Z",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+    "screenResolution": "1440x900"
+  },
+  "server": {
+    "receivedAt": "2025-10-05T12:22:46.764Z",
+    "clientIP": "::ffff:172.23.0.1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
+  },
+  "validation": {
+    "valid": true,
+    "issues": []
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "cardNumber": "5555 5555 5555 4444",
+  "cvv": "789",
+  "expiry": "03/27",
+  "cardholderName": "Network Test",
+  "billingAddress": "789 Network St",
+  "city": "Network City",
+  "zip": "54321",
+  "country": "US",
+  "email": "network@test.com",
+  "phone": "",
+  "metadata": {
+    "url": "http://localhost:8080/checkout.html",
+    "timestamp": "2025-10-06T01:32:16.273Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.186 Safari/537.36",
+    "screenResolution": "1280x720"
+  },
+  "server": {
+    "receivedAt": "2025-10-06T01:32:16.404Z",
+    "clientIP": "::ffff:172.23.0.1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.186 Safari/537.36"
+  },
+  "validation": {
+    "valid": true,
+    "issues": []
+  }
+}

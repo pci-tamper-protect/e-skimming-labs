@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker-compose up:*)",
+      "Read(//Users/kestenbroughton/projectos/**)",
+      "Bash(mkdir:*)",
+      "Bash(tree:*)",
+      "Bash(python test:*)",
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "Bash(curl:*)",
+      "Bash(npm test)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
