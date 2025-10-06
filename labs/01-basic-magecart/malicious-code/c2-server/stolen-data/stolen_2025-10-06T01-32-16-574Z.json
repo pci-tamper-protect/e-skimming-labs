@@ -1,0 +1,27 @@
+{
+  "cardNumber": "4000 0000 0000 0002",
+  "cvv": "123",
+  "expiry": "12/28",
+  "cardholderName": "John Doe Test",
+  "billingAddress": "123 Test Street",
+  "city": "Test City",
+  "zip": "12345",
+  "country": "US",
+  "email": "john.doe@example.com",
+  "phone": "+1 (555) 123-4567",
+  "metadata": {
+    "url": "http://localhost:8080/checkout.html",
+    "timestamp": "2025-10-06T01:32:16.456Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.186 Safari/537.36",
+    "screenResolution": "1280x720"
+  },
+  "server": {
+    "receivedAt": "2025-10-06T01:32:16.574Z",
+    "clientIP": "::ffff:172.23.0.1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.186 Safari/537.36"
+  },
+  "validation": {
+    "valid": true,
+    "issues": []
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "server": {
+    "receivedAt": "2025-10-05T11:05:06.104Z",
+    "clientIP": "::ffff:172.22.0.1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
+  },
+  "validation": {
+    "valid": false,
+    "issues": [
+      "Missing card number",
+      "Invalid or missing CVV",
+      "Missing expiry date"
+    ]
+  }
+}

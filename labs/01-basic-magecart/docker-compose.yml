@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  # Vulnerable E-commerce Website
+  vulnerable-site:
+    build: ./vulnerable-site
+    container_name: techgear-store
+    ports:
+      - "8080:80"
+    networks:
+      - lab-network
+    volumes:
+      - ./vulnerable-site:/usr/share/nginx/html:ro
+    environment:
+      - NGINX_HOST=localhost
+      - NGINX_PORT=80
+
+  # Attacker's C2 Server (Data Collection)
+  c2-server:
+    build: ./malicious-code/c2-server
+    container_name: attacker-c2
+    ports:
+      - "3000:3000"
+    networks:
+      - lab-network
+    volumes:
+      - ./malicious-code/c2-server/stolen-data:/app/stolen-data
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+
+networks:
+  lab-network:
+    driver: bridge
+
+volumes:
+  stolen-data:
