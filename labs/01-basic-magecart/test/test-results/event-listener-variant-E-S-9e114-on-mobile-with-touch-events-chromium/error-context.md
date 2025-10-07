@@ -1,0 +1,92 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - heading "🛒 TechGear Store" [level=1] [ref=e4]
+      - link "← Back to Store" [ref=e5] [cursor=pointer]:
+        - /url: index.html
+  - main [ref=e6]:
+    - generic [ref=e7]:
+      - heading "Secure Checkout" [level=2] [ref=e8]
+      - paragraph [ref=e9]: Complete your purchase
+    - generic [ref=e10]:
+      - strong [ref=e11]: "⚠️ LAB ENVIRONMENT:"
+      - text: This is a vulnerable website for educational purposes. The checkout form has been compromised with a credit card skimmer. Use ONLY test data (never real payment information).
+    - generic [ref=e12]:
+      - strong [ref=e13]: "🔴 ATTACK METHOD: Modified Existing File"
+      - text: "This page loads ONE JavaScript file that has been compromised:"
+      - list [ref=e14]:
+        - listitem [ref=e15]:
+          - code [ref=e16]: checkout-compromised.js
+          - text: "- Contains BOTH legitimate code AND malicious skimmer"
+      - paragraph [ref=e17]:
+        - strong [ref=e18]: "Real-world scenario:"
+        - text: "Attacker gained access and modified the existing file:"
+        - text: • Compromised admin/developer credentials (no MFA)
+        - text: • Appended malicious code to bottom of file
+        - text: • File looks normal at first glance
+        - text: "• Last modified: August 21, 2018 (outside business hours)"
+      - paragraph [ref=e19]: ⚠️ This is MORE REALISTIC - attackers rarely add new files, they modify existing ones!
+    - generic [ref=e20]:
+      - strong [ref=e21]: "💳 VALID TEST CARD NUMBERS:"
+      - list [ref=e22]:
+        - listitem [ref=e23]:
+          - code [ref=e24]: "4532123456789010"
+          - text: "- Visa (16 digits)"
+        - listitem [ref=e25]:
+          - code [ref=e26]: "4000000000000002"
+          - text: "- Visa (16 digits)"
+        - listitem [ref=e27]:
+          - code [ref=e28]: "5555555555554444"
+          - text: "- Mastercard (16 digits)"
+        - listitem [ref=e29]:
+          - code [ref=e30]: "378282246310005"
+          - text: "- American Express (15 digits)"
+      - paragraph [ref=e31]: These numbers pass Luhn algorithm validation. Use any future expiry date (MM/YY) and any 3-4 digit CVV.
+    - generic [ref=e32]:
+      - heading "Payment Information" [level=3] [ref=e33]
+      - generic [ref=e34]:
+        - generic [ref=e35]: Card Number
+        - textbox "Card Number" [active] [ref=e36]: 4000 0000 0000 0002
+      - generic [ref=e37]:
+        - generic [ref=e38]: Cardholder Name
+        - textbox "Cardholder Name" [ref=e39]
+      - generic [ref=e40]:
+        - generic [ref=e41]:
+          - generic [ref=e42]: Expiry Date
+          - textbox "Expiry Date" [ref=e43]
+        - generic [ref=e44]:
+          - generic [ref=e45]: CVV
+          - textbox "CVV" [ref=e46]
+      - heading "Billing Address" [level=3] [ref=e47]
+      - generic [ref=e48]:
+        - generic [ref=e49]: Email
+        - textbox "Email" [ref=e50]
+      - generic [ref=e51]:
+        - generic [ref=e52]: Street Address
+        - textbox "Street Address" [ref=e53]
+      - generic [ref=e54]:
+        - generic [ref=e55]:
+          - generic [ref=e56]: City
+          - textbox "City" [ref=e57]
+        - generic [ref=e58]:
+          - generic [ref=e59]: ZIP Code
+          - textbox "ZIP Code" [ref=e60]
+      - generic [ref=e61]:
+        - generic [ref=e62]: Country
+        - combobox "Country" [ref=e63]:
+          - option "Select Country"
+          - option "United States" [selected]
+          - option "Canada"
+          - option "United Kingdom"
+          - option "Australia"
+          - option "Germany"
+          - option "France"
+      - generic [ref=e64]:
+        - generic [ref=e65]: Phone Number
+        - textbox "Phone Number" [ref=e66]
+      - button "Complete Purchase - $299.99" [ref=e67] [cursor=pointer]
+      - generic [ref=e68]: 🔒 Your payment is secure and encrypted
+```
