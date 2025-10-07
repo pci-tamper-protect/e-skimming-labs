@@ -3,8 +3,14 @@ node_modules/
 package-lock.json
 
 # Stolen data
-*/stolen-data/*
+**/stolen-data/*
 !*/stolen-data/.gitkeep
+labs/01-basic-magecart/test/test-results/.last-run.json
+labs/01-basic-magecart/malicious-code/c2-server/stolen-data/master-log.jsonl
+*.jsonl
+.last-run.json
+
+**/playwright-report/*
 
 # OS files
 .DS_Store

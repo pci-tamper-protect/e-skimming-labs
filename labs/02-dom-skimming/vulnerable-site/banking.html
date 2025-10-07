@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureBank Online Banking</title>
+    <link rel="stylesheet" href="css/banking.css">
+</head>
+<body>
+    <header class="bank-header">
+        <div class="container">
+            <div class="logo">
+                <h1>🏦 SecureBank</h1>
+                <span class="tagline">Your Trust, Our Priority</span>
+            </div>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="#" class="nav-link active" data-section="dashboard">Dashboard</a></li>
+                    <li><a href="#" class="nav-link" data-section="transfer">Transfer</a></li>
+                    <li><a href="#" class="nav-link" data-section="payments">Bill Pay</a></li>
+                    <li><a href="#" class="nav-link" data-section="cards">Cards</a></li>
+                    <li><a href="#" class="nav-link" data-section="settings">Settings</a></li>
+                </ul>
+            </nav>
+            <div class="user-info">
+                <span class="welcome">Welcome, John Doe</span>
+                <button class="logout-btn">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="container">
+            <!-- Dashboard Section -->
+            <section id="dashboard" class="section active">
+                <h2>Account Dashboard</h2>
+                <div class="account-grid">
+                    <div class="account-card">
+                        <h3>Checking Account</h3>
+                        <div class="account-number">****1234</div>
+                        <div class="account-balance">$12,485.67</div>
+                    </div>
+                    <div class="account-card">
+                        <h3>Savings Account</h3>
+                        <div class="account-number">****5678</div>
+                        <div class="account-balance">$45,892.33</div>
+                    </div>
+                    <div class="account-card">
+                        <h3>Credit Card</h3>
+                        <div class="account-number">****9012</div>
+                        <div class="account-balance">-$2,156.78</div>
+                    </div>
+                </div>
+
+                <div class="recent-transactions">
+                    <h3>Recent Transactions</h3>
+                    <div class="transaction-list">
+                        <div class="transaction-item">
+                            <span class="transaction-desc">Amazon Purchase</span>
+                            <span class="transaction-amount">-$89.99</span>
+                            <span class="transaction-date">Oct 3, 2024</span>
+                        </div>
+                        <div class="transaction-item">
+                            <span class="transaction-desc">Salary Deposit</span>
+                            <span class="transaction-amount">+$3,500.00</span>
+                            <span class="transaction-date">Oct 1, 2024</span>
+                        </div>
+                        <div class="transaction-item">
+                            <span class="transaction-desc">Electric Bill</span>
+                            <span class="transaction-amount">-$124.50</span>
+                            <span class="transaction-date">Sep 28, 2024</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Transfer Section -->
+            <section id="transfer" class="section">
+                <h2>Transfer Money</h2>
+                <div class="transfer-form-container">
+                    <form id="transfer-form" class="banking-form">
+                        <div class="form-group">
+                            <label for="from-account">From Account</label>
+                            <select id="from-account" name="fromAccount" required>
+                                <option value="">Select Account</option>
+                                <option value="checking">Checking ****1234</option>
+                                <option value="savings">Savings ****5678</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="to-account">To Account/Routing</label>
+                            <input type="text" id="to-account" name="toAccount" placeholder="Account or routing number" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="transfer-amount">Amount</label>
+                            <input type="number" id="transfer-amount" name="amount" placeholder="0.00" step="0.01" min="0.01" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="transfer-memo">Memo (Optional)</label>
+                            <input type="text" id="transfer-memo" name="memo" placeholder="What's this for?">
+                        </div>
+
+                        <div class="security-section">
+                            <h4>🔐 Security Verification</h4>
+                            <div class="form-group">
+                                <label for="transfer-password">Account Password</label>
+                                <input type="password" id="transfer-password" name="password" autocomplete="current-password" required>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="submit-btn">Transfer Money</button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Bill Pay Section -->
+            <section id="payments" class="section">
+                <h2>Bill Payment</h2>
+                <div class="payment-form-container">
+                    <form id="payment-form" class="banking-form">
+                        <div class="form-group">
+                            <label for="payee">Payee</label>
+                            <select id="payee" name="payee" required>
+                                <option value="">Select Payee</option>
+                                <option value="electric">Electric Company</option>
+                                <option value="gas">Gas Utility</option>
+                                <option value="credit-card">Credit Card Company</option>
+                                <option value="mortgage">Mortgage Provider</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="payment-account">Account Number</label>
+                            <input type="text" id="payment-account" name="accountNumber" placeholder="Payee account number" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="payment-amount">Payment Amount</label>
+                            <input type="number" id="payment-amount" name="amount" placeholder="0.00" step="0.01" min="0.01" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="payment-date">Payment Date</label>
+                            <input type="date" id="payment-date" name="paymentDate" required>
+                        </div>
+
+                        <div class="security-section">
+                            <h4>🔐 Payment Authorization</h4>
+                            <div class="form-group">
+                                <label for="payment-password">Account Password</label>
+                                <input type="password" id="payment-password" name="password" autocomplete="current-password" required>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="submit-btn">Schedule Payment</button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Credit Cards Section -->
+            <section id="cards" class="section">
+                <h2>Credit Card Management</h2>
+                <div class="cards-container">
+                    <div class="card-details">
+                        <h3>Primary Credit Card</h3>
+                        <div class="card-visual">
+                            <div class="card-number">**** **** **** 9012</div>
+                            <div class="card-holder">JOHN DOE</div>
+                            <div class="card-expiry">Exp: 12/27</div>
+                        </div>
+                    </div>
+
+                    <div class="card-actions">
+                        <h4>Card Services</h4>
+                        <button class="action-btn" onclick="showPasswordPrompt('activate')">Activate New Card</button>
+                        <button class="action-btn" onclick="showPasswordPrompt('freeze')">Freeze Card</button>
+                        <button class="action-btn" onclick="showPasswordPrompt('limit')">Change Limit</button>
+                        <button class="action-btn" onclick="showPasswordPrompt('pin')">Change PIN</button>
+                    </div>
+                </div>
+
+                <!-- Hidden password prompt for card actions -->
+                <div id="password-modal" class="modal" style="display: none;">
+                    <div class="modal-content">
+                        <h4>Security Verification Required</h4>
+                        <form id="card-action-form">
+                            <div class="form-group">
+                                <label for="card-password">Account Password</label>
+                                <input type="password" id="card-password" name="password" autocomplete="current-password" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="card-cvv">Card CVV</label>
+                                <input type="text" id="card-cvv" name="cvv" maxlength="4" placeholder="CVV" autocomplete="cc-csc" required>
+                            </div>
+                            <div class="modal-actions">
+                                <button type="submit" class="submit-btn">Verify</button>
+                                <button type="button" class="cancel-btn" onclick="closePasswordModal()">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="settings" class="section">
+                <h2>Account Settings</h2>
+                <div class="settings-container">
+                    <form id="settings-form" class="banking-form">
+                        <h3>Personal Information</h3>
+                        <div class="form-group">
+                            <label for="email">Email Address</label>
+                            <input type="email" id="email" name="email" value="john.doe@email.com" autocomplete="email" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="phone">Phone Number</label>
+                            <input type="tel" id="phone" name="phone" value="(555) 123-4567" autocomplete="tel" required>
+                        </div>
+
+                        <h3>Security Settings</h3>
+                        <div class="form-group">
+                            <label for="current-password">Current Password</label>
+                            <input type="password" id="current-password" name="currentPassword" autocomplete="current-password">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="new-password">New Password</label>
+                            <input type="password" id="new-password" name="newPassword" autocomplete="new-password">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="confirm-password">Confirm New Password</label>
+                            <input type="password" id="confirm-password" name="confirmPassword" autocomplete="new-password">
+                        </div>
+
+                        <button type="submit" class="submit-btn">Update Settings</button>
+                    </form>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Success/Error Messages -->
+    <div id="success-message" class="message success" style="display: none;">
+        <span class="message-text">Operation completed successfully!</span>
+        <button class="close-message" onclick="closeMessage('success')">&times;</button>
+    </div>
+
+    <div id="error-message" class="message error" style="display: none;">
+        <span class="message-text">An error occurred. Please try again.</span>
+        <button class="close-message" onclick="closeMessage('error')">&times;</button>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/banking.js"></script>
+</body>
+</html>

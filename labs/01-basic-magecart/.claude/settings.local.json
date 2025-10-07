@@ -9,7 +9,15 @@
       "Bash(python:*)",
       "Bash(pip install:*)",
       "Bash(curl:*)",
-      "Bash(npm test)"
+      "Bash(npm test)",
+      "Bash(npx playwright test:*)",
+      "Bash(npm install)",
+      "Bash(open http://localhost:8080/banking.html)",
+      "Bash(chmod:*)",
+      "Bash(./test-extension-hijacking.sh:*)",
+      "Bash(open http://localhost:8080)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)"
     ],
     "deny": [],
     "ask": []

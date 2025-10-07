@@ -1,0 +1,29 @@
+{
+  "name": "extension-hijacking-test-server",
+  "version": "1.0.0",
+  "description": "Test server for Lab 3: Browser Extension Hijacking data collection",
+  "main": "extension-data-server.js",
+  "scripts": {
+    "start": "node extension-data-server.js",
+    "dev": "nodemon extension-data-server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "extension-hijacking",
+    "e-skimming",
+    "security-research",
+    "data-collection"
+  ],
+  "author": "E-Skimming Labs",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
