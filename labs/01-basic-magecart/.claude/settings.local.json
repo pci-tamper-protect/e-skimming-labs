@@ -17,7 +17,11 @@
       "Bash(./test-extension-hijacking.sh:*)",
       "Bash(open http://localhost:8080)",
       "Bash(lsof:*)",
-      "Bash(xargs kill:*)"
+      "Bash(xargs kill:*)",
+      "Bash(command -v:*)",
+      "Read(//Users/kestenbroughton/.claude/**)",
+      "Read(//Users/kestenbroughton/Library/**)",
+      "Read(//Users/kestenbroughton/**)"
     ],
     "deny": [],
     "ask": []

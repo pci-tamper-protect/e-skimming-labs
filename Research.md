@@ -9,7 +9,7 @@ Santander Security Research Detection Repository: Contains Semgrep rules for det
 
 Key Technical Details:
 
-British Airways Attack (2018): Used just 22 lines of JavaScript that listened to mouseup and touchend events, serialized credit card data, and sent it as JSON to an attacker-controlled server (baways.com) Inside the Breach of British Airways: How 22 Lines of Code Claimed 380,000 Victims. How We Used Machine Learning to to Pinpoint the Magecart Crime Syndicate. | by Dan Schoenbaum | Medium
+British Airways Attack (2018): Used just 22 lines of JavaScript that listened to mouseup and touchend events, serialized credit card data, and sent it as JSON to an attacker-controlled server (baways.com) Inside the Breach of British Airways: How 22 Lines of Code Claimed 380,000 Victims. How We Used Machine Learning to Pinpoint the Magecart Crime Syndicate. | by Dan Schoenbaum | Medium
 The British Airways skimmer modified the Modernizr JavaScript library version 2.6.2, loading from the baggage claim information page The Code Behind Magecart Skimming Scripts - RapidSpike
 
 Attack Variations:

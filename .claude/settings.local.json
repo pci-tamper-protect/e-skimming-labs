@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mcp list:*)",
+      "Bash(mcp:*)",
+      "Bash(curl:*)",
+      "Bash(chmod:*)",
+      "Bash(./run-variant-tests.sh:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
