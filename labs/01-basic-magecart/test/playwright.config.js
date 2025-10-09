@@ -1,11 +1,29 @@
 // @ts-check
 const { defineConfig, devices } = require('@playwright/test');
 
+// Get the variant from environment variable (defaults to 'base')
+const SKIMMER_VARIANT = process.env.SKIMMER_VARIANT || 'base';
+
+// Map variants to their test files
+const variantTestMap = {
+  'base': ['checkout.spec.js'],
+  'obfuscated-base64': ['obfuscated-base64.spec.js'],
+  'event-listener-variant': ['event-listener-variant.spec.js'],
+  'websocket-exfil': ['websocket-exfil.spec.js']
+};
+
+// Get test pattern for current variant
+const testMatch = variantTestMap[SKIMMER_VARIANT] || ['checkout.spec.js'];
+
+console.log(`🧪 Running tests for variant: ${SKIMMER_VARIANT}`);
+console.log(`📋 Test files: ${testMatch.join(', ')}`);
+
 /**
  * @see https://playwright.dev/docs/test-configuration
  */
 module.exports = defineConfig({
   testDir: './tests',
+  testMatch: testMatch,
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -45,9 +63,9 @@ module.exports = defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'echo "Assuming docker-compose is already running on localhost:8080 and localhost:3000"',
+    command: 'cd .. && docker-compose up',
     url: 'http://localhost:8080',
     reuseExistingServer: !process.env.CI,
-    timeout: 10 * 1000,
+    timeout: 120 * 1000,
   },
 });

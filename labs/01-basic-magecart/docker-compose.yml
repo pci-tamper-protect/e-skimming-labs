@@ -10,10 +10,11 @@ services:
     networks:
       - lab-network
     volumes:
-      - ./vulnerable-site:/usr/share/nginx/html:ro
+      - ${VARIANT_PATH:-./vulnerable-site}:/usr/share/nginx/html:ro
     environment:
       - NGINX_HOST=localhost
       - NGINX_PORT=80
+      - SKIMMER_VARIANT=${SKIMMER_VARIANT:-base}
 
   # Attacker's C2 Server (Data Collection)
   c2-server:
