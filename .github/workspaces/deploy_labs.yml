@@ -1,0 +1,216 @@
+name: Deploy E-Skimming Labs to Cloud Run
+
+on:
+  push:
+    branches: [ main, stg ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'stg'
+        type: choice
+        options:
+        - stg
+        - prd
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GAR_LOCATION: us-central1
+  REPOSITORY: e-skimming-labs
+  
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      labs: ${{ steps.discover-labs.outputs.labs }}
+      environment: ${{ steps.set-env.outputs.environment }}
+      domain_prefix: ${{ steps.set-env.outputs.domain_prefix }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set environment variables
+        id: set-env
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" || "${{ github.event.inputs.environment }}" == "prd" ]]; then
+            echo "environment=prd" >> $GITHUB_OUTPUT
+            echo "domain_prefix=labs.pcioasis.com" >> $GITHUB_OUTPUT
+          else
+            echo "environment=stg" >> $GITHUB_OUTPUT
+            echo "domain_prefix=labs.stg.pcioasis.com" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Discover lab directories
+        id: discover-labs
+        run: |
+          # Find all lab directories (lab1, lab2, etc.)
+          labs=$(find . -maxdepth 1 -type d -name "lab*" | sed 's|./||' | sort | jq -R -s -c 'split("\n")[:-1]')
+          echo "labs=$labs" >> $GITHUB_OUTPUT
+          echo "Discovered labs: $labs"
+
+  deploy-labs:
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        lab: ${{ fromJson(needs.setup.outputs.labs) }}
+      fail-fast: false
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker to use gcloud as credential helper
+        run: |
+          gcloud auth configure-docker ${{ env.GAR_LOCATION }}-docker.pkg.dev
+
+      - name: Create Artifact Registry repository if not exists
+        run: |
+          gcloud artifacts repositories describe ${{ env.REPOSITORY }} \
+            --location=${{ env.GAR_LOCATION }} || \
+          gcloud artifacts repositories create ${{ env.REPOSITORY }} \
+            --location=${{ env.GAR_LOCATION }} \
+            --repository-format=docker \
+            --description="E-Skimming Labs container images"
+
+      - name: Build lab container image
+        run: |
+          # Build lab-specific image
+          docker build \
+            --build-arg LAB_NAME=${{ matrix.lab }} \
+            --build-arg ENVIRONMENT=${{ needs.setup.outputs.environment }} \
+            -t ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }} \
+            -t ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ matrix.lab }}:latest \
+            -f ${{ matrix.lab }}/Dockerfile \
+            ${{ matrix.lab }}/
+
+      - name: Push container image to Artifact Registry
+        run: |
+          docker push ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }}
+          docker push ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ matrix.lab }}:latest
+
+      - name: Deploy to Cloud Run
+        run: |
+          # Deploy lab as separate Cloud Run service
+          gcloud run deploy ${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
+            --image=${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }} \
+            --region=${{ env.GAR_LOCATION }} \
+            --platform=managed \
+            --allow-unauthenticated \
+            --port=8080 \
+            --memory=512Mi \
+            --cpu=1 \
+            --min-instances=0 \
+            --max-instances=10 \
+            --set-env-vars="LAB_NAME=${{ matrix.lab }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }}" \
+            --labels="environment=${{ needs.setup.outputs.environment }},lab=${{ matrix.lab }},project=e-skimming-labs"
+
+      - name: Configure custom domain mapping
+        run: |
+          # Map custom domain for the lab
+          SERVICE_URL=$(gcloud run services describe ${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
+            --region=${{ env.GAR_LOCATION }} \
+            --format="value(status.url)")
+          
+          echo "Service URL: $SERVICE_URL"
+          echo "Custom domain: ${{ needs.setup.outputs.domain_prefix }}/${{ matrix.lab }}"
+          
+          # Create domain mapping (requires Cloud Run domain mapping API)
+          gcloud run domain-mappings create \
+            --service=${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
+            --domain=${{ needs.setup.outputs.domain_prefix }} \
+            --region=${{ env.GAR_LOCATION }} \
+            --path-prefix=/${{ matrix.lab }} || true
+
+  deploy-index:
+    needs: [setup, deploy-labs]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker to use gcloud as credential helper
+        run: |
+          gcloud auth configure-docker ${{ env.GAR_LOCATION }}-docker.pkg.dev
+
+      - name: Build index page container
+        run: |
+          # Build index page with lab discovery
+          docker build \
+            --build-arg ENVIRONMENT=${{ needs.setup.outputs.environment }} \
+            --build-arg DOMAIN=${{ needs.setup.outputs.domain_prefix }} \
+            -t ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/index:${{ github.sha }} \
+            -t ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/index:latest \
+            -f deploy/Dockerfile.index \
+            .
+
+      - name: Push index container to Artifact Registry
+        run: |
+          docker push ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/index:${{ github.sha }}
+          docker push ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/index:latest
+
+      - name: Deploy index page to Cloud Run
+        run: |
+          gcloud run deploy labs-index-${{ needs.setup.outputs.environment }} \
+            --image=${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/index:${{ github.sha }} \
+            --region=${{ env.GAR_LOCATION }} \
+            --platform=managed \
+            --allow-unauthenticated \
+            --port=8080 \
+            --memory=256Mi \
+            --cpu=0.5 \
+            --min-instances=0 \
+            --max-instances=5 \
+            --set-env-vars="ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }}" \
+            --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs"
+
+      - name: Configure index domain mapping
+        run: |
+          # Map root domain to index service
+          gcloud run domain-mappings create \
+            --service=labs-index-${{ needs.setup.outputs.environment }} \
+            --domain=${{ needs.setup.outputs.domain_prefix }} \
+            --region=${{ env.GAR_LOCATION }} || true
+
+  notify-deployment:
+    needs: [setup, deploy-labs, deploy-index]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Report deployment status
+        run: |
+          if [[ "${{ needs.deploy-labs.result }}" == "success" && "${{ needs.deploy-index.result }}" == "success" ]]; then
+            echo "✅ All labs deployed successfully to ${{ needs.setup.outputs.domain_prefix }}"
+            echo "Labs available at:"
+            echo "  - Index: https://${{ needs.setup.outputs.domain_prefix }}"
+            
+            # List deployed labs
+            labs='${{ needs.setup.outputs.labs }}'
+            echo "$labs" | jq -r '.[]' | while read lab; do
+              echo "  - $lab: https://${{ needs.setup.outputs.domain_prefix }}/$lab"
+            done
+          else
+            echo "❌ Deployment failed"
+            echo "deploy-labs result: ${{ needs.deploy-labs.result }}"
+            echo "deploy-index result: ${{ needs.deploy-index.result }}"
+            exit 1
+          fi
