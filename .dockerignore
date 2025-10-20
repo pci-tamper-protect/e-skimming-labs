@@ -1,0 +1,36 @@
+# Terraform artifacts
+**/.terraform/**
+**/*.tfstate
+**/*.tfstate.*
+**/tfplan
+**/*.tfvars
+**/*.tfvars.json
+
+# Node/JS
+node_modules/
+**/node_modules/
+
+# Git
+.git
+.gitignore
+
+# Logs
+*.log
+
+# OS/IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Build outputs
+build/
+dist/
+out/
+
+# Docker
+Dockerfile*
+**/Dockerfile*
+
+# Misc
+*.tmp
+*.swp
