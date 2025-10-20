@@ -937,25 +937,20 @@
             xs.push(last.x); ys.push(last.y);
             const ix = d3.interpolateBasis(xs), iy = d3.interpolateBasis(ys);
             const totalSamples = xs.length - 1;
-            // Declare function-scoped variables to avoid TDZ
-            var prevX = ix(0);
-            var prevY = iy(0);
+            // Compute paused position first, then seed prevX/prevY to avoid TDZ
             var seededLastSeg = -1;
-            // Initialize camera and segment at the paused position to avoid visual jump/replay
-            (function initPrevFromPaused(){
-                const hopMsLocalInit = 1000, pauseMsLocalInit = 1000;
-                const segDurInit = hopMsLocalInit + pauseMsLocalInit;
-                const segInitCount = Math.max(1, (player.path.length - 1));
-                const clampedInit = Math.min(segInitCount * segDurInit - 1, Math.max(0, player.pausedElapsed||0));
-                const segInit = Math.min(segInitCount - 1, Math.floor(clampedInit / segDurInit));
-                const withinInit = clampedInit - segInit * segDurInit;
-                const progressInit = withinInit < hopMsLocalInit ? (withinInit / hopMsLocalInit) : 1;
-                const basisPosInit = (segInit * subdivisions + progressInit * subdivisions) / totalSamples;
-                prevX = ix(basisPosInit);
-                prevY = iy(basisPosInit);
-                // Seed lastSeg so we don't re-highlight earlier links on resume
-                seededLastSeg = segInit - 1;
-            })();
+            const hopMsLocalInit = 1000, pauseMsLocalInit = 1000;
+            const segDurInit = hopMsLocalInit + pauseMsLocalInit;
+            const segInitCount = Math.max(1, (player.path.length - 1));
+            const clampedInit = Math.min(segInitCount * segDurInit - 1, Math.max(0, player.pausedElapsed||0));
+            const segInit = Math.min(segInitCount - 1, Math.floor(clampedInit / segDurInit));
+            const withinInit = clampedInit - segInit * segDurInit;
+            const progressInit = withinInit < hopMsLocalInit ? (withinInit / hopMsLocalInit) : 1;
+            const basisPosInit = (segInit * subdivisions + progressInit * subdivisions) / totalSamples;
+            var prevX = ix(basisPosInit);
+            var prevY = iy(basisPosInit);
+            // Seed lastSeg so we don't re-highlight earlier links on resume
+            seededLastSeg = segInit - 1;
             const smoothing = 0.85; const hopMsLocal = 1000, pauseMsLocal = 1000;
             const segCountLocal = Math.max(1, (player.path.length - 1)); const segDur = hopMsLocal + pauseMsLocal;
             let lastSeg = seededLastSeg;
