@@ -4,8 +4,8 @@ FROM golang:1.21-alpine AS builder
 # Set working directory
 WORKDIR /app
 
-# Copy go mod files from the home-index-service directory
-COPY deploy/shared-components/home-index-service/go.mod deploy/shared-components/home-index-service/go.sum ./
+# Copy go.mod from the home-index-service directory (no go.sum needed for no external deps)
+COPY deploy/shared-components/home-index-service/go.mod ./
 
 # Download dependencies
 RUN go mod download
