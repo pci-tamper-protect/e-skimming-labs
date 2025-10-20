@@ -9,11 +9,11 @@ on:
       environment:
         description: 'Environment to deploy to'
         required: true
-        default: 'stg'
+        default: 'prd'
         type: choice
         options:
-        - stg
         - prd
+        - stg
 
 env:
   # Home page project (labs-home-prd)
@@ -42,12 +42,12 @@ jobs:
       - name: Set environment variables
         id: set-env
         run: |
-          if [[ "${{ github.event.inputs.environment }}" == "prd" ]]; then
-            echo "environment=prd" >> $GITHUB_OUTPUT
-            echo "domain_prefix=labs.pcioasis.com" >> $GITHUB_OUTPUT
-          else
+          if [[ "${{ github.event.inputs.environment }}" == "stg" ]]; then
             echo "environment=stg" >> $GITHUB_OUTPUT
             echo "domain_prefix=labs.stg.pcioasis.com" >> $GITHUB_OUTPUT
+          else
+            echo "environment=prd" >> $GITHUB_OUTPUT
+            echo "domain_prefix=labs.pcioasis.com" >> $GITHUB_OUTPUT
           fi
 
       - name: Discover lab directories
