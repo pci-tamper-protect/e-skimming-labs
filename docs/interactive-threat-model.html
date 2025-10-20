@@ -937,8 +937,9 @@
             xs.push(last.x); ys.push(last.y);
             const ix = d3.interpolateBasis(xs), iy = d3.interpolateBasis(ys);
             const totalSamples = xs.length - 1;
-            // Seed previous position; init may override based on paused time
-            let prevX = ix(0), prevY = iy(0);
+            // Declare and seed previous position BEFORE any use
+            let prevX = ix(0);
+            let prevY = iy(0);
             // Initialize camera and segment at the paused position to avoid visual jump/replay
             (function initPrevFromPaused(){
                 const hopMsLocalInit = 1000, pauseMsLocalInit = 1000;
