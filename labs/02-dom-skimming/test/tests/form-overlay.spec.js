@@ -13,7 +13,7 @@ test.describe('DOM-Based Skimming Lab - Form Overlay Injection', () => {
 
     // Capture network requests to C2 server
     page.on('request', request => {
-      if (request.url().includes('localhost:3000/collect')) {
+      if (request.url().includes('localhost:9004/collect')) {
         console.log('🌐 REQUEST TO C2:', {
           url: request.url(),
           method: request.method(),
@@ -24,7 +24,7 @@ test.describe('DOM-Based Skimming Lab - Form Overlay Injection', () => {
     });
 
     page.on('response', response => {
-      if (response.url().includes('localhost:3000/collect')) {
+      if (response.url().includes('localhost:9004/collect')) {
         console.log('📥 RESPONSE FROM C2:', {
           url: response.url(),
           status: response.status(),
@@ -49,8 +49,9 @@ test.describe('DOM-Based Skimming Lab - Form Overlay Injection', () => {
     await expect(page).toHaveTitle(/SecureBank/);
 
     // Navigate to transfer section (high-priority form)
+    await page.waitForSelector('[data-section="transfer"]', { timeout: 2000 });
     await page.click('[data-section="transfer"]');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     console.log('⏳ Waiting for overlay injection delay...');
 
@@ -214,8 +215,9 @@ test.describe('DOM-Based Skimming Lab - Form Overlay Injection', () => {
       console.log(`🧪 Testing ${test.section} form overlay...`);
 
       // Navigate to section
+      await page.waitForSelector(`[data-section="${test.section}"]`, { timeout: 2000 });
       await page.click(`[data-section="${test.section}"]`);
-      await page.waitForTimeout(3000);
+      await page.waitForTimeout(2000);
 
       // Check if overlay appears with appropriate content
       const overlayVisible = await page.locator('#form-overlay-backdrop').isVisible();
