@@ -229,6 +229,14 @@ Modern skimmers employ sophisticated evasion:
 
 ## 🚀 Getting Started
 
+### Development Workflow
+
+This repository uses PR-based deployment with branch protection:
+- Create feature branches for changes
+- Submit PRs to main branch for review
+- GitHub Actions deploys to staging on PR creation
+- Manual workflow dispatch available for production deployment
+
 ### Prerequisites
 
 - Docker & Docker Compose
