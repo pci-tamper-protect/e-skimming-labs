@@ -1,0 +1,26 @@
+FROM nginx:alpine
+
+# Copy index page files
+COPY docs/ /usr/share/nginx/html/
+
+# Create nginx config for index page
+RUN echo 'server { \
+    listen 8080; \
+    server_name localhost; \
+    root /usr/share/nginx/html; \
+    index index.html; \
+    \
+    location / { \
+        try_files $uri $uri/ =404; \
+    } \
+    \
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ { \
+        expires 1y; \
+        add_header Cache-Control "public, immutable"; \
+    } \
+}' > /etc/nginx/conf.d/default.conf
+
+# Expose port 8080
+EXPOSE 8080
+
+CMD ["nginx", "-g", "daemon off;"]
