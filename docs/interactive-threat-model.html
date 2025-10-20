@@ -734,6 +734,11 @@
             const parent = d3.select(this.parentNode);
             parent.classed('collapsed', !parent.classed('collapsed'));
         });
+        // Collapsibles toggle
+        d3.selectAll('.collapsible .collapsible-header').on('click', function() {
+            const parent = d3.select(this.parentNode);
+            parent.classed('collapsed', !parent.classed('collapsed'));
+        });
 
         node.on('mouseover', (event, d) => {
             tooltip.html(`
@@ -783,6 +788,112 @@
             });
 
             node.attr('transform', d => `translate(${d.x},${d.y})`);
+        });
+
+        // === Play button behavior: build adjacency and animate a path ===
+        // Build adjacency for attack-flow links (using ids)
+        const attackAdj = new Map();
+        threatData.links.filter(l => l.type === 'attack-flow').forEach(l => {
+            const s = typeof l.source === 'string' ? l.source : l.source.id;
+            const t = typeof l.target === 'string' ? l.target : l.target.id;
+            if (!attackAdj.has(s)) attackAdj.set(s, []);
+            attackAdj.get(s).push(t);
+        });
+
+        function randomPath(start, goal, maxSteps = 30) {
+            const path = [start];
+            const visited = new Set([start]);
+            let cur = start;
+            for (let i = 0; i < maxSteps && cur !== goal; i++) {
+                const nbrs = attackAdj.get(cur) || [];
+                const options = nbrs.filter(n => !visited.has(n));
+                const nexts = options.length ? options : nbrs;
+                if (!nexts.length) break;
+                cur = nexts[Math.floor(Math.random() * nexts.length)];
+                path.push(cur);
+                visited.add(cur);
+            }
+            return path;
+        }
+
+        // Smooth camera follow along cubic basis with dwell
+        function animatePath(path) {
+            const hopMs = 1000;     // travel per hop
+            const pauseMs = 1000;   // dwell at node
+            const segCount = Math.max(1, (path.length - 1));
+            const segDur = hopMs + pauseMs;
+            const totalMs = segCount * segDur;
+
+            // Maps for quick lookup
+            const nodeMap = new Map();
+            const datumMap = new Map();
+            node.each(function(d){ nodeMap.set(d.id, d3.select(this)); datumMap.set(d.id, d); });
+
+            // Densify waypoints
+            const subdivisions = 5;
+            const xs = [], ys = [];
+            for (let i = 0; i < path.length - 1; i++) {
+                const a = datumMap.get(path[i]) || {x: width/2, y: height/2};
+                const b = datumMap.get(path[i+1]) || {x: width/2, y: height/2};
+                for (let s = 0; s < subdivisions; s++) {
+                    const u = s / subdivisions;
+                    xs.push(a.x * (1 - u) + b.x * u);
+                    ys.push(a.y * (1 - u) + b.y * u);
+                }
+            }
+            const last = datumMap.get(path[path.length - 1]) || {x: width/2, y: height/2};
+            xs.push(last.x); ys.push(last.y);
+            const ix = d3.interpolateBasis(xs);
+            const iy = d3.interpolateBasis(ys);
+            const totalSamples = xs.length - 1;
+
+            let prevX = ix(0), prevY = iy(0);
+            const smoothing = 0.85;
+            let lastSeg = -1;
+
+            const timer = d3.timer(elapsed => {
+                const clamp = Math.min(totalMs - 1, Math.max(0, elapsed));
+                const seg = Math.min(segCount - 1, Math.floor(clamp / segDur));
+                const within = clamp - seg * segDur;
+                const progress = within < hopMs ? (within / hopMs) : 1;
+                const basisPos = (seg * subdivisions + progress * subdivisions) / totalSamples;
+                const rx = ix(basisPos), ry = iy(basisPos);
+                const x = prevX * smoothing + rx * (1 - smoothing);
+                const y = prevY * smoothing + ry * (1 - smoothing);
+                prevX = x; prevY = y;
+
+                // camera transform (zoomed out for context)
+                const scale = 0.9;
+                const t = d3.zoomIdentity
+                    .translate(width/2, height/2)
+                    .scale(scale)
+                    .translate(-x, -y);
+                zoom.transform(svg, t);
+
+                if (seg !== lastSeg && seg >= 0) {
+                    const prevId = path[seg];
+                    const curId  = path[seg + 1];
+                    const sel = nodeMap.get(curId);
+                    if (sel) {
+                        sel.classed('oscillate', true);
+                        setTimeout(() => sel.classed('oscillate', false), 2000);
+                    }
+                    link.filter(d => (d.source.id||d.source) === prevId && (d.target.id||d.target) === curId && d.type === 'attack-flow')
+                        .classed('link-animated', true)
+                        .classed('link-highlight', true)
+                        .transition().delay(700).duration(600)
+                        .on('end', function(){ d3.select(this).classed('link-animated', false).classed('link-highlight', false); });
+                    lastSeg = seg;
+                }
+
+                if (clamp >= totalMs - 1) timer.stop();
+            });
+        }
+
+        // Wire play button
+        d3.select('#play-attack').on('click', () => {
+            const path = randomPath('initial-access', 'regulatory-fines', 40);
+            if (path.length > 1) animatePath(path);
         });
 
         // Drag functions
