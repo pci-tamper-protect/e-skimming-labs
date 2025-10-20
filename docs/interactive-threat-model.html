@@ -937,9 +937,10 @@
             xs.push(last.x); ys.push(last.y);
             const ix = d3.interpolateBasis(xs), iy = d3.interpolateBasis(ys);
             const totalSamples = xs.length - 1;
-            // Declare and seed previous position BEFORE any use
-            let prevX = ix(0);
-            let prevY = iy(0);
+            // Declare function-scoped variables to avoid TDZ
+            var prevX = ix(0);
+            var prevY = iy(0);
+            var seededLastSeg = -1;
             // Initialize camera and segment at the paused position to avoid visual jump/replay
             (function initPrevFromPaused(){
                 const hopMsLocalInit = 1000, pauseMsLocalInit = 1000;
@@ -957,7 +958,6 @@
             })();
             const smoothing = 0.85; const hopMsLocal = 1000, pauseMsLocal = 1000;
             const segCountLocal = Math.max(1, (player.path.length - 1)); const segDur = hopMsLocal + pauseMsLocal;
-            let seededLastSeg = -1; // set in init above
             let lastSeg = seededLastSeg;
 
             player.timer = d3.timer(() => {
