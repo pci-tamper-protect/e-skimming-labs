@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Skimming Interactive Threat Model</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #0a0e27;
+            color: #e0e0e0;
+            overflow-x: hidden;
+        }
+
+        #header {
+            background: linear-gradient(135deg, #1a1f3a 0%, #0a0e27 100%);
+            padding: 20px 40px;
+            border-bottom: 2px solid #2a3f5f;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #8b9dc3;
+        }
+
+        #controls {
+            background: #161b33;
+            padding: 20px 40px;
+            border-bottom: 1px solid #2a3f5f;
+            display: flex;
+            gap: 30px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-group label {
+            font-size: 12px;
+            font-weight: 500;
+            color: #8b9dc3;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: #2a3f5f;
+            border: 1px solid #3d5a80;
+            color: #e0e0e0;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        button:hover {
+            background: #3d5a80;
+            border-color: #4a6fa5;
+        }
+
+        button.active {
+            background: #4a6fa5;
+            border-color: #5b7fc8;
+            color: #fff;
+        }
+
+        button.reset {
+            background: #5a2a2a;
+            border-color: #803d3d;
+        }
+
+        button.reset:hover {
+            background: #803d3d;
+        }
+
+        #visualization {
+            width: 100%;
+            height: calc(100vh - 200px);
+            position: relative;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .link {
+            fill: none;
+            stroke-width: 2;
+            opacity: 0.6;
+            transition: opacity 0.3s;
+        }
+
+        .link.attack-flow {
+            stroke: #ff6b6b;
+            stroke-dasharray: 5, 5;
+        }
+
+        .link.defense {
+            stroke: #51cf66;
+        }
+
+        .link.detection {
+            stroke: #8b5a2b;
+        }
+
+        .link.dim {
+            opacity: 0.1;
+        }
+
+        .link.highlight {
+            opacity: 1;
+            stroke-width: 3;
+        }
+
+        .node {
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .node circle {
+            stroke-width: 2.5;
+            transition: all 0.3s;
+        }
+
+        .node.tactic circle {
+            fill: #ff6b6b;
+            stroke: #ff8787;
+        }
+
+        .node.technique circle {
+            fill: #ff922b;
+            stroke: #ffa94d;
+        }
+
+        .node.defense circle {
+            fill: #51cf66;
+            stroke: #69db7c;
+        }
+
+        .node.detection circle {
+            fill: #8b5a2b;
+            stroke: #a0662f;
+        }
+
+        .node.asset circle {
+            fill: #748ffc;
+            stroke: #91a7ff;
+        }
+
+        .node.impact circle {
+            fill: #e64980;
+            stroke: #f06595;
+        }
+
+        .node.dim {
+            opacity: 0.2;
+        }
+
+        .node.highlight circle {
+            stroke-width: 4;
+            filter: drop-shadow(0 0 8px currentColor);
+        }
+
+        .node text {
+            font-size: 11px;
+            font-weight: 500;
+            pointer-events: none;
+            text-anchor: middle;
+            fill: #e0e0e0;
+        }
+
+        .node.dim text {
+            opacity: 0.3;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(26, 31, 58, 0.98);
+            border: 1px solid #3d5a80;
+            border-radius: 6px;
+            padding: 12px 16px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            max-width: 350px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            z-index: 1000;
+        }
+
+        .tooltip.show {
+            opacity: 1;
+        }
+
+        .tooltip h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #fff;
+            border-bottom: 1px solid #3d5a80;
+            padding-bottom: 6px;
+        }
+
+        .tooltip .category {
+            display: inline-block;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 3px;
+            margin-bottom: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .tooltip .category.tactic { background: #ff6b6b; color: #fff; }
+        .tooltip .category.technique { background: #ff922b; color: #fff; }
+        .tooltip .category.defense { background: #51cf66; color: #000; }
+        .tooltip .category.detection { background: #8b5a2b; color: #fff; }
+        .tooltip .category.asset { background: #748ffc; color: #fff; }
+        .tooltip .category.impact { background: #e64980; color: #fff; }
+
+        .tooltip p {
+            font-size: 12px;
+            line-height: 1.5;
+            color: #b8c5db;
+            margin: 8px 0;
+        }
+
+        .tooltip .mitre-id {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: #ffa94d;
+            font-weight: 600;
+        }
+
+        .tooltip .examples {
+            margin-top: 8px;
+            font-size: 11px;
+            color: #8b9dc3;
+        }
+
+        .tooltip .examples strong {
+            color: #b8c5db;
+        }
+
+        #legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(26, 31, 58, 0.95);
+            border: 1px solid #3d5a80;
+            border-radius: 6px;
+            padding: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+
+        #legend h3 {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #fff;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 8px 0;
+            font-size: 12px;
+        }
+
+        .legend-item .color-box {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid;
+        }
+
+        .legend-item .line-sample {
+            width: 30px;
+            height: 2px;
+        }
+
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(26, 31, 58, 0.95);
+            border: 1px solid #3d5a80;
+            border-radius: 6px;
+            padding: 16px;
+            max-width: 300px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+
+        #info-panel h3 {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+
+        #info-panel p {
+            font-size: 11px;
+            line-height: 1.6;
+            color: #8b9dc3;
+            margin: 4px 0;
+        }
+
+        .zoom-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .zoom-controls button {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            font-size: 18px;
+            border-radius: 50%;
+        }
+
+        /* Collapsible panels */
+        .collapsible {}
+        .collapsible-header { display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
+        .chevron { transition: transform 0.2s ease; }
+        .collapsed .chevron { transform: rotate(-90deg); }
+        .collapsible-content { margin-top: 8px; }
+        .collapsed .collapsible-content { display: none; }
+
+        /* Node oscillation and link animation */
+        @keyframes oscillate { 0%{transform:translate(0,0)}25%{transform:translate(1px,-1px)}50%{transform:translate(-1px,1px)}75%{transform:translate(1px,1px)}100%{transform:translate(0,0)} }
+        .oscillate circle { animation: oscillate 0.3s ease-in-out infinite; }
+        .link-highlight { stroke-width: 3px !important; opacity: 1 !important; }
+        @keyframes dash { to { stroke-dashoffset: -40; } }
+        .link.attack-flow { stroke-dasharray: 6 6; stroke-linecap: round; }
+        .link-animated.attack-flow { animation: dash 1s linear infinite; stroke-width: 3px; opacity: 1 !important; }
+
+        @media (max-width: 768px) {
+            #controls {
+                padding: 15px 20px;
+                gap: 15px;
+            }
+
+            #legend {
+                bottom: 10px;
+                right: 10px;
+                font-size: 11px;
+            }
+
+            #info-panel {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>E-Skimming Interactive Threat Model</h1>
+        <div class="subtitle">Visualizing attack techniques, defenses, and detection strategies based on MITRE ATT&CK framework</div>
+    </div>
+
+    <div id="controls">
+        <div class="control-group">
+            <label>Filter by Category</label>
+            <div class="filter-buttons">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="tactic">Tactics</button>
+                <button class="filter-btn" data-filter="technique">Techniques</button>
+                <button class="filter-btn" data-filter="defense">Defenses</button>
+                <button class="filter-btn" data-filter="detection">Detection</button>
+            </div>
+        </div>
+        <div class="control-group">
+            <label>Attack Scenario</label>
+            <div class="filter-buttons">
+                <button class="scenario-btn" data-scenario="british-airways">British Airways</button>
+                <button class="scenario-btn" data-scenario="supply-chain">Supply Chain</button>
+                <button class="scenario-btn" data-scenario="extension">Extension Hijack</button>
+                <button class="scenario-btn reset" data-scenario="reset">Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="visualization">
+        <svg></svg>
+        <div class="tooltip"></div>
+        <div class="zoom-controls">
+            <button id="zoom-in" title="Zoom In">+</button>
+            <button id="zoom-out" title="Zoom Out">−</button>
+            <button id="zoom-reset" title="Reset Zoom">⟲</button>
+            <button id="play-attack" title="Play Random Attack Path">▶</button>
+        </div>
+    </div>
+
+    <div id="legend" class="collapsible">
+        <div class="collapsible-header"><h3>Legend</h3><span class="chevron">▾</span></div>
+        <div class="collapsible-content">
+        <div class="legend-item">
+            <div class="color-box" style="background: #ff6b6b; border-color: #ff8787;"></div>
+            <span>Tactics</span>
+        </div>
+        <div class="legend-item">
+            <div class="color-box" style="background: #ff922b; border-color: #ffa94d;"></div>
+            <span>Techniques</span>
+        </div>
+        <div class="legend-item">
+            <div class="color-box" style="background: #51cf66; border-color: #69db7c;"></div>
+            <span>Defenses</span>
+        </div>
+        <div class="legend-item">
+            <div class="color-box" style="background: #8b5a2b; border-color: #a0662f;"></div>
+            <span>Detection</span>
+        </div>
+        <div class="legend-item">
+            <div class="color-box" style="background: #748ffc; border-color: #91a7ff;"></div>
+            <span>Assets</span>
+        </div>
+        <div class="legend-item">
+            <div class="color-box" style="background: #e64980; border-color: #f06595;"></div>
+            <span>Impact</span>
+        </div>
+        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #3d5a80;">
+            <div class="legend-item">
+                <div class="line-sample" style="background: #ff6b6b; opacity: 0.6;"></div>
+                <span>Attack Flow</span>
+            </div>
+            <div class="legend-item">
+                <div class="line-sample" style="background: #51cf66; opacity: 0.6;"></div>
+                <span>Mitigates</span>
+            </div>
+            <div class="legend-item">
+                <div class="line-sample" style="background: #8b5a2b; opacity: 0.6;"></div>
+                <span>Detects</span>
+            </div>
+        </div>
+        </div>
+    </div>
+
+    <div id="info-panel" class="collapsible">
+        <div class="collapsible-header"><h3>How to Use</h3><span class="chevron">▾</span></div>
+        <div class="collapsible-content">
+            <p><strong>Click</strong> nodes to see details</p>
+            <p><strong>Drag</strong> nodes to rearrange</p>
+            <p><strong>Scroll</strong> to zoom in/out</p>
+            <p><strong>Filter</strong> by category to focus view</p>
+            <p><strong>Scenarios</strong> show real-world attack paths</p>
+        </div>
+    </div>
+
+    <script>
+        // Threat Model Data
+        const threatData = {
+            nodes: [
+                // Assets
+                { id: 'ecommerce-site', label: 'E-Commerce\nWebsite', type: 'asset', description: 'Target e-commerce platform with payment processing', radius: 30 },
+                { id: 'payment-form', label: 'Payment\nForm', type: 'asset', description: 'Checkout page with credit card fields', radius: 25 },
+                { id: 'customer-data', label: 'Customer\nData', type: 'asset', description: 'Payment cards, PII, credentials', radius: 25 },
+
+                // Tactics (MITRE ATT&CK)
+                { id: 'initial-access', label: 'Initial\nAccess', type: 'tactic', description: 'TA0001: Entry into target infrastructure', mitre: 'TA0001', radius: 28 },
+                { id: 'execution', label: 'Execution', type: 'tactic', description: 'TA0002: Running malicious code', mitre: 'TA0002', radius: 28 },
+                { id: 'persistence', label: 'Persistence', type: 'tactic', description: 'TA0003: Maintaining access', mitre: 'TA0003', radius: 28 },
+                { id: 'defense-evasion', label: 'Defense\nEvasion', type: 'tactic', description: 'TA0005: Avoiding detection', mitre: 'TA0005', radius: 28 },
+                { id: 'collection', label: 'Collection', type: 'tactic', description: 'TA0009: Gathering payment data', mitre: 'TA0009', radius: 28 },
+                { id: 'exfiltration', label: 'Exfiltration', type: 'tactic', description: 'TA0010: Stealing data to C2', mitre: 'TA0010', radius: 28 },
+
+                // Techniques
+                { id: 'stolen-creds', label: 'Stolen\nCredentials', type: 'technique', description: 'T1078: Compromised admin accounts without MFA', mitre: 'T1078', examples: 'British Airways (2018), Newegg (2018)', radius: 22 },
+                { id: 'exploit-vuln', label: 'Exploit\nVulnerability', type: 'technique', description: 'T1190: CosmicSting CVE-2024-34102, Magento exploits', mitre: 'T1190', examples: '11,000+ sites via CosmicSting', radius: 22 },
+                { id: 'supply-chain', label: 'Supply Chain\nCompromise', type: 'technique', description: 'T1195: Third-party scripts, CDN compromise', mitre: 'T1195', examples: 'Ticketmaster (Inbenta chatbot), Forbes', radius: 22 },
+                { id: 'javascript-exec', label: 'JavaScript\nExecution', type: 'technique', description: 'T1059.007: Malicious JS in victim browser', mitre: 'T1059.007', examples: 'All e-skimming attacks', radius: 22 },
+                { id: 'file-modification', label: 'File\nModification', type: 'technique', description: 'T1554: Append skimmer to checkout.js', mitre: 'T1554', examples: 'British Airways (Modernizr), Newegg', radius: 22 },
+                { id: 'extension-hijack', label: 'Browser\nExtension', type: 'technique', description: 'T1176: Malicious or compromised extensions', mitre: 'T1176', examples: 'DataSpii, Great Suspender', radius: 22 },
+                { id: 'obfuscation', label: 'Code\nObfuscation', type: 'technique', description: 'T1027: Base64, multiple encoding layers', mitre: 'T1027', examples: 'Kritec, Gateway skimmer', radius: 22 },
+                { id: 'anti-debug', label: 'Anti-Debug', type: 'technique', description: 'T1622: Firebug/DevTools detection', mitre: 'T1622', examples: 'Gateway skimmer, Kritec', radius: 22 },
+                { id: 'geofencing', label: 'Geofencing', type: 'technique', description: 'T1480: Execute only in target countries', mitre: 'T1480', examples: 'Advanced Magecart variants', radius: 22 },
+                { id: 'masquerading', label: 'Masquerading', type: 'technique', description: 'T1036: Disguise as GTM, analytics', mitre: 'T1036', examples: 'GTM-disguised skimmers', radius: 22 },
+                { id: 'form-intercept', label: 'Form\nInterception', type: 'technique', description: 'T1056.002: Capture payment form submissions', mitre: 'T1056.002', examples: 'Lab 01 - Basic Magecart', radius: 22 },
+                { id: 'keylogging', label: 'Keylogging', type: 'technique', description: 'T1056.001: Real-time keystroke capture', mitre: 'T1056.001', examples: 'Lab 02 - DOM monitoring', radius: 22 },
+                { id: 'dom-manipulation', label: 'DOM\nManipulation', type: 'technique', description: 'MutationObserver, Shadow DOM abuse', mitre: 'Custom', examples: 'Lab 02 - DOM skimming', radius: 22 },
+                { id: 'localstorage-scrape', label: 'LocalStorage\nScraping', type: 'technique', description: 'T1005: Scrape cached payment data', mitre: 'T1005', examples: 'Multi-form Magecart', radius: 22 },
+                { id: 'http-post', label: 'HTTP POST\nExfil', type: 'technique', description: 'T1041: POST to C2 server', mitre: 'T1041', examples: 'Most common method', radius: 22 },
+                { id: 'websocket', label: 'WebSocket\nExfil', type: 'technique', description: 'T1041: Real-time WebSocket channel', mitre: 'T1041', examples: 'Kritec skimmer', radius: 22 },
+
+                // Impact
+                { id: 'data-theft', label: 'Data\nTheft', type: 'impact', description: '380,000 cards (British Airways), 40,000 (Ticketmaster)', radius: 26 },
+                { id: 'financial-fraud', label: 'Financial\nFraud', type: 'impact', description: 'Card fraud, identity theft, account takeover', radius: 26 },
+                { id: 'regulatory-fines', label: 'Regulatory\nFines', type: 'impact', description: '£20M British Airways, £1.25M Ticketmaster', radius: 26 },
+
+                // Defenses
+                { id: 'mfa', label: 'Multi-Factor\nAuth', type: 'defense', description: 'Prevent credential-based compromise', radius: 24 },
+                { id: 'csp', label: 'Content Security\nPolicy', type: 'defense', description: 'Restrict script sources, block unauthorized scripts', radius: 24 },
+                { id: 'sri', label: 'Subresource\nIntegrity', type: 'defense', description: 'Cryptographic hash verification for scripts', radius: 24 },
+                { id: 'fim', label: 'File Integrity\nMonitoring', type: 'defense', description: 'Detect unauthorized file modifications', radius: 24 },
+                { id: 'waf', label: 'Web Application\nFirewall', type: 'defense', description: 'Block exploit attempts, XXE attacks', radius: 24 },
+                { id: 'network-monitoring', label: 'Network\nMonitoring', type: 'defense', description: 'Detect suspicious outbound traffic', radius: 24 },
+                { id: 'code-review', label: 'Code\nReview', type: 'defense', description: 'Regular security audits of production code', radius: 24 },
+
+                // Detection
+                { id: 'static-analysis', label: 'Static\nAnalysis', type: 'detection', description: 'Semgrep rules for skimmer patterns', radius: 24 },
+                { id: 'behavioral-monitoring', label: 'Behavioral\nMonitoring', type: 'detection', description: 'Monitor form field access patterns', radius: 24 },
+                { id: 'network-analysis', label: 'Network\nAnalysis', type: 'detection', description: 'Detect exfiltration to unknown domains', radius: 24 },
+                { id: 'devtools-inspection', label: 'DevTools\nInspection', type: 'detection', description: 'Manual inspection of event listeners', radius: 24 },
+            ],
+
+            links: [
+                // Attack Flow
+                { source: 'ecommerce-site', target: 'initial-access', type: 'attack-flow' },
+                { source: 'initial-access', target: 'stolen-creds', type: 'attack-flow' },
+                { source: 'initial-access', target: 'exploit-vuln', type: 'attack-flow' },
+                { source: 'initial-access', target: 'supply-chain', type: 'attack-flow' },
+
+                { source: 'stolen-creds', target: 'execution', type: 'attack-flow' },
+                { source: 'exploit-vuln', target: 'execution', type: 'attack-flow' },
+                { source: 'supply-chain', target: 'execution', type: 'attack-flow' },
+
+                { source: 'execution', target: 'javascript-exec', type: 'attack-flow' },
+                { source: 'javascript-exec', target: 'persistence', type: 'attack-flow' },
+
+                { source: 'persistence', target: 'file-modification', type: 'attack-flow' },
+                { source: 'persistence', target: 'extension-hijack', type: 'attack-flow' },
+
+                { source: 'file-modification', target: 'defense-evasion', type: 'attack-flow' },
+                { source: 'extension-hijack', target: 'defense-evasion', type: 'attack-flow' },
+
+                { source: 'defense-evasion', target: 'obfuscation', type: 'attack-flow' },
+                { source: 'defense-evasion', target: 'anti-debug', type: 'attack-flow' },
+                { source: 'defense-evasion', target: 'geofencing', type: 'attack-flow' },
+                { source: 'defense-evasion', target: 'masquerading', type: 'attack-flow' },
+
+                { source: 'obfuscation', target: 'collection', type: 'attack-flow' },
+                { source: 'anti-debug', target: 'collection', type: 'attack-flow' },
+                { source: 'geofencing', target: 'collection', type: 'attack-flow' },
+                { source: 'masquerading', target: 'collection', type: 'attack-flow' },
+
+                { source: 'collection', target: 'form-intercept', type: 'attack-flow' },
+                { source: 'collection', target: 'keylogging', type: 'attack-flow' },
+                { source: 'collection', target: 'dom-manipulation', type: 'attack-flow' },
+                { source: 'collection', target: 'localstorage-scrape', type: 'attack-flow' },
+
+                { source: 'form-intercept', target: 'payment-form', type: 'attack-flow' },
+                { source: 'keylogging', target: 'payment-form', type: 'attack-flow' },
+                { source: 'dom-manipulation', target: 'payment-form', type: 'attack-flow' },
+                { source: 'localstorage-scrape', target: 'payment-form', type: 'attack-flow' },
+
+                { source: 'payment-form', target: 'customer-data', type: 'attack-flow' },
+
+                { source: 'customer-data', target: 'exfiltration', type: 'attack-flow' },
+                { source: 'exfiltration', target: 'http-post', type: 'attack-flow' },
+                { source: 'exfiltration', target: 'websocket', type: 'attack-flow' },
+
+                { source: 'http-post', target: 'data-theft', type: 'attack-flow' },
+                { source: 'websocket', target: 'data-theft', type: 'attack-flow' },
+                { source: 'data-theft', target: 'financial-fraud', type: 'attack-flow' },
+                { source: 'data-theft', target: 'regulatory-fines', type: 'attack-flow' },
+
+                // Defense Links
+                { source: 'mfa', target: 'stolen-creds', type: 'defense' },
+                { source: 'waf', target: 'exploit-vuln', type: 'defense' },
+                { source: 'sri', target: 'supply-chain', type: 'defense' },
+                { source: 'csp', target: 'javascript-exec', type: 'defense' },
+                { source: 'fim', target: 'file-modification', type: 'defense' },
+                { source: 'csp', target: 'extension-hijack', type: 'defense' },
+                { source: 'static-analysis', target: 'obfuscation', type: 'defense' },
+                { source: 'code-review', target: 'file-modification', type: 'defense' },
+                { source: 'network-monitoring', target: 'http-post', type: 'defense' },
+                { source: 'network-monitoring', target: 'websocket', type: 'defense' },
+
+                // Detection Links
+                { source: 'static-analysis', target: 'obfuscation', type: 'detection' },
+                { source: 'devtools-inspection', target: 'anti-debug', type: 'detection' },
+                { source: 'behavioral-monitoring', target: 'form-intercept', type: 'detection' },
+                { source: 'behavioral-monitoring', target: 'keylogging', type: 'detection' },
+                { source: 'behavioral-monitoring', target: 'dom-manipulation', type: 'detection' },
+                { source: 'network-analysis', target: 'http-post', type: 'detection' },
+                { source: 'network-analysis', target: 'websocket', type: 'detection' },
+                { source: 'fim', target: 'file-modification', type: 'detection' },
+            ]
+        };
+
+        // Scenarios
+        const scenarios = {
+            'british-airways': {
+                name: 'British Airways (2018)',
+                nodes: ['ecommerce-site', 'initial-access', 'stolen-creds', 'execution', 'javascript-exec',
+                       'persistence', 'file-modification', 'defense-evasion', 'obfuscation', 'collection',
+                       'form-intercept', 'payment-form', 'customer-data', 'exfiltration', 'http-post',
+                       'data-theft', 'financial-fraud', 'regulatory-fines']
+            },
+            'supply-chain': {
+                name: 'Supply Chain Attack (Ticketmaster)',
+                nodes: ['ecommerce-site', 'initial-access', 'supply-chain', 'execution', 'javascript-exec',
+                       'defense-evasion', 'masquerading', 'collection', 'form-intercept', 'payment-form',
+                       'customer-data', 'exfiltration', 'http-post', 'data-theft', 'financial-fraud']
+            },
+            'extension': {
+                name: 'Browser Extension Hijacking',
+                nodes: ['ecommerce-site', 'initial-access', 'supply-chain', 'execution', 'javascript-exec',
+                       'persistence', 'extension-hijack', 'defense-evasion', 'anti-debug', 'collection',
+                       'keylogging', 'dom-manipulation', 'payment-form', 'customer-data', 'exfiltration',
+                       'websocket', 'data-theft', 'financial-fraud']
+            }
+        };
+
+        // D3 Visualization
+        const width = window.innerWidth;
+        const height = window.innerHeight - 200;
+
+        const svg = d3.select('svg')
+            .attr('viewBox', [0, 0, width, height]);
+
+        const g = svg.append('g');
+
+        // Define arrow markers
+        const defs = svg.append('defs');
+
+        ['attack-flow', 'defense', 'detection'].forEach(type => {
+            defs.append('marker')
+                .attr('id', `arrow-${type}`)
+                .attr('viewBox', '0 -5 10 10')
+                .attr('refX', 20)
+                .attr('refY', 0)
+                .attr('markerWidth', 6)
+                .attr('markerHeight', 6)
+                .attr('orient', 'auto')
+                .append('path')
+                .attr('d', 'M0,-5L10,0L0,5')
+                .attr('fill', type === 'attack-flow' ? '#ff6b6b' : type === 'defense' ? '#51cf66' : '#8b5a2b');
+        });
+
+        // Zoom behavior
+        const zoom = d3.zoom()
+            .scaleExtent([0.1, 4])
+            .on('zoom', (event) => {
+                g.attr('transform', event.transform);
+            });
+
+        svg.call(zoom);
+
+        // Zoom controls
+        d3.select('#zoom-in').on('click', () => {
+            svg.transition().call(zoom.scaleBy, 1.3);
+        });
+
+        d3.select('#zoom-out').on('click', () => {
+            svg.transition().call(zoom.scaleBy, 0.7);
+        });
+
+        d3.select('#zoom-reset').on('click', () => {
+            svg.transition().call(zoom.transform, d3.zoomIdentity);
+        });
+
+        // Force simulation
+        const simulation = d3.forceSimulation(threatData.nodes)
+            .force('link', d3.forceLink(threatData.links).id(d => d.id).distance(120))
+            .force('charge', d3.forceManyBody().strength(-800))
+            .force('center', d3.forceCenter(width / 2, height / 2))
+            .force('collision', d3.forceCollide().radius(d => d.radius + 10));
+
+        // Create links
+        const link = g.append('g')
+            .selectAll('path')
+            .data(threatData.links)
+            .join('path')
+            .attr('class', d => `link ${d.type}`)
+            .attr('marker-end', d => `url(#arrow-${d.type})`);
+
+        // Create nodes
+        const node = g.append('g')
+            .selectAll('g')
+            .data(threatData.nodes)
+            .join('g')
+            .attr('class', d => `node ${d.type}`)
+            .call(d3.drag()
+                .on('start', dragstarted)
+                .on('drag', dragged)
+                .on('end', dragended));
+
+        node.append('circle')
+            .attr('r', d => d.radius);
+
+        node.append('text')
+            .attr('dy', d => d.radius + 16)
+            .text(d => d.label)
+            .style('font-size', '11px')
+            .each(function(d) {
+                const text = d3.select(this);
+                const words = d.label.split('\n');
+                text.text('');
+                words.forEach((word, i) => {
+                    text.append('tspan')
+                        .attr('x', 0)
+                        .attr('dy', i === 0 ? 0 : '1.1em')
+                        .text(word);
+                });
+            });
+
+        // Tooltip
+        const tooltip = d3.select('.tooltip');
+        // Collapsibles toggle
+        d3.selectAll('.collapsible .collapsible-header').on('click', function() {
+            const parent = d3.select(this.parentNode);
+            parent.classed('collapsed', !parent.classed('collapsed'));
+        });
+        // Collapsibles toggle
+        d3.selectAll('.collapsible .collapsible-header').on('click', function() {
+            const parent = d3.select(this.parentNode);
+            parent.classed('collapsed', !parent.classed('collapsed'));
+        });
+
+        node.on('mouseover', (event, d) => {
+            tooltip.html(`
+                <div class="category ${d.type}">${d.type}</div>
+                <h3>${d.label.replace('\n', ' ')}</h3>
+                ${d.mitre ? `<div class="mitre-id">${d.mitre}</div>` : ''}
+                <p>${d.description}</p>
+                ${d.examples ? `<div class="examples"><strong>Examples:</strong> ${d.examples}</div>` : ''}
+            `)
+            .style('left', (event.pageX + 15) + 'px')
+            .style('top', (event.pageY - 10) + 'px')
+            .classed('show', true);
+
+            // Highlight connected nodes
+            const connectedNodes = new Set();
+            connectedNodes.add(d.id);
+
+            link.each(function(l) {
+                if (l.source.id === d.id) connectedNodes.add(l.target.id);
+                if (l.target.id === d.id) connectedNodes.add(l.source.id);
+            });
+
+            node.classed('dim', n => !connectedNodes.has(n.id));
+            link.classed('dim', l => l.source.id !== d.id && l.target.id !== d.id);
+            link.classed('highlight', l => l.source.id === d.id || l.target.id === d.id);
+
+            d3.select(event.currentTarget).classed('highlight', true);
+        })
+        .on('mouseout', () => {
+            tooltip.classed('show', false);
+            node.classed('dim', false).classed('highlight', false);
+            link.classed('dim', false).classed('highlight', false);
+        });
+
+        // Update positions
+        simulation.on('tick', () => {
+            link.attr('d', d => {
+                const dx = d.target.x - d.source.x;
+                const dy = d.target.y - d.source.y;
+                const dr = Math.sqrt(dx * dx + dy * dy);
+
+                // Calculate point on circle edge
+                const offsetX = (dx * d.target.radius) / dr;
+                const offsetY = (dy * d.target.radius) / dr;
+
+                return `M${d.source.x},${d.source.y}L${d.target.x - offsetX},${d.target.y - offsetY}`;
+            });
+
+            node.attr('transform', d => `translate(${d.x},${d.y})`);
+        });
+
+        // === Play button behavior: build adjacency and animate a path ===
+        // Build adjacency for attack-flow links (using ids)
+        const attackAdj = new Map();
+        threatData.links.filter(l => l.type === 'attack-flow').forEach(l => {
+            const s = typeof l.source === 'string' ? l.source : l.source.id;
+            const t = typeof l.target === 'string' ? l.target : l.target.id;
+            if (!attackAdj.has(s)) attackAdj.set(s, []);
+            attackAdj.get(s).push(t);
+        });
+
+        function randomPath(start, goal, maxSteps = 30) {
+            const path = [start];
+            const visited = new Set([start]);
+            let cur = start;
+            for (let i = 0; i < maxSteps && cur !== goal; i++) {
+                const nbrs = attackAdj.get(cur) || [];
+                const options = nbrs.filter(n => !visited.has(n));
+                const nexts = options.length ? options : nbrs;
+                if (!nexts.length) break;
+                cur = nexts[Math.floor(Math.random() * nexts.length)];
+                path.push(cur);
+                visited.add(cur);
+            }
+            return path;
+        }
+
+        // Smooth camera follow along cubic basis with dwell
+        function animatePath(path) {
+            const hopMs = 1000;     // travel per hop
+            const pauseMs = 1000;   // dwell at node
+            const segCount = Math.max(1, (path.length - 1));
+            const segDur = hopMs + pauseMs;
+            const totalMs = segCount * segDur;
+
+            // Maps for quick lookup
+            const nodeMap = new Map();
+            const datumMap = new Map();
+            node.each(function(d){ nodeMap.set(d.id, d3.select(this)); datumMap.set(d.id, d); });
+
+            // Densify waypoints
+            const subdivisions = 5;
+            const xs = [], ys = [];
+            for (let i = 0; i < path.length - 1; i++) {
+                const a = datumMap.get(path[i]) || {x: width/2, y: height/2};
+                const b = datumMap.get(path[i+1]) || {x: width/2, y: height/2};
+                for (let s = 0; s < subdivisions; s++) {
+                    const u = s / subdivisions;
+                    xs.push(a.x * (1 - u) + b.x * u);
+                    ys.push(a.y * (1 - u) + b.y * u);
+                }
+            }
+            const last = datumMap.get(path[path.length - 1]) || {x: width/2, y: height/2};
+            xs.push(last.x); ys.push(last.y);
+            const ix = d3.interpolateBasis(xs);
+            const iy = d3.interpolateBasis(ys);
+            const totalSamples = xs.length - 1;
+
+            let prevX = ix(0), prevY = iy(0);
+            const smoothing = 0.85;
+            let lastSeg = -1;
+
+            const timer = d3.timer(elapsed => {
+                const clamp = Math.min(totalMs - 1, Math.max(0, elapsed));
+                const seg = Math.min(segCount - 1, Math.floor(clamp / segDur));
+                const within = clamp - seg * segDur;
+                const progress = within < hopMs ? (within / hopMs) : 1;
+                const basisPos = (seg * subdivisions + progress * subdivisions) / totalSamples;
+                const rx = ix(basisPos), ry = iy(basisPos);
+                const x = prevX * smoothing + rx * (1 - smoothing);
+                const y = prevY * smoothing + ry * (1 - smoothing);
+                prevX = x; prevY = y;
+
+                // camera transform (zoomed out for context)
+                const scale = 0.9;
+                const t = d3.zoomIdentity
+                    .translate(width/2, height/2)
+                    .scale(scale)
+                    .translate(-x, -y);
+                zoom.transform(svg, t);
+
+                if (seg !== lastSeg && seg >= 0) {
+                    const prevId = path[seg];
+                    const curId  = path[seg + 1];
+                    const sel = nodeMap.get(curId);
+                    if (sel) {
+                        sel.classed('oscillate', true);
+                        setTimeout(() => sel.classed('oscillate', false), 2000);
+                    }
+                    link.filter(d => (d.source.id||d.source) === prevId && (d.target.id||d.target) === curId && d.type === 'attack-flow')
+                        .classed('link-animated', true)
+                        .classed('link-highlight', true)
+                        .transition().delay(700).duration(600)
+                        .on('end', function(){ d3.select(this).classed('link-animated', false).classed('link-highlight', false); });
+                    lastSeg = seg;
+                }
+
+                if (clamp >= totalMs - 1) timer.stop();
+            });
+        }
+
+        // Simple on-screen error/status helper
+        (function(){
+            const status = document.createElement('div');
+            status.style.cssText = 'position:fixed;bottom:10px;right:10px;background:#161b33;color:#b8c5db;padding:8px 12px;border:1px solid #3d5a80;border-radius:6px;font:12px/1.4 system-ui;z-index:9999;opacity:.9;display:none';
+            status.id = 'tm-status';
+            document.body.appendChild(status);
+            window.__tmStatus = (msg)=>{ status.textContent = msg; status.style.display='block'; setTimeout(()=> status.style.display='none', 2000); };
+            window.onerror = (m,s,l,c,e)=>{ status.textContent = `Error: ${m}`; status.style.display='block'; };
+        })();
+
+        // --- Play/Pause controls ---
+        const playBtn = d3.select('#play-attack');
+        const player = { timer: null, startedAt: 0, pausedElapsed: 0, playing: false, totalMs: 0, path: [] };
+
+        function startOrResume() {
+            try {
+                if (player.timer) { player.timer.stop(); player.timer = null; }
+            if (!player.path.length) {
+                player.path = randomPath('initial-access', 'regulatory-fines', 40);
+            }
+            if (player.path.length <= 1) return;
+            // recompute total duration for current path
+            const hopMs = 1000, pauseMs = 1000;
+            const segCount = Math.max(1, (player.path.length - 1));
+            player.totalMs = segCount * (hopMs + pauseMs);
+            // set start clock using paused offset
+            player.startedAt = Date.now() - player.pausedElapsed;
+            player.playing = true;
+            playBtn.text('❚❚').attr('title', 'Pause');
+
+            // reuse animatePath core by embedding timer here using same logic
+            const nodeMap = new Map();
+            const datumMap = new Map();
+            node.each(function(d){ nodeMap.set(d.id, d3.select(this)); datumMap.set(d.id, d); });
+            const subdivisions = 5;
+            const xs = [], ys = [];
+            for (let i = 0; i < player.path.length - 1; i++) {
+                const a = datumMap.get(player.path[i]) || {x: width/2, y: height/2};
+                const b = datumMap.get(player.path[i+1]) || {x: width/2, y: height/2};
+                for (let s = 0; s < subdivisions; s++) {
+                    const u = s / subdivisions; xs.push(a.x*(1-u)+b.x*u); ys.push(a.y*(1-u)+b.y*u);
+                }
+            }
+            const last = datumMap.get(player.path[player.path.length-1]) || {x: width/2, y: height/2};
+            xs.push(last.x); ys.push(last.y);
+            const ix = d3.interpolateBasis(xs), iy = d3.interpolateBasis(ys);
+            const totalSamples = xs.length - 1;
+            // Compute paused position first, then seed prevX/prevY to avoid TDZ
+            var seededLastSeg = -1;
+            const hopMsLocalInit = 1000, pauseMsLocalInit = 1000;
+            const segDurInit = hopMsLocalInit + pauseMsLocalInit;
+            const segInitCount = Math.max(1, (player.path.length - 1));
+            const clampedInit = Math.min(segInitCount * segDurInit - 1, Math.max(0, player.pausedElapsed||0));
+            const segInit = Math.min(segInitCount - 1, Math.floor(clampedInit / segDurInit));
+            const withinInit = clampedInit - segInit * segDurInit;
+            const progressInit = withinInit < hopMsLocalInit ? (withinInit / hopMsLocalInit) : 1;
+            const basisPosInit = (segInit * subdivisions + progressInit * subdivisions) / totalSamples;
+            var prevX = ix(basisPosInit);
+            var prevY = iy(basisPosInit);
+            // Seed lastSeg so we don't re-highlight earlier links on resume
+            seededLastSeg = segInit - 1;
+            const smoothing = 0.85; const hopMsLocal = 1000, pauseMsLocal = 1000;
+            const segCountLocal = Math.max(1, (player.path.length - 1)); const segDur = hopMsLocal + pauseMsLocal;
+            let lastSeg = seededLastSeg;
+
+            player.timer = d3.timer(() => {
+                const elapsed = Date.now() - player.startedAt;
+                const clamped = Math.min(player.totalMs - 1, Math.max(0, elapsed));
+                const seg = Math.min(segCountLocal - 1, Math.floor(clamped / segDur));
+                const within = clamped - seg * segDur;
+                const progress = within < hopMsLocal ? (within / hopMsLocal) : 1;
+                const basisPos = (seg * subdivisions + progress * subdivisions) / totalSamples;
+                const rx = ix(basisPos), ry = iy(basisPos);
+                const x = prevX * smoothing + rx * (1 - smoothing);
+                const y = prevY * smoothing + ry * (1 - smoothing);
+                prevX = x; prevY = y;
+                const scale = 0.9;
+                const t = d3.zoomIdentity.translate(width/2, height/2).scale(scale).translate(-x, -y);
+                zoom.transform(svg, t);
+                if (seg !== lastSeg && seg >= 0) {
+                    const prevId = player.path[seg]; const curId = player.path[seg+1];
+                    const sel = nodeMap.get(curId); if (sel) { sel.classed('oscillate', true); setTimeout(()=> sel.classed('oscillate', false), 2000);}            
+                    link.filter(d => (d.source.id||d.source) === prevId && (d.target.id||d.target) === curId && d.type === 'attack-flow')
+                        .classed('link-animated', true).classed('link-highlight', true)
+                        .transition().delay(700).duration(600)
+                        .on('end', function(){ d3.select(this).classed('link-animated', false).classed('link-highlight', false); });
+                    lastSeg = seg;
+                }
+                if (clamped >= player.totalMs - 1) {
+                    player.timer.stop(); player.timer = null; player.playing = false; player.pausedElapsed = 0; player.path = [];
+                    playBtn.text('▶').attr('title', 'Play');
+                } else {
+                    player.pausedElapsed = clamped;
+                }
+            });
+                window.__tmStatus && window.__tmStatus('Playing…');
+            } catch (err) {
+                console.error('play error', err);
+                window.__tmStatus && window.__tmStatus('Play failed');
+            }
+        }
+
+        function pausePlayback() {
+            if (player.timer) { player.timer.stop(); player.timer = null; }
+            player.playing = false; playBtn.text('▶').attr('title', 'Play');
+            window.__tmStatus && window.__tmStatus('Paused');
+        }
+
+        playBtn.on('click', () => {
+            if (player.playing) { pausePlayback(); } else { startOrResume(); }
+        });
+
+        // Drag functions
+        function dragstarted(event) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            event.subject.fx = event.subject.x;
+            event.subject.fy = event.subject.y;
+        }
+
+        function dragged(event) {
+            event.subject.fx = event.x;
+            event.subject.fy = event.y;
+        }
+
+        function dragended(event) {
+            if (!event.active) simulation.alphaTarget(0);
+            event.subject.fx = null;
+            event.subject.fy = null;
+        }
+
+        // Filter controls
+        d3.selectAll('.filter-btn').on('click', function() {
+            const filter = d3.select(this).attr('data-filter');
+
+            d3.selectAll('.filter-btn').classed('active', false);
+            d3.select(this).classed('active', true);
+
+            if (filter === 'all') {
+                node.style('display', 'block');
+                link.style('display', 'block');
+            } else {
+                node.style('display', d => d.type === filter ? 'block' : 'none');
+                link.style('display', l => {
+                    return (l.source.type === filter || l.target.type === filter) ? 'block' : 'none';
+                });
+            }
+        });
+
+        // Scenario controls
+        d3.selectAll('.scenario-btn').on('click', function() {
+            const scenario = d3.select(this).attr('data-scenario');
+
+            if (scenario === 'reset') {
+                node.classed('dim', false).style('display', 'block');
+                link.classed('dim', false).style('display', 'block');
+                d3.selectAll('.scenario-btn').classed('active', false);
+                return;
+            }
+
+            const scenarioData = scenarios[scenario];
+            const activeNodes = new Set(scenarioData.nodes);
+
+            d3.selectAll('.scenario-btn').classed('active', false);
+            d3.select(this).classed('active', true);
+
+            node.classed('dim', d => !activeNodes.has(d.id));
+            link.classed('dim', l => !activeNodes.has(l.source.id) || !activeNodes.has(l.target.id));
+        });
+
+        // Responsive resize
+        window.addEventListener('resize', () => {
+            const newWidth = window.innerWidth;
+            const newHeight = window.innerHeight - 200;
+            svg.attr('viewBox', [0, 0, newWidth, newHeight]);
+            simulation.force('center', d3.forceCenter(newWidth / 2, newHeight / 2));
+            simulation.alpha(0.3).restart();
+        });
+    </script>
+</body>
+</html>
