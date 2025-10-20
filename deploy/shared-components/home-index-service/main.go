@@ -25,6 +25,7 @@ type HomePageData struct {
 	LabsDomain     string
 	MainDomain     string
 	LabsProjectID  string
+	Scheme         string
 	Labs           []Lab
 	MITREURL       string
 	ThreatModelURL string
@@ -57,6 +58,13 @@ func main() {
 		labsProjectID = "labs-prd"
 	}
 
+	// Choose http for local/dev, https otherwise
+	isLocal := strings.EqualFold(environment, "local") || strings.Contains(domain, "localhost") || strings.Contains(labsDomain, "localhost")
+	scheme := "https"
+	if isLocal {
+		scheme = "http"
+	}
+
 	// Define available labs with detailed descriptions
 	labs := []Lab{
 		{
@@ -64,7 +72,7 @@ func main() {
 			Name:        "Basic Magecart Attack",
 			Description: "Learn the fundamentals of payment card skimming attacks through JavaScript injection. Understand how attackers compromise e-commerce sites, intercept form submissions, and exfiltrate credit card data. Practice detection using browser DevTools and implement basic defensive measures.",
 			Difficulty:  "Beginner",
-			URL:         fmt.Sprintf("https://%s/lab1-basic-magecart", labsDomain),
+			URL:         fmt.Sprintf("%s://%s/lab1-basic-magecart", scheme, labsDomain),
 			Status:      "Available",
 		},
 		{
@@ -72,7 +80,7 @@ func main() {
 			Name:        "DOM-Based Skimming",
 			Description: "Master advanced DOM manipulation techniques for stealthy payment data capture. Learn real-time field monitoring, dynamic form injection, Shadow DOM abuse, and DOM tree manipulation. Understand how attackers bypass traditional detection methods.",
 			Difficulty:  "Intermediate",
-			URL:         fmt.Sprintf("https://%s/lab2-dom-skimming", labsDomain),
+			URL:         fmt.Sprintf("%s://%s/lab2-dom-skimming", scheme, labsDomain),
 			Status:      "Available",
 		},
 		{
@@ -80,7 +88,7 @@ func main() {
 			Name:        "Browser Extension Hijacking",
 			Description: "Explore sophisticated browser extension-based attacks that exploit privileged APIs and persistent access. Learn about content script injection, background script persistence, cross-origin communication, and supply chain attacks through malicious extensions.",
 			Difficulty:  "Advanced",
-			URL:         fmt.Sprintf("https://%s/lab3-extension-hijacking", labsDomain),
+			URL:         fmt.Sprintf("%s://%s/lab3-extension-hijacking", scheme, labsDomain),
 			Status:      "Available",
 		},
 	}
@@ -92,9 +100,10 @@ func main() {
 		LabsDomain:     labsDomain,
 		MainDomain:     mainDomain,
 		LabsProjectID:  labsProjectID,
+		Scheme:         scheme,
 		Labs:           labs,
-		MITREURL:       fmt.Sprintf("https://%s/mitre-attack", domain),
-		ThreatModelURL: fmt.Sprintf("https://%s/threat-model", domain),
+		MITREURL:       fmt.Sprintf("%s://%s/mitre-attack", scheme, domain),
+		ThreatModelURL: fmt.Sprintf("%s://%s/threat-model", scheme, domain),
 	}
 
 	// Define routes
@@ -111,7 +120,8 @@ func main() {
 	})
 
 	http.HandleFunc("/api/labs", func(w http.ResponseWriter, r *http.Request) {
-		serveLabsAPI(w, r, labs)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(labs)
 	})
 
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -136,12 +146,12 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
     <!-- SEO Meta Tags -->
     <meta name="robots" content="index, follow">
     <meta name="keywords" content="e-skimming, cybersecurity, training, labs, payment security">
-    <link rel="canonical" href="https://{{.Domain}}/">
+    <link rel="canonical" href="{{.Scheme}}://{{.Domain}}/">
     
     <!-- Open Graph -->
     <meta property="og:title" content="E-Skimming Labs - Interactive Training Platform">
     <meta property="og:description" content="Interactive e-skimming attack labs for cybersecurity training and awareness">
-    <meta property="og:url" content="https://{{.Domain}}/">
+    <meta property="og:url" content="{{.Scheme}}://{{.Domain}}/">
     <meta property="og:type" content="website">
     
     <!-- Twitter Card -->

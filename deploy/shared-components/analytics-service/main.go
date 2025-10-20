@@ -7,11 +7,12 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/firestore"
 	"github.com/gorilla/mux"
-	"google.golang.org/api/option"
+	// "google.golang.org/api/option"
 )
 
 type AnalyticsService struct {
@@ -21,12 +22,12 @@ type AnalyticsService struct {
 }
 
 type ProgressData struct {
-	SessionID     string                 `json:"session_id"`
-	LabID         string                 `json:"lab_id"`
-	Variant       string                 `json:"variant"`
-	Progress      map[string]interface{} `json:"progress"`
-	Completion    map[string]interface{} `json:"completion"`
-	LastUpdated   time.Time              `json:"last_updated"`
+	SessionID   string                 `json:"session_id"`
+	LabID       string                 `json:"lab_id"`
+	Variant     string                 `json:"variant"`
+	Progress    map[string]interface{} `json:"progress"`
+	Completion  map[string]interface{} `json:"completion"`
+	LastUpdated time.Time              `json:"last_updated"`
 }
 
 type AnalyticsEvent struct {
@@ -53,19 +54,27 @@ type LabMetadata struct {
 func main() {
 	projectID := os.Getenv("PROJECT_ID")
 	environment := os.Getenv("ENVIRONMENT")
-	firestoreDB := os.Getenv("FIRESTORE_DATABASE")
+	_ = os.Getenv("FIRESTORE_DATABASE")
+	disableFirestore := strings.EqualFold(os.Getenv("DISABLE_FIRESTORE"), "true")
 
 	if projectID == "" {
 		log.Fatal("PROJECT_ID environment variable is required")
 	}
 
-	// Initialize Firestore client
-	ctx := context.Background()
-	client, err := firestore.NewClient(ctx, projectID)
-	if err != nil {
-		log.Fatalf("Failed to create Firestore client: %v", err)
+	// Initialize Firestore client unless disabled for local mode
+	var client *firestore.Client
+	if !disableFirestore {
+		ctx := context.Background()
+		c, err := firestore.NewClient(ctx, projectID)
+		if err != nil {
+			log.Printf("Firestore disabled due to init error (running in local mode): %v", err)
+		} else {
+			client = c
+			defer client.Close()
+		}
+	} else {
+		log.Printf("DISABLE_FIRESTORE=true detected; running analytics in local mode without Firestore")
 	}
-	defer client.Close()
 
 	service := &AnalyticsService{
 		firestoreClient: client,
@@ -75,22 +84,22 @@ func main() {
 
 	// Setup routes
 	r := mux.NewRouter()
-	
+
 	// Progress tracking endpoints
 	r.HandleFunc("/api/progress", service.handleProgress).Methods("POST")
 	r.HandleFunc("/api/progress/{session_id}", service.handleGetProgress).Methods("GET")
 	r.HandleFunc("/api/completion", service.handleCompletion).Methods("POST")
-	
+
 	// Analytics endpoints
 	r.HandleFunc("/api/analytics/event", service.handleAnalyticsEvent).Methods("POST")
 	r.HandleFunc("/api/analytics/summary", service.handleAnalyticsSummary).Methods("GET")
 	r.HandleFunc("/api/analytics/lab/{lab_id}", service.handleLabAnalytics).Methods("GET")
-	
+
 	// SEO endpoints
 	r.HandleFunc("/api/seo/lab/{lab_id}", service.handleLabMetadata).Methods("GET")
 	r.HandleFunc("/api/seo/sitemap", service.handleSitemap).Methods("GET")
 	r.HandleFunc("/api/seo/structured-data", service.handleStructuredData).Methods("GET")
-	
+
 	// Health check
 	r.HandleFunc("/health", service.handleHealth).Methods("GET")
 
@@ -106,8 +115,8 @@ func main() {
 func (s *AnalyticsService) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
-		"status": "healthy",
-		"service": "analytics",
+		"status":      "healthy",
+		"service":     "analytics",
 		"environment": s.environment,
 	})
 }
@@ -121,12 +130,14 @@ func (s *AnalyticsService) handleProgress(w http.ResponseWriter, r *http.Request
 
 	progress.LastUpdated = time.Now()
 
-	ctx := context.Background()
-	_, err := s.firestoreClient.Collection("user_progress").Doc(progress.SessionID).Set(ctx, progress)
-	if err != nil {
-		log.Printf("Error saving progress: %v", err)
-		http.Error(w, "Failed to save progress", http.StatusInternalServerError)
-		return
+	if s.firestoreClient != nil {
+		ctx := context.Background()
+		_, err := s.firestoreClient.Collection("user_progress").Doc(progress.SessionID).Set(ctx, progress)
+		if err != nil {
+			log.Printf("Error saving progress: %v", err)
+			http.Error(w, "Failed to save progress", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -137,19 +148,21 @@ func (s *AnalyticsService) handleGetProgress(w http.ResponseWriter, r *http.Requ
 	vars := mux.Vars(r)
 	sessionID := vars["session_id"]
 
+	if s.firestoreClient == nil {
+		http.Error(w, "Progress not available in local mode", http.StatusNotFound)
+		return
+	}
 	ctx := context.Background()
 	doc, err := s.firestoreClient.Collection("user_progress").Doc(sessionID).Get(ctx)
 	if err != nil {
 		http.Error(w, "Progress not found", http.StatusNotFound)
 		return
 	}
-
 	var progress ProgressData
 	if err := doc.DataTo(&progress); err != nil {
 		http.Error(w, "Failed to parse progress", http.StatusInternalServerError)
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(progress)
 }
@@ -171,12 +184,14 @@ func (s *AnalyticsService) handleCompletion(w http.ResponseWriter, r *http.Reque
 		Metadata:  completion,
 	}
 
-	ctx := context.Background()
-	_, err := s.firestoreClient.Collection("analytics").Add(ctx, event)
-	if err != nil {
-		log.Printf("Error recording completion: %v", err)
-		http.Error(w, "Failed to record completion", http.StatusInternalServerError)
-		return
+	if s.firestoreClient != nil {
+		ctx := context.Background()
+		_, _, err := s.firestoreClient.Collection("analytics").Add(ctx, event)
+		if err != nil {
+			log.Printf("Error recording completion: %v", err)
+			http.Error(w, "Failed to record completion", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -192,12 +207,14 @@ func (s *AnalyticsService) handleAnalyticsEvent(w http.ResponseWriter, r *http.R
 
 	event.Timestamp = time.Now()
 
-	ctx := context.Background()
-	_, err := s.firestoreClient.Collection("analytics").Add(ctx, event)
-	if err != nil {
-		log.Printf("Error recording analytics event: %v", err)
-		http.Error(w, "Failed to record event", http.StatusInternalServerError)
-		return
+	if s.firestoreClient != nil {
+		ctx := context.Background()
+		_, _, err := s.firestoreClient.Collection("analytics").Add(ctx, event)
+		if err != nil {
+			log.Printf("Error recording analytics event: %v", err)
+			http.Error(w, "Failed to record event", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -210,7 +227,7 @@ func (s *AnalyticsService) handleAnalyticsSummary(w http.ResponseWriter, r *http
 	summary := map[string]interface{}{
 		"total_events": 0,
 		"unique_users": 0,
-		"lab_stats": map[string]interface{}{},
+		"lab_stats":    map[string]interface{}{},
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -224,9 +241,9 @@ func (s *AnalyticsService) handleLabAnalytics(w http.ResponseWriter, r *http.Req
 	// This would query Firestore for lab-specific analytics
 	// For now, return a placeholder
 	stats := map[string]interface{}{
-		"lab_id": labID,
-		"total_visits": 0,
-		"completion_rate": 0.0,
+		"lab_id":           labID,
+		"total_visits":     0,
+		"completion_rate":  0.0,
 		"average_duration": 0,
 	}
 
@@ -274,21 +291,20 @@ func (s *AnalyticsService) handleSitemap(w http.ResponseWriter, r *http.Request)
 
 func (s *AnalyticsService) handleStructuredData(w http.ResponseWriter, r *http.Request) {
 	structuredData := map[string]interface{}{
-		"@context": "https://schema.org",
-		"@type":    "EducationalOccupationalProgram",
-		"name":     "E-Skimming Security Labs",
+		"@context":    "https://schema.org",
+		"@type":       "EducationalOccupationalProgram",
+		"name":        "E-Skimming Security Labs",
 		"description": "Interactive cybersecurity labs for learning e-skimming attacks",
 		"provider": map[string]interface{}{
 			"@type": "Organization",
 			"name":  "PCI Oasis",
 			"url":   "https://pcioasis.com",
 		},
-		"courseMode":      "online",
+		"courseMode":       "online",
 		"educationalLevel": "intermediate",
-		"teaches": []string{"Cybersecurity", "Web Security", "E-commerce Security"},
+		"teaches":          []string{"Cybersecurity", "Web Security", "E-commerce Security"},
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(structuredData)
 }
-
