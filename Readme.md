@@ -234,8 +234,8 @@ Modern skimmers employ sophisticated evasion:
 This repository uses PR-based deployment with branch protection:
 - Create feature branches for changes
 - Submit PRs to main branch for review
-- GitHub Actions deploys to staging on PR creation
-- Manual workflow dispatch available for production deployment
+- GitHub Actions deploys to production on PR creation
+- Manual workflow dispatch available for staging deployment
 
 ### Prerequisites
 
