@@ -15,9 +15,17 @@ on:
         - prd
 
 env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  GAR_LOCATION: us-central1
-  REPOSITORY: e-skimming-labs
+  # Home page project (labs-home-prd)
+  HOME_PROJECT_ID: ${{ secrets.GCP_HOME_PROJECT_ID }}
+  HOME_GAR_LOCATION: ${{ secrets.GAR_HOME_LOCATION }}
+  HOME_REPOSITORY: ${{ secrets.REPOSITORY_HOME }}
+  HOME_GCP_SA_KEY: ${{ secrets.GCP_HOME_SA_KEY }}
+  
+  # Individual labs project (labs-prd)
+  LABS_PROJECT_ID: ${{ secrets.GCP_LABS_PROJECT_ID }}
+  LABS_GAR_LOCATION: ${{ secrets.GAR_LABS_LOCATION }}
+  LABS_REPOSITORY: ${{ secrets.REPOSITORY_LABS }}
+  LABS_GCP_SA_KEY: ${{ secrets.GCP_LABS_SA_KEY }}
   
 jobs:
   setup:
@@ -49,8 +57,135 @@ jobs:
           echo "labs=$labs" >> $GITHUB_OUTPUT
           echo "Discovered labs: $labs"
 
-  deploy-labs:
+  deploy-home-components:
     needs: setup
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud (Home Project)
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ env.HOME_GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker to use gcloud as credential helper
+        run: |
+          gcloud auth configure-docker ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev
+
+      - name: Build SEO Service
+        run: |
+          docker build \
+            --build-arg ENVIRONMENT=${{ needs.setup.outputs.environment }} \
+            -t ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:${{ github.sha }} \
+            -t ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:latest \
+            -f deploy/shared-components/seo-service/Dockerfile \
+            deploy/shared-components/seo-service/
+
+      - name: Build Index Service
+        run: |
+          docker build \
+            --build-arg ENVIRONMENT=${{ needs.setup.outputs.environment }} \
+            -t ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:${{ github.sha }} \
+            -t ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:latest \
+            -f deploy/shared-components/home-index-service/Dockerfile \
+            .
+
+      - name: Push SEO Service to Artifact Registry
+        run: |
+          docker push ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:${{ github.sha }}
+          docker push ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:latest
+
+      - name: Push Index Service to Artifact Registry
+        run: |
+          docker push ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:${{ github.sha }}
+          docker push ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:latest
+
+      - name: Deploy SEO Service to Cloud Run
+        run: |
+          gcloud run deploy home-seo-${{ needs.setup.outputs.environment }} \
+            --image=${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:${{ github.sha }} \
+            --region=${{ env.HOME_GAR_LOCATION }} \
+            --platform=managed \
+            --allow-unauthenticated \
+            --port=8080 \
+            --memory=512Mi \
+            --cpu=1 \
+            --min-instances=0 \
+            --max-instances=5 \
+            --set-env-vars="PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }}" \
+            --labels="environment=${{ needs.setup.outputs.environment }},component=seo,project=e-skimming-labs-home"
+
+      - name: Deploy Index Service to Cloud Run
+        run: |
+          gcloud run deploy home-index-${{ needs.setup.outputs.environment }} \
+            --image=${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:${{ github.sha }} \
+            --region=${{ env.HOME_GAR_LOCATION }} \
+            --platform=managed \
+            --allow-unauthenticated \
+            --port=8080 \
+            --memory=512Mi \
+            --cpu=1 \
+            --min-instances=0 \
+            --max-instances=5 \
+            --set-env-vars="PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }}" \
+            --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs-home"
+
+  deploy-labs-components:
+    needs: setup
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud (Labs Project)
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ env.LABS_GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker to use gcloud as credential helper
+        run: |
+          gcloud auth configure-docker ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev
+
+      - name: Build Analytics Service
+        run: |
+          docker build \
+            --build-arg ENVIRONMENT=${{ needs.setup.outputs.environment }} \
+            -t ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ github.sha }} \
+            -t ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:latest \
+            -f deploy/shared-components/analytics-service/Dockerfile \
+            deploy/shared-components/analytics-service/
+
+      - name: Push Analytics Service to Artifact Registry
+        run: |
+          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ github.sha }}
+          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:latest
+
+      - name: Deploy Analytics Service to Cloud Run
+        run: |
+          gcloud run deploy labs-analytics-${{ needs.setup.outputs.environment }} \
+            --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ github.sha }} \
+            --region=${{ env.LABS_GAR_LOCATION }} \
+            --platform=managed \
+            --allow-unauthenticated \
+            --port=8080 \
+            --memory=512Mi \
+            --cpu=1 \
+            --min-instances=0 \
+            --max-instances=5 \
+            --set-env-vars="PROJECT_ID=${{ env.LABS_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},FIRESTORE_DATABASE=(default)" \
+            --labels="environment=${{ needs.setup.outputs.environment }},component=analytics,project=e-skimming-labs"
+
+  deploy-labs:
+    needs: [setup, deploy-labs-components]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -61,24 +196,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Authenticate to Google Cloud
+      - name: Authenticate to Google Cloud (Labs Project)
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          credentials_json: ${{ env.LABS_GCP_SA_KEY }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Configure Docker to use gcloud as credential helper
         run: |
-          gcloud auth configure-docker ${{ env.GAR_LOCATION }}-docker.pkg.dev
+          gcloud auth configure-docker ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev
 
       - name: Create Artifact Registry repository if not exists
         run: |
-          gcloud artifacts repositories describe ${{ env.REPOSITORY }} \
-            --location=${{ env.GAR_LOCATION }} || \
-          gcloud artifacts repositories create ${{ env.REPOSITORY }} \
-            --location=${{ env.GAR_LOCATION }} \
+          gcloud artifacts repositories describe ${{ env.LABS_REPOSITORY }} \
+            --location=${{ env.LABS_GAR_LOCATION }} || \
+          gcloud artifacts repositories create ${{ env.LABS_REPOSITORY }} \
+            --location=${{ env.LABS_GAR_LOCATION }} \
             --repository-format=docker \
             --description="E-Skimming Labs container images"
 
@@ -88,22 +223,22 @@ jobs:
           docker build \
             --build-arg LAB_NAME=${{ matrix.lab }} \
             --build-arg ENVIRONMENT=${{ needs.setup.outputs.environment }} \
-            -t ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }} \
-            -t ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ matrix.lab }}:latest \
+            -t ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }} \
+            -t ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:latest \
             -f ${{ matrix.lab }}/Dockerfile \
             ${{ matrix.lab }}/
 
       - name: Push container image to Artifact Registry
         run: |
-          docker push ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }}
-          docker push ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ matrix.lab }}:latest
+          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }}
+          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:latest
 
       - name: Deploy to Cloud Run
         run: |
           # Deploy lab as separate Cloud Run service
           gcloud run deploy ${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
-            --image=${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }} \
-            --region=${{ env.GAR_LOCATION }} \
+            --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }} \
+            --region=${{ env.LABS_GAR_LOCATION }} \
             --platform=managed \
             --allow-unauthenticated \
             --port=8080 \
@@ -118,7 +253,7 @@ jobs:
         run: |
           # Map custom domain for the lab
           SERVICE_URL=$(gcloud run services describe ${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
-            --region=${{ env.GAR_LOCATION }} \
+            --region=${{ env.LABS_GAR_LOCATION }} \
             --format="value(status.url)")
           
           echo "Service URL: $SERVICE_URL"
@@ -128,28 +263,28 @@ jobs:
           gcloud run domain-mappings create \
             --service=${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
             --domain=${{ needs.setup.outputs.domain_prefix }} \
-            --region=${{ env.GAR_LOCATION }} \
+            --region=${{ env.LABS_GAR_LOCATION }} \
             --path-prefix=/${{ matrix.lab }} || true
 
   deploy-index:
-    needs: [setup, deploy-labs]
+    needs: [setup, deploy-labs, deploy-home-components]
     runs-on: ubuntu-latest
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Authenticate to Google Cloud
+      - name: Authenticate to Google Cloud (Labs Project)
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          credentials_json: ${{ env.LABS_GCP_SA_KEY }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Configure Docker to use gcloud as credential helper
         run: |
-          gcloud auth configure-docker ${{ env.GAR_LOCATION }}-docker.pkg.dev
+          gcloud auth configure-docker ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev
 
       - name: Build index page container
         run: |
@@ -157,29 +292,29 @@ jobs:
           docker build \
             --build-arg ENVIRONMENT=${{ needs.setup.outputs.environment }} \
             --build-arg DOMAIN=${{ needs.setup.outputs.domain_prefix }} \
-            -t ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/index:${{ github.sha }} \
-            -t ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/index:latest \
+            -t ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:${{ github.sha }} \
+            -t ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:latest \
             -f deploy/Dockerfile.index \
             .
 
       - name: Push index container to Artifact Registry
         run: |
-          docker push ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/index:${{ github.sha }}
-          docker push ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/index:latest
+          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:${{ github.sha }}
+          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:latest
 
       - name: Deploy index page to Cloud Run
         run: |
           gcloud run deploy labs-index-${{ needs.setup.outputs.environment }} \
-            --image=${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/index:${{ github.sha }} \
-            --region=${{ env.GAR_LOCATION }} \
+            --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:${{ github.sha }} \
+            --region=${{ env.LABS_GAR_LOCATION }} \
             --platform=managed \
             --allow-unauthenticated \
             --port=8080 \
-            --memory=256Mi \
-            --cpu=0.5 \
+            --memory=512Mi \
+            --cpu=1 \
             --min-instances=0 \
             --max-instances=5 \
-            --set-env-vars="ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }}" \
+            --set-env-vars="ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},ANALYTICS_SERVICE_URL=https://labs-analytics-${{ needs.setup.outputs.environment }}-hash.a.run.app,SEO_SERVICE_URL=https://labs-seo-${{ needs.setup.outputs.environment }}-hash.a.run.app" \
             --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs"
 
       - name: Configure index domain mapping
@@ -188,17 +323,17 @@ jobs:
           gcloud run domain-mappings create \
             --service=labs-index-${{ needs.setup.outputs.environment }} \
             --domain=${{ needs.setup.outputs.domain_prefix }} \
-            --region=${{ env.GAR_LOCATION }} || true
+            --region=${{ env.LABS_GAR_LOCATION }} || true
 
   notify-deployment:
-    needs: [setup, deploy-labs, deploy-index]
+    needs: [setup, deploy-labs, deploy-home-components, deploy-labs-components]
     runs-on: ubuntu-latest
     if: always()
     
     steps:
       - name: Report deployment status
         run: |
-          if [[ "${{ needs.deploy-labs.result }}" == "success" && "${{ needs.deploy-index.result }}" == "success" ]]; then
+          if [[ "${{ needs.deploy-labs.result }}" == "success" && "${{ needs.deploy-home-components.result }}" == "success" && "${{ needs.deploy-labs-components.result }}" == "success" ]]; then
             echo "✅ All labs deployed successfully to ${{ needs.setup.outputs.domain_prefix }}"
             echo "Labs available at:"
             echo "  - Index: https://${{ needs.setup.outputs.domain_prefix }}"
@@ -211,6 +346,7 @@ jobs:
           else
             echo "❌ Deployment failed"
             echo "deploy-labs result: ${{ needs.deploy-labs.result }}"
-            echo "deploy-index result: ${{ needs.deploy-index.result }}"
+            echo "deploy-home-components result: ${{ needs.deploy-home-components.result }}"
+            echo "deploy-labs-components result: ${{ needs.deploy-labs-components.result }}"
             exit 1
           fi

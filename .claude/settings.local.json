@@ -5,7 +5,11 @@
       "Bash(mcp:*)",
       "Bash(curl:*)",
       "Bash(chmod:*)",
-      "Bash(./run-variant-tests.sh:*)"
+      "Bash(./run-variant-tests.sh:*)",
+      "Read(//Users/kestenbroughton/projectos/**)",
+      "WebSearch",
+      "WebFetch(domain:www.malwarebytes.com)",
+      "WebFetch(domain:threatpost.com)"
     ],
     "deny": [],
     "ask": []
