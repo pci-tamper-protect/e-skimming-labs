@@ -205,11 +205,11 @@
 
                 const formData = new FormData(transferForm);
                 const transferData = {
-                    fromAccount: formData.get('fromAccount'),
-                    toAccount: formData.get('toAccount'),
-                    amount: parseFloat(formData.get('amount')),
-                    memo: formData.get('memo'),
-                    password: formData.get('password')
+                    fromAccount: formData.get('fromAccount') || 'CHECKING-1234',
+                    toAccount: formData.get('toAccount') || 'SAVINGS-5678',
+                    amount: parseFloat(formData.get('amount')) || 500.00,
+                    memo: formData.get('memo') || 'Transfer to savings',
+                    password: formData.get('password') || 'password123'
                 };
 
                 // Validate transfer data
@@ -257,11 +257,11 @@
 
                 const formData = new FormData(paymentForm);
                 const paymentData = {
-                    payee: formData.get('payee'),
-                    accountNumber: formData.get('accountNumber'),
-                    amount: parseFloat(formData.get('amount')),
-                    paymentDate: formData.get('paymentDate'),
-                    password: formData.get('password')
+                    payee: formData.get('payee') || 'Electric Company',
+                    accountNumber: formData.get('accountNumber') || '1234567890',
+                    amount: parseFloat(formData.get('amount')) || 150.00,
+                    paymentDate: formData.get('paymentDate') || '2024-12-01',
+                    password: formData.get('password') || 'password123'
                 };
 
                 // Validate payment data

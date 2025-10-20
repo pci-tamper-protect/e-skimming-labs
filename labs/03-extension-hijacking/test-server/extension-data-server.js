@@ -502,6 +502,20 @@ app.get('/health', (req, res) => {
 });
 
 /**
+ * Dashboard endpoint - serves the main dashboard
+ */
+app.get('/', async (req, res) => {
+    try {
+        const dashboardPath = path.join(__dirname, 'dashboard.html');
+        const dashboard = await fs.readFile(dashboardPath, 'utf8');
+        res.send(dashboard);
+    } catch (error) {
+        console.error('[Extension Server] Failed to serve dashboard:', error);
+        res.status(500).send('Dashboard not available');
+    }
+});
+
+/**
  * Start Server
  */
 app.listen(PORT, () => {

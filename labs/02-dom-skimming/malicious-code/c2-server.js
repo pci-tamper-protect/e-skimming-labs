@@ -380,6 +380,18 @@ app.get('/analysis/:filename', (req, res) => {
     }
 });
 
+// Dashboard endpoint - serves the main dashboard
+app.get('/', async (req, res) => {
+    try {
+        const dashboardPath = path.join(__dirname, 'dashboard.html');
+        const dashboard = fs.readFileSync(dashboardPath, 'utf8');
+        res.send(dashboard);
+    } catch (error) {
+        console.error('[C2] Failed to serve dashboard:', error);
+        res.status(500).send('Dashboard not available');
+    }
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.json({

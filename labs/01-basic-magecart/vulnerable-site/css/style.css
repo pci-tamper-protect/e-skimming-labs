@@ -49,6 +49,34 @@ nav a:hover {
     color: #3498db;
 }
 
+.back-button {
+    background-color: #27ae60 !important;
+    color: white !important;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-weight: 600;
+    margin-right: 1rem;
+}
+
+.back-button:hover {
+    background-color: #229954 !important;
+    color: white !important;
+}
+
+.c2-button {
+    background-color: #e74c3c !important;
+    color: white !important;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-weight: 600;
+    margin-right: 1rem;
+}
+
+.c2-button:hover {
+    background-color: #c0392b !important;
+    color: white !important;
+}
+
 main {
     max-width: 1200px;
     margin: 0 auto;
