@@ -1,8 +1,9 @@
 name: Deploy E-Skimming Labs to Cloud Run
 
 on:
-  push:
-    branches: [ main, stg ]
+  pull_request:
+    branches: [ main ]
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
     inputs:
       environment:
@@ -41,7 +42,7 @@ jobs:
       - name: Set environment variables
         id: set-env
         run: |
-          if [[ "${{ github.ref }}" == "refs/heads/main" || "${{ github.event.inputs.environment }}" == "prd" ]]; then
+          if [[ "${{ github.event.inputs.environment }}" == "prd" ]]; then
             echo "environment=prd" >> $GITHUB_OUTPUT
             echo "domain_prefix=labs.pcioasis.com" >> $GITHUB_OUTPUT
           else
