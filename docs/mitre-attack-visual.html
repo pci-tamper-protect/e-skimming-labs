@@ -163,6 +163,19 @@
             color: var(--text-primary);
         }
 
+        .back-btn {
+            background: var(--accent-green) !important;
+            border-color: var(--accent-green) !important;
+            color: var(--text-primary) !important;
+            font-weight: 600;
+        }
+
+        .back-btn:hover {
+            background: #45a049 !important;
+            border-color: #45a049 !important;
+            color: var(--text-primary) !important;
+        }
+
         /* Container */
         .container {
             max-width: 1400px;
@@ -742,6 +755,7 @@
             </div>
             <p class="subtitle">Comprehensive framework for understanding, detecting, and defending against e-skimming attacks</p>
             <nav>
+                <a href="http://localhost:8080" class="nav-btn back-btn">← Back to Labs</a>
                 <a href="#overview" class="nav-btn">Overview</a>
                 <a href="#tactics" class="nav-btn">Tactics & Techniques</a>
                 <a href="#detection" class="nav-btn">Detection</a>

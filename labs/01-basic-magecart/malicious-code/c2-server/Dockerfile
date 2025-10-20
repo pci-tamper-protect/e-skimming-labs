@@ -9,7 +9,7 @@ COPY package*.json ./
 RUN npm install --production
 
 # Copy application files
-COPY server.js ./
+COPY server.js dashboard.html ./
 
 # Create directory for stolen data
 RUN mkdir -p stolen-data
