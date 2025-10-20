@@ -84,6 +84,38 @@ body {
     border-bottom-color: var(--primary-color);
 }
 
+.back-button {
+    background-color: var(--primary-color) !important;
+    color: white !important;
+    font-weight: 600;
+    margin-right: 1rem;
+    border-radius: 0.375rem;
+    padding: 0.5rem 1rem !important;
+    border-bottom: none !important;
+}
+
+.back-button:hover {
+    background-color: var(--primary-dark) !important;
+    color: white !important;
+    border-bottom: none !important;
+}
+
+.c2-button {
+    background-color: var(--danger-color) !important;
+    color: white !important;
+    font-weight: 600;
+    margin-right: 1rem;
+    border-radius: 0.375rem;
+    padding: 0.5rem 1rem !important;
+    border-bottom: none !important;
+}
+
+.c2-button:hover {
+    background-color: #dc2626 !important;
+    color: white !important;
+    border-bottom: none !important;
+}
+
 /* Main Content */
 .main-content {
     flex: 1;

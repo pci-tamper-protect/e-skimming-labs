@@ -10,7 +10,7 @@ COPY package*.json ./
 RUN npm install
 
 # Copy source code
-COPY . .
+COPY malicious-code/c2-server.js malicious-code/c2-server/dashboard.html malicious-code/package*.json ./
 
 # Create stolen-data directory
 RUN mkdir -p stolen-data

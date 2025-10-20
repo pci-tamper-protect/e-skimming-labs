@@ -17,7 +17,10 @@ services:
       - PORT=8080
       - ENVIRONMENT=local
       - DOMAIN=localhost:8080
-      - LABS_DOMAIN=localhost
+      - LABS_DOMAIN=localhost:9001
+      - LAB1_DOMAIN=localhost:9001
+      - LAB2_DOMAIN=localhost:9003
+      - LAB3_DOMAIN=localhost:9005
       - MAIN_DOMAIN=pcioasis.com
       - LABS_PROJECT_ID=labs-prd
     networks:

@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C2 Server Dashboard - Lab 2 DOM Skimming</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: #ffffff;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+            padding: 1rem 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .header p {
+            opacity: 0.9;
+            margin-top: 0.25rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-card h3 {
+            color: #fbbf24;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #dc2626;
+        }
+
+        .stat-value.small {
+            font-size: 1.25rem;
+        }
+
+        .data-section {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .data-section h2 {
+            color: #fbbf24;
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
+        }
+
+        .attack-record {
+            background: rgba(220, 38, 38, 0.1);
+            border: 1px solid rgba(220, 38, 38, 0.3);
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .attack-record h4 {
+            color: #fca5a5;
+            margin-bottom: 0.5rem;
+        }
+
+        .attack-record pre {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.75rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            overflow-x: auto;
+            color: #e5e7eb;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 2rem;
+            color: #9ca3af;
+            font-style: italic;
+        }
+
+        .refresh-btn {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .refresh-btn:hover {
+            background: #b91c1c;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            margin-right: 0.5rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .warning {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            color: #fbbf24;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .tab {
+            background: none;
+            border: none;
+            color: #9ca3af;
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            color: #fbbf24;
+            border-bottom-color: #fbbf24;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🕵️ C2 Server Dashboard - Lab 2 DOM Skimming</h1>
+        <p><span class="status-indicator"></span>Command & Control Server Active</p>
+    </div>
+
+    <div class="container">
+        <div class="warning">
+            <strong>⚠️ EDUCATIONAL PURPOSE ONLY:</strong> This dashboard simulates a real attacker's C2 server interface. 
+            All data shown is for educational purposes in a controlled lab environment.
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Attacks</h3>
+                <div class="stat-value" id="totalAttacks">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Unique Victims</h3>
+                <div class="stat-value" id="uniqueVictims">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Uptime</h3>
+                <div class="stat-value small" id="uptime">0h 0m</div>
+            </div>
+            <div class="stat-card">
+                <h3>Server Status</h3>
+                <div class="stat-value small" style="color: #10b981;">Healthy</div>
+            </div>
+        </div>
+
+        <div class="data-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2>Attack Data</h2>
+                <button class="refresh-btn" onclick="loadData()">🔄 Refresh</button>
+            </div>
+            
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('recent')">Recent Attacks</button>
+                <button class="tab" onclick="switchTab('stats')">Statistics</button>
+            </div>
+
+            <div id="recent-tab" class="tab-content active">
+                <div id="recentData">
+                    <div class="no-data">No attack data yet. Trigger the attack in Lab 2 to see data appear here.</div>
+                </div>
+            </div>
+
+            <div id="stats-tab" class="tab-content">
+                <div id="statsData">
+                    <div class="no-data">Loading statistics...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadData() {
+            try {
+                // Load statistics
+                const statsResponse = await fetch('/stats');
+                const stats = await statsResponse.json();
+                
+                document.getElementById('totalAttacks').textContent = stats.totalAttacks || 0;
+                document.getElementById('uniqueVictims').textContent = stats.uniqueVictims || 0;
+                
+                if (stats.uptimeHours) {
+                    const hours = Math.floor(stats.uptimeHours);
+                    const minutes = Math.floor((stats.uptimeHours - hours) * 60);
+                    document.getElementById('uptime').textContent = `${hours}h ${minutes}m`;
+                }
+
+                // Load recent attacks
+                const recentResponse = await fetch('/recent/5');
+                const recentData = await recentResponse.json();
+                
+                const recentContainer = document.getElementById('recentData');
+                
+                if (recentData.length === 0) {
+                    recentContainer.innerHTML = '<div class="no-data">No attack data yet. Trigger the attack in Lab 2 to see data appear here.</div>';
+                } else {
+                    recentContainer.innerHTML = recentData.map((attack, index) => `
+                        <div class="attack-record">
+                            <h4>Attack #${index + 1} - ${attack.timestamp || 'Unknown time'}</h4>
+                            <pre>${JSON.stringify(attack, null, 2)}</pre>
+                        </div>
+                    `).join('');
+                }
+
+                // Update stats tab
+                document.getElementById('statsData').innerHTML = `
+                    <div class="stat-card">
+                        <h3>Attack Statistics</h3>
+                        <pre>${JSON.stringify(stats, null, 2)}</pre>
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error('Failed to load data:', error);
+                document.getElementById('recentData').innerHTML = '<div class="no-data">Error loading data. Make sure the C2 server is running.</div>';
+            }
+        }
+
+        function switchTab(tabName) {
+            // Remove active class from all tabs and content
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // Add active class to selected tab and content
+            event.target.classList.add('active');
+            document.getElementById(tabName + '-tab').classList.add('active');
+        }
+
+        // Load data on page load
+        loadData();
+
+        // Auto-refresh every 5 seconds
+        setInterval(loadData, 5000);
+    </script>
+</body>
+</html>

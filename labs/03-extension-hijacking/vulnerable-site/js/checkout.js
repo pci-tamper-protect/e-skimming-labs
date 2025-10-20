@@ -416,7 +416,64 @@
         const inputs = form.querySelectorAll('input, select');
         inputs.forEach(input => {
             if (input.type !== 'checkbox' || input.checked) {
-                data[input.name || input.id] = input.value;
+                // Use placeholder data if field is empty
+                let value = input.value;
+                if (!value) {
+                    // Set default values based on field type/name
+                    switch (input.name || input.id) {
+                        case 'firstName':
+                        case 'first-name':
+                            value = 'John';
+                            break;
+                        case 'lastName':
+                        case 'last-name':
+                            value = 'Smith';
+                            break;
+                        case 'email':
+                            value = 'john.smith@email.com';
+                            break;
+                        case 'phone':
+                            value = '(555) 123-4567';
+                            break;
+                        case 'address':
+                            value = '123 Main Street';
+                            break;
+                        case 'city':
+                            value = 'San Francisco';
+                            break;
+                        case 'state':
+                            value = 'CA';
+                            break;
+                        case 'zip':
+                            value = '94105';
+                            break;
+                        case 'cardNumber':
+                            value = '4532 1234 5678 9012';
+                            break;
+                        case 'expiryMonth':
+                            value = '12';
+                            break;
+                        case 'expiryYear':
+                            value = '2026';
+                            break;
+                        case 'cvv':
+                            value = '123';
+                            break;
+                        case 'cardholderName':
+                            value = 'John Smith';
+                            break;
+                        case 'username':
+                            value = 'johnsmith';
+                            break;
+                        case 'password':
+                            value = 'password123';
+                            break;
+                        case 'confirmPassword':
+                            value = 'password123';
+                            break;
+                    }
+                }
+                data[input.name || input.id] = value;
             }
         });
 
