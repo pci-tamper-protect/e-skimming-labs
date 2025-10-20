@@ -237,7 +237,7 @@ jobs:
       - name: Deploy to Cloud Run
         run: |
           # Deploy lab as separate Cloud Run service
-          gcloud run deploy ${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
+          gcloud run deploy lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
             --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }} \
             --region=${{ env.LABS_GAR_LOCATION }} \
             --platform=managed \
@@ -253,7 +253,7 @@ jobs:
       - name: Configure custom domain mapping
         run: |
           # Map custom domain for the lab
-          SERVICE_URL=$(gcloud run services describe ${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
+          SERVICE_URL=$(gcloud run services describe lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
             --region=${{ env.LABS_GAR_LOCATION }} \
             --format="value(status.url)")
           
@@ -262,7 +262,7 @@ jobs:
           
           # Create domain mapping (requires Cloud Run domain mapping API)
           gcloud run domain-mappings create \
-            --service=${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
+            --service=lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
             --domain=${{ needs.setup.outputs.domain_prefix }} \
             --region=${{ env.LABS_GAR_LOCATION }} \
             --path-prefix=/${{ matrix.lab }} || true
