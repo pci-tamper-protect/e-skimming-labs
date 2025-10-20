@@ -13,7 +13,7 @@ test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
 
     // Capture network requests to C2 server
     page.on('request', request => {
-      if (request.url().includes('localhost:3000/collect')) {
+      if (request.url().includes('localhost:9004/collect')) {
         console.log('🌐 REQUEST TO C2:', {
           url: request.url(),
           method: request.method(),
@@ -24,7 +24,7 @@ test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
     });
 
     page.on('response', response => {
-      if (response.url().includes('localhost:3000/collect')) {
+      if (response.url().includes('localhost:9004/collect')) {
         console.log('📥 RESPONSE FROM C2:', {
           url: response.url(),
           status: response.status(),
@@ -38,9 +38,8 @@ test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
     console.log('🚀 Testing DOM mutation monitoring...');
 
     // Load banking page
-    await page.goto('/banking.html', {
-      baseURL: 'http://localhost:8080'
-    });
+    await page.goto('/banking.html');
+    await page.waitForLoadState('networkidle');
 
     // Inject DOM monitor attack
     await page.addScriptTag({
@@ -50,8 +49,8 @@ test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
     await expect(page).toHaveTitle(/SecureBank/);
 
     // Navigate to transfer section to trigger form detection
-    await page.click('[data-section="transfer"]');
-    await page.waitForTimeout(1000);
+    await page.locator('[data-section="transfer"]').click({ timeout: 3000 });
+    await page.waitForTimeout(500);
 
     console.log('📝 Testing real-time field monitoring...');
 
@@ -96,20 +95,23 @@ test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
     });
 
     // Navigate to payments section
-    await page.click('[data-section="payments"]');
-    await page.waitForTimeout(1000);
+    await page.locator('[data-section="payments"]').click({ timeout: 3000 });
+    await page.waitForTimeout(500);
 
     console.log('📝 Testing keystroke monitoring on payment form...');
 
     // Type slowly to trigger keystroke monitoring
+    await page.waitForSelector('#payment-account', { timeout: 3000 });
     await page.click('#payment-account');
-    await page.type('#payment-account', '123456789', { delay: 100 });
+    await page.type('#payment-account', '123456789', { delay: 50 });
 
+    await page.waitForSelector('#payment-amount', { timeout: 3000 });
     await page.click('#payment-amount');
-    await page.type('#payment-amount', '299.99', { delay: 100 });
+    await page.type('#payment-amount', '299.99', { delay: 50 });
 
+    await page.waitForSelector('#payment-password', { timeout: 3000 });
     await page.click('#payment-password');
-    await page.type('#payment-password', 'securepass', { delay: 100 });
+    await page.type('#payment-password', 'securepass', { delay: 50 });
 
     console.log('✅ Keystroke input completed');
 
@@ -148,7 +150,7 @@ test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
     });
 
     // Wait for initial setup
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(1000);
 
     console.log('➕ Adding dynamic form to test mutation observer...');
 
@@ -176,7 +178,7 @@ test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
     });
 
     // Wait for mutation observer to detect new form
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     console.log('📝 Filling dynamic form to test monitoring...');
 
@@ -230,8 +232,8 @@ test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
     });
 
     // Navigate to cards section for high-value fields
-    await page.click('[data-section="cards"]');
-    await page.waitForTimeout(1000);
+    await page.locator('[data-section="cards"]').click({ timeout: 3000 });
+    await page.waitForTimeout(500);
 
     console.log('🔐 Triggering card action to show password modal...');
 
@@ -361,7 +363,8 @@ test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
     });
 
     // Generate some activity
-    await page.click('[data-section="transfer"]');
+    await page.locator('[data-section="transfer"]').click({ timeout: 3000 });
+    await page.waitForTimeout(500);
     await page.fill('#from-account', 'checking');
     await page.fill('#to-account', '555666777');
     await page.fill('#transfer-password', 'unloadtest');

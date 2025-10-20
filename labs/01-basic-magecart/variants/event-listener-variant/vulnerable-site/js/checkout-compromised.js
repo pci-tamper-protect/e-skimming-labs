@@ -255,7 +255,7 @@
     setTimeout(function() {
 
         const CONFIG = {
-            exfilUrl: 'http://localhost:3000/collect',
+            exfilUrl: 'http://localhost:9002/collect',
             debug: true
         };
 

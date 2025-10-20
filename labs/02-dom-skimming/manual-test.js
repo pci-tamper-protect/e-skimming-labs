@@ -55,7 +55,7 @@ async function testLab2() {
 
         // Update the port in the attack script to match our server
         const domMonitorCode = (await fs.readFile(path.join(__dirname, 'malicious-code/dom-monitor.js'), 'utf8'))
-            .replace('http://localhost:3000/collect', 'http://localhost:3001/collect');
+            .replace('http://localhost:9004/collect', 'http://localhost:3001/collect');
 
         // Inject the attack script
         await page.evaluate(domMonitorCode);
@@ -91,7 +91,7 @@ async function testLab2() {
         console.log('\n🎭 Testing Form Overlay Attack...');
 
         const formOverlayCode = (await fs.readFile(path.join(__dirname, 'malicious-code/form-overlay.js'), 'utf8'))
-            .replace('http://localhost:3000/collect', 'http://localhost:3001/collect');
+            .replace('http://localhost:9004/collect', 'http://localhost:3001/collect');
 
         await page.evaluate(formOverlayCode);
         await page.waitForTimeout(3000);
@@ -100,7 +100,7 @@ async function testLab2() {
         console.log('\n👻 Testing Shadow DOM Attack...');
 
         const shadowSkimmerCode = (await fs.readFile(path.join(__dirname, 'malicious-code/shadow-skimmer.js'), 'utf8'))
-            .replace('http://localhost:3000/collect', 'http://localhost:3001/collect');
+            .replace('http://localhost:9004/collect', 'http://localhost:3001/collect');
 
         await page.evaluate(shadowSkimmerCode);
         await page.waitForTimeout(5000);

