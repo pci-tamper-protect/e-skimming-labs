@@ -890,11 +890,23 @@
             });
         }
 
+        // Simple on-screen error/status helper
+        (function(){
+            const status = document.createElement('div');
+            status.style.cssText = 'position:fixed;bottom:10px;right:10px;background:#161b33;color:#b8c5db;padding:8px 12px;border:1px solid #3d5a80;border-radius:6px;font:12px/1.4 system-ui;z-index:9999;opacity:.9;display:none';
+            status.id = 'tm-status';
+            document.body.appendChild(status);
+            window.__tmStatus = (msg)=>{ status.textContent = msg; status.style.display='block'; setTimeout(()=> status.style.display='none', 2000); };
+            window.onerror = (m,s,l,c,e)=>{ status.textContent = `Error: ${m}`; status.style.display='block'; };
+        })();
+
         // --- Play/Pause controls ---
         const playBtn = d3.select('#play-attack');
         const player = { timer: null, startedAt: 0, pausedElapsed: 0, playing: false, totalMs: 0, path: [] };
 
         function startOrResume() {
+            try {
+                if (player.timer) { player.timer.stop(); player.timer = null; }
             if (!player.path.length) {
                 player.path = randomPath('initial-access', 'regulatory-fines', 40);
             }
@@ -977,11 +989,17 @@
                     player.pausedElapsed = clamped;
                 }
             });
+                window.__tmStatus && window.__tmStatus('Playing…');
+            } catch (err) {
+                console.error('play error', err);
+                window.__tmStatus && window.__tmStatus('Play failed');
+            }
         }
 
         function pausePlayback() {
             if (player.timer) { player.timer.stop(); player.timer = null; }
             player.playing = false; playBtn.text('▶').attr('title', 'Play');
+            window.__tmStatus && window.__tmStatus('Paused');
         }
 
         playBtn.on('click', () => {
