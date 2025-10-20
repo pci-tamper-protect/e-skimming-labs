@@ -2,7 +2,7 @@
   "mcpServers": {
     "chrome-devtools": {
       "command": "python",
-      "args": ["/Users/kestenbroughton/projectos/chrome-devtools-mcp/server.py"],
+      "args": ["${env:CHROME_DEVTOOLS_MCP}"],
       "env": {
         "CHROME_DEBUG_PORT": "9222"
       }

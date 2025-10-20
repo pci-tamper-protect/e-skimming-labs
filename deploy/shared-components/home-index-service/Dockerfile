@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.21-alpine AS builder
+FROM golang:1.24.3-alpine AS builder
 
 # Set working directory
 WORKDIR /app
@@ -17,7 +17,7 @@ COPY deploy/shared-components/home-index-service/ .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 
 # Final stage
-FROM alpine:latest
+FROM alpine:3.20
 
 # Install ca-certificates for HTTPS requests
 RUN apk --no-cache add ca-certificates
