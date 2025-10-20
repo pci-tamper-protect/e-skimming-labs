@@ -351,6 +351,22 @@
             border-radius: 50%;
         }
 
+        /* Collapsible panels */
+        .collapsible {}
+        .collapsible-header { display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
+        .chevron { transition: transform 0.2s ease; }
+        .collapsed .chevron { transform: rotate(-90deg); }
+        .collapsible-content { margin-top: 8px; }
+        .collapsed .collapsible-content { display: none; }
+
+        /* Node oscillation and link animation */
+        @keyframes oscillate { 0%{transform:translate(0,0)}25%{transform:translate(1px,-1px)}50%{transform:translate(-1px,1px)}75%{transform:translate(1px,1px)}100%{transform:translate(0,0)} }
+        .oscillate circle { animation: oscillate 0.3s ease-in-out infinite; }
+        .link-highlight { stroke-width: 3px !important; opacity: 1 !important; }
+        @keyframes dash { to { stroke-dashoffset: -40; } }
+        .link.attack-flow { stroke-dasharray: 6 6; stroke-linecap: round; }
+        .link-animated.attack-flow { animation: dash 1s linear infinite; stroke-width: 3px; opacity: 1 !important; }
+
         @media (max-width: 768px) {
             #controls {
                 padding: 15px 20px;
@@ -404,11 +420,13 @@
             <button id="zoom-in" title="Zoom In">+</button>
             <button id="zoom-out" title="Zoom Out">−</button>
             <button id="zoom-reset" title="Reset Zoom">⟲</button>
+            <button id="play-attack" title="Play Random Attack Path">▶</button>
         </div>
     </div>
 
-    <div id="legend">
-        <h3>Legend</h3>
+    <div id="legend" class="collapsible">
+        <div class="collapsible-header"><h3>Legend</h3><span class="chevron">▾</span></div>
+        <div class="collapsible-content">
         <div class="legend-item">
             <div class="color-box" style="background: #ff6b6b; border-color: #ff8787;"></div>
             <span>Tactics</span>
@@ -447,15 +465,18 @@
                 <span>Detects</span>
             </div>
         </div>
+        </div>
     </div>
 
-    <div id="info-panel">
-        <h3>How to Use</h3>
-        <p><strong>Click</strong> nodes to see details</p>
-        <p><strong>Drag</strong> nodes to rearrange</p>
-        <p><strong>Scroll</strong> to zoom in/out</p>
-        <p><strong>Filter</strong> by category to focus view</p>
-        <p><strong>Scenarios</strong> show real-world attack paths</p>
+    <div id="info-panel" class="collapsible">
+        <div class="collapsible-header"><h3>How to Use</h3><span class="chevron">▾</span></div>
+        <div class="collapsible-content">
+            <p><strong>Click</strong> nodes to see details</p>
+            <p><strong>Drag</strong> nodes to rearrange</p>
+            <p><strong>Scroll</strong> to zoom in/out</p>
+            <p><strong>Filter</strong> by category to focus view</p>
+            <p><strong>Scenarios</strong> show real-world attack paths</p>
+        </div>
     </div>
 
     <script>
@@ -708,6 +729,11 @@
 
         // Tooltip
         const tooltip = d3.select('.tooltip');
+        // Collapsibles toggle
+        d3.selectAll('.collapsible .collapsible-header').on('click', function() {
+            const parent = d3.select(this.parentNode);
+            parent.classed('collapsed', !parent.classed('collapsed'));
+        });
 
         node.on('mouseover', (event, d) => {
             tooltip.html(`
