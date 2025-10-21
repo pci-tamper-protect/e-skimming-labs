@@ -1,0 +1,65 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: e-skimming-labs
+  description: e-skimming-labs service
+  annotations:
+    backstage.io/managed-by-location: file:./catalog-info.yaml
+    backstage.io/managed-by-origin-location: file:./catalog-info.yaml
+    ptp.io/service-type: web-service
+    ptp.io/deployment-environment: production
+    ptp.io/team: cybersecurity
+    ptp.io/domain: payment-security
+spec:
+  type: service
+  lifecycle: production
+  owner: cybersecurity
+  system: ptp-platform
+ptp:
+  service:
+    name: e-skimming-labs
+    version: 1.0.0
+    description: e-skimming-labs service
+    team: cybersecurity
+    domain: payment-security
+    environment: production
+    deployment:
+      timestamp: 2025-10-21T14:51:28.079677+00:00Z
+      hostname: unknown
+      user: kestenbroughton
+      pipeline: github-actions
+      build-number: unknown
+      image-tag: latest
+  git:
+    commit_sha: 75798cc7db6d08fef3e2dfd7ec3b0e7d5a8559f0
+    commit_sha_short: 75798cc
+    commit_message: Fix back button. Improved mitre matrix.
+    commit_author: kbroughton
+    commit_date: '2025-10-21T08:19:35-05:00'
+    branch: fix-back-button-better-attack-matrix
+    is_dirty: true
+    source: live_git
+    repository: git@github.com:pci-tamper-protect/e-skimming-labs.git
+    pull_request: null
+  dependencies:
+    runtime: {}
+    build: {}
+    external: []
+  monitoring:
+    health-check: /health
+    metrics-endpoint: /metrics
+    logs-level: info
+    alerting:
+      enabled: true
+      channels:
+      - '#platform-alerts'
+  security:
+    vulnerability-scan: true
+    dependency-check: true
+    secrets-scan: true
+    last-scan: 2025-10-21T14:51:28.354498+00:00Z
+  compliance:
+    pci-dss: true
+    soc2: true
+    gdpr: true
+    last-audit: 2025-10-21T14:51:28.354536+00:00Z

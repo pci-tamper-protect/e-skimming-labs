@@ -15,7 +15,7 @@
     
     <nav>
         <ul>
-            <li><a href="http://localhost:8080" class="back-button">← Back to Labs</a></li>
+            <li><a href="http://localhost:3000" class="back-button">← Back to Labs</a></li>
             <li><a href="http://localhost:9002" class="c2-button" target="_blank">🕵️ View Stolen Data</a></li>
             <li><a href="#">Home</a></li>
             <li><a href="checkout.html">Checkout</a></li>
@@ -51,5 +51,40 @@
     <footer class="footer">
         <p>&copy; 2024 TechGear Store | Educational Lab Environment</p>
     </footer>
+
+    <script>
+        // Environment-aware URL configuration
+        (function() {
+            const hostname = window.location.hostname;
+            const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+
+            let homeUrl, c2Url;
+
+            if (isLocal) {
+                // Local development
+                homeUrl = 'http://localhost:3000';
+                c2Url = 'http://localhost:9002';
+            } else if (hostname.includes('labs.stg.pcioasis.com')) {
+                // Staging environment
+                homeUrl = 'https://labs.stg.pcioasis.com';
+                c2Url = 'https://labs.stg.pcioasis.com/01-basic-magecart-c2';
+            } else if (hostname.includes('labs.pcioasis.com')) {
+                // Production environment
+                homeUrl = 'https://labs.pcioasis.com';
+                c2Url = 'https://labs.pcioasis.com/01-basic-magecart-c2';
+            } else {
+                // Fallback for unknown environments
+                homeUrl = window.location.protocol + '//' + hostname;
+                c2Url = window.location.protocol + '//' + hostname + '/c2';
+            }
+
+            // Update links
+            const backButton = document.querySelector('.back-button');
+            const c2Button = document.querySelector('.c2-button');
+
+            if (backButton) backButton.href = homeUrl;
+            if (c2Button) c2Button.href = c2Url;
+        })();
+    </script>
 </body>
 </html>

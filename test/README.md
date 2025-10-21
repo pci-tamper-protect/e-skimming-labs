@@ -111,7 +111,7 @@ Tests run on:
 
 ## Test Environment
 
-- **Base URL**: `http://localhost:8080`
+- **Base URL**: `http://localhost:3000`
 - **Target Page**: `/mitre-attack`
 - **Timeout**: 10 seconds for actions and navigation
 - **Screenshots**: Captured on failure
@@ -130,8 +130,8 @@ The tests are designed to work in CI environments:
 
 ### Common Issues
 
-1. **Service Not Running**: Ensure `home-index` service is running on port 8080
-2. **Timeout Errors**: Check if the service is responding at `http://localhost:8080`
+1. **Service Not Running**: Ensure `home-index` service is running on port 3000
+2. **Timeout Errors**: Check if the service is responding at `http://localhost:3000`
 3. **Element Not Found**: Verify the page has loaded completely with `waitForLoadState('networkidle')`
 
 ### Debug Commands

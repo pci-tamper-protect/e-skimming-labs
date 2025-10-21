@@ -168,7 +168,7 @@
         <div class="container">
             <h1>🛒 TechGear Store</h1>
             <div style="float: right; margin-top: 5px;">
-                <a href="http://localhost:8080" style="color: white; text-decoration: none; padding: 5px 15px; background: #27ae60; border-radius: 4px; margin-right: 10px;">← Back to Labs</a>
+                <a href="http://localhost:3000" style="color: white; text-decoration: none; padding: 5px 15px; background: #27ae60; border-radius: 4px; margin-right: 10px;">← Back to Labs</a>
                 <a href="http://localhost:9002" target="_blank" style="color: white; text-decoration: none; padding: 5px 15px; background: #e74c3c; border-radius: 4px;">🕵️ View Stolen Data</a>
                 <a href="index.html" style="color: white; text-decoration: none; padding: 5px 15px; background: #34495e; border-radius: 4px; margin-left: 10px;">← Back to Store</a>
             </div>
@@ -379,6 +379,38 @@
         document.getElementById('cvv').addEventListener('input', function(e) {
             e.target.value = e.target.value.replace(/\D/g, '');
         });
+
+        // Environment-aware URL configuration
+        (function() {
+            const hostname = window.location.hostname;
+            const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+
+            let homeUrl, c2Url;
+
+            if (isLocal) {
+                homeUrl = 'http://localhost:3000';
+                c2Url = 'http://localhost:9002';
+            } else if (hostname.includes('labs.stg.pcioasis.com')) {
+                homeUrl = 'https://labs.stg.pcioasis.com';
+                c2Url = 'https://labs.stg.pcioasis.com/01-basic-magecart-c2';
+            } else if (hostname.includes('labs.pcioasis.com')) {
+                homeUrl = 'https://labs.pcioasis.com';
+                c2Url = 'https://labs.pcioasis.com/01-basic-magecart-c2';
+            } else {
+                homeUrl = window.location.protocol + '//' + hostname;
+                c2Url = window.location.protocol + '//' + hostname + '/c2';
+            }
+
+            // Update header links
+            const headerLinks = document.querySelectorAll('.header a');
+            headerLinks.forEach(link => {
+                if (link.textContent.includes('Back to Labs')) {
+                    link.href = homeUrl;
+                } else if (link.textContent.includes('View Stolen Data')) {
+                    link.href = c2Url;
+                }
+            });
+        })();
     </script>
 </body>
 </html>
