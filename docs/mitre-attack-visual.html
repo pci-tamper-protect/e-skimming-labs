@@ -480,6 +480,157 @@
             background: var(--bg-hover);
         }
 
+        /* MITRE ATT&CK Matrix Styles */
+        .matrix-container {
+            margin: 30px 0;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            overflow: hidden;
+        }
+
+        .matrix-scroll {
+            overflow-x: auto;
+            overflow-y: visible;
+            max-width: 100%;
+        }
+
+        .attack-matrix {
+            min-width: 1800px;
+            border-collapse: collapse;
+            background: var(--bg-card);
+        }
+
+        .attack-matrix .tactic-header {
+            background: var(--bg-secondary);
+            padding: 16px 12px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            white-space: nowrap;
+            min-width: 150px;
+        }
+
+        .attack-matrix .technique-count {
+            background: var(--bg-tertiary);
+        }
+
+        .attack-matrix .technique-count td {
+            padding: 8px 12px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+        }
+
+        .attack-matrix .tactic-cell {
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            vertical-align: top;
+            background: var(--bg-card);
+            min-width: 150px;
+        }
+
+        .technique-item {
+            margin-bottom: 12px;
+            padding: 8px;
+            background: rgba(116, 143, 252, 0.05);
+            border-radius: 6px;
+            border-left: 3px solid var(--accent-blue);
+        }
+
+        .technique-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .technique-link {
+            display: inline-block;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent-orange);
+            text-decoration: none;
+            margin-right: 8px;
+            padding: 2px 6px;
+            background: rgba(255, 146, 43, 0.1);
+            border-radius: 4px;
+            border: 1px solid var(--accent-orange);
+        }
+
+        .technique-link:hover {
+            background: rgba(255, 146, 43, 0.2);
+            color: var(--text-primary);
+        }
+
+        .technique-name {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+
+        .sub-techniques {
+            margin-top: 8px;
+            padding-left: 16px;
+            border-left: 2px solid var(--border-color);
+        }
+
+        .sub-technique {
+            margin-bottom: 6px;
+            padding: 4px 8px;
+            background: rgba(81, 207, 102, 0.05);
+            border-radius: 4px;
+            border-left: 2px solid var(--accent-green);
+        }
+
+        .sub-technique:last-child {
+            margin-bottom: 0;
+        }
+
+        .sub-technique-link {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--accent-green);
+            text-decoration: none;
+            margin-right: 6px;
+            padding: 1px 4px;
+            background: rgba(81, 207, 102, 0.1);
+            border-radius: 3px;
+            border: 1px solid var(--accent-green);
+        }
+
+        .sub-technique-link:hover {
+            background: rgba(81, 207, 102, 0.2);
+            color: var(--text-primary);
+        }
+
+        .sub-technique-name {
+            display: block;
+            font-size: 12px;
+            font-weight: 400;
+            color: var(--text-secondary);
+            margin-top: 2px;
+            line-height: 1.3;
+        }
+
+        .no-techniques {
+            padding: 20px;
+            text-align: center;
+            color: var(--text-muted);
+            font-style: italic;
+            font-size: 13px;
+            background: rgba(139, 157, 195, 0.05);
+            border-radius: 6px;
+            border: 1px dashed var(--border-color);
+        }
+
         /* Alert Boxes */
         .alert {
             padding: 20px 24px;
@@ -676,6 +827,55 @@
             nav {
                 justify-content: center;
             }
+
+            /* Matrix responsive styles */
+            .matrix-container {
+                margin: 20px 0;
+                border-radius: 6px;
+            }
+
+            .attack-matrix .tactic-header {
+                padding: 12px 8px;
+                font-size: 12px;
+                min-width: 120px;
+            }
+
+            .attack-matrix .tactic-cell {
+                padding: 8px;
+                min-width: 120px;
+            }
+
+            .technique-item {
+                margin-bottom: 8px;
+                padding: 6px;
+            }
+
+            .technique-link {
+                font-size: 11px;
+                padding: 1px 4px;
+            }
+
+            .technique-name {
+                font-size: 12px;
+            }
+
+            .sub-technique {
+                padding: 3px 6px;
+            }
+
+            .sub-technique-link {
+                font-size: 10px;
+                padding: 1px 3px;
+            }
+
+            .sub-technique-name {
+                font-size: 11px;
+            }
+
+            .no-techniques {
+                padding: 15px;
+                font-size: 12px;
+            }
         }
 
         /* Animations */
@@ -755,7 +955,7 @@
             </div>
             <p class="subtitle">Comprehensive framework for understanding, detecting, and defending against e-skimming attacks</p>
             <nav>
-                <a href="http://localhost:8080" class="nav-btn back-btn">← Back to Labs</a>
+                <a href="#" id="back-btn" class="nav-btn back-btn">← Back to Labs</a>
                 <a href="#overview" class="nav-btn">Overview</a>
                 <a href="#tactics" class="nav-btn">Tactics & Techniques</a>
                 <a href="#detection" class="nav-btn">Detection</a>
@@ -819,6 +1019,163 @@
             <p style="font-size: 18px; line-height: 1.8; margin: 30px 0;">
                 This document presents a customized MITRE ATT&CK matrix specifically designed for e-skimming (web skimming, formjacking, Magecart) attacks. Based on extensive research and analysis of real-world e-skimming campaigns, this matrix maps attack techniques, tactics, and procedures (TTPs) used by threat actors to compromise e-commerce platforms and steal payment card data.
             </p>
+
+            <!-- MITRE ATT&CK Matrix Table -->
+            <div class="section-header" style="margin-top: 60px;">
+                <div class="section-icon">🎯</div>
+                <h2>MITRE ATT&CK Matrix for E-Skimming</h2>
+            </div>
+
+            <div class="matrix-container">
+                <div class="matrix-scroll">
+                    <table class="attack-matrix">
+                        <thead>
+                            <tr>
+                                <th class="tactic-header">Initial Access</th>
+                                <th class="tactic-header">Execution</th>
+                                <th class="tactic-header">Persistence</th>
+                                <th class="tactic-header">Privilege Escalation</th>
+                                <th class="tactic-header">Defense Evasion</th>
+                                <th class="tactic-header">Credential Access</th>
+                                <th class="tactic-header">Discovery</th>
+                                <th class="tactic-header">Lateral Movement</th>
+                                <th class="tactic-header">Collection</th>
+                                <th class="tactic-header">Command and Control</th>
+                                <th class="tactic-header">Exfiltration</th>
+                                <th class="tactic-header">Impact</th>
+                            </tr>
+                            <tr class="technique-count">
+                                <td>3 techniques</td>
+                                <td>1 technique</td>
+                                <td>2 techniques</td>
+                                <td>0 techniques</td>
+                                <td>4 techniques</td>
+                                <td>0 techniques</td>
+                                <td>1 technique</td>
+                                <td>0 techniques</td>
+                                <td>2 techniques</td>
+                                <td>1 technique</td>
+                                <td>1 technique</td>
+                                <td>0 techniques</td>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="tactic-cell">
+                                    <div class="technique-item">
+                                        <a href="#t1190" class="technique-link">T1190</a>
+                                        <span class="technique-name">Exploit Public-Facing Application</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#t1078" class="technique-link">T1078</a>
+                                        <span class="technique-name">Valid Accounts</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#t1195" class="technique-link">T1195</a>
+                                        <span class="technique-name">Supply Chain Compromise</span>
+                                        <div class="sub-techniques">
+                                            <div class="sub-technique">
+                                                <a href="#t1195-002" class="sub-technique-link">T1195.002</a>
+                                                <span class="sub-technique-name">Compromise Software Dependencies</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="tactic-cell">
+                                    <div class="technique-item">
+                                        <a href="#t1059-007" class="technique-link">T1059.007</a>
+                                        <span class="technique-name">JavaScript Execution</span>
+                                    </div>
+                                </td>
+                                <td class="tactic-cell">
+                                    <div class="technique-item">
+                                        <a href="#t1554" class="technique-link">T1554</a>
+                                        <span class="technique-name">Compromise Client Software</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#t1176" class="technique-link">T1176</a>
+                                        <span class="technique-name">Browser Extensions</span>
+                                    </div>
+                                </td>
+                                <td class="tactic-cell">
+                                    <div class="no-techniques">No techniques commonly used in e-skimming attacks</div>
+                                </td>
+                                <td class="tactic-cell">
+                                    <div class="technique-item">
+                                        <a href="#t1027" class="technique-link">T1027</a>
+                                        <span class="technique-name">Obfuscated Files or Information</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#t1622" class="technique-link">T1622</a>
+                                        <span class="technique-name">Debugger Evasion</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#t1480" class="technique-link">T1480</a>
+                                        <span class="technique-name">Execution Guardrails</span>
+                                        <div class="sub-techniques">
+                                            <div class="sub-technique">
+                                                <a href="#t1480-001" class="sub-technique-link">T1480.001</a>
+                                                <span class="sub-technique-name">Geofencing</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#t1036" class="technique-link">T1036</a>
+                                        <span class="technique-name">Masquerading</span>
+                                    </div>
+                                </td>
+                                <td class="tactic-cell">
+                                    <div class="no-techniques">No techniques commonly used in e-skimming attacks</div>
+                                </td>
+                                <td class="tactic-cell">
+                                    <div class="technique-item">
+                                        <a href="#t1083" class="technique-link">T1083</a>
+                                        <span class="technique-name">File and Directory Discovery</span>
+                                    </div>
+                                </td>
+                                <td class="tactic-cell">
+                                    <div class="no-techniques">No techniques commonly used in e-skimming attacks</div>
+                                </td>
+                                <td class="tactic-cell">
+                                    <div class="technique-item">
+                                        <a href="#t1056" class="technique-link">T1056</a>
+                                        <span class="technique-name">Input Capture</span>
+                                        <div class="sub-techniques">
+                                            <div class="sub-technique">
+                                                <a href="#t1056-001" class="sub-technique-link">T1056.001</a>
+                                                <span class="sub-technique-name">Keylogging</span>
+                                            </div>
+                                            <div class="sub-technique">
+                                                <a href="#t1056-002" class="sub-technique-link">T1056.002</a>
+                                                <span class="sub-technique-name">GUI Input Capture</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#t1005" class="technique-link">T1005</a>
+                                        <span class="technique-name">Data from Local System</span>
+                                    </div>
+                                </td>
+                                <td class="tactic-cell">
+                                    <div class="technique-item">
+                                        <a href="#t1071" class="technique-link">T1071</a>
+                                        <span class="technique-name">Web Service</span>
+                                    </div>
+                                </td>
+                                <td class="tactic-cell">
+                                    <div class="technique-item">
+                                        <a href="#t1041" class="technique-link">T1041</a>
+                                        <span class="technique-name">Exfiltration Over C2 Channel</span>
+                                    </div>
+                                </td>
+                                <td class="tactic-cell">
+                                    <div class="no-techniques">No techniques commonly used in e-skimming attacks</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </section>
 
         <!-- Tactics & Techniques Section -->
@@ -1510,6 +1867,37 @@ Object.defineProperty(HTMLInputElement.prototype, 'value', {
     </footer>
 
     <script>
+        // Wait for DOM to be fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Environment-aware back button URL
+            function setBackButtonUrl() {
+                const backBtn = document.getElementById('back-btn');
+                if (!backBtn) {
+                    console.warn('Back button not found');
+                    return;
+                }
+                
+                const hostname = window.location.hostname;
+                
+                let backUrl;
+                if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                    backUrl = 'http://localhost:8080';
+                } else if (hostname === 'labs.pcioasis.com') {
+                    backUrl = 'https://labs.pcioasis.com';
+                } else if (hostname === 'labs.stg.pcioasis.com') {
+                    backUrl = 'https://labs.stg.pcioasis.com';
+                } else {
+                    // Fallback for other environments
+                    backUrl = window.location.protocol + '//' + hostname + (window.location.port ? ':' + window.location.port : '');
+                }
+                
+                backBtn.href = backUrl;
+                console.log('Back button URL set to:', backUrl);
+            }
+
+            // Set back button URL on page load
+            setBackButtonUrl();
+
         // Smooth scrolling for navigation
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
@@ -1582,6 +1970,7 @@ Object.defineProperty(HTMLInputElement.prototype, 'value', {
         document.querySelectorAll('.card, .timeline-item').forEach(el => {
             observer.observe(el);
         });
+        }); // End of DOMContentLoaded
     </script>
 </body>
 </html>

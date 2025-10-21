@@ -237,3 +237,4 @@ docker-compose up -d --build
 - Services run in isolated containers
 - No external network access required for basic functionality
 - Use test credit card numbers only (e.g., 4111 1111 1111 1111)
+

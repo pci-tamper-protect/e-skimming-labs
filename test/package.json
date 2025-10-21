@@ -1,0 +1,32 @@
+{
+  "name": "e-skimming-labs-tests",
+  "version": "1.0.0",
+  "description": "Playwright tests for E-Skimming Labs",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:ui": "playwright test --ui",
+    "test:report": "playwright show-report",
+    "test:mitre": "playwright test mitre-attack-matrix.spec.js",
+    "test:mitre:headed": "playwright test mitre-attack-matrix.spec.js --headed",
+    "test:chrome": "playwright test --project=chromium",
+    "test:mobile": "playwright test --project=chrome-mobile",
+    "test:tablet": "playwright test --project=chrome-tablet",
+    "test:mitre:chrome": "playwright test mitre-attack-matrix.spec.js --project=chromium",
+    "test:mitre:mobile": "playwright test mitre-attack-matrix.spec.js --project=chrome-mobile",
+    "test:mitre:tablet": "playwright test mitre-attack-matrix.spec.js --project=chrome-tablet"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  },
+  "keywords": [
+    "playwright",
+    "testing",
+    "e-skimming",
+    "cybersecurity",
+    "mitre-attack"
+  ],
+  "author": "PCI Oasis",
+  "license": "MIT"
+}
