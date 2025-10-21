@@ -22,7 +22,9 @@
       "Bash(docker-compose ps:*)",
       "Bash(npm test:*)",
       "Bash(docker-compose restart:*)",
-      "Bash(docker-compose build:*)"
+      "Bash(docker-compose build:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh api:*)"
     ],
     "deny": [],
     "ask": []
