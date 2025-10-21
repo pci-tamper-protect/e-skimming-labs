@@ -15,7 +15,7 @@
                     <span class="tagline">Premium E-commerce Platform</span>
                 </div>
                 <nav class="main-nav">
-                    <a href="http://localhost:8080" class="nav-link back-button">← Back to Labs</a>
+                    <a href="http://localhost:3000" class="nav-link back-button">← Back to Labs</a>
                     <a href="http://localhost:9006" class="nav-link c2-button" target="_blank">🕵️ View Stolen Data</a>
                     <a href="#" class="nav-link">Products</a>
                     <a href="#" class="nav-link">Account</a>
@@ -281,5 +281,38 @@
     </div>
 
     <script src="js/checkout.js"></script>
+    <script>
+        // Environment-aware URL configuration
+        (function() {
+            const hostname = window.location.hostname;
+            const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+
+            let homeUrl, c2Url;
+
+            if (isLocal) {
+                homeUrl = 'http://localhost:3000';
+                c2Url = 'http://localhost:9006';
+            } else if (hostname.includes('labs.stg.pcioasis.com')) {
+                homeUrl = 'https://labs.stg.pcioasis.com';
+                c2Url = 'https://labs.stg.pcioasis.com/03-extension-hijacking-c2';
+            } else if (hostname.includes('labs.pcioasis.com')) {
+                homeUrl = 'https://labs.pcioasis.com';
+                c2Url = 'https://labs.pcioasis.com/03-extension-hijacking-c2';
+            } else {
+                homeUrl = window.location.protocol + '//' + hostname;
+                c2Url = window.location.protocol + '//' + hostname + '/c2';
+            }
+
+            // Update nav links
+            const navLinks = document.querySelectorAll('.main-nav a');
+            navLinks.forEach(link => {
+                if (link.classList.contains('back-button')) {
+                    link.href = homeUrl;
+                } else if (link.classList.contains('c2-button')) {
+                    link.href = c2Url;
+                }
+            });
+        })();
+    </script>
 </body>
 </html>

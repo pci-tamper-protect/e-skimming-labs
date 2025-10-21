@@ -15,7 +15,10 @@
     "test:tablet": "playwright test --project=chrome-tablet",
     "test:mitre:chrome": "playwright test mitre-attack-matrix.spec.js --project=chromium",
     "test:mitre:mobile": "playwright test mitre-attack-matrix.spec.js --project=chrome-mobile",
-    "test:mitre:tablet": "playwright test mitre-attack-matrix.spec.js --project=chrome-tablet"
+    "test:mitre:tablet": "playwright test mitre-attack-matrix.spec.js --project=chrome-tablet",
+    "test:threat-model": "playwright test threat-model.spec.js",
+    "test:threat-model:chrome": "playwright test threat-model.spec.js --project=chromium",
+    "test:threat-model:mobile": "playwright test threat-model.spec.js --project=chrome-mobile"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0"

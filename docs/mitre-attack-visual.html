@@ -631,6 +631,37 @@
             border: 1px dashed var(--border-color);
         }
 
+        /* Status Badges for Annotation System */
+        .status-badge {
+            display: inline-block;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 600;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+
+        .status-badge.observed {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .status-badge.emerging {
+            background: #ffd43b;
+            color: #000;
+        }
+
+        .status-badge.lab {
+            background: #748ffc;
+            color: white;
+        }
+
+        /* Enhanced technique items */
+        .technique-item .status-badge {
+            margin-left: 6px;
+        }
+
         /* Alert Boxes */
         .alert {
             padding: 20px 24px;
@@ -1012,8 +1043,9 @@
 
             <div class="alert alert-info">
                 <strong>Document Information</strong><br>
-                Version 1.0 | Last Updated: 2025-01-18<br>
-                Target Environment: Web applications, e-commerce platforms, payment processing systems
+                Version 2.0 | Last Updated: 2025-10-21<br>
+                Target Environment: Web applications, e-commerce platforms, payment processing systems<br>
+                <strong>Updates:</strong> Added 33 new techniques including GTM hijacking, NPM supply chain attacks, steganography, and annotation system
             </div>
 
             <p style="font-size: 18px; line-height: 1.8; margin: 30px 0;">
@@ -1024,6 +1056,13 @@
             <div class="section-header" style="margin-top: 60px;">
                 <div class="section-icon">🎯</div>
                 <h2>MITRE ATT&CK Matrix for E-Skimming</h2>
+            </div>
+
+            <div class="alert alert-info">
+                <strong>Annotation System:</strong> Techniques are marked with status badges to indicate their prevalence:<br>
+                <span class="status-badge observed">🔴 Observed</span> = Documented in real-world attacks with published IOCs or incident reports<br>
+                <span class="status-badge emerging">🟡 Emerging</span> = Security research, PoCs, or logical evolution of existing techniques<br>
+                <span class="status-badge lab">🔵 Lab-Only</span> = Demonstrated in controlled lab environments for educational purposes
             </div>
 
             <div class="matrix-container">
@@ -1045,18 +1084,18 @@
                                 <th class="tactic-header">Impact</th>
                             </tr>
                             <tr class="technique-count">
-                                <td>3 techniques</td>
-                                <td>1 technique</td>
-                                <td>2 techniques</td>
-                                <td>0 techniques</td>
                                 <td>4 techniques</td>
-                                <td>0 techniques</td>
                                 <td>1 technique</td>
+                                <td>4 techniques</td>
+                                <td>3 techniques</td>
+                                <td>9 techniques</td>
+                                <td>4 techniques</td>
+                                <td>6 techniques</td>
                                 <td>0 techniques</td>
-                                <td>2 techniques</td>
+                                <td>5 techniques</td>
                                 <td>1 technique</td>
-                                <td>1 technique</td>
-                                <td>0 techniques</td>
+                                <td>4 techniques</td>
+                                <td>5 techniques</td>
                             </tr>
                         </thead>
                         <tbody>
@@ -1064,21 +1103,30 @@
                                 <td class="tactic-cell">
                                     <div class="technique-item">
                                         <a href="#t1190" class="technique-link">T1190</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
                                         <span class="technique-name">Exploit Public-Facing Application</span>
                                     </div>
                                     <div class="technique-item">
                                         <a href="#t1078" class="technique-link">T1078</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
                                         <span class="technique-name">Valid Accounts</span>
                                     </div>
                                     <div class="technique-item">
                                         <a href="#t1195" class="technique-link">T1195</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
                                         <span class="technique-name">Supply Chain Compromise</span>
                                         <div class="sub-techniques">
                                             <div class="sub-technique">
                                                 <a href="#t1195-002" class="sub-technique-link">T1195.002</a>
-                                                <span class="sub-technique-name">Compromise Software Dependencies</span>
+                                                <span class="status-badge observed">🔴 Observed</span>
+                                                <span class="sub-technique-name">Compromise Software Dependencies (NPM Sept 2025)</span>
                                             </div>
                                         </div>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#custom-gtm" class="technique-link">CUSTOM</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
+                                        <span class="technique-name">Google Tag Manager Hijacking</span>
                                     </div>
                                 </td>
                                 <td class="tactic-cell">
@@ -1090,47 +1138,155 @@
                                 <td class="tactic-cell">
                                     <div class="technique-item">
                                         <a href="#t1554" class="technique-link">T1554</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
                                         <span class="technique-name">Compromise Client Software</span>
                                     </div>
                                     <div class="technique-item">
                                         <a href="#t1176" class="technique-link">T1176</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
                                         <span class="technique-name">Browser Extensions</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#custom-gtm-persist" class="technique-link">CUSTOM</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
+                                        <span class="technique-name">GTM Container Poisoning</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#custom-service-worker" class="technique-link">CUSTOM</a>
+                                        <span class="status-badge emerging">🟡 Emerging</span>
+                                        <span class="technique-name">Service Worker Man-in-the-Middle</span>
                                     </div>
                                 </td>
                                 <td class="tactic-cell">
-                                    <div class="no-techniques">No techniques commonly used in e-skimming attacks</div>
+                                    <div class="technique-item">
+                                        <a href="#t1068" class="technique-link">T1068</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
+                                        <span class="technique-name">Exploitation for Privilege Escalation</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#t1548-002" class="technique-link">T1548.002</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
+                                        <span class="technique-name">Bypass UAC / Weak Admin Auth</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#custom-role-escalation" class="technique-link">CUSTOM</a>
+                                        <span class="status-badge emerging">🟡 Emerging</span>
+                                        <span class="technique-name">Web App Role Escalation</span>
+                                    </div>
                                 </td>
                                 <td class="tactic-cell">
                                     <div class="technique-item">
                                         <a href="#t1027" class="technique-link">T1027</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
                                         <span class="technique-name">Obfuscated Files or Information</span>
+                                        <div class="sub-techniques">
+                                            <div class="sub-technique">
+                                                <a href="#t1027-003" class="sub-technique-link">T1027.003</a>
+                                                <span class="status-badge observed">🔴 Observed</span>
+                                                <span class="sub-technique-name">Steganography (CSS, EXIF, PNG, Favicon)</span>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div class="technique-item">
                                         <a href="#t1622" class="technique-link">T1622</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
                                         <span class="technique-name">Debugger Evasion</span>
                                     </div>
                                     <div class="technique-item">
                                         <a href="#t1480" class="technique-link">T1480</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
                                         <span class="technique-name">Execution Guardrails</span>
                                         <div class="sub-techniques">
                                             <div class="sub-technique">
                                                 <a href="#t1480-001" class="sub-technique-link">T1480.001</a>
+                                                <span class="status-badge observed">🔴 Observed</span>
                                                 <span class="sub-technique-name">Geofencing</span>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="technique-item">
                                         <a href="#t1036" class="technique-link">T1036</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
                                         <span class="technique-name">Masquerading</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#t1497-001" class="technique-link">T1497.001</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
+                                        <span class="technique-name">VM/Sandbox Evasion (WebGL)</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#custom-canvas-fp" class="technique-link">CUSTOM</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
+                                        <span class="technique-name">Canvas Fingerprinting Evasion</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#custom-csp-bypass" class="technique-link">CUSTOM</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
+                                        <span class="technique-name">CSP Bypass via Google Analytics</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#custom-timing-evasion" class="technique-link">CUSTOM</a>
+                                        <span class="status-badge emerging">🟡 Emerging</span>
+                                        <span class="technique-name">Timing-Based Evasion</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#custom-shadow-dom" class="technique-link">CUSTOM</a>
+                                        <span class="status-badge emerging">🟡 Emerging</span>
+                                        <span class="technique-name">Shadow DOM Hiding</span>
                                     </div>
                                 </td>
                                 <td class="tactic-cell">
-                                    <div class="no-techniques">No techniques commonly used in e-skimming attacks</div>
+                                    <div class="technique-item">
+                                        <a href="#t1003" class="technique-link">T1003</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
+                                        <span class="technique-name">OS Credential Dumping</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#t1552-001" class="technique-link">T1552.001</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
+                                        <span class="technique-name">Unsecured Credentials (.env files)</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#t1555-003" class="technique-link">T1555.003</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
+                                        <span class="technique-name">Browser Saved Credentials</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#custom-credential-api" class="technique-link">CUSTOM</a>
+                                        <span class="status-badge emerging">🟡 Emerging</span>
+                                        <span class="technique-name">Credential Management API Hooking</span>
+                                    </div>
                                 </td>
                                 <td class="tactic-cell">
                                     <div class="technique-item">
                                         <a href="#t1083" class="technique-link">T1083</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
                                         <span class="technique-name">File and Directory Discovery</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#t1082" class="technique-link">T1082</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
+                                        <span class="technique-name">System Info Discovery (Fingerprinting)</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#t1614" class="technique-link">T1614</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
+                                        <span class="technique-name">System Location Discovery (Geolocation)</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#t1010" class="technique-link">T1010</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
+                                        <span class="technique-name">Application Window Discovery (DevTools)</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#custom-payment-form-discovery" class="technique-link">CUSTOM</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
+                                        <span class="technique-name">Payment Form Discovery</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#t1497" class="technique-link">T1497</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
+                                        <span class="technique-name">Virtualization/Sandbox Evasion</span>
                                     </div>
                                 </td>
                                 <td class="tactic-cell">
@@ -1139,37 +1295,97 @@
                                 <td class="tactic-cell">
                                     <div class="technique-item">
                                         <a href="#t1056" class="technique-link">T1056</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
                                         <span class="technique-name">Input Capture</span>
                                         <div class="sub-techniques">
                                             <div class="sub-technique">
                                                 <a href="#t1056-001" class="sub-technique-link">T1056.001</a>
+                                                <span class="status-badge observed">🔴 Observed</span>
                                                 <span class="sub-technique-name">Keylogging</span>
                                             </div>
                                             <div class="sub-technique">
                                                 <a href="#t1056-002" class="sub-technique-link">T1056.002</a>
+                                                <span class="status-badge observed">🔴 Observed</span>
                                                 <span class="sub-technique-name">GUI Input Capture</span>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="technique-item">
                                         <a href="#t1005" class="technique-link">T1005</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
                                         <span class="technique-name">Data from Local System</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#custom-dom-manipulation" class="technique-link">CUSTOM</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
+                                        <span class="technique-name">DOM Manipulation (MutationObserver)</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#custom-payment-api" class="technique-link">CUSTOM</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
+                                        <span class="technique-name">Payment Request API Manipulation</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#custom-localstorage" class="technique-link">CUSTOM</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
+                                        <span class="technique-name">LocalStorage Scraping</span>
                                     </div>
                                 </td>
                                 <td class="tactic-cell">
                                     <div class="technique-item">
                                         <a href="#t1071" class="technique-link">T1071</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
                                         <span class="technique-name">Web Service</span>
                                     </div>
                                 </td>
                                 <td class="tactic-cell">
                                     <div class="technique-item">
                                         <a href="#t1041" class="technique-link">T1041</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
                                         <span class="technique-name">Exfiltration Over C2 Channel</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#custom-websocket-exfil" class="technique-link">CUSTOM</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
+                                        <span class="technique-name">WebSocket Exfiltration</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#custom-image-exfil" class="technique-link">CUSTOM</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
+                                        <span class="technique-name">Image-Based Exfiltration</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#custom-dns-tunnel" class="technique-link">CUSTOM</a>
+                                        <span class="status-badge emerging">🟡 Emerging</span>
+                                        <span class="technique-name">DNS Tunneling</span>
                                     </div>
                                 </td>
                                 <td class="tactic-cell">
-                                    <div class="no-techniques">No techniques commonly used in e-skimming attacks</div>
+                                    <div class="technique-item">
+                                        <a href="#t1491-001" class="technique-link">T1491.001</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
+                                        <span class="technique-name">Internal Defacement (Fake Forms)</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#t1496" class="technique-link">T1496</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
+                                        <span class="technique-name">Resource Hijacking (Cryptojacking)</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#t1657" class="technique-link">T1657</a>
+                                        <span class="status-badge observed">🔴 Observed</span>
+                                        <span class="technique-name">Financial Theft</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#t1565-002" class="technique-link">T1565.002</a>
+                                        <span class="status-badge emerging">🟡 Emerging</span>
+                                        <span class="technique-name">Transmitted Data Manipulation</span>
+                                    </div>
+                                    <div class="technique-item">
+                                        <a href="#t1499" class="technique-link">T1499</a>
+                                        <span class="status-badge emerging">🟡 Emerging</span>
+                                        <span class="technique-name">Endpoint Denial of Service</span>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>
@@ -1255,6 +1471,98 @@
                         <div class="meta-item">
                             <span class="meta-label">Detection:</span>
                             <span class="meta-value">SRI hash mismatches, CSP violations, unexpected script changes</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-badge badge-technique">CUSTOM</span>
+                        <span class="status-badge observed">🔴 Observed</span>
+                    </div>
+                    <h4 class="card-title" id="custom-gtm">Google Tag Manager Hijacking</h4>
+                    <p class="card-description">Compromising GTM containers to inject persistent skimmers that bypass traditional security controls.</p>
+
+                    <div class="card-meta">
+                        <div class="meta-item">
+                            <span class="meta-label">2025 Campaign:</span>
+                            <span class="meta-value">316 stores compromised, 88,000 victims, average 3.5 months persistence</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Method:</span>
+                            <span class="meta-value">Phishing GTM admin credentials → Inject Base64-encoded skimmer in GTM container → Persistent across pages</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Evasion:</span>
+                            <span class="meta-value">Security tools whitelist GTM, skip container scanning. Backdoor in media/index.php for re-infection</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Detection:</span>
+                            <span class="meta-value">GTM container audits, Base64 in GTM tags, network requests from GTM to non-Google domains</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-badge badge-technique">T1195.002</span>
+                        <span class="status-badge observed">🔴 Observed</span>
+                    </div>
+                    <h4 class="card-title" id="t1195-002">NPM Supply Chain Attack (September 2025)</h4>
+                    <p class="card-description">Sophisticated attack on NPM ecosystem affecting 2 billion weekly downloads.</p>
+
+                    <div class="card-meta">
+                        <div class="meta-item">
+                            <span class="meta-label">Attack Vector:</span>
+                            <span class="meta-value">Phishing + MITM 2FA theft of Josh Junon (Qix) account</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Compromised:</span>
+                            <span class="meta-value">20 packages: chalk, debug, ansi-styles, supports-color, strip-ansi + 15 more</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Payload:</span>
+                            <span class="meta-value">Crypto wallet hijacking (ETH, BTC, SOL, TRX, LTC, BCH) targeting web contexts</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Duration:</span>
+                            <span class="meta-value">2.5 hours exposure (September 8, 2025)</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Detection:</span>
+                            <span class="meta-value">Package.json monitoring, SRI for npm packages, post-install script auditing</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-badge badge-technique">T1027.003</span>
+                        <span class="status-badge observed">🔴 Observed</span>
+                    </div>
+                    <h4 class="card-title" id="t1027-003">Steganography Techniques</h4>
+                    <p class="card-description">Hiding malicious code in image metadata, CSS files, and favicons to bypass detection.</p>
+
+                    <div class="card-meta">
+                        <div class="meta-item">
+                            <span class="meta-label">CSS Steganography:</span>
+                            <span class="meta-value">Malicious code hidden in CSS file comments, extracted via obfuscated JS</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">EXIF Metadata:</span>
+                            <span class="meta-value">Skimmer in JPEG "Copyright" field (Segway 2022: 600K visitors affected)</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">PNG LSB:</span>
+                            <span class="meta-value">Code hidden in PNG least significant bits, alpha channel</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Favicon Alpha:</span>
+                            <span class="meta-value">512 bytes in 64x64 ICO transparency layer (2024 academic research)</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Detection:</span>
+                            <span class="meta-value">EXIF metadata scanning (ExifTool), CSS entropy analysis, statistical LSB detection</span>
                         </div>
                     </div>
                 </div>
@@ -1431,6 +1739,62 @@ document.addEventListener('input', function(e) {
                         <div class="meta-item">
                             <span class="meta-label">Example:</span>
                             <span class="meta-value">Segway (2022) - 600K+ records via image-hidden code</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-badge badge-technique">CUSTOM</span>
+                        <span class="status-badge observed">🔴 Observed</span>
+                    </div>
+                    <h4 class="card-title" id="custom-csp-bypass">CSP Bypass via Google Analytics</h4>
+                    <p class="card-description">Exfiltrating stolen data through attacker-controlled Google Analytics accounts to bypass CSP restrictions.</p>
+
+                    <div class="card-meta">
+                        <div class="meta-item">
+                            <span class="meta-label">Campaign:</span>
+                            <span class="meta-value">March 2024 Magecart campaign targeting several dozen e-commerce sites</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Method:</span>
+                            <span class="meta-value">Encode stolen card data → Send to attacker's GA dashboard via legitimate GA endpoints</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Bypass:</span>
+                            <span class="meta-value">CSP allows Google Analytics by default, attackers abuse whitelisted service</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Detection:</span>
+                            <span class="meta-value">GA measurement ID validation, unexpected GA traffic patterns, data encoding in GA events</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-badge badge-technique">T1497.001</span>
+                        <span class="status-badge observed">🔴 Observed</span>
+                    </div>
+                    <h4 class="card-title" id="t1497-001">VM/Sandbox Evasion (WebGL Detection)</h4>
+                    <p class="card-description">Detecting analysis environments via WebGL renderer queries to avoid security researchers.</p>
+
+                    <div class="card-meta">
+                        <div class="meta-item">
+                            <span class="meta-label">Technique:</span>
+                            <span class="meta-value">Query WebGL renderer for "swiftshader", "llvmpipe", "virtualbox" signatures</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Examples:</span>
+                            <span class="meta-value">Advanced Magecart variants, Gateway skimmer</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Impact:</span>
+                            <span class="meta-value">Skimmer only executes on real victim browsers, skips analysis VMs</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Detection:</span>
+                            <span class="meta-value">Monitor WebGL API calls, renderer string queries, environment fingerprinting</span>
                         </div>
                     </div>
                 </div>
@@ -1771,6 +2135,26 @@ Object.defineProperty(HTMLInputElement.prototype, 'value', {
                         <strong>Detection:</strong> WAF rules for XXE, unusual XML requests, file system changes
                     </div>
                 </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-title">Google Tag Manager Hijacking Campaign (2025)</div>
+                    <div class="timeline-content">
+                        <strong>Attack Chain:</strong> Stolen Credentials (T1078) → GTM Container Poisoning (CUSTOM) → Persistence → Defense Evasion (T1036) → Collection (T1056) → Exfiltration (T1041)<br><br>
+                        <strong>Details:</strong> Phishing GTM admin accounts → Inject Base64-encoded skimmer in GTM container (GTM-MLHK2N68) → Backdoor in media/index.php → 3.5 months average persistence<br><br>
+                        <strong>Impact:</strong> 316 stores compromised | 88,000 victims | Evasion via GTM whitelisting<br><br>
+                        <strong>Key Lesson:</strong> GTM containers require security audits, Base64 detection, and tag approval workflows
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-title">NPM Supply Chain Attack (September 2025)</div>
+                    <div class="timeline-content">
+                        <strong>Attack Chain:</strong> Supply Chain Compromise (T1195.002) → Credential Theft → Execution<br><br>
+                        <strong>Details:</strong> Phishing + MITM 2FA theft of Josh Junon (Qix) → Compromised 20 packages (chalk, debug, ansi-styles, etc.) → Crypto wallet hijacking payload<br><br>
+                        <strong>Impact:</strong> 2 billion weekly downloads affected | 2.5 hours exposure | Targets ETH, BTC, SOL, TRX, LTC, BCH wallets<br><br>
+                        <strong>Detection Failure:</strong> No runtime package verification, post-install scripts executed without review
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -1862,8 +2246,8 @@ Object.defineProperty(HTMLInputElement.prototype, 'value', {
 
     <!-- Footer -->
     <footer>
-        <p>MITRE ATT&CK Matrix for E-Skimming Attacks | Version 1.0 | Last Updated: 2025-01-18</p>
-        <p style="margin-top: 8px;">Based on extensive research and analysis of real-world e-skimming campaigns</p>
+        <p>MITRE ATT&CK Matrix for E-Skimming Attacks | Version 2.0 | Last Updated: 2025-10-21</p>
+        <p style="margin-top: 8px;">Based on extensive research and analysis of real-world e-skimming campaigns (2018-2025)</p>
     </footer>
 
     <script>
@@ -1881,7 +2265,7 @@ Object.defineProperty(HTMLInputElement.prototype, 'value', {
                 
                 let backUrl;
                 if (hostname === 'localhost' || hostname === '127.0.0.1') {
-                    backUrl = 'http://localhost:8080';
+                    backUrl = 'http://localhost:3000';
                 } else if (hostname === 'labs.pcioasis.com') {
                     backUrl = 'https://labs.pcioasis.com';
                 } else if (hostname === 'labs.stg.pcioasis.com') {
@@ -1971,6 +2355,190 @@ Object.defineProperty(HTMLInputElement.prototype, 'value', {
             observer.observe(el);
         });
         }); // End of DOMContentLoaded
+    </script>
+
+    <!-- Private Data Loader Plugin -->
+    <script src="private-data-loader.js"></script>
+    <script>
+        /**
+         * Private Data Integration for MITRE ATT&CK Matrix
+         *
+         * This integration allows private attack data to be dynamically loaded
+         * and merged into the public MITRE matrix without hardcoding.
+         *
+         * Default behavior (no private repo):
+         * - Shows only public attacks
+         * - No errors or warnings
+         * - Full functionality preserved
+         *
+         * With private repo (cloned in parallel):
+         * - Automatically loads attacks-index.json
+         * - Adds private techniques to matrix
+         * - Shows status badges (🔴 Observed, 🟡 Emerging, 🔵 Lab)
+         */
+
+        // Listen for private data loaded event
+        window.addEventListener('privateDataLoaded', (event) => {
+            console.log('[MITRE Matrix] Private data loaded, enriching matrix...');
+
+            const { attacks } = event.detail;
+
+            if (!attacks || attacks.length === 0) {
+                console.log('[MITRE Matrix] No private attacks to add');
+                return;
+            }
+
+            console.log(`[MITRE Matrix] Adding ${attacks.length} private attack(s) to matrix`);
+
+            // For each private attack, add its techniques to the appropriate tactic columns
+            attacks.forEach(attack => {
+                attack.mitreTechniques.forEach(technique => {
+                    // Find which tactic this technique belongs to
+                    const tacticId = getTacticForTechnique(technique.id, attack.mitreTactics);
+
+                    if (tacticId) {
+                        addPrivateTechniqueToMatrix(tacticId, technique, attack);
+                    }
+                });
+            });
+
+            console.log('[MITRE Matrix] Private data integration complete');
+        });
+
+        /**
+         * Map technique ID to tactic column
+         */
+        function getTacticForTechnique(techniqueId, attackTactics) {
+            // Mapping of technique base IDs to tactic IDs
+            const techniqueToTacticMap = {
+                'T1195': 'TA0001',  // Initial Access
+                'T1059': 'TA0002',  // Execution
+                'T1554': 'TA0003',  // Persistence
+                'T1068': 'TA0004',  // Privilege Escalation
+                'T1027': 'TA0005',  // Defense Evasion
+                'T1003': 'TA0006',  // Credential Access
+                'T1083': 'TA0007',  // Discovery
+                'T1056': 'TA0009',  // Collection
+                'T1071': 'TA0011',  // Command and Control
+                'T1041': 'TA0010',  // Exfiltration
+                'T1491': 'TA0040',  // Impact
+                'T1496': 'TA0040',  // Impact
+                'T1657': 'TA0040',  // Impact
+                'CUSTOM-WASM-001': 'TA0002'  // Execution (custom technique)
+            };
+
+            const baseId = techniqueId.split('.')[0];
+            return techniqueToTacticMap[baseId] || attackTactics[0]; // Fallback to first tactic
+        }
+
+        /**
+         * Add a private technique to the matrix DOM
+         */
+        function addPrivateTechniqueToMatrix(tacticId, technique, attack) {
+            // Map tactic IDs to column indices (0-based)
+            const tacticToColumnIndex = {
+                'TA0001': 0,  // Initial Access
+                'TA0002': 1,  // Execution
+                'TA0003': 2,  // Persistence
+                'TA0004': 3,  // Privilege Escalation
+                'TA0005': 4,  // Defense Evasion
+                'TA0006': 5,  // Credential Access
+                'TA0007': 6,  // Discovery
+                'TA0008': 7,  // Lateral Movement
+                'TA0009': 8,  // Collection
+                'TA0011': 9,  // Command and Control
+                'TA0010': 10, // Exfiltration
+                'TA0040': 11  // Impact
+            };
+
+            const columnIndex = tacticToColumnIndex[tacticId];
+            if (columnIndex === undefined) {
+                console.warn(`[MITRE Matrix] Unknown tactic ID: ${tacticId}`);
+                return;
+            }
+
+            // Find the tactic cell (tbody > tr > td)
+            const tacticCells = document.querySelectorAll('.attack-matrix tbody tr td.tactic-cell');
+            const targetCell = tacticCells[columnIndex];
+
+            if (!targetCell) {
+                console.warn(`[MITRE Matrix] Could not find tactic cell for column ${columnIndex}`);
+                return;
+            }
+
+            // Get status badge HTML
+            const statusBadge = getStatusBadgeHTML(technique.status || attack.status);
+
+            // Create technique item HTML
+            const techniqueHTML = `
+                <div class="technique-item" data-private="true">
+                    <a href="#${technique.id.toLowerCase()}" class="technique-link">${technique.id}</a>
+                    ${statusBadge}
+                    <span class="technique-name">${technique.name}</span>
+                </div>
+            `;
+
+            // Check if there's a "no techniques" message to replace
+            const noTechniquesDiv = targetCell.querySelector('.no-techniques');
+            if (noTechniquesDiv) {
+                noTechniquesDiv.remove();
+            }
+
+            // Append the new technique
+            targetCell.insertAdjacentHTML('beforeend', techniqueHTML);
+
+            // Update technique count in header
+            updateTechniqueCount(columnIndex);
+        }
+
+        /**
+         * Get HTML for status badge
+         */
+        function getStatusBadgeHTML(status) {
+            const badges = {
+                'observed': '<span class="status-badge observed">🔴 Observed</span>',
+                'emerging': '<span class="status-badge emerging">🟡 Emerging</span>',
+                'theoretical-emerging': '<span class="status-badge emerging">🟡 Emerging</span>',
+                'lab': '<span class="status-badge lab">🔵 Lab</span>'
+            };
+            return badges[status] || badges['lab'];
+        }
+
+        /**
+         * Update technique count in column header
+         */
+        function updateTechniqueCount(columnIndex) {
+            const tacticCells = document.querySelectorAll('.attack-matrix tbody tr td.tactic-cell');
+            const targetCell = tacticCells[columnIndex];
+            const techniqueCount = targetCell.querySelectorAll('.technique-item').length;
+
+            // Find corresponding count cell in header
+            const countCells = document.querySelectorAll('.attack-matrix .technique-count td');
+            const countCell = countCells[columnIndex];
+
+            if (countCell) {
+                countCell.textContent = `${techniqueCount} technique${techniqueCount !== 1 ? 's' : ''}`;
+            }
+        }
+
+        // Initialize private data loader in local mode
+        // This will attempt to load from ../private-e-skimming-attacks/
+        // If the repo doesn't exist, it silently continues without errors
+        if (typeof PrivateDataLoader !== 'undefined') {
+            PrivateDataLoader.init({
+                localMode: true  // Use local JSON files during development
+            }).then(success => {
+                if (success) {
+                    console.log('[MITRE Matrix] Private data loader initialized successfully');
+                } else {
+                    console.log('[MITRE Matrix] Private data not available (this is normal if you don\'t have the private repo)');
+                }
+            }).catch(error => {
+                console.log('[MITRE Matrix] Private data loader not available:', error.message);
+            });
+        } else {
+            console.log('[MITRE Matrix] Running in public-only mode (private-data-loader.js not found)');
+        }
     </script>
 </body>
 </html>
