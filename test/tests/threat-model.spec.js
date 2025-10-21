@@ -25,13 +25,9 @@ test.describe('Threat Model Page', () => {
     // Find the back button
     const backButton = page.getByRole('link', { name: '← Back to Labs' });
 
-    // Check that the back button is visible
+    // Check that the back button is visible and has correct href
+    // (expect will automatically wait and retry until condition is met)
     await expect(backButton).toBeVisible();
-
-    // Wait for JavaScript to set the href
-    await page.waitForTimeout(1000);
-
-    // Check that the back button has the correct href for localhost (port 3000)
     await expect(backButton).toHaveAttribute('href', 'http://localhost:3000');
 
     // Debug: Log the actual href value
@@ -134,11 +130,9 @@ test.describe('Threat Model Page', () => {
     
     // Click play button
     await playButton.click();
-    
-    // Wait a moment for the state to change
-    await page.waitForTimeout(500);
-    
-    // Check that button text changes (indicating state change) - be more flexible with the text
+
+    // Check that button text changes (indicating state change)
+    // expect will automatically wait and retry until the pause button appears
     const pauseButton = page.locator('button').filter({ hasText: /⏸|Pause/ });
     await expect(pauseButton).toBeVisible();
   });
@@ -169,28 +163,27 @@ test.describe('Threat Model Page', () => {
 
 test.describe('Threat Model Page - Environment Detection', () => {
   test('should detect localhost environment and set correct back button URL', async ({ page }) => {
+    // Set up console listener BEFORE navigation
+    let consoleLogText = null;
+    page.on('console', msg => {
+      if (msg.type() === 'log' && msg.text().includes('Threat Model back button URL set to:')) {
+        consoleLogText = msg.text();
+      }
+    });
+
     // Navigate to the threat model page
     await page.goto('/threat-model');
 
     // Wait for JavaScript to execute
     await page.waitForLoadState('networkidle');
 
-    // Check console logs for environment detection
-    const consoleLogs = [];
-    page.on('console', msg => {
-      if (msg.type() === 'log' && msg.text().includes('Threat Model back button URL set to:')) {
-        consoleLogs.push(msg.text());
-      }
-    });
-
     // Find the back button and check its href
     const backButton = page.getByRole('link', { name: '← Back to Labs' });
     await expect(backButton).toHaveAttribute('href', 'http://localhost:3000');
 
-    // Verify console log was generated (optional - may not always work in test environment)
-    await page.waitForTimeout(1000); // Give time for console log
-    if (consoleLogs.length > 0) {
-      expect(consoleLogs[0]).toContain('http://localhost:3000');
+    // Verify console log was generated (if captured - may not work in all test environments)
+    if (consoleLogText) {
+      expect(consoleLogText).toContain('http://localhost:3000');
     } else {
       // If console log doesn't work in test environment, just verify the href is correct
       console.log('Console log not captured, but href is correct');

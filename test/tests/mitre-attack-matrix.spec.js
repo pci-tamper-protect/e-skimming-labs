@@ -296,28 +296,27 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
 
 test.describe('MITRE ATT&CK Matrix - Environment Detection', () => {
   test('should detect localhost environment and set correct back button URL', async ({ page }) => {
-    // Navigate to the MITRE ATT&CK page
-    await page.goto('/mitre-attack');
-    
-    // Wait for JavaScript to execute
-    await page.waitForLoadState('networkidle');
-    
-    // Check console logs for environment detection
-    const consoleLogs = [];
+    // Set up console listener BEFORE navigation
+    let consoleLogText = null;
     page.on('console', msg => {
       if (msg.type() === 'log' && msg.text().includes('Back button URL set to:')) {
-        consoleLogs.push(msg.text());
+        consoleLogText = msg.text();
       }
     });
-    
+
+    // Navigate to the MITRE ATT&CK page
+    await page.goto('/mitre-attack');
+
+    // Wait for JavaScript to execute
+    await page.waitForLoadState('networkidle');
+
     // Find the back button and check its href
     const backButton = page.getByRole('link', { name: '← Back to Labs' });
     await expect(backButton).toHaveAttribute('href', 'http://localhost:3000');
 
     // Verify console log was generated (if captured - may not work in all test environments)
-    await page.waitForTimeout(1000); // Give time for console log
-    if (consoleLogs.length > 0) {
-      expect(consoleLogs[0]).toContain('http://localhost:3000');
+    if (consoleLogText) {
+      expect(consoleLogText).toContain('http://localhost:3000');
     } else {
       // If console log doesn't work in test environment, just verify the href is correct
       console.log('Console log not captured, but href is verified correct');
