@@ -12,11 +12,11 @@ services:
       dockerfile: deploy/shared-components/home-index-service/Dockerfile
     container_name: e-skimming-labs-home-index
     ports:
-      - "8080:8080"
+      - "3000:8080"  # Changed: Avoid 8080 (common proxy port)
     environment:
       - PORT=8080
       - ENVIRONMENT=local
-      - DOMAIN=localhost:8080
+      - DOMAIN=localhost:3000
       - LABS_DOMAIN=localhost:9001
       - LAB1_DOMAIN=localhost:9001
       - LAB2_DOMAIN=localhost:9003
@@ -41,7 +41,7 @@ services:
       dockerfile: Dockerfile
     container_name: e-skimming-labs-home-seo
     ports:
-      - "8081:8080"
+      - "3001:8080"  # Changed: Avoid common ports
     environment:
       - PORT=8080
       - PROJECT_ID=labs-home-prd
@@ -64,7 +64,7 @@ services:
       dockerfile: Dockerfile
     container_name: e-skimming-labs-analytics
     ports:
-      - "8082:8080"
+      - "3002:8080"  # Changed: Avoid common ports
     environment:
       - PORT=8080
       - PROJECT_ID=labs-prd

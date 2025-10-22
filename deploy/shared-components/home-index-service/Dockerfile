@@ -13,7 +13,8 @@ RUN go mod download
 # Copy source code from the home-index-service directory
 COPY deploy/shared-components/home-index-service/ .
 
-# Build the application
+# Generate go.sum and build the application
+RUN go mod tidy
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 
 # Final stage
@@ -30,6 +31,9 @@ COPY --from=builder /app/main .
 
 # Copy the docs directory for MITRE ATT&CK and threat model pages
 COPY docs ./docs
+
+# Copy catalog info for service metadata
+COPY catalog-info.yaml ./catalog-info.yaml
 
 # Create non-root user
 RUN adduser -D -s /bin/sh appuser

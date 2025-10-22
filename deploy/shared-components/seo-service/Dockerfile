@@ -1,9 +1,10 @@
 FROM golang:1.24.3-alpine AS builder
 
 WORKDIR /app
-COPY . .
+COPY go.mod ./
+RUN go mod download
 
-RUN go mod init seo-service
+COPY . .
 RUN go mod tidy
 RUN CGO_ENABLED=0 GOOS=linux go build -o seo-service main.go
 

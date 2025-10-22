@@ -9,7 +9,22 @@
       "Read(//Users/kestenbroughton/projectos/**)",
       "WebSearch",
       "WebFetch(domain:www.malwarebytes.com)",
-      "WebFetch(domain:threatpost.com)"
+      "WebFetch(domain:threatpost.com)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(lsof:*)",
+      "Bash(python3:*)",
+      "Bash(cat:*)",
+      "Bash(ln:*)",
+      "Bash(xargs:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker-compose ps:*)",
+      "Bash(npm test:*)",
+      "Bash(docker-compose restart:*)",
+      "Bash(docker-compose build:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh api:*)"
     ],
     "deny": [],
     "ask": []

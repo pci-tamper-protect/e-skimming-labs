@@ -229,6 +229,14 @@ Modern skimmers employ sophisticated evasion:
 
 ## 🚀 Getting Started
 
+### Development Workflow
+
+This repository uses PR-based deployment with branch protection:
+- Create feature branches for changes
+- Submit PRs to main branch for review
+- GitHub Actions deploys to production on PR creation
+- Manual workflow dispatch available for staging deployment
+
 ### Prerequisites
 
 - Docker & Docker Compose
@@ -247,7 +255,7 @@ cd e-skimming-labs
 cd labs/01-basic-magecart
 docker-compose up
 
-# Visit http://localhost:8080
+# Visit http://localhost:3000
 # Follow the README.md in the lab folder
 ```
 
@@ -349,9 +357,25 @@ Be aware of laws in your jurisdiction:
 - **EU**: Directive on attacks against information systems
 - **Payment Card Industry**: PCI DSS compliance requirements
 
+## 📚 Documentation
+
+Comprehensive documentation is available in the `docs/` directory:
+
+- **[Setup Guide](docs/SETUP.md)** - Complete installation and configuration instructions
+- **[Architecture](docs/ARCHITECTURE.md)** - Technical architecture, plugin system, and deployment
+- **[Research](docs/RESEARCH.md)** - Attack research and real-world case studies
+- **[Contributing](docs/CONTRIBUTING.md)** - How to contribute to the project
+
+### Quick Links
+
+- 🏠 **Landing Page:** http://localhost:3000
+- 📊 **MITRE ATT&CK Matrix:** http://localhost:3000/mitre-attack
+- 🕸️ **Threat Model:** http://localhost:3000/threat-model
+- 🔬 **Interactive Labs:** Ports 9001, 9003, 9005
+
 ## 🤝 Contributing
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
+We welcome contributions! Please see [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for:
 - New lab ideas
 - Detection techniques
 - Defense strategies
