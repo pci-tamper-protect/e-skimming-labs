@@ -5,7 +5,7 @@ COPY vulnerable-site/ /usr/share/nginx/html/
 
 # Create default nginx config for banking site
 RUN echo 'server { \
-    listen 80; \
+    listen 8080; \
     server_name localhost; \
     root /usr/share/nginx/html; \
     index banking.html; \
@@ -20,7 +20,7 @@ RUN echo 'server { \
     } \
 }' > /etc/nginx/conf.d/default.conf
 
-# Expose port 80
-EXPOSE 80
+# Expose port 8080
+EXPOSE 8080
 
 CMD ["nginx", "-g", "daemon off;"]

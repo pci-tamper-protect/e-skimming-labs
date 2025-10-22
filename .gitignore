@@ -39,3 +39,4 @@ npm-debug.log*
 **/tfplan
 **/*.tfvars
 **/*.tfvars.json
+private-data/

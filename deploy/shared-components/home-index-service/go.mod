@@ -3,5 +3,6 @@ module home-index-service
 go 1.21
 
 require (
-	// No external dependencies required for this simple service
+	gopkg.in/yaml.v3 v3.0.1
 )
+

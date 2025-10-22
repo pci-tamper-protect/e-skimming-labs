@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 type Lab struct {
@@ -29,12 +31,64 @@ type HomePageData struct {
 	Labs           []Lab
 	MITREURL       string
 	ThreatModelURL string
+	CatalogInfo    *CatalogInfo
+}
+
+// CatalogInfo represents the catalog metadata
+type CatalogInfo struct {
+	PTP struct {
+		Service struct {
+			Name        string `yaml:"name"`
+			Version     string `yaml:"version"`
+			Environment string `yaml:"environment"`
+		} `yaml:"service"`
+		Git struct {
+			CommitSHAShort string `yaml:"commit_sha_short"`
+			CommitAuthor   string `yaml:"commit_author"`
+			Branch         string `yaml:"branch"`
+			CommitMessage  string `yaml:"commit_message"`
+		} `yaml:"git"`
+	} `yaml:"ptp"`
+}
+
+// loadCatalogInfo loads catalog information from catalog-info.yaml
+func loadCatalogInfo() *CatalogInfo {
+	data, err := os.ReadFile("/app/catalog-info.yaml")
+	if err != nil {
+		log.Printf("⚠️ Could not load catalog info: %v", err)
+		return nil
+	}
+
+	var catalogInfo CatalogInfo
+	if err := yaml.Unmarshal(data, &catalogInfo); err != nil {
+		log.Printf("⚠️ Could not parse catalog info: %v", err)
+		return nil
+	}
+
+	return &catalogInfo
 }
 
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
+	}
+
+	// Load catalog information
+	catalogInfo := loadCatalogInfo()
+	if catalogInfo != nil {
+		log.Printf("🚀 Starting %s v%s",
+			catalogInfo.PTP.Service.Name,
+			catalogInfo.PTP.Service.Version)
+		log.Printf("🔗 Git commit: %s (%s) by %s",
+			catalogInfo.PTP.Git.CommitSHAShort,
+			catalogInfo.PTP.Git.Branch,
+			catalogInfo.PTP.Git.CommitAuthor)
+		if catalogInfo.PTP.Git.CommitMessage != "" {
+			log.Printf("📝 Commit message: %s", catalogInfo.PTP.Git.CommitMessage)
+		}
+	} else {
+		log.Printf("🚀 Starting E-Skimming Labs (catalog info not available)")
 	}
 
 	// Get environment variables

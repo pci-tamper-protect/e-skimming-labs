@@ -387,12 +387,12 @@
 </head>
 <body>
     <div id="header">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <h1>E-Skimming Interactive Threat Model</h1>
-                <div class="subtitle">Visualizing attack techniques, defenses, and detection strategies based on MITRE ATT&CK framework</div>
+        <div style="position: relative; z-index: 1000;">
+            <h1>E-Skimming Interactive Threat Model</h1>
+            <div style="display: flex; align-items: center; gap: 20px; margin-top: 10px;">
+                <a href="#" id="back-btn" style="background: #51cf66; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; transition: all 0.3s ease; flex-shrink: 0; position: relative; z-index: 1001; pointer-events: auto;">← Back to Labs</a>
+                <div class="subtitle" style="flex: 1;">Visualizing attack techniques, defenses, and detection strategies based on MITRE ATT&CK framework</div>
             </div>
-            <a href="http://localhost:8080" style="background: #51cf66; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; transition: all 0.3s ease;">← Back to Labs</a>
         </div>
     </div>
 
@@ -505,19 +505,27 @@
                 { id: 'stolen-creds', label: 'Stolen\nCredentials', type: 'technique', description: 'T1078: Compromised admin accounts without MFA', mitre: 'T1078', examples: 'British Airways (2018), Newegg (2018)', radius: 22 },
                 { id: 'exploit-vuln', label: 'Exploit\nVulnerability', type: 'technique', description: 'T1190: CosmicSting CVE-2024-34102, Magento exploits', mitre: 'T1190', examples: '11,000+ sites via CosmicSting', radius: 22 },
                 { id: 'supply-chain', label: 'Supply Chain\nCompromise', type: 'technique', description: 'T1195: Third-party scripts, CDN compromise', mitre: 'T1195', examples: 'Ticketmaster (Inbenta chatbot), Forbes', radius: 22 },
+                { id: 'gtm-hijack', label: 'GTM\nHijacking', type: 'technique', description: 'CUSTOM: Compromise GTM containers', mitre: 'CUSTOM', examples: '2025: 316 stores, 88K victims, GTM-MLHK2N68', radius: 22 },
+                { id: 'npm-attack', label: 'NPM\nSupply Chain', type: 'technique', description: 'T1195.002: NPM package compromise', mitre: 'T1195.002', examples: 'Sept 2025: chalk, debug (2B downloads)', radius: 22 },
                 { id: 'javascript-exec', label: 'JavaScript\nExecution', type: 'technique', description: 'T1059.007: Malicious JS in victim browser', mitre: 'T1059.007', examples: 'All e-skimming attacks', radius: 22 },
                 { id: 'file-modification', label: 'File\nModification', type: 'technique', description: 'T1554: Append skimmer to checkout.js', mitre: 'T1554', examples: 'British Airways (Modernizr), Newegg', radius: 22 },
                 { id: 'extension-hijack', label: 'Browser\nExtension', type: 'technique', description: 'T1176: Malicious or compromised extensions', mitre: 'T1176', examples: 'DataSpii, Great Suspender', radius: 22 },
+                { id: 'gtm-persist', label: 'GTM\nContainer', type: 'technique', description: 'CUSTOM: GTM persistence mechanism', mitre: 'CUSTOM', examples: '3.5 months avg persistence', radius: 22 },
                 { id: 'obfuscation', label: 'Code\nObfuscation', type: 'technique', description: 'T1027: Base64, multiple encoding layers', mitre: 'T1027', examples: 'Kritec, Gateway skimmer', radius: 22 },
+                { id: 'steganography', label: 'Steganography', type: 'technique', description: 'T1027.003: EXIF, CSS, PNG, Favicon hiding', mitre: 'T1027.003', examples: 'Segway 2022 (600K visitors)', radius: 22 },
                 { id: 'anti-debug', label: 'Anti-Debug', type: 'technique', description: 'T1622: Firebug/DevTools detection', mitre: 'T1622', examples: 'Gateway skimmer, Kritec', radius: 22 },
                 { id: 'geofencing', label: 'Geofencing', type: 'technique', description: 'T1480: Execute only in target countries', mitre: 'T1480', examples: 'Advanced Magecart variants', radius: 22 },
                 { id: 'masquerading', label: 'Masquerading', type: 'technique', description: 'T1036: Disguise as GTM, analytics', mitre: 'T1036', examples: 'GTM-disguised skimmers', radius: 22 },
+                { id: 'csp-bypass', label: 'CSP\nBypass', type: 'technique', description: 'CUSTOM: Exfil via Google Analytics', mitre: 'CUSTOM', examples: 'March 2024 Magecart campaign', radius: 22 },
+                { id: 'webgl-evasion', label: 'WebGL\nVM Detection', type: 'technique', description: 'T1497.001: Detect analysis VMs', mitre: 'T1497.001', examples: 'Advanced Magecart variants', radius: 22 },
                 { id: 'form-intercept', label: 'Form\nInterception', type: 'technique', description: 'T1056.002: Capture payment form submissions', mitre: 'T1056.002', examples: 'Lab 01 - Basic Magecart', radius: 22 },
                 { id: 'keylogging', label: 'Keylogging', type: 'technique', description: 'T1056.001: Real-time keystroke capture', mitre: 'T1056.001', examples: 'Lab 02 - DOM monitoring', radius: 22 },
                 { id: 'dom-manipulation', label: 'DOM\nManipulation', type: 'technique', description: 'MutationObserver, Shadow DOM abuse', mitre: 'Custom', examples: 'Lab 02 - DOM skimming', radius: 22 },
+                { id: 'payment-api-abuse', label: 'Payment API\nAbuse', type: 'technique', description: 'CUSTOM: Payment Request API hooking', mitre: 'CUSTOM', examples: '2025 Stripe API campaign', radius: 22 },
                 { id: 'localstorage-scrape', label: 'LocalStorage\nScraping', type: 'technique', description: 'T1005: Scrape cached payment data', mitre: 'T1005', examples: 'Multi-form Magecart', radius: 22 },
                 { id: 'http-post', label: 'HTTP POST\nExfil', type: 'technique', description: 'T1041: POST to C2 server', mitre: 'T1041', examples: 'Most common method', radius: 22 },
                 { id: 'websocket', label: 'WebSocket\nExfil', type: 'technique', description: 'T1041: Real-time WebSocket channel', mitre: 'T1041', examples: 'Kritec skimmer', radius: 22 },
+                { id: 'image-exfil', label: 'Image\nExfiltration', type: 'technique', description: 'CUSTOM: Data in image pixels', mitre: 'CUSTOM', examples: 'Microsoft 2022 research', radius: 22 },
 
                 // Impact
                 { id: 'data-theft', label: 'Data\nTheft', type: 'impact', description: '380,000 cards (British Airways), 40,000 (Ticketmaster)', radius: 26 },
@@ -532,6 +540,9 @@
                 { id: 'waf', label: 'Web Application\nFirewall', type: 'defense', description: 'Block exploit attempts, XXE attacks', radius: 24 },
                 { id: 'network-monitoring', label: 'Network\nMonitoring', type: 'defense', description: 'Detect suspicious outbound traffic', radius: 24 },
                 { id: 'code-review', label: 'Code\nReview', type: 'defense', description: 'Regular security audits of production code', radius: 24 },
+                { id: 'gtm-audit', label: 'GTM\nAuditing', type: 'defense', description: 'GTM container monitoring, Base64 detection', radius: 24 },
+                { id: 'npm-security', label: 'NPM\nSecurity', type: 'defense', description: 'Package verification, Dependabot, Snyk', radius: 24 },
+                { id: 'stego-scanning', label: 'Stego\nScanning', type: 'defense', description: 'EXIF/CSS/image anomaly detection', radius: 24 },
 
                 // Detection
                 { id: 'static-analysis', label: 'Static\nAnalysis', type: 'detection', description: 'Semgrep rules for skimmer patterns', radius: 24 },
@@ -546,33 +557,46 @@
                 { source: 'initial-access', target: 'stolen-creds', type: 'attack-flow' },
                 { source: 'initial-access', target: 'exploit-vuln', type: 'attack-flow' },
                 { source: 'initial-access', target: 'supply-chain', type: 'attack-flow' },
+                { source: 'initial-access', target: 'gtm-hijack', type: 'attack-flow' },
+                { source: 'initial-access', target: 'npm-attack', type: 'attack-flow' },
 
                 { source: 'stolen-creds', target: 'execution', type: 'attack-flow' },
                 { source: 'exploit-vuln', target: 'execution', type: 'attack-flow' },
                 { source: 'supply-chain', target: 'execution', type: 'attack-flow' },
+                { source: 'gtm-hijack', target: 'execution', type: 'attack-flow' },
+                { source: 'npm-attack', target: 'execution', type: 'attack-flow' },
 
                 { source: 'execution', target: 'javascript-exec', type: 'attack-flow' },
                 { source: 'javascript-exec', target: 'persistence', type: 'attack-flow' },
 
                 { source: 'persistence', target: 'file-modification', type: 'attack-flow' },
                 { source: 'persistence', target: 'extension-hijack', type: 'attack-flow' },
+                { source: 'persistence', target: 'gtm-persist', type: 'attack-flow' },
 
                 { source: 'file-modification', target: 'defense-evasion', type: 'attack-flow' },
                 { source: 'extension-hijack', target: 'defense-evasion', type: 'attack-flow' },
+                { source: 'gtm-persist', target: 'defense-evasion', type: 'attack-flow' },
 
                 { source: 'defense-evasion', target: 'obfuscation', type: 'attack-flow' },
+                { source: 'defense-evasion', target: 'steganography', type: 'attack-flow' },
                 { source: 'defense-evasion', target: 'anti-debug', type: 'attack-flow' },
                 { source: 'defense-evasion', target: 'geofencing', type: 'attack-flow' },
                 { source: 'defense-evasion', target: 'masquerading', type: 'attack-flow' },
+                { source: 'defense-evasion', target: 'csp-bypass', type: 'attack-flow' },
+                { source: 'defense-evasion', target: 'webgl-evasion', type: 'attack-flow' },
 
                 { source: 'obfuscation', target: 'collection', type: 'attack-flow' },
+                { source: 'steganography', target: 'collection', type: 'attack-flow' },
                 { source: 'anti-debug', target: 'collection', type: 'attack-flow' },
                 { source: 'geofencing', target: 'collection', type: 'attack-flow' },
                 { source: 'masquerading', target: 'collection', type: 'attack-flow' },
+                { source: 'csp-bypass', target: 'collection', type: 'attack-flow' },
+                { source: 'webgl-evasion', target: 'collection', type: 'attack-flow' },
 
                 { source: 'collection', target: 'form-intercept', type: 'attack-flow' },
                 { source: 'collection', target: 'keylogging', type: 'attack-flow' },
                 { source: 'collection', target: 'dom-manipulation', type: 'attack-flow' },
+                { source: 'collection', target: 'payment-api-abuse', type: 'attack-flow' },
                 { source: 'collection', target: 'localstorage-scrape', type: 'attack-flow' },
 
                 { source: 'form-intercept', target: 'payment-form', type: 'attack-flow' },
@@ -585,23 +609,31 @@
                 { source: 'customer-data', target: 'exfiltration', type: 'attack-flow' },
                 { source: 'exfiltration', target: 'http-post', type: 'attack-flow' },
                 { source: 'exfiltration', target: 'websocket', type: 'attack-flow' },
+                { source: 'exfiltration', target: 'image-exfil', type: 'attack-flow' },
 
                 { source: 'http-post', target: 'data-theft', type: 'attack-flow' },
                 { source: 'websocket', target: 'data-theft', type: 'attack-flow' },
+                { source: 'image-exfil', target: 'data-theft', type: 'attack-flow' },
                 { source: 'data-theft', target: 'financial-fraud', type: 'attack-flow' },
                 { source: 'data-theft', target: 'regulatory-fines', type: 'attack-flow' },
 
                 // Defense Links
                 { source: 'mfa', target: 'stolen-creds', type: 'defense' },
+                { source: 'mfa', target: 'gtm-hijack', type: 'defense' },
                 { source: 'waf', target: 'exploit-vuln', type: 'defense' },
                 { source: 'sri', target: 'supply-chain', type: 'defense' },
+                { source: 'npm-security', target: 'npm-attack', type: 'defense' },
+                { source: 'gtm-audit', target: 'gtm-hijack', type: 'defense' },
+                { source: 'gtm-audit', target: 'gtm-persist', type: 'defense' },
                 { source: 'csp', target: 'javascript-exec', type: 'defense' },
                 { source: 'fim', target: 'file-modification', type: 'defense' },
                 { source: 'csp', target: 'extension-hijack', type: 'defense' },
                 { source: 'static-analysis', target: 'obfuscation', type: 'defense' },
+                { source: 'stego-scanning', target: 'steganography', type: 'defense' },
                 { source: 'code-review', target: 'file-modification', type: 'defense' },
                 { source: 'network-monitoring', target: 'http-post', type: 'defense' },
                 { source: 'network-monitoring', target: 'websocket', type: 'defense' },
+                { source: 'network-monitoring', target: 'image-exfil', type: 'defense' },
 
                 // Detection Links
                 { source: 'static-analysis', target: 'obfuscation', type: 'detection' },
@@ -629,6 +661,19 @@
                 nodes: ['ecommerce-site', 'initial-access', 'supply-chain', 'execution', 'javascript-exec',
                        'defense-evasion', 'masquerading', 'collection', 'form-intercept', 'payment-form',
                        'customer-data', 'exfiltration', 'http-post', 'data-theft', 'financial-fraud']
+            },
+            'gtm-2025': {
+                name: 'GTM Hijacking Campaign (2025)',
+                nodes: ['ecommerce-site', 'initial-access', 'gtm-hijack', 'execution', 'javascript-exec',
+                       'persistence', 'gtm-persist', 'defense-evasion', 'obfuscation', 'masquerading',
+                       'collection', 'form-intercept', 'payment-form', 'customer-data', 'exfiltration',
+                       'http-post', 'data-theft', 'financial-fraud', 'regulatory-fines']
+            },
+            'npm-2025': {
+                name: 'NPM Supply Chain Attack (September 2025)',
+                nodes: ['ecommerce-site', 'initial-access', 'npm-attack', 'execution', 'javascript-exec',
+                       'defense-evasion', 'obfuscation', 'collection', 'payment-api-abuse', 'payment-form',
+                       'customer-data', 'exfiltration', 'http-post', 'data-theft']
             },
             'extension': {
                 name: 'Browser Extension Hijacking',
@@ -1072,6 +1117,198 @@
             simulation.force('center', d3.forceCenter(newWidth / 2, newHeight / 2));
             simulation.alpha(0.3).restart();
         });
+        // Environment-aware back button URL
+        function setBackButtonUrl() {
+            const backBtn = document.getElementById('back-btn');
+            if (!backBtn) {
+                console.warn('Back button not found');
+                return;
+            }
+            
+            const hostname = window.location.hostname;
+            
+            let backUrl;
+            if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                backUrl = 'http://localhost:3000';
+            } else if (hostname === 'labs.pcioasis.com') {
+                backUrl = 'https://labs.pcioasis.com';
+            } else if (hostname === 'labs.stg.pcioasis.com') {
+                backUrl = 'https://labs.stg.pcioasis.com';
+            } else {
+                // Fallback for other environments
+                backUrl = window.location.protocol + '//' + hostname + (window.location.port ? ':' + window.location.port : '');
+            }
+            
+            backBtn.href = backUrl;
+            console.log('Threat Model back button URL set to:', backUrl);
+            
+            // Add robust click handler to ensure navigation works
+            backBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Back button clicked, navigating to:', backUrl);
+                window.location.href = backUrl;
+            });
+        }
+
+        // Set back button URL on page load
+        setBackButtonUrl();
+
+        /**
+         * Private Data Integration for Interactive Threat Model
+         *
+         * This integration allows private threat model data (nodes, links, scenarios)
+         * to be dynamically loaded and merged into the public visualization.
+         *
+         * Default behavior (no private repo):
+         * - Shows only public nodes and links
+         * - No errors or warnings
+         * - Full functionality preserved
+         *
+         * With private repo (cloned in parallel):
+         * - Automatically loads threat-model-data.json
+         * - Adds private nodes to graph
+         * - Adds private links between nodes
+         * - Adds private attack scenarios
+         */
+
+        // Listen for private data loaded event
+        window.addEventListener('privateDataLoaded', (event) => {
+            console.log('[Threat Model] Private data loaded, enriching graph...');
+
+            const { threatNodes, threatLinks } = event.detail;
+            const privateScenarios = PrivateDataLoader.getPrivateScenarios();
+
+            if ((!threatNodes || threatNodes.length === 0) &&
+                (!threatLinks || threatLinks.length === 0) &&
+                (!privateScenarios || Object.keys(privateScenarios).length === 0)) {
+                console.log('[Threat Model] No private threat model data to add');
+                return;
+            }
+
+            console.log(`[Threat Model] Adding ${threatNodes.length} private node(s), ${threatLinks.length} private link(s)`);
+
+            // Add private nodes to graph data
+            if (threatNodes && threatNodes.length > 0) {
+                graphData.nodes.push(...threatNodes);
+            }
+
+            // Add private links to graph data
+            if (threatLinks && threatLinks.length > 0) {
+                graphData.links.push(...threatLinks);
+            }
+
+            // Add private scenarios to scenario menu
+            if (privateScenarios && Object.keys(privateScenarios).length > 0) {
+                Object.assign(scenarios, privateScenarios);
+
+                // Update scenario selector if it exists
+                const scenarioSelect = document.getElementById('scenario-select');
+                if (scenarioSelect) {
+                    Object.entries(privateScenarios).forEach(([key, scenario]) => {
+                        const option = document.createElement('option');
+                        option.value = key;
+                        option.textContent = `${scenario.name} [Private]`;
+                        scenarioSelect.appendChild(option);
+                    });
+                }
+            }
+
+            // Update D3 force simulation with new data
+            simulation.nodes(graphData.nodes);
+            simulation.force('link').links(graphData.links);
+
+            // Restart simulation to position new nodes
+            simulation.alpha(0.5).restart();
+
+            // Update DOM elements
+            updateVisualization();
+
+            console.log('[Threat Model] Private data integration complete');
+        });
+
+        /**
+         * Update D3 visualization with new nodes and links
+         */
+        function updateVisualization() {
+            // Re-bind node data
+            const nodeElements = svg.selectAll('.node')
+                .data(graphData.nodes, d => d.id);
+
+            // Enter new nodes
+            const nodeEnter = nodeElements.enter()
+                .append('g')
+                .attr('class', 'node')
+                .attr('data-private', d => d.private ? 'true' : 'false')
+                .call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended));
+
+            // Add circles for new nodes
+            nodeEnter.append('circle')
+                .attr('r', d => d.radius || 20)
+                .attr('fill', d => getNodeColor(d.type))
+                .attr('stroke', '#fff')
+                .attr('stroke-width', d => d.private ? 3 : 2)
+                .attr('stroke-dasharray', d => d.private ? '5,5' : 'none');
+
+            // Add labels for new nodes
+            nodeEnter.append('text')
+                .attr('text-anchor', 'middle')
+                .attr('dy', '0.3em')
+                .style('font-size', '11px')
+                .style('fill', '#fff')
+                .style('pointer-events', 'none')
+                .text(d => d.label);
+
+            // Re-bind link data
+            const linkElements = svg.selectAll('.link')
+                .data(graphData.links, d => `${d.source.id || d.source}-${d.target.id || d.target}`);
+
+            // Enter new links
+            linkElements.enter()
+                .insert('line', '.node')
+                .attr('class', 'link')
+                .attr('data-private', d => d.private ? 'true' : 'false')
+                .attr('stroke', d => getLinkColor(d.type))
+                .attr('stroke-width', 2)
+                .attr('stroke-dasharray', d => d.private ? '8,4' : getLinkDasharray(d.type));
+
+            // Update tick function to position new elements
+            simulation.on('tick', () => {
+                svg.selectAll('.link')
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y);
+
+                svg.selectAll('.node')
+                    .attr('transform', d => `translate(${d.x},${d.y})`);
+            });
+        }
+
+        // Initialize private data loader
+        // This will attempt to load from ../private-e-skimming-attacks/threat-model-data.json
+        // If the repo doesn't exist, it silently continues without errors
+        if (typeof PrivateDataLoader !== 'undefined') {
+            PrivateDataLoader.init({
+                localMode: true  // Use local JSON files during development
+            }).then(success => {
+                if (success) {
+                    console.log('[Threat Model] Private data loader initialized successfully');
+                } else {
+                    console.log('[Threat Model] Private data not available (this is normal if you don\'t have the private repo)');
+                }
+            }).catch(error => {
+                console.log('[Threat Model] Private data loader not available:', error.message);
+            });
+        } else {
+            console.log('[Threat Model] Running in public-only mode (private-data-loader.js not found)');
+        }
     </script>
+
+    <!-- Private Data Loader Plugin -->
+    <script src="private-data-loader.js"></script>
 </body>
 </html>
