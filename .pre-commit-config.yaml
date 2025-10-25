@@ -60,3 +60,4 @@ repos:
         language: system
         files: \.go$
         args: [./...]
+

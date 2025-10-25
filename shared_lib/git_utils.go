@@ -216,3 +216,4 @@ func getGitInfoForTemplate() map[string]interface{} {
 	}
 }
 
+
