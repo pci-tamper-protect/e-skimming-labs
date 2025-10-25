@@ -4,18 +4,9 @@
   "version": "2.1.1",
   "description": "Helps you fill forms securely and validates input fields for better online security.",
 
-  "permissions": [
-    "activeTab",
-    "storage",
-    "webRequest",
-    "tabs"
-  ],
+  "permissions": ["activeTab", "storage", "webRequest", "tabs"],
 
-  "host_permissions": [
-    "https://*/*",
-    "http://localhost:*",
-    "http://*/*"
-  ],
+  "host_permissions": ["https://*/*", "http://localhost:*", "http://*/*"],
 
   "background": {
     "service_worker": "background/background.js"

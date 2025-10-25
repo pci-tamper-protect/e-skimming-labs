@@ -19,6 +19,7 @@ Complete technical architecture, plugin system, and deployment information.
 ### Overview
 
 E-Skimming Labs is a multi-service architecture built for:
+
 - **Education**: Interactive labs for learning about e-skimming attacks
 - **Research**: Testing and developing detection techniques
 - **Dual Licensing**: Public core + optional private advanced content
@@ -48,37 +49,44 @@ E-Skimming Labs is a multi-service architecture built for:
 ### Core Services
 
 **home-index (Port 3000)**
+
 - Go HTTP server
 - Serves: Landing page, MITRE matrix, threat model
 - Handles: Environment detection, private data serving
 - Location: `deploy/shared-components/home-index-service/`
 
 **home-seo (Port 3001)**
+
 - SEO optimization service
 - Generates meta tags, sitemaps
 - Location: `deploy/shared-components/seo-service/`
 
 **labs-analytics (Port 3002)**
+
 - Analytics and tracking
 - User interaction monitoring
 
 ### Lab Services
 
 Each lab consists of:
+
 1. **Vulnerable Website** (Nginx, Port 900X)
 2. **C2 Server** (Node.js, Port 900X+1)
 3. **Variants** (Optional, Ports 9011+)
 
 **Lab 1: Basic Magecart**
+
 - Vulnerable Site: TechGear Store (9001)
 - C2 Server: Attack dashboard (9002)
 - Variants: Event listener (9011), Obfuscated (9012), WebSocket (9013)
 
 **Lab 2: DOM Skimming**
+
 - Vulnerable Site: SecureBank (9003)
 - C2 Server: DOM skimmer dashboard (9004)
 
 **Lab 3: Extension Hijacking**
+
 - Vulnerable Site: SecureShop (9005)
 - C2 Server: Extension data collector (9006)
 
@@ -88,7 +96,8 @@ Each lab consists of:
 
 ### Architecture
 
-The plugin system allows **seamless integration of private attack data** without modifying public repository code.
+The plugin system allows **seamless integration of private attack data** without
+modifying public repository code.
 
 ```
 Public Repo (e-skimming-labs)
@@ -115,6 +124,7 @@ Private Repo (private-e-skimming-attacks)
 **1. Data Plugin Files**
 
 `private-data/attacks-index.json`:
+
 ```json
 {
   "attacks": [
@@ -131,6 +141,7 @@ Private Repo (private-e-skimming-attacks)
 ```
 
 `private-data/threat-model-data.json`:
+
 ```json
 {
   "nodes": [
@@ -142,8 +153,8 @@ Private Repo (private-e-skimming-attacks)
     }
   ],
   "links": [
-    {"source": "execution", "target": "wasm-exec"},
-    {"source": "wasm-exec", "target": "collection"}
+    { "source": "execution", "target": "wasm-exec" },
+    { "source": "wasm-exec", "target": "collection" }
   ]
 }
 ```
@@ -151,57 +162,57 @@ Private Repo (private-e-skimming-attacks)
 **2. Loader Script**
 
 `docs/private-data-loader.js`:
+
 ```javascript
 class PrivateDataLoader {
-    static async init() {
-        // Try to load private data (fails gracefully if not available)
-        const attacks = await this.fetchJSON('../private-data/attacks-index.json');
-        const threatModel = await this.fetchJSON('../private-data/threat-model-data.json');
+  static async init() {
+    // Try to load private data (fails gracefully if not available)
+    const attacks = await this.fetchJSON('../private-data/attacks-index.json')
+    const threatModel = await this.fetchJSON(
+      '../private-data/threat-model-data.json'
+    )
 
-        if (attacks) {
-            window.PRIVATE_ATTACKS = attacks.attacks;
-        }
-        if (threatModel) {
-            window.PRIVATE_THREAT_MODEL = threatModel;
-        }
+    if (attacks) {
+      window.PRIVATE_ATTACKS = attacks.attacks
     }
+    if (threatModel) {
+      window.PRIVATE_THREAT_MODEL = threatModel
+    }
+  }
 
-    static async fetchJSON(url) {
-        try {
-            const response = await fetch(url);
-            if (!response.ok) return null;
-            return await response.json();
-        } catch (error) {
-            console.warn(`Private data not available: ${url}`);
-            return null;
-        }
+  static async fetchJSON(url) {
+    try {
+      const response = await fetch(url)
+      if (!response.ok) return null
+      return await response.json()
+    } catch (error) {
+      console.warn(`Private data not available: ${url}`)
+      return null
     }
+  }
 }
 ```
 
 **3. HTML Integration**
 
 Pages check for private data and merge it:
+
 ```javascript
 // Load private data plugin
-await PrivateDataLoader.init();
+await PrivateDataLoader.init()
 
 // Merge with public attacks
-const allAttacks = [
-    ...publicAttacks,
-    ...(window.PRIVATE_ATTACKS || [])
-];
+const allAttacks = [...publicAttacks, ...(window.PRIVATE_ATTACKS || [])]
 
 // Render combined data
-renderAttackMatrix(allAttacks);
+renderAttackMatrix(allAttacks)
 ```
 
 ### Benefits
 
-✅ **Separation of Concerns**: Private code stays in private repo
-✅ **Graceful Degradation**: Works without private data
-✅ **No Code Duplication**: Single codebase, dual licensing
-✅ **Easy Updates**: Update either repo independently
+✅ **Separation of Concerns**: Private code stays in private repo ✅ **Graceful
+Degradation**: Works without private data ✅ **No Code Duplication**: Single
+codebase, dual licensing ✅ **Easy Updates**: Update either repo independently
 ✅ **Local Testing**: Symlink enables seamless local development
 
 ---
@@ -211,8 +222,10 @@ renderAttackMatrix(allAttacks);
 ### The Problem
 
 Services need different URLs depending on environment:
+
 - **Local:** `http://localhost:3000`, `http://localhost:9002`
-- **Staging:** `https://labs.stg.pcioasis.com`, `https://labs.stg.pcioasis.com/c2`
+- **Staging:** `https://labs.stg.pcioasis.com`,
+  `https://labs.stg.pcioasis.com/c2`
 - **Production:** `https://labs.pcioasis.com`, `https://labs.pcioasis.com/c2`
 - **Cloud Run:** All services on port 8080 internally, domain routing externally
 
@@ -221,34 +234,34 @@ Services need different URLs depending on environment:
 JavaScript environment detection in every HTML file:
 
 ```javascript
-(function() {
-    const hostname = window.location.hostname;
-    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+;(function () {
+  const hostname = window.location.hostname
+  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
 
-    let homeUrl, c2Url;
+  let homeUrl, c2Url
 
-    if (isLocal) {
-        // Local development
-        homeUrl = 'http://localhost:3000';
-        c2Url = 'http://localhost:9002';
-    } else if (hostname.includes('labs.stg.pcioasis.com')) {
-        // Staging environment
-        homeUrl = 'https://labs.stg.pcioasis.com';
-        c2Url = 'https://labs.stg.pcioasis.com/01-basic-magecart-c2';
-    } else if (hostname.includes('labs.pcioasis.com')) {
-        // Production environment
-        homeUrl = 'https://labs.pcioasis.com';
-        c2Url = 'https://labs.pcioasis.com/01-basic-magecart-c2';
-    } else {
-        // Fallback for unknown environments
-        homeUrl = window.location.protocol + '//' + hostname;
-        c2Url = window.location.protocol + '//' + hostname + '/c2';
-    }
+  if (isLocal) {
+    // Local development
+    homeUrl = 'http://localhost:3000'
+    c2Url = 'http://localhost:9002'
+  } else if (hostname.includes('labs.stg.pcioasis.com')) {
+    // Staging environment
+    homeUrl = 'https://labs.stg.pcioasis.com'
+    c2Url = 'https://labs.stg.pcioasis.com/01-basic-magecart-c2'
+  } else if (hostname.includes('labs.pcioasis.com')) {
+    // Production environment
+    homeUrl = 'https://labs.pcioasis.com'
+    c2Url = 'https://labs.pcioasis.com/01-basic-magecart-c2'
+  } else {
+    // Fallback for unknown environments
+    homeUrl = window.location.protocol + '//' + hostname
+    c2Url = window.location.protocol + '//' + hostname + '/c2'
+  }
 
-    // Update navigation links
-    document.querySelector('.back-button').href = homeUrl;
-    document.querySelector('.c2-button').href = c2Url;
-})();
+  // Update navigation links
+  document.querySelector('.back-button').href = homeUrl
+  document.querySelector('.c2-button').href = c2Url
+})()
 ```
 
 ### Files with Environment Detection
@@ -292,6 +305,7 @@ deploy:
 ```
 
 **Service Configuration:**
+
 ```bash
 gcloud run deploy home-index-prd \
   --image=gcr.io/labs-home-prd/index:latest \
@@ -300,6 +314,7 @@ gcloud run deploy home-index-prd \
 ```
 
 **URL Routing:**
+
 - Home: `labs.pcioasis.com` → `home-index-prd:8080`
 - Lab 1: `labs.pcioasis.com/lab1` → `lab-01-basic-magecart-prd:8080`
 - C2: `labs.pcioasis.com/01-basic-magecart-c2` → `lab1-c2-prd:8080`
@@ -307,6 +322,7 @@ gcloud run deploy home-index-prd \
 ### Environment Variables
 
 **Injected by Cloud Run:**
+
 ```
 ENVIRONMENT=prd|stg|local
 DOMAIN=labs.pcioasis.com|labs.stg.pcioasis.com|localhost:3000
@@ -314,6 +330,7 @@ LAB_NAME=01-basic-magecart
 ```
 
 **Used by Go Server:**
+
 ```go
 environment := os.Getenv("ENVIRONMENT")
 domain := os.Getenv("DOMAIN")
@@ -415,9 +432,9 @@ PR merged → GitHub Actions → Build → Deploy to Cloud Run → Update DNS
 
 ### Why Symlinks?
 
-**Problem:** HTTP servers can't serve `../` parent directories
-**Solution:** Symlink makes `../private-repo/` accessible as `./private-data/`
-**Benefits:**
+**Problem:** HTTP servers can't serve `../` parent directories **Solution:**
+Symlink makes `../private-repo/` accessible as `./private-data/` **Benefits:**
+
 - Keeps repos separate
 - Enables local testing
 - Gitignored (won't be committed)
@@ -425,8 +442,8 @@ PR merged → GitHub Actions → Build → Deploy to Cloud Run → Update DNS
 ### Why JavaScript Plugin System?
 
 **Problem:** Need to support both public-only and public+private users
-**Solution:** Client-side fetch with graceful fallback
-**Benefits:**
+**Solution:** Client-side fetch with graceful fallback **Benefits:**
+
 - No server-side logic needed
 - Works in static environments
 - Zero impact on public users
@@ -434,9 +451,9 @@ PR merged → GitHub Actions → Build → Deploy to Cloud Run → Update DNS
 
 ### Why Environment Detection?
 
-**Problem:** Different URLs for local/staging/production
-**Solution:** JavaScript hostname detection
-**Benefits:**
+**Problem:** Different URLs for local/staging/production **Solution:**
+JavaScript hostname detection **Benefits:**
+
 - Single codebase
 - No build-time configuration
 - Works in all environments
@@ -475,6 +492,7 @@ COPY --from=builder /app/main .
 ```
 
 **Benefits:**
+
 - Smaller image size
 - Faster deployments
 - Reduced attack surface
@@ -522,6 +540,7 @@ COPY --from=builder /app/main .
 **Symptom:** Test page shows "Private data not available"
 
 **Diagnosis:**
+
 ```bash
 # Check symlink
 ls -la | grep private-data
@@ -533,6 +552,7 @@ curl http://localhost:3000/private-data/attacks-index.json
 ```
 
 **Fix:**
+
 ```bash
 # Recreate symlink
 rm private-data
@@ -547,11 +567,13 @@ docker-compose restart home-index
 **Symptom:** URLs point to wrong environment
 
 **Diagnosis:**
+
 - Check browser console (F12)
 - Look for: "Back button URL set to: ..."
 - Verify hostname detection logic
 
 **Fix:**
+
 - Hard refresh: Cmd+Shift+R (Mac) or Ctrl+Shift+R (Windows)
 - Clear browser cache
 - Rebuild container: `docker-compose build home-index`
@@ -567,5 +589,4 @@ docker-compose restart home-index
 
 ---
 
-**Last Updated:** 2025-10-21
-**Version:** 2.0
+**Last Updated:** 2025-10-21 **Version:** 2.0

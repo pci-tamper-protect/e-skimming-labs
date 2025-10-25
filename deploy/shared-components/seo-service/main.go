@@ -31,14 +31,14 @@ type LabMetadata struct {
 }
 
 type StructuredData struct {
-	Context           string                 `json:"@context"`
-	Type              string                 `json:"@type"`
-	Name              string                 `json:"name"`
-	Description       string                 `json:"description"`
-	Provider          map[string]interface{} `json:"provider"`
-	CourseMode        string                 `json:"courseMode"`
-	EducationalLevel  string                 `json:"educationalLevel"`
-	Teaches           []string               `json:"teaches"`
+	Context          string                 `json:"@context"`
+	Type             string                 `json:"@type"`
+	Name             string                 `json:"name"`
+	Description      string                 `json:"description"`
+	Provider         map[string]interface{} `json:"provider"`
+	CourseMode       string                 `json:"courseMode"`
+	EducationalLevel string                 `json:"educationalLevel"`
+	Teaches          []string               `json:"teaches"`
 }
 
 type SitemapURL struct {
@@ -67,26 +67,26 @@ func main() {
 
 	// Setup routes
 	r := mux.NewRouter()
-	
+
 	// Sitemap endpoints
 	r.HandleFunc("/api/sitemap.xml", service.handleSitemap).Methods("GET")
 	r.HandleFunc("/api/sitemap/labs.xml", service.handleLabsSitemap).Methods("GET")
 	r.HandleFunc("/api/sitemap/variants.xml", service.handleVariantsSitemap).Methods("GET")
-	
+
 	// Structured data endpoints
 	r.HandleFunc("/api/structured-data/lab/{lab_id}", service.handleLabStructuredData).Methods("GET")
 	r.HandleFunc("/api/structured-data/collection", service.handleCollectionStructuredData).Methods("GET")
 	r.HandleFunc("/api/structured-data/organization", service.handleOrganizationStructuredData).Methods("GET")
-	
+
 	// Meta tags endpoints
 	r.HandleFunc("/api/meta/lab/{lab_id}", service.handleLabMeta).Methods("GET")
 	r.HandleFunc("/api/meta/variant/{lab_id}/{variant}", service.handleVariantMeta).Methods("GET")
-	
+
 	// Integration endpoints
 	r.HandleFunc("/api/integration/pcioasis", service.handlePcioasisIntegration).Methods("GET")
 	r.HandleFunc("/api/integration/sync", service.handleSync).Methods("POST")
 	r.HandleFunc("/api/integration/status", service.handleStatus).Methods("GET")
-	
+
 	// Health check
 	r.HandleFunc("/health", service.handleHealth).Methods("GET")
 
@@ -102,8 +102,8 @@ func main() {
 func (s *SEOService) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
-		"status": "healthy",
-		"service": "seo",
+		"status":      "healthy",
+		"service":     "seo",
 		"environment": s.environment,
 	})
 }
@@ -135,7 +135,7 @@ func (s *SEOService) handleSitemap(w http.ResponseWriter, r *http.Request) {
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
-</urlset>`, 
+</urlset>`,
 		s.labsDomain, time.Now().Format("2006-01-02T15:04:05Z"),
 		s.labsDomain, time.Now().Format("2006-01-02T15:04:05Z"),
 		s.labsDomain, time.Now().Format("2006-01-02T15:04:05Z"),
@@ -219,10 +219,10 @@ func (s *SEOService) handleLabStructuredData(w http.ResponseWriter, r *http.Requ
 	labID := vars["lab_id"]
 
 	structuredData := StructuredData{
-		Context:          "https://schema.org",
-		Type:             "EducationalOccupationalProgram",
-		Name:             fmt.Sprintf("E-Skimming Lab: %s", labID),
-		Description:      "Interactive cybersecurity lab for learning e-skimming attacks",
+		Context:     "https://schema.org",
+		Type:        "EducationalOccupationalProgram",
+		Name:        fmt.Sprintf("E-Skimming Lab: %s", labID),
+		Description: "Interactive cybersecurity lab for learning e-skimming attacks",
 		Provider: map[string]interface{}{
 			"@type": "Organization",
 			"name":  "PCI Oasis",
@@ -239,10 +239,10 @@ func (s *SEOService) handleLabStructuredData(w http.ResponseWriter, r *http.Requ
 
 func (s *SEOService) handleCollectionStructuredData(w http.ResponseWriter, r *http.Request) {
 	structuredData := StructuredData{
-		Context:          "https://schema.org",
-		Type:             "EducationalOccupationalProgram",
-		Name:             "E-Skimming Security Labs",
-		Description:      "Interactive cybersecurity labs for learning e-skimming attacks and defense techniques",
+		Context:     "https://schema.org",
+		Type:        "EducationalOccupationalProgram",
+		Name:        "E-Skimming Security Labs",
+		Description: "Interactive cybersecurity labs for learning e-skimming attacks and defense techniques",
 		Provider: map[string]interface{}{
 			"@type": "Organization",
 			"name":  "PCI Oasis",
@@ -259,10 +259,10 @@ func (s *SEOService) handleCollectionStructuredData(w http.ResponseWriter, r *ht
 
 func (s *SEOService) handleOrganizationStructuredData(w http.ResponseWriter, r *http.Request) {
 	structuredData := map[string]interface{}{
-		"@context": "https://schema.org",
-		"@type":    "Organization",
-		"name":     "PCI Oasis",
-		"url":      fmt.Sprintf("https://%s", s.mainDomain),
+		"@context":    "https://schema.org",
+		"@type":       "Organization",
+		"name":        "PCI Oasis",
+		"url":         fmt.Sprintf("https://%s", s.mainDomain),
 		"description": "Cybersecurity education and training platform",
 		"sameAs": []string{
 			fmt.Sprintf("https://%s", s.mainDomain),
@@ -284,16 +284,16 @@ func (s *SEOService) handleLabMeta(w http.ResponseWriter, r *http.Request) {
 	labID := vars["lab_id"]
 
 	meta := map[string]string{
-		"title":       fmt.Sprintf("E-Skimming Lab: %s - PCI Oasis", labID),
-		"description": "Interactive cybersecurity lab for learning e-skimming attacks and defense techniques",
-		"keywords":    "cybersecurity, e-skimming, web security, payment security, lab, training",
-		"og:title":    fmt.Sprintf("E-Skimming Lab: %s", labID),
-		"og:description": "Interactive cybersecurity lab for learning e-skimming attacks",
-		"og:url":      fmt.Sprintf("https://%s/%s", s.labsDomain, labID),
-		"og:type":     "website",
-		"og:site_name": "PCI Oasis Labs",
-		"twitter:card": "summary_large_image",
-		"twitter:title": fmt.Sprintf("E-Skimming Lab: %s", labID),
+		"title":               fmt.Sprintf("E-Skimming Lab: %s - PCI Oasis", labID),
+		"description":         "Interactive cybersecurity lab for learning e-skimming attacks and defense techniques",
+		"keywords":            "cybersecurity, e-skimming, web security, payment security, lab, training",
+		"og:title":            fmt.Sprintf("E-Skimming Lab: %s", labID),
+		"og:description":      "Interactive cybersecurity lab for learning e-skimming attacks",
+		"og:url":              fmt.Sprintf("https://%s/%s", s.labsDomain, labID),
+		"og:type":             "website",
+		"og:site_name":        "PCI Oasis Labs",
+		"twitter:card":        "summary_large_image",
+		"twitter:title":       fmt.Sprintf("E-Skimming Lab: %s", labID),
 		"twitter:description": "Interactive cybersecurity lab for learning e-skimming attacks",
 	}
 
@@ -307,16 +307,16 @@ func (s *SEOService) handleVariantMeta(w http.ResponseWriter, r *http.Request) {
 	variant := vars["variant"]
 
 	meta := map[string]string{
-		"title":       fmt.Sprintf("E-Skimming Lab: %s - %s Variant - PCI Oasis", labID, variant),
-		"description": fmt.Sprintf("Interactive cybersecurity lab for learning e-skimming attacks using the %s technique", variant),
-		"keywords":    fmt.Sprintf("cybersecurity, e-skimming, %s, web security, payment security, lab, training", variant),
-		"og:title":    fmt.Sprintf("E-Skimming Lab: %s - %s Variant", labID, variant),
-		"og:description": fmt.Sprintf("Interactive cybersecurity lab for learning e-skimming attacks using the %s technique", variant),
-		"og:url":      fmt.Sprintf("https://%s/%s/variant/%s", s.labsDomain, labID, variant),
-		"og:type":     "website",
-		"og:site_name": "PCI Oasis Labs",
-		"twitter:card": "summary_large_image",
-		"twitter:title": fmt.Sprintf("E-Skimming Lab: %s - %s Variant", labID, variant),
+		"title":               fmt.Sprintf("E-Skimming Lab: %s - %s Variant - PCI Oasis", labID, variant),
+		"description":         fmt.Sprintf("Interactive cybersecurity lab for learning e-skimming attacks using the %s technique", variant),
+		"keywords":            fmt.Sprintf("cybersecurity, e-skimming, %s, web security, payment security, lab, training", variant),
+		"og:title":            fmt.Sprintf("E-Skimming Lab: %s - %s Variant", labID, variant),
+		"og:description":      fmt.Sprintf("Interactive cybersecurity lab for learning e-skimming attacks using the %s technique", variant),
+		"og:url":              fmt.Sprintf("https://%s/%s/variant/%s", s.labsDomain, labID, variant),
+		"og:type":             "website",
+		"og:site_name":        "PCI Oasis Labs",
+		"twitter:card":        "summary_large_image",
+		"twitter:title":       fmt.Sprintf("E-Skimming Lab: %s - %s Variant", labID, variant),
 		"twitter:description": fmt.Sprintf("Interactive cybersecurity lab for learning e-skimming attacks using the %s technique", variant),
 	}
 
@@ -330,32 +330,32 @@ func (s *SEOService) handlePcioasisIntegration(w http.ResponseWriter, r *http.Re
 		"main_domain": s.mainDomain,
 		"labs": []map[string]interface{}{
 			{
-				"id": "lab1-basic-magecart",
-				"title": "Basic Magecart Attack Lab",
+				"id":          "lab1-basic-magecart",
+				"title":       "Basic Magecart Attack Lab",
 				"description": "Learn the fundamentals of Magecart attacks",
-				"difficulty": "beginner",
-				"duration": "30 minutes",
-				"url": fmt.Sprintf("https://%s/lab1-basic-magecart", s.labsDomain),
+				"difficulty":  "beginner",
+				"duration":    "30 minutes",
+				"url":         fmt.Sprintf("https://%s/lab1-basic-magecart", s.labsDomain),
 			},
 			{
-				"id": "lab2-dom-skimming",
-				"title": "DOM Skimming Lab",
+				"id":          "lab2-dom-skimming",
+				"title":       "DOM Skimming Lab",
 				"description": "Advanced DOM manipulation techniques",
-				"difficulty": "intermediate",
-				"duration": "45 minutes",
-				"url": fmt.Sprintf("https://%s/lab2-dom-skimming", s.labsDomain),
+				"difficulty":  "intermediate",
+				"duration":    "45 minutes",
+				"url":         fmt.Sprintf("https://%s/lab2-dom-skimming", s.labsDomain),
 			},
 			{
-				"id": "lab3-extension-hijacking",
-				"title": "Browser Extension Hijacking Lab",
+				"id":          "lab3-extension-hijacking",
+				"title":       "Browser Extension Hijacking Lab",
 				"description": "Browser extension security vulnerabilities",
-				"difficulty": "advanced",
-				"duration": "60 minutes",
-				"url": fmt.Sprintf("https://%s/lab3-extension-hijacking", s.labsDomain),
+				"difficulty":  "advanced",
+				"duration":    "60 minutes",
+				"url":         fmt.Sprintf("https://%s/lab3-extension-hijacking", s.labsDomain),
 			},
 		},
 		"seo_data": map[string]interface{}{
-			"sitemap_url": fmt.Sprintf("https://%s/api/sitemap.xml", s.labsDomain),
+			"sitemap_url":         fmt.Sprintf("https://%s/api/sitemap.xml", s.labsDomain),
 			"structured_data_url": fmt.Sprintf("https://%s/api/structured-data/collection", s.labsDomain),
 		},
 	}
@@ -367,8 +367,8 @@ func (s *SEOService) handlePcioasisIntegration(w http.ResponseWriter, r *http.Re
 func (s *SEOService) handleSync(w http.ResponseWriter, r *http.Request) {
 	// Handle sync with main pcioasis.com site
 	response := map[string]string{
-		"status": "success",
-		"message": "Sync completed",
+		"status":    "success",
+		"message":   "Sync completed",
 		"timestamp": time.Now().Format(time.RFC3339),
 	}
 
@@ -378,15 +378,14 @@ func (s *SEOService) handleSync(w http.ResponseWriter, r *http.Request) {
 
 func (s *SEOService) handleStatus(w http.ResponseWriter, r *http.Request) {
 	status := map[string]interface{}{
-		"status": "healthy",
-		"service": "seo",
+		"status":      "healthy",
+		"service":     "seo",
 		"environment": s.environment,
 		"main_domain": s.mainDomain,
 		"labs_domain": s.labsDomain,
-		"last_sync": time.Now().Format(time.RFC3339),
+		"last_sync":   time.Now().Format(time.RFC3339),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(status)
 }
-

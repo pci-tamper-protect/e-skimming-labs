@@ -1,23 +1,31 @@
 # E-Skimming Labs 🎓🔒
 
 > **⚠️ EDUCATIONAL PURPOSE ONLY**  
-> This repository contains working examples of e-skimming attacks for educational and research purposes. All code is provided to help security professionals, researchers, and developers understand these attacks and build better defenses. **DO NOT use this code for malicious purposes.**
+> This repository contains working examples of e-skimming attacks for
+> educational and research purposes. All code is provided to help security
+> professionals, researchers, and developers understand these attacks and build
+> better defenses. **DO NOT use this code for malicious purposes.**
 
-An interactive educational platform for learning about e-skimming (web skimming, formjacking, Magecart) attacks through hands-on labs with real-world scenarios.
+An interactive educational platform for learning about e-skimming (web skimming,
+formjacking, Magecart) attacks through hands-on labs with real-world scenarios.
 
 ## 🎯 Project Overview
 
-E-skimming attacks have caused billions in damages and affected millions of customers worldwide. This repository provides:
+E-skimming attacks have caused billions in damages and affected millions of
+customers worldwide. This repository provides:
 
 - **Working demonstrations** of major e-skimming attack types
-- **Real-world compromise scenarios** (supply chain attacks, compromised credentials, vulnerability exploitation)
+- **Real-world compromise scenarios** (supply chain attacks, compromised
+  credentials, vulnerability exploitation)
 - **Technical analysis** of attack mechanisms
 - **Detection techniques** and defensive measures
 - **Historical context** from actual breaches
 
 ## 📚 What is E-Skimming?
 
-E-skimming (also called web skimming, formjacking, or Magecart attacks) involves injecting malicious JavaScript code into e-commerce websites to steal customer payment information during checkout. These attacks:
+E-skimming (also called web skimming, formjacking, or Magecart attacks) involves
+injecting malicious JavaScript code into e-commerce websites to steal customer
+payment information during checkout. These attacks:
 
 - Operate client-side in the victim's browser
 - Bypass traditional server-side security (WAFs)
@@ -86,14 +94,20 @@ lab-name/
 
 ### 1. Magecart (Multiple Variants)
 
-The most well-documented e-skimming operation, consisting of at least 13 different hacker groups active since 2015.
+The most well-documented e-skimming operation, consisting of at least 13
+different hacker groups active since 2015.
 
 **Key Attacks:**
-- **British Airways (2018)**: 380,000 victims via 22-line JavaScript skimmer that modified the Modernizr library, listening to mouseup/touchend events and exfiltrating data to baways.com
-- **Ticketmaster (2018)**: 40,000 victims through compromised Inbenta chatbot third-party service
+
+- **British Airways (2018)**: 380,000 victims via 22-line JavaScript skimmer
+  that modified the Modernizr library, listening to mouseup/touchend events and
+  exfiltrating data to baways.com
+- **Ticketmaster (2018)**: 40,000 victims through compromised Inbenta chatbot
+  third-party service
 - **Newegg (2018)**: Direct injection into payment page source code
 
 **Technical Characteristics:**
+
 - Multi-form data collection using localStorage
 - Support for various payment processors (Stripe, Adyen, PayPal)
 - Sophisticated obfuscation techniques
@@ -101,19 +115,23 @@ The most well-documented e-skimming operation, consisting of at least 13 differe
 
 ### 2. WooCommerce-Specific Skimmers
 
-Three distinct skimmers targeting the WooCommerce WordPress plugin (29% of top e-commerce sites):
+Three distinct skimmers targeting the WooCommerce WordPress plugin (29% of top
+e-commerce sites):
 
 **a) WooTheme Skimmer**
+
 - Simple, easily understood functions
 - Typically obfuscated
 - Exploits hacked WooCommerce themes
 
 **b) Slect Skimmer**
+
 - Named after intentional misspelling of "select"
 - Variation of Grelos skimmer
 - Exploits spelling typos to evade detection
 
 **c) Gateway Skimmer**
+
 - Multiple obfuscation layers
 - Checks for Firebug debugger
 - Highly complex code
@@ -131,20 +149,24 @@ Commercial skimmer-as-a-service developed by threat actor "Sochi":
 ### 4. Advanced Techniques
 
 **Google Tag Manager Disguise:**
+
 - Inline scripts resembling legitimate GTM snippets
 - Base64 encoding for URL obfuscation
 - WebSocket C2 communication
 
 **404 Error Page Manipulation:**
+
 - Hiding malicious code in default error pages
 - Difficult to detect as errors are rarely inspected
 
 **Image Steganography:**
+
 - JavaScript encoded in PHP within image EXIF data
 - Favicon-based code storage
 - Data hidden in JPEG files
 
 **Kritec Skimmer:**
+
 - Multi-stage Base64-encoded loading
 - Heavy obfuscation (obfuscator.io)
 - Dual exfiltration (WebSocket + POST)
@@ -164,22 +186,27 @@ Critical XXE vulnerability in Adobe Commerce/Magento:
 Modern skimmers employ sophisticated evasion:
 
 **Geofencing:**
+
 - Serve malicious code only to specific countries
 - Use VPN detection to avoid security researchers
 
 **Environment Detection:**
+
 - Browser fingerprinting (avoiding IE, detecting dev tools)
 - Device type filtering (preferring mobile)
 - OS detection (hiding from Linux users)
-- Virtual machine detection via WebGL API (checking for "swiftshader", "llvmpipe", "virtualbox")
+- Virtual machine detection via WebGL API (checking for "swiftshader",
+  "llvmpipe", "virtualbox")
 
 **Code Obfuscation:**
+
 - Multiple encoding layers (Base64, hex, custom algorithms)
 - Dynamic code execution (eval, Function constructor)
 - Dead code injection
 - Control flow flattening
 
 **Anti-Debugging:**
+
 - Firebug/DevTools detection
 - Debugger statement traps
 - Timing-based detection
@@ -209,20 +236,24 @@ Modern skimmers employ sophisticated evasion:
 ### Defense Strategies
 
 **Content Security Policy (CSP):**
+
 - Restrict script sources
 - Block inline scripts
 - Report violations
 
 **Subresource Integrity (SRI):**
+
 - Cryptographic hashes for third-party scripts
 - Prevent unauthorized modifications
 
 **Behavioral Monitoring:**
+
 - Track script execution patterns
 - Alert on form data access
 - Monitor network exfiltration
 
 **Supply Chain Security:**
+
 - Vendor security audits
 - Dependency scanning
 - Change monitoring
@@ -232,6 +263,7 @@ Modern skimmers employ sophisticated evasion:
 ### Development Workflow
 
 This repository uses PR-based deployment with branch protection:
+
 - Create feature branches for changes
 - Submit PRs to main branch for review
 - GitHub Actions deploys to production on PR creation
@@ -269,14 +301,14 @@ docker-compose up
 
 ## 📊 Notable Real-World Breaches
 
-| Attack | Date | Victims | Method | Fine/Cost |
-|--------|------|---------|--------|-----------|
-| British Airways | Aug 2018 | 380,000 | Modified Modernizr library | £20M ICO fine |
-| Ticketmaster | Jun 2018 | 40,000 | Compromised Inbenta chatbot | £1.25M fine |
-| Newegg | Sep 2018 | Unknown | Direct payment page injection | Undisclosed |
-| Forbes | May 2019 | Unknown | Third-party via fontsawesome.gq | Undisclosed |
-| Segway | 2022 | 600,000+ | Code hidden in images | Undisclosed |
-| ESA Store | Dec 2024 | Unknown | Checkout page injection | Ongoing |
+| Attack          | Date     | Victims  | Method                          | Fine/Cost     |
+| --------------- | -------- | -------- | ------------------------------- | ------------- |
+| British Airways | Aug 2018 | 380,000  | Modified Modernizr library      | £20M ICO fine |
+| Ticketmaster    | Jun 2018 | 40,000   | Compromised Inbenta chatbot     | £1.25M fine   |
+| Newegg          | Sep 2018 | Unknown  | Direct payment page injection   | Undisclosed   |
+| Forbes          | May 2019 | Unknown  | Third-party via fontsawesome.gq | Undisclosed   |
+| Segway          | 2022     | 600,000+ | Code hidden in images           | Undisclosed   |
+| ESA Store       | Dec 2024 | Unknown  | Checkout page injection         | Ongoing       |
 
 ## 📚 Research & Resources
 
@@ -307,8 +339,10 @@ docker-compose up
 
 ### Detection Tools
 
-- **Santander Security Research**: [e-Skimming-Detection](https://github.com/Santandersecurityresearch/e-Skimming-Detection)  
-  Semgrep rules for pattern detection
+- **Santander Security Research**:
+  [e-Skimming-Detection](https://github.com/Santandersecurityresearch/e-Skimming-Detection)  
+  Semgrep
+  rules for pattern detection
 
 - **RapidSpike**: Magecart Attack Detection System  
   Commercial monitoring solution research
@@ -326,6 +360,7 @@ docker-compose up
 ### Educational Use Only
 
 This repository is provided for:
+
 - ✅ Security research and education
 - ✅ Training security professionals
 - ✅ Developing defensive measures
@@ -343,6 +378,7 @@ This repository is provided for:
 ### Responsible Disclosure
 
 If you discover a real vulnerability:
+
 1. Do NOT exploit it
 2. Document your findings responsibly
 3. Contact the affected party privately
@@ -352,6 +388,7 @@ If you discover a real vulnerability:
 ### Legal Frameworks
 
 Be aware of laws in your jurisdiction:
+
 - **US**: Computer Fraud and Abuse Act (CFAA)
 - **UK**: Computer Misuse Act
 - **EU**: Directive on attacks against information systems
@@ -361,8 +398,10 @@ Be aware of laws in your jurisdiction:
 
 Comprehensive documentation is available in the `docs/` directory:
 
-- **[Setup Guide](docs/SETUP.md)** - Complete installation and configuration instructions
-- **[Architecture](docs/ARCHITECTURE.md)** - Technical architecture, plugin system, and deployment
+- **[Setup Guide](docs/SETUP.md)** - Complete installation and configuration
+  instructions
+- **[Architecture](docs/ARCHITECTURE.md)** - Technical architecture, plugin
+  system, and deployment
 - **[Research](docs/RESEARCH.md)** - Attack research and real-world case studies
 - **[Contributing](docs/CONTRIBUTING.md)** - How to contribute to the project
 
@@ -375,7 +414,9 @@ Comprehensive documentation is available in the `docs/` directory:
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for:
+We welcome contributions! Please see
+[docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for:
+
 - New lab ideas
 - Detection techniques
 - Defense strategies
@@ -391,9 +432,11 @@ We welcome contributions! Please see [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md
 
 ## 📄 License
 
-This project is licensed under the MIT License for educational purposes. See [LICENSE](LICENSE) for details.
+This project is licensed under the MIT License for educational purposes. See
+[LICENSE](LICENSE) for details.
 
-**Disclaimer**: The authors and contributors are not responsible for misuse of this code. All code is provided AS-IS for educational purposes only.
+**Disclaimer**: The authors and contributors are not responsible for misuse of
+this code. All code is provided AS-IS for educational purposes only.
 
 ## 🙏 Acknowledgments
 
@@ -406,12 +449,14 @@ This project is licensed under the MIT License for educational purposes. See [LI
 ## 📞 Contact
 
 For questions, suggestions, or security concerns:
+
 - Open an issue on GitHub
 - Email: [your-email]
 - Twitter: [@yourhandle]
 
 ---
 
-**Remember**: The best defense is understanding the attack. Use this knowledge to build better, more secure e-commerce systems. 🛡️
+**Remember**: The best defense is understanding the attack. Use this knowledge
+to build better, more secure e-commerce systems. 🛡️
 
-*Last Updated: [Current Date]*
+_Last Updated: [Current Date]_

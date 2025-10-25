@@ -1,10 +1,12 @@
 # Analytics Service
 
-A shared service for tracking user progress, lab completion, and usage analytics across all e-skimming labs.
+A shared service for tracking user progress, lab completion, and usage analytics
+across all e-skimming labs.
 
 ## Features
 
-- **Progress Tracking**: Track user progress through labs (optional, no login required)
+- **Progress Tracking**: Track user progress through labs (optional, no login
+  required)
 - **Usage Analytics**: Collect anonymous usage statistics
 - **Lab Completion**: Track which labs users have completed
 - **Performance Metrics**: Monitor lab performance and user engagement
@@ -13,16 +15,19 @@ A shared service for tracking user progress, lab completion, and usage analytics
 ## API Endpoints
 
 ### Progress Tracking (Optional)
+
 - `POST /api/progress` - Record user progress
 - `GET /api/progress/{session_id}` - Get user progress
 - `POST /api/completion` - Mark lab as completed
 
 ### Analytics
+
 - `POST /api/analytics/event` - Record analytics event
 - `GET /api/analytics/summary` - Get usage summary
 - `GET /api/analytics/lab/{lab_id}` - Get lab-specific analytics
 
 ### SEO Integration
+
 - `GET /api/seo/lab/{lab_id}` - Get lab metadata for SEO
 - `GET /api/seo/sitemap` - Generate sitemap data
 - `GET /api/seo/structured-data` - Get structured data for labs
@@ -30,6 +35,7 @@ A shared service for tracking user progress, lab completion, and usage analytics
 ## Data Models
 
 ### User Progress
+
 ```json
 {
   "session_id": "uuid",
@@ -51,6 +57,7 @@ A shared service for tracking user progress, lab completion, and usage analytics
 ```
 
 ### Analytics Event
+
 ```json
 {
   "event_type": "lab_started|lab_completed|page_view|error",
@@ -76,5 +83,5 @@ A shared service for tracking user progress, lab completion, and usage analytics
 
 ## Deployment
 
-The service is deployed as a Cloud Run service and automatically configured by Terraform.
-
+The service is deployed as a Cloud Run service and automatically configured by
+Terraform.

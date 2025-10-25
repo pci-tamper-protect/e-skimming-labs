@@ -1,6 +1,7 @@
 # Contributing to E-Skimming Labs
 
-Thank you for your interest in contributing! This project is educational and aims to help security professionals understand e-skimming attacks.
+Thank you for your interest in contributing! This project is educational and
+aims to help security professionals understand e-skimming attacks.
 
 ## How to Contribute
 

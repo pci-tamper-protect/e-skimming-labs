@@ -1,140 +1,139 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Private Data Loader Test</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 1200px;
-            margin: 50px auto;
-            padding: 20px;
-            background: #f5f5f5;
-        }
-        h1 {
-            color: #333;
-        }
-        .status {
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 8px;
-            font-weight: bold;
-        }
-        .status.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        .status.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        .status.info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-        .data-section {
-            background: white;
-            padding: 20px;
-            margin: 20px 0;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .data-section h2 {
-            margin-top: 0;
-            color: #555;
-        }
-        pre {
-            background: #f4f4f4;
-            padding: 15px;
-            border-radius: 4px;
-            overflow-x: auto;
-            font-size: 12px;
-        }
-        .badge {
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: bold;
-            margin-left: 8px;
-        }
-        .badge.private {
-            background: #b197fc;
-            color: white;
-        }
-        .badge.lab {
-            background: #748ffc;
-            color: white;
-        }
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 1200px;
+        margin: 50px auto;
+        padding: 20px;
+        background: #f5f5f5;
+      }
+      h1 {
+        color: #333;
+      }
+      .status {
+        padding: 15px;
+        margin: 20px 0;
+        border-radius: 8px;
+        font-weight: bold;
+      }
+      .status.success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      .status.error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+      .status.info {
+        background: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+      }
+      .data-section {
+        background: white;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .data-section h2 {
+        margin-top: 0;
+        color: #555;
+      }
+      pre {
+        background: #f4f4f4;
+        padding: 15px;
+        border-radius: 4px;
+        overflow-x: auto;
+        font-size: 12px;
+      }
+      .badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: bold;
+        margin-left: 8px;
+      }
+      .badge.private {
+        background: #b197fc;
+        color: white;
+      }
+      .badge.lab {
+        background: #748ffc;
+        color: white;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <h1>🔌 Private Data Loader Plugin Test</h1>
 
-    <div id="status-loading" class="status info">
-        ⏳ Loading private attack data...
+    <div id="status-loading" class="status info">⏳ Loading private attack data...</div>
+
+    <div id="status-success" class="status success" style="display: none">
+      ✅ Private data loaded successfully!
     </div>
 
-    <div id="status-success" class="status success" style="display:none;">
-        ✅ Private data loaded successfully!
-    </div>
-
-    <div id="status-error" class="status error" style="display:none;">
-        ❌ Failed to load private data. Make sure private-e-skimming-attacks repo is cloned in parallel.
-    </div>
-
-    <div class="data-section">
-        <h2>Private Attacks Loaded</h2>
-        <div id="attacks-list">No attacks loaded yet...</div>
+    <div id="status-error" class="status error" style="display: none">
+      ❌ Failed to load private data. Make sure private-e-skimming-attacks repo is cloned in
+      parallel.
     </div>
 
     <div class="data-section">
-        <h2>Private Threat Model Nodes</h2>
-        <div id="nodes-list">No nodes loaded yet...</div>
+      <h2>Private Attacks Loaded</h2>
+      <div id="attacks-list">No attacks loaded yet...</div>
     </div>
 
     <div class="data-section">
-        <h2>Private Threat Model Links</h2>
-        <div id="links-list">No links loaded yet...</div>
+      <h2>Private Threat Model Nodes</h2>
+      <div id="nodes-list">No nodes loaded yet...</div>
     </div>
 
     <div class="data-section">
-        <h2>Private Scenarios</h2>
-        <div id="scenarios-list">No scenarios loaded yet...</div>
+      <h2>Private Threat Model Links</h2>
+      <div id="links-list">No links loaded yet...</div>
     </div>
 
     <div class="data-section">
-        <h2>Raw Data (JSON)</h2>
-        <pre id="raw-data">{}</pre>
+      <h2>Private Scenarios</h2>
+      <div id="scenarios-list">No scenarios loaded yet...</div>
+    </div>
+
+    <div class="data-section">
+      <h2>Raw Data (JSON)</h2>
+      <pre id="raw-data">{}</pre>
     </div>
 
     <!-- Load the private data loader plugin -->
     <script src="private-data-loader.js"></script>
 
     <script>
-        // Listen for private data loaded event
-        window.addEventListener('privateDataLoaded', (event) => {
-            console.log('[Test Page] Private data loaded:', event.detail);
+      // Listen for private data loaded event
+      window.addEventListener('privateDataLoaded', event => {
+        console.log('[Test Page] Private data loaded:', event.detail)
 
-            const { attacks, threatNodes, threatLinks } = event.detail;
+        const { attacks, threatNodes, threatLinks } = event.detail
 
-            // Update status
-            document.getElementById('status-loading').style.display = 'none';
-            if (attacks.length > 0 || threatNodes.length > 0) {
-                document.getElementById('status-success').style.display = 'block';
-            } else {
-                document.getElementById('status-error').style.display = 'block';
-            }
+        // Update status
+        document.getElementById('status-loading').style.display = 'none'
+        if (attacks.length > 0 || threatNodes.length > 0) {
+          document.getElementById('status-success').style.display = 'block'
+        } else {
+          document.getElementById('status-error').style.display = 'block'
+        }
 
-            // Display attacks
-            if (attacks && attacks.length > 0) {
-                let attacksHTML = '<ul>';
-                attacks.forEach(attack => {
-                    attacksHTML += `
+        // Display attacks
+        if (attacks && attacks.length > 0) {
+          let attacksHTML = '<ul>'
+          attacks.forEach(attack => {
+            attacksHTML += `
                         <li>
                             <strong>${attack.name}</strong>
                             <span class="badge private">${attack.visibility}</span>
@@ -144,51 +143,51 @@
                             <br>
                             <small><strong>MITRE Techniques:</strong> ${attack.mitreTechniques.map(t => t.id).join(', ')}</small>
                         </li>
-                    `;
-                });
-                attacksHTML += '</ul>';
-                document.getElementById('attacks-list').innerHTML = attacksHTML;
-            }
+                    `
+          })
+          attacksHTML += '</ul>'
+          document.getElementById('attacks-list').innerHTML = attacksHTML
+        }
 
-            // Display threat nodes
-            if (threatNodes && threatNodes.length > 0) {
-                let nodesHTML = '<ul>';
-                threatNodes.forEach(node => {
-                    nodesHTML += `
+        // Display threat nodes
+        if (threatNodes && threatNodes.length > 0) {
+          let nodesHTML = '<ul>'
+          threatNodes.forEach(node => {
+            nodesHTML += `
                         <li>
                             <strong>${node.id}</strong>: ${node.label}
                             <span class="badge lab">${node.status}</span>
                             <br>
                             <small>${node.description}</small>
                         </li>
-                    `;
-                });
-                nodesHTML += '</ul>';
-                document.getElementById('nodes-list').innerHTML = nodesHTML;
-            }
+                    `
+          })
+          nodesHTML += '</ul>'
+          document.getElementById('nodes-list').innerHTML = nodesHTML
+        }
 
-            // Display threat links
-            if (threatLinks && threatLinks.length > 0) {
-                let linksHTML = '<ul>';
-                threatLinks.forEach(link => {
-                    linksHTML += `
+        // Display threat links
+        if (threatLinks && threatLinks.length > 0) {
+          let linksHTML = '<ul>'
+          threatLinks.forEach(link => {
+            linksHTML += `
                         <li>
                             <strong>${link.source}</strong> → <strong>${link.target}</strong>
                             <small>(${link.type})</small>
                             ${link.description ? `<br><small>${link.description}</small>` : ''}
                         </li>
-                    `;
-                });
-                linksHTML += '</ul>';
-                document.getElementById('links-list').innerHTML = linksHTML;
-            }
+                    `
+          })
+          linksHTML += '</ul>'
+          document.getElementById('links-list').innerHTML = linksHTML
+        }
 
-            // Display scenarios
-            const privateScenarios = PrivateDataLoader.getPrivateScenarios();
-            if (privateScenarios && Object.keys(privateScenarios).length > 0) {
-                let scenariosHTML = '<ul>';
-                Object.entries(privateScenarios).forEach(([key, scenario]) => {
-                    scenariosHTML += `
+        // Display scenarios
+        const privateScenarios = PrivateDataLoader.getPrivateScenarios()
+        if (privateScenarios && Object.keys(privateScenarios).length > 0) {
+          let scenariosHTML = '<ul>'
+          Object.entries(privateScenarios).forEach(([key, scenario]) => {
+            scenariosHTML += `
                         <li>
                             <strong>${scenario.name}</strong>
                             <br>
@@ -196,46 +195,50 @@
                             <br>
                             <small><strong>Nodes:</strong> ${scenario.nodes.join(' → ')}</small>
                         </li>
-                    `;
-                });
-                scenariosHTML += '</ul>';
-                document.getElementById('scenarios-list').innerHTML = scenariosHTML;
-            }
-
-            // Display raw JSON
-            document.getElementById('raw-data').textContent = JSON.stringify({
-                attacks,
-                threatNodes,
-                threatLinks,
-                scenarios: privateScenarios
-            }, null, 2);
-        });
-
-        // Helper: Get color for status badge
-        function getStatusColor(status) {
-            const colors = {
-                'observed': '#ff6b6b',
-                'emerging': '#ffd43b',
-                'theoretical-emerging': '#ff922b',
-                'lab': '#748ffc'
-            };
-            return colors[status] || '#999';
+                    `
+          })
+          scenariosHTML += '</ul>'
+          document.getElementById('scenarios-list').innerHTML = scenariosHTML
         }
 
-        // Initialize the private data loader in local mode
-        console.log('[Test Page] Initializing private data loader...');
-        PrivateDataLoader.init({
-            localMode: true  // Load from ../private-e-skimming-attacks/
-        }).then(success => {
-            if (!success) {
-                document.getElementById('status-loading').style.display = 'none';
-                document.getElementById('status-error').style.display = 'block';
-                document.getElementById('status-error').innerHTML = `
+        // Display raw JSON
+        document.getElementById('raw-data').textContent = JSON.stringify(
+          {
+            attacks,
+            threatNodes,
+            threatLinks,
+            scenarios: privateScenarios
+          },
+          null,
+          2
+        )
+      })
+
+      // Helper: Get color for status badge
+      function getStatusColor(status) {
+        const colors = {
+          observed: '#ff6b6b',
+          emerging: '#ffd43b',
+          'theoretical-emerging': '#ff922b',
+          lab: '#748ffc'
+        }
+        return colors[status] || '#999'
+      }
+
+      // Initialize the private data loader in local mode
+      console.log('[Test Page] Initializing private data loader...')
+      PrivateDataLoader.init({
+        localMode: true // Load from ../private-e-skimming-attacks/
+      }).then(success => {
+        if (!success) {
+          document.getElementById('status-loading').style.display = 'none'
+          document.getElementById('status-error').style.display = 'block'
+          document.getElementById('status-error').innerHTML = `
                     ❌ Failed to load private data.<br>
                     <small>Make sure the <code>private-e-skimming-attacks</code> repo is cloned in parallel to <code>e-skimming-labs</code>.</small>
-                `;
-            }
-        });
+                `
+        }
+      })
     </script>
-</body>
+  </body>
 </html>

@@ -215,3 +215,5 @@ func getGitInfoForTemplate() map[string]interface{} {
 		"CommitDisplay":  getCommitShortInfo(),
 	}
 }
+
+
