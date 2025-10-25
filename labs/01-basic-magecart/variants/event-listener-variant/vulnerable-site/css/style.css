@@ -1,99 +1,99 @@
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    line-height: 1.6;
-    color: #333;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.6;
+  color: #333;
 }
 
 .header {
-    background: #2c3e50;
-    color: white;
-    padding: 1rem 0;
+  background: #2c3e50;
+  color: white;
+  padding: 1rem 0;
 }
 
 .container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
 }
 
 nav {
-    background: #34495e;
-    padding: 1rem 0;
+  background: #34495e;
+  padding: 1rem 0;
 }
 
 nav ul {
-    list-style: none;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 20px;
-    display: flex;
+  list-style: none;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
 }
 
 nav li {
-    margin-right: 2rem;
+  margin-right: 2rem;
 }
 
 nav a {
-    color: white;
-    text-decoration: none;
-    font-weight: 500;
+  color: white;
+  text-decoration: none;
+  font-weight: 500;
 }
 
 nav a:hover {
-    color: #3498db;
+  color: #3498db;
 }
 
 main {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 2rem 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 20px;
 }
 
 .products {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 2rem;
-    margin: 2rem 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin: 2rem 0;
 }
 
 .product-card {
-    border: 1px solid #ddd;
-    padding: 2rem;
-    border-radius: 8px;
-    text-align: center;
+  border: 1px solid #ddd;
+  padding: 2rem;
+  border-radius: 8px;
+  text-align: center;
 }
 
 .price {
-    font-size: 1.5rem;
-    color: #27ae60;
-    font-weight: bold;
-    margin: 1rem 0;
+  font-size: 1.5rem;
+  color: #27ae60;
+  font-weight: bold;
+  margin: 1rem 0;
 }
 
 .btn {
-    display: inline-block;
-    background: #3498db;
-    color: white;
-    padding: 0.75rem 2rem;
-    text-decoration: none;
-    border-radius: 4px;
-    margin-top: 1rem;
+  display: inline-block;
+  background: #3498db;
+  color: white;
+  padding: 0.75rem 2rem;
+  text-decoration: none;
+  border-radius: 4px;
+  margin-top: 1rem;
 }
 
 .btn:hover {
-    background: #2980b9;
+  background: #2980b9;
 }
 
 .footer {
-    background: #34495e;
-    color: white;
-    text-align: center;
-    padding: 2rem 0;
-    margin-top: 4rem;
+  background: #34495e;
+  color: white;
+  text-align: center;
+  padding: 2rem 0;
+  margin-top: 4rem;
 }

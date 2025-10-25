@@ -1,14 +1,17 @@
 # E-Skimming Lab - Automated Testing
 
-This directory contains Playwright tests for automated checkout submission testing.
+This directory contains Playwright tests for automated checkout submission
+testing.
 
 ## ⚠️ Development Only
 
-These tests are for **development and debugging purposes only**. They should NOT be included in production deployments.
+These tests are for **development and debugging purposes only**. They should NOT
+be included in production deployments.
 
 ## Setup
 
 1. Ensure the lab is running:
+
    ```bash
    docker-compose up -d
    ```
@@ -22,11 +25,13 @@ These tests are for **development and debugging purposes only**. They should NOT
 ## Running Tests
 
 ### Quick Test (from lab root):
+
 ```bash
 ./test-checkout.sh
 ```
 
 ### Manual Test Commands:
+
 ```bash
 cd test
 
@@ -45,9 +50,12 @@ npm run test:ui
 
 ## What the Tests Do
 
-1. **Checkout Flow Test**: Fills out the checkout form with valid test data and submits it
-2. **Console Logging**: Captures and displays all skimmer logs from the browser console
-3. **Network Monitoring**: Monitors requests to the C2 server (`/collect` endpoint)
+1. **Checkout Flow Test**: Fills out the checkout form with valid test data and
+   submits it
+2. **Console Logging**: Captures and displays all skimmer logs from the browser
+   console
+3. **Network Monitoring**: Monitors requests to the C2 server (`/collect`
+   endpoint)
 4. **Data Verification**: Checks that data was successfully captured
 
 ## Test Data Used
@@ -59,6 +67,7 @@ npm run test:ui
 ## Debugging
 
 The tests provide detailed logging including:
+
 - All skimmer console messages
 - Network requests to C2 server
 - Response statuses and headers

@@ -1,10 +1,13 @@
 # Lab 3: Browser Extension Hijacking
 
-This lab demonstrates **browser extension-based skimming attacks** that exploit the privileged access and persistence of browser extensions to steal payment data and credentials.
+This lab demonstrates **browser extension-based skimming attacks** that exploit
+the privileged access and persistence of browser extensions to steal payment
+data and credentials.
 
 ## Attack Overview
 
-Browser extension hijacking represents a sophisticated attack vector that leverages:
+Browser extension hijacking represents a sophisticated attack vector that
+leverages:
 
 1. **Privileged Extension APIs** with broad site access
 2. **Content Script Injection** across all websites
@@ -15,11 +18,13 @@ Browser extension hijacking represents a sophisticated attack vector that levera
 ## Key Differences from Previous Labs
 
 ### Attack Vector Evolution
+
 - **Lab 1**: Direct JavaScript injection and form submission interception
 - **Lab 2**: DOM manipulation and real-time field monitoring
 - **Lab 3**: Browser extension privilege escalation and persistent monitoring
 
 ### Technical Approach
+
 - **Extension Manifest V3** with host permissions
 - **Content Scripts** injected into all pages
 - **Background Service Workers** for persistent operation
@@ -29,18 +34,21 @@ Browser extension hijacking represents a sophisticated attack vector that levera
 ## Lab Scenarios
 
 ### Scenario 1: Legitimate Extension Compromise
+
 - Popular password manager extension gets compromised
 - Malicious update steals stored passwords and autofill data
 - Background scripts monitor all form submissions
 - Content scripts capture real-time typing across all sites
 
 ### Scenario 2: Malicious Extension Distribution
+
 - Fake security extension with broad permissions
 - Social engineering for installation (fake security alerts)
 - Persistent monitoring across banking and e-commerce sites
 - Data exfiltration through extension's privileged network access
 
 ### Scenario 3: Extension Supply Chain Attack
+
 - Compromise of extension developer account
 - Malicious code injection into legitimate extension update
 - Silent deployment to millions of users
@@ -51,18 +59,21 @@ Browser extension hijacking represents a sophisticated attack vector that levera
 This lab helps detection models learn to identify:
 
 ### Extension Privilege Abuse
+
 - Excessive host permissions in manifests
 - Suspicious content script injection patterns
 - Background script network activity
 - Extension storage abuse for data persistence
 
 ### Cross-Site Monitoring Patterns
+
 - Universal form field monitoring across domains
 - Real-time data capture across all websites
 - Cross-origin data aggregation
 - Persistent session tracking
 
 ### Supply Chain Indicators
+
 - Unusual extension update patterns
 - Permission escalation in updates
 - Behavioral changes post-update
@@ -71,6 +82,7 @@ This lab helps detection models learn to identify:
 ## Detection Signatures
 
 ### Manifest Analysis
+
 ```json
 // Suspicious permission combinations
 {
@@ -86,23 +98,25 @@ This lab helps detection models learn to identify:
 ```
 
 ### Content Script Patterns
+
 ```javascript
 // Universal form monitoring
-document.addEventListener('submit', captureForm);
-document.addEventListener('input', captureKeystrokes);
+document.addEventListener('submit', captureForm)
+document.addEventListener('input', captureKeystrokes)
 
 // Cross-origin communication
-chrome.runtime.sendMessage({type: 'stolen_data', data: formData});
+chrome.runtime.sendMessage({ type: 'stolen_data', data: formData })
 ```
 
 ### Background Script Signatures
+
 ```javascript
 // Persistent monitoring setup
-chrome.tabs.onUpdated.addListener(injectMonitoring);
-chrome.webRequest.onBeforeRequest.addListener(interceptRequests);
+chrome.tabs.onUpdated.addListener(injectMonitoring)
+chrome.webRequest.onBeforeRequest.addListener(interceptRequests)
 
 // Data aggregation and exfiltration
-chrome.storage.local.set({stolen_data: aggregatedData});
+chrome.storage.local.set({ stolen_data: aggregatedData })
 ```
 
 ## File Structure
@@ -161,30 +175,35 @@ chrome.storage.local.set({stolen_data: aggregatedData});
 ## Attack Techniques Demonstrated
 
 ### 1. Extension Privilege Escalation
+
 - **Manifest Permission Abuse**: Requesting excessive permissions
 - **Host Permission Expansion**: Access to all websites
 - **API Permission Exploitation**: Background, storage, webRequest APIs
 - **Update Permission Escalation**: Adding permissions in updates
 
 ### 2. Content Script Injection
+
 - **Universal Form Monitoring**: Injected across all websites
 - **Real-Time Data Capture**: Keystroke and form submission logging
 - **DOM Manipulation**: Injecting malicious elements
 - **Event Listener Hijacking**: Intercepting user interactions
 
 ### 3. Background Script Persistence
+
 - **Service Worker Persistence**: Continuous operation
 - **Tab Monitoring**: Tracking user navigation
 - **Network Request Interception**: Monitoring API calls
 - **Data Aggregation**: Collecting data across sessions
 
 ### 4. Cross-Extension Communication
+
 - **Runtime Messaging**: Content to background communication
 - **Storage API Abuse**: Persistent data storage
 - **Cross-Origin Requests**: Bypassing same-origin policy
 - **External C2 Communication**: Data exfiltration
 
 ### 5. Supply Chain Attack Simulation
+
 - **Update Mechanism Abuse**: Malicious code in updates
 - **Stealth Deployment**: Maintaining appearance and functionality
 - **Gradual Permission Expansion**: Slowly requesting more permissions
@@ -193,24 +212,28 @@ chrome.storage.local.set({stolen_data: aggregatedData});
 ## Educational Objectives
 
 ### Understanding Extension Security
+
 - Learn browser extension architecture and security model
 - Understand permission systems and their limitations
 - Explore extension update mechanisms and risks
 - Analyze cross-origin communication capabilities
 
 ### Attack Vector Analysis
+
 - Study privilege escalation through extension permissions
 - Understand persistent monitoring capabilities
 - Explore cross-site data aggregation techniques
 - Analyze supply chain attack methodologies
 
 ### Detection Development
+
 - Develop extension behavior analysis systems
 - Create permission anomaly detection
 - Build cross-site monitoring detection
 - Train models on extension-based attack patterns
 
 ### Defense Strategies
+
 - Implement extension security policies
 - Deploy runtime behavior monitoring
 - Use permission audit systems
@@ -219,6 +242,7 @@ chrome.storage.local.set({stolen_data: aggregatedData});
 ## Real-World Context
 
 This lab simulates real attacks like:
+
 - **DataSpii**: Browser extensions stealing personal data
 - **Great Suspender**: Popular extension compromised for data theft
 - **AdBlock Plus clones**: Fake extensions for ad injection and data theft
@@ -280,10 +304,13 @@ node test-automation.js
 
 The malicious extension demonstrates several sophisticated attack techniques:
 
-1. **Privilege Escalation**: Uses extension permissions to bypass same-origin policy
-2. **Stealth Maintenance**: Preserves all legitimate functionality to avoid detection
+1. **Privilege Escalation**: Uses extension permissions to bypass same-origin
+   policy
+2. **Stealth Maintenance**: Preserves all legitimate functionality to avoid
+   detection
 3. **Real-time Collection**: Captures data as users type, not just on submission
-4. **Multiple Vectors**: Combines form monitoring, keystroke logging, and clipboard access
+4. **Multiple Vectors**: Combines form monitoring, keystroke logging, and
+   clipboard access
 5. **Robust Exfiltration**: Multiple fallback channels with error handling
 
 ### Detection Signatures
@@ -316,21 +343,25 @@ For ML training and security analysis, key detection patterns include:
 
 1. **Extension Vetting**: Careful review of extension permissions and code
 2. **Network Monitoring**: Detection of unusual outbound traffic patterns
-3. **CSP Implementation**: Content Security Policy to limit extension capabilities
+3. **CSP Implementation**: Content Security Policy to limit extension
+   capabilities
 4. **User Education**: Training on extension risks and verification
 5. **Enterprise Controls**: Centralized extension management and allowlisting
 
 ## Comparison with Previous Labs
 
 ### Lab 1 vs Lab 3
+
 - **Lab 1**: Direct script injection requires compromised site
 - **Lab 3**: Extension hijacking leverages trusted user-installed software
 
 ### Lab 2 vs Lab 3
+
 - **Lab 2**: DOM-based attacks limited by same-origin policy
 - **Lab 3**: Extension privileges bypass browser security boundaries
 
 ### Unique Characteristics
+
 - **Trust Exploitation**: Users voluntarily install and trust the malicious code
 - **Persistent Access**: Extension remains active across all browsing sessions
 - **Broad Scope**: Can target any website the user visits
@@ -344,4 +375,6 @@ For ML training and security analysis, key detection patterns include:
 4. **ML Model Training**: Generate extension-based attack data
 5. **Policy Development**: Inform extension security policies
 
-This lab provides comprehensive training for detecting and defending against browser extension-based attacks that represent one of the most persistent and privileged attack vectors in modern web security.
+This lab provides comprehensive training for detecting and defending against
+browser extension-based attacks that represent one of the most persistent and
+privileged attack vectors in modern web security.

@@ -1,6 +1,7 @@
 # Testing E-Skimming Variants
 
-This lab now supports testing different skimmer variants with automatic test filtering.
+This lab now supports testing different skimmer variants with automatic test
+filtering.
 
 ## Quick Start
 
@@ -11,6 +12,7 @@ Use the helper script to test any variant:
 ```
 
 Available variants:
+
 - `base` - Standard checkout with basic skimmer (3 tests)
 - `obfuscated-base64` - Base64 obfuscated skimmer (3 tests)
 - `event-listener` - Event listener-based skimmer (4 tests)
@@ -43,14 +45,15 @@ The `docker-compose.yml` now accepts environment variables:
 
 ### 2. Playwright Configuration
 
-The `test/playwright.config.js` automatically filters tests based on the `SKIMMER_VARIANT` environment variable:
+The `test/playwright.config.js` automatically filters tests based on the
+`SKIMMER_VARIANT` environment variable:
 
-| Variant | Test File |
-|---------|-----------|
-| `base` | `checkout.spec.js` |
-| `obfuscated-base64` | `obfuscated-base64.spec.js` |
+| Variant                  | Test File                        |
+| ------------------------ | -------------------------------- |
+| `base`                   | `checkout.spec.js`               |
+| `obfuscated-base64`      | `obfuscated-base64.spec.js`      |
 | `event-listener-variant` | `event-listener-variant.spec.js` |
-| `websocket-exfil` | `websocket-exfil.spec.js` |
+| `websocket-exfil`        | `websocket-exfil.spec.js`        |
 
 ### 3. Environment Files
 
@@ -104,21 +107,25 @@ npx playwright test
 ## Test Results
 
 ### Base Variant
+
 - ✅ All 3 tests pass
 - Tests basic form submission skimming
 - Validates console logs and network requests
 
 ### Event Listener Variant
+
 - ✅ 3 of 4 tests pass
 - Tests real-time field monitoring
 - Validates progressive data collection
 - ⚠️ Mobile touch test requires additional configuration
 
 ### Obfuscated Base64 Variant
+
 - Tests Base64 obfuscation patterns
 - Validates deobfuscation and execution
 
 ### WebSocket Variant
+
 - Tests WebSocket communication
 - Validates HTTP fallback mechanism
 - Tests reconnection logic
@@ -128,12 +135,14 @@ npx playwright test
 ### Services Not Starting
 
 Check if ports are already in use:
+
 ```bash
 lsof -i :8080
 lsof -i :3000
 ```
 
 Stop any conflicting services:
+
 ```bash
 docker-compose down
 kill <PID>
@@ -142,12 +151,14 @@ kill <PID>
 ### Wrong Variant Being Tested
 
 Ensure environment variables are set correctly:
+
 ```bash
 echo $SKIMMER_VARIANT
 echo $VARIANT_PATH
 ```
 
 Restart with clean state:
+
 ```bash
 docker-compose down
 ./run-variant-tests.sh [variant]
@@ -156,12 +167,14 @@ docker-compose down
 ### Tests Failing
 
 1. Verify services are running:
+
    ```bash
    curl http://localhost:8080
    curl http://localhost:3000
    ```
 
 2. Check Docker logs:
+
    ```bash
    docker-compose logs
    ```
@@ -203,7 +216,8 @@ labs/01-basic-magecart/
 ## Benefits
 
 1. **Focused Testing** - Only runs tests relevant to the current variant
-2. **Faster Test Execution** - Reduced test time by running only applicable tests
+2. **Faster Test Execution** - Reduced test time by running only applicable
+   tests
 3. **Clear Results** - No false failures from testing wrong variants
 4. **Easy Switching** - Simple one-command variant changes
 5. **CI/CD Ready** - Environment variable-based configuration

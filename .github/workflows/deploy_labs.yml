@@ -2,7 +2,7 @@ name: Deploy E-Skimming Labs to Cloud Run
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [main]
     types: [opened, synchronize, reopened]
   workflow_dispatch:
     inputs:
@@ -12,8 +12,8 @@ on:
         default: 'prd'
         type: choice
         options:
-        - prd
-        - stg
+          - prd
+          - stg
 
 env:
   # Home page project (labs-home-prd)
@@ -21,13 +21,13 @@ env:
   HOME_GAR_LOCATION: ${{ secrets.GAR_HOME_LOCATION }}
   HOME_REPOSITORY: ${{ secrets.REPOSITORY_HOME }}
   HOME_GCP_SA_KEY: ${{ secrets.GCP_HOME_SA_KEY }}
-  
+
   # Individual labs project (labs-prd)
   LABS_PROJECT_ID: ${{ secrets.GCP_LABS_PROJECT_ID }}
   LABS_GAR_LOCATION: ${{ secrets.GAR_LABS_LOCATION }}
   LABS_REPOSITORY: ${{ secrets.REPOSITORY_LABS }}
   LABS_GCP_SA_KEY: ${{ secrets.GCP_LABS_SA_KEY }}
-  
+
 jobs:
   setup:
     runs-on: ubuntu-latest
@@ -61,7 +61,7 @@ jobs:
   deploy-home-components:
     needs: setup
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -139,7 +139,7 @@ jobs:
   deploy-labs-components:
     needs: setup
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -192,7 +192,7 @@ jobs:
       matrix:
         lab: ${{ fromJson(needs.setup.outputs.labs) }}
       fail-fast: false
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -256,10 +256,10 @@ jobs:
           SERVICE_URL=$(gcloud run services describe lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
             --region=${{ env.LABS_GAR_LOCATION }} \
             --format="value(status.url)")
-          
+
           echo "Service URL: $SERVICE_URL"
           echo "Custom domain: ${{ needs.setup.outputs.domain_prefix }}/${{ matrix.lab }}"
-          
+
           # Create domain mapping (requires Cloud Run domain mapping API)
           gcloud run domain-mappings create \
             --service=lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
@@ -270,7 +270,7 @@ jobs:
   deploy-index:
     needs: [setup, deploy-labs, deploy-home-components]
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -330,7 +330,7 @@ jobs:
     needs: [setup, deploy-labs, deploy-home-components, deploy-labs-components]
     runs-on: ubuntu-latest
     if: always()
-    
+
     steps:
       - name: Report deployment status
         run: |
