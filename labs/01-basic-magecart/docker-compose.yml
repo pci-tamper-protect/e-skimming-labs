@@ -6,7 +6,7 @@ services:
     build: ./vulnerable-site
     container_name: techgear-store
     ports:
-      - "8080:80"
+      - '8080:80'
     networks:
       - lab-network
     volumes:
@@ -21,7 +21,7 @@ services:
     build: ./malicious-code/c2-server
     container_name: attacker-c2
     ports:
-      - "3000:3000"
+      - '3000:3000'
     networks:
       - lab-network
     volumes:

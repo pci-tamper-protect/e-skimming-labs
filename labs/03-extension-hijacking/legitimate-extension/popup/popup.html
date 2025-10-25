@@ -1,97 +1,97 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>SecureForm Assistant</title>
-    <link rel="stylesheet" href="popup.css">
-</head>
-<body>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
     <div class="popup-container">
-        <header class="popup-header">
-            <div class="logo">
-                <img src="../icons/icon32.png" alt="SecureForm Assistant" class="logo-icon">
-                <h1>SecureForm Assistant</h1>
-            </div>
-            <div class="version">v2.1.0</div>
-        </header>
+      <header class="popup-header">
+        <div class="logo">
+          <img src="../icons/icon32.png" alt="SecureForm Assistant" class="logo-icon" />
+          <h1>SecureForm Assistant</h1>
+        </div>
+        <div class="version">v2.1.0</div>
+      </header>
 
-        <main class="popup-content">
-            <div class="status-section">
-                <div class="status-indicator" id="status-indicator">
-                    <span class="status-icon">🔒</span>
-                    <span class="status-text" id="status-text">Extension Active</span>
-                </div>
-            </div>
+      <main class="popup-content">
+        <div class="status-section">
+          <div class="status-indicator" id="status-indicator">
+            <span class="status-icon">🔒</span>
+            <span class="status-text" id="status-text">Extension Active</span>
+          </div>
+        </div>
 
-            <div class="features-section">
-                <h3>Security Features</h3>
-                <div class="feature-list">
-                    <div class="feature-item">
-                        <span class="feature-icon">✅</span>
-                        <span class="feature-text">Form Validation</span>
-                        <label class="toggle">
-                            <input type="checkbox" id="form-validation" checked>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                    <div class="feature-item">
-                        <span class="feature-icon">🛡️</span>
-                        <span class="feature-text">Security Warnings</span>
-                        <label class="toggle">
-                            <input type="checkbox" id="security-warnings" checked>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                    <div class="feature-item">
-                        <span class="feature-icon">🔐</span>
-                        <span class="feature-text">Auto-Fill Protection</span>
-                        <label class="toggle">
-                            <input type="checkbox" id="autofill-protection" checked>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                </div>
+        <div class="features-section">
+          <h3>Security Features</h3>
+          <div class="feature-list">
+            <div class="feature-item">
+              <span class="feature-icon">✅</span>
+              <span class="feature-text">Form Validation</span>
+              <label class="toggle">
+                <input type="checkbox" id="form-validation" checked />
+                <span class="slider"></span>
+              </label>
             </div>
+            <div class="feature-item">
+              <span class="feature-icon">🛡️</span>
+              <span class="feature-text">Security Warnings</span>
+              <label class="toggle">
+                <input type="checkbox" id="security-warnings" checked />
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="feature-item">
+              <span class="feature-icon">🔐</span>
+              <span class="feature-text">Auto-Fill Protection</span>
+              <label class="toggle">
+                <input type="checkbox" id="autofill-protection" checked />
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
 
-            <div class="stats-section">
-                <h3>Today's Statistics</h3>
-                <div class="stats-grid">
-                    <div class="stat-item">
-                        <span class="stat-number" id="forms-protected">0</span>
-                        <span class="stat-label">Forms Protected</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-number" id="threats-blocked">0</span>
-                        <span class="stat-label">Threats Blocked</span>
-                    </div>
-                </div>
+        <div class="stats-section">
+          <h3>Today's Statistics</h3>
+          <div class="stats-grid">
+            <div class="stat-item">
+              <span class="stat-number" id="forms-protected">0</span>
+              <span class="stat-label">Forms Protected</span>
             </div>
+            <div class="stat-item">
+              <span class="stat-number" id="threats-blocked">0</span>
+              <span class="stat-label">Threats Blocked</span>
+            </div>
+          </div>
+        </div>
 
-            <div class="current-site-section">
-                <h3>Current Site</h3>
-                <div class="site-info">
-                    <span class="site-icon">🌐</span>
-                    <span class="site-url" id="current-site">Loading...</span>
-                    <span class="site-status" id="site-status">🔒</span>
-                </div>
-                <div class="site-analysis" id="site-analysis">
-                    <span class="analysis-text">Analyzing site security...</span>
-                </div>
-            </div>
-        </main>
+        <div class="current-site-section">
+          <h3>Current Site</h3>
+          <div class="site-info">
+            <span class="site-icon">🌐</span>
+            <span class="site-url" id="current-site">Loading...</span>
+            <span class="site-status" id="site-status">🔒</span>
+          </div>
+          <div class="site-analysis" id="site-analysis">
+            <span class="analysis-text">Analyzing site security...</span>
+          </div>
+        </div>
+      </main>
 
-        <footer class="popup-footer">
-            <div class="action-buttons">
-                <button class="btn btn-primary" id="scan-page">Scan Page</button>
-                <button class="btn btn-secondary" id="settings">Settings</button>
-            </div>
-            <div class="footer-info">
-                <span class="copyright">© 2024 SecureForm Assistant</span>
-            </div>
-        </footer>
+      <footer class="popup-footer">
+        <div class="action-buttons">
+          <button class="btn btn-primary" id="scan-page">Scan Page</button>
+          <button class="btn btn-secondary" id="settings">Settings</button>
+        </div>
+        <div class="footer-info">
+          <span class="copyright">© 2024 SecureForm Assistant</span>
+        </div>
+      </footer>
     </div>
 
     <script src="popup.js"></script>
-</body>
+  </body>
 </html>

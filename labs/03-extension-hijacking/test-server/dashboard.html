@@ -1,297 +1,313 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Extension Data Collection Dashboard - Lab 3</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-            color: #ffffff;
-            min-height: 100vh;
-        }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+        color: #ffffff;
+        min-height: 100vh;
+      }
 
-        .header {
-            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
-            padding: 1rem 2rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-        }
+      .header {
+        background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+        padding: 1rem 2rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      }
 
-        .header h1 {
-            font-size: 1.5rem;
-            font-weight: 700;
-        }
+      .header h1 {
+        font-size: 1.5rem;
+        font-weight: 700;
+      }
 
-        .header p {
-            opacity: 0.9;
-            margin-top: 0.25rem;
-        }
+      .header p {
+        opacity: 0.9;
+        margin-top: 0.25rem;
+      }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+      }
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+      }
 
-        .stat-card {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            padding: 1.5rem;
-            backdrop-filter: blur(10px);
-        }
+      .stat-card {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 8px;
+        padding: 1.5rem;
+        backdrop-filter: blur(10px);
+      }
 
-        .stat-card h3 {
-            color: #fbbf24;
-            font-size: 0.875rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 0.5rem;
-        }
+      .stat-card h3 {
+        color: #fbbf24;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
+      }
 
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #dc2626;
-        }
+      .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #dc2626;
+      }
 
-        .stat-value.small {
-            font-size: 1.25rem;
-        }
+      .stat-value.small {
+        font-size: 1.25rem;
+      }
 
-        .data-section {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
+      .data-section {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+      }
 
-        .data-section h2 {
-            color: #fbbf24;
-            margin-bottom: 1rem;
-            font-size: 1.25rem;
-        }
+      .data-section h2 {
+        color: #fbbf24;
+        margin-bottom: 1rem;
+        font-size: 1.25rem;
+      }
 
-        .session-record {
-            background: rgba(220, 38, 38, 0.1);
-            border: 1px solid rgba(220, 38, 38, 0.3);
-            border-radius: 6px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-        }
+      .session-record {
+        background: rgba(220, 38, 38, 0.1);
+        border: 1px solid rgba(220, 38, 38, 0.3);
+        border-radius: 6px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+      }
 
-        .session-record h4 {
-            color: #fca5a5;
-            margin-bottom: 0.5rem;
-        }
+      .session-record h4 {
+        color: #fca5a5;
+        margin-bottom: 0.5rem;
+      }
 
-        .session-record pre {
-            background: rgba(0, 0, 0, 0.3);
-            padding: 0.75rem;
-            border-radius: 4px;
-            font-size: 0.875rem;
-            overflow-x: auto;
-            color: #e5e7eb;
-        }
+      .session-record pre {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 0.75rem;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        overflow-x: auto;
+        color: #e5e7eb;
+      }
 
-        .no-data {
-            text-align: center;
-            padding: 2rem;
-            color: #9ca3af;
-            font-style: italic;
-        }
+      .no-data {
+        text-align: center;
+        padding: 2rem;
+        color: #9ca3af;
+        font-style: italic;
+      }
 
-        .refresh-btn {
-            background: #dc2626;
-            color: white;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: 6px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
+      .refresh-btn {
+        background: #dc2626;
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
 
-        .refresh-btn:hover {
-            background: #b91c1c;
-        }
+      .refresh-btn:hover {
+        background: #b91c1c;
+      }
 
-        .status-indicator {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #10b981;
-            margin-right: 0.5rem;
-            animation: pulse 2s infinite;
-        }
+      .status-indicator {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #10b981;
+        margin-right: 0.5rem;
+        animation: pulse 2s infinite;
+      }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
         }
+        50% {
+          opacity: 0.5;
+        }
+      }
 
-        .warning {
-            background: rgba(245, 158, 11, 0.1);
-            border: 1px solid rgba(245, 158, 11, 0.3);
-            border-radius: 6px;
-            padding: 1rem;
-            margin-bottom: 1.5rem;
-            color: #fbbf24;
-        }
+      .warning {
+        background: rgba(245, 158, 11, 0.1);
+        border: 1px solid rgba(245, 158, 11, 0.3);
+        border-radius: 6px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        color: #fbbf24;
+      }
 
-        .tabs {
-            display: flex;
-            margin-bottom: 1rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-        }
+      .tabs {
+        display: flex;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      }
 
-        .tab {
-            background: none;
-            border: none;
-            color: #9ca3af;
-            padding: 0.75rem 1.5rem;
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            transition: all 0.2s;
-        }
+      .tab {
+        background: none;
+        border: none;
+        color: #9ca3af;
+        padding: 0.75rem 1.5rem;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s;
+      }
 
-        .tab.active {
-            color: #fbbf24;
-            border-bottom-color: #fbbf24;
-        }
+      .tab.active {
+        color: #fbbf24;
+        border-bottom-color: #fbbf24;
+      }
 
-        .tab-content {
-            display: none;
-        }
+      .tab-content {
+        display: none;
+      }
 
-        .tab-content.active {
-            display: block;
-        }
+      .tab-content.active {
+        display: block;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="header">
-        <h1>🕵️ Extension Data Collection Dashboard - Lab 3</h1>
-        <p><span class="status-indicator"></span>Extension Data Server Active</p>
+      <h1>🕵️ Extension Data Collection Dashboard - Lab 3</h1>
+      <p><span class="status-indicator"></span>Extension Data Server Active</p>
     </div>
 
     <div class="container">
-        <div class="warning">
-            <strong>⚠️ EDUCATIONAL PURPOSE ONLY:</strong> This dashboard simulates a real attacker's extension data collection interface. 
-            All data shown is for educational purposes in a controlled lab environment.
+      <div class="warning">
+        <strong>⚠️ EDUCATIONAL PURPOSE ONLY:</strong> This dashboard simulates a real attacker's
+        extension data collection interface. All data shown is for educational purposes in a
+        controlled lab environment.
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <h3>Total Sessions</h3>
+          <div class="stat-value" id="totalSessions">0</div>
+        </div>
+        <div class="stat-card">
+          <h3>Total Fields</h3>
+          <div class="stat-value" id="totalFields">0</div>
+        </div>
+        <div class="stat-card">
+          <h3>Total Forms</h3>
+          <div class="stat-value" id="totalForms">0</div>
+        </div>
+        <div class="stat-card">
+          <h3>Server Status</h3>
+          <div class="stat-value small" style="color: #10b981">Active</div>
+        </div>
+      </div>
+
+      <div class="data-section">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+          "
+        >
+          <h2>Collected Data</h2>
+          <button class="refresh-btn" onclick="loadData()">🔄 Refresh</button>
         </div>
 
-        <div class="stats-grid">
-            <div class="stat-card">
-                <h3>Total Sessions</h3>
-                <div class="stat-value" id="totalSessions">0</div>
-            </div>
-            <div class="stat-card">
-                <h3>Total Fields</h3>
-                <div class="stat-value" id="totalFields">0</div>
-            </div>
-            <div class="stat-card">
-                <h3>Total Forms</h3>
-                <div class="stat-value" id="totalForms">0</div>
-            </div>
-            <div class="stat-card">
-                <h3>Server Status</h3>
-                <div class="stat-value small" style="color: #10b981;">Active</div>
-            </div>
+        <div class="tabs">
+          <button class="tab active" onclick="switchTab('sessions')">Recent Sessions</button>
+          <button class="tab" onclick="switchTab('stats')">Statistics</button>
         </div>
 
-        <div class="data-section">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h2>Collected Data</h2>
-                <button class="refresh-btn" onclick="loadData()">🔄 Refresh</button>
+        <div id="sessions-tab" class="tab-content active">
+          <div id="sessionsData">
+            <div class="no-data">
+              No extension data yet. Trigger the attack in Lab 3 to see data appear here.
             </div>
-            
-            <div class="tabs">
-                <button class="tab active" onclick="switchTab('sessions')">Recent Sessions</button>
-                <button class="tab" onclick="switchTab('stats')">Statistics</button>
-            </div>
-
-            <div id="sessions-tab" class="tab-content active">
-                <div id="sessionsData">
-                    <div class="no-data">No extension data yet. Trigger the attack in Lab 3 to see data appear here.</div>
-                </div>
-            </div>
-
-            <div id="stats-tab" class="tab-content">
-                <div id="statsData">
-                    <div class="no-data">Loading statistics...</div>
-                </div>
-            </div>
+          </div>
         </div>
+
+        <div id="stats-tab" class="tab-content">
+          <div id="statsData">
+            <div class="no-data">Loading statistics...</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script>
-        async function loadData() {
-            try {
-                // Load statistics
-                const statsResponse = await fetch('/status');
-                const stats = await statsResponse.json();
-                
-                document.getElementById('totalSessions').textContent = stats.stats.totalSessions || 0;
-                document.getElementById('totalFields').textContent = stats.stats.totalFields || 0;
-                document.getElementById('totalForms').textContent = stats.stats.totalForms || 0;
+      async function loadData() {
+        try {
+          // Load statistics
+          const statsResponse = await fetch('/status')
+          const stats = await statsResponse.json()
 
-                // Update stats tab
-                document.getElementById('statsData').innerHTML = `
+          document.getElementById('totalSessions').textContent = stats.stats.totalSessions || 0
+          document.getElementById('totalFields').textContent = stats.stats.totalFields || 0
+          document.getElementById('totalForms').textContent = stats.stats.totalForms || 0
+
+          // Update stats tab
+          document.getElementById('statsData').innerHTML = `
                     <div class="stat-card">
                         <h3>Server Statistics</h3>
                         <pre>${JSON.stringify(stats, null, 2)}</pre>
                     </div>
-                `;
+                `
 
-                // For now, show a message about extension data collection
-                const sessionsContainer = document.getElementById('sessionsData');
-                sessionsContainer.innerHTML = `
+          // For now, show a message about extension data collection
+          const sessionsContainer = document.getElementById('sessionsData')
+          sessionsContainer.innerHTML = `
                     <div class="session-record">
                         <h4>Extension Data Collection Active</h4>
                         <p>This server is ready to receive data from malicious browser extensions. When Lab 3 is triggered, extension data will appear here.</p>
                         <p><strong>Server Uptime:</strong> ${stats.stats.uptime ? Math.floor(stats.stats.uptime / (1000 * 60 * 60)) + 'h ' + Math.floor((stats.stats.uptime % (1000 * 60 * 60)) / (1000 * 60)) + 'm' : 'Unknown'}</p>
                     </div>
-                `;
-
-            } catch (error) {
-                console.error('Failed to load data:', error);
-                document.getElementById('sessionsData').innerHTML = '<div class="no-data">Error loading data. Make sure the extension server is running.</div>';
-            }
+                `
+        } catch (error) {
+          console.error('Failed to load data:', error)
+          document.getElementById('sessionsData').innerHTML =
+            '<div class="no-data">Error loading data. Make sure the extension server is running.</div>'
         }
+      }
 
-        function switchTab(tabName) {
-            // Remove active class from all tabs and content
-            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            
-            // Add active class to selected tab and content
-            event.target.classList.add('active');
-            document.getElementById(tabName + '-tab').classList.add('active');
-        }
+      function switchTab(tabName) {
+        // Remove active class from all tabs and content
+        document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'))
+        document
+          .querySelectorAll('.tab-content')
+          .forEach(content => content.classList.remove('active'))
 
-        // Load data on page load
-        loadData();
+        // Add active class to selected tab and content
+        event.target.classList.add('active')
+        document.getElementById(tabName + '-tab').classList.add('active')
+      }
 
-        // Auto-refresh every 5 seconds
-        setInterval(loadData, 5000);
+      // Load data on page load
+      loadData()
+
+      // Auto-refresh every 5 seconds
+      setInterval(loadData, 5000)
     </script>
-</body>
+  </body>
 </html>
-

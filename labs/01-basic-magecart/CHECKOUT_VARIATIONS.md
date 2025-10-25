@@ -1,6 +1,7 @@
 # Checkout Page Variations - Educational Comparison
 
-This lab includes **two different checkout page variations** to demonstrate different attack methodologies.
+This lab includes **two different checkout page variations** to demonstrate
+different attack methodologies.
 
 ## 📁 Files Included
 
@@ -17,6 +18,7 @@ vulnerable-site/
 ## 🎯 Learning Objectives
 
 Understanding the difference between:
+
 1. **Adding a new malicious file** (less common, easier to detect)
 2. **Modifying an existing file** (more realistic, harder to detect)
 
@@ -30,13 +32,16 @@ Understanding the difference between:
 
 ```html
 <!-- Loads TWO JavaScript files -->
-<script src="js/checkout.js"></script>        <!-- Legitimate -->
-<script src="js/skimmer-clean.js"></script>   <!-- Malicious -->
+<script src="js/checkout.js"></script>
+<!-- Legitimate -->
+<script src="js/skimmer-clean.js"></script>
+<!-- Malicious -->
 ```
 
 ### Attack Scenario
 
 The attacker **added a new script tag** to the HTML by:
+
 - Compromising a CMS admin panel
 - Exploiting a third-party script (supply chain attack)
 - Modifying HTML template files
@@ -51,6 +56,7 @@ The attacker **added a new script tag** to the HTML by:
 ### Detection Methods
 
 ✅ **Easier to Detect:**
+
 - New script tag in HTML source
 - Unfamiliar script file in file system
 - Additional HTTP request in Network tab
@@ -60,6 +66,7 @@ The attacker **added a new script tag** to the HTML by:
 ### Educational Value
 
 Good for:
+
 - Beginners learning about script injection
 - Understanding supply chain attacks
 - Practicing CSP implementation
@@ -84,26 +91,27 @@ Good for:
 // checkout-compromised.js
 
 // Lines 1-250: LEGITIMATE CODE
-(function() {
-    'use strict';
-    // Original checkout functionality
-    // Form validation
-    // Payment processing
-    // etc.
-})();
+;(function () {
+  'use strict'
+  // Original checkout functionality
+  // Form validation
+  // Payment processing
+  // etc.
+})()
 
 // Lines 251+: MALICIOUS CODE (appended by attacker)
-(function() {
-    'use strict';
-    // Credit card skimmer
-    // Data exfiltration
-    // etc.
-})();
+;(function () {
+  'use strict'
+  // Credit card skimmer
+  // Data exfiltration
+  // etc.
+})()
 ```
 
 ### Attack Scenario - British Airways Style
 
 The attacker **modified an existing file** by:
+
 - Using stolen admin/developer credentials (no MFA)
 - Accessing the web server via SSH/FTP
 - Appending malicious code to `checkout.js`
@@ -111,6 +119,7 @@ The attacker **modified an existing file** by:
 - Blending code to look legitimate
 
 **Timeline:**
+
 - August 21, 2018, 22:58 BST - File modified
 - September 5, 2018, 21:45 BST - Attack discovered
 - **Duration: 15 days undetected**
@@ -125,6 +134,7 @@ The attacker **modified an existing file** by:
 ### Detection Methods
 
 ❌ **Harder to Detect:**
+
 - No new files created
 - Same filename as legitimate code
 - Same HTTP request (no new domains initially)
@@ -132,6 +142,7 @@ The attacker **modified an existing file** by:
 - FIM only works if checksums/hashes are monitored
 
 ✅ **Detection Strategies:**
+
 - File Integrity Monitoring with hash verification
 - Git-based version control and diffs
 - Regular security audits
@@ -142,6 +153,7 @@ The attacker **modified an existing file** by:
 ### Educational Value
 
 **Best for:**
+
 - Advanced students
 - Understanding real-world attack patterns
 - Practicing code review skills
@@ -179,3 +191,4 @@ cd $HOME/projectos/e-skimming-labs/labs/01-basic-magecart/vulnerable-site
 case "$1" in
   separate)
     cp checkout-separate.html checkout.html
+```

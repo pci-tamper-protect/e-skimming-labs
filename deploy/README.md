@@ -1,6 +1,7 @@
 # E-Skimming Labs Infrastructure
 
-This directory contains Terraform infrastructure for deploying the e-skimming-labs to Google Cloud.
+This directory contains Terraform infrastructure for deploying the
+e-skimming-labs to Google Cloud.
 
 ## Project Structure
 
@@ -26,6 +27,7 @@ deploy/
 ## Deployment
 
 The infrastructure deploys to:
+
 - **Project**: `labs-prd` (ID: 747803540613)
 - **Region**: `us-central1`
 - **Domain**: `labs.pcioasis.com`
@@ -40,17 +42,19 @@ The infrastructure deploys to:
 ## Components
 
 ### Core Services
+
 - **Lab Services**: Individual Cloud Run services for each lab
 - **Index Service**: Main landing page and lab hub
 - **Analytics Service**: Progress tracking and usage analytics
 - **SEO Service**: Integration with main pcioasis.com for SEO benefits
 
 ### Data Persistence
+
 - **Firestore**: User progress, analytics data, lab completion tracking
 - **Cloud Storage**: Lab-specific data, C2 server logs, test results
 
 ### Monitoring
+
 - **Cloud Monitoring**: Service health and performance metrics
 - **Cloud Logging**: Centralized logging for all services
 - **Error Reporting**: Error tracking and alerting
-

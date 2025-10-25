@@ -1,17 +1,24 @@
 # Event Listener Variant
 
-This variant demonstrates the same e-skimming attack but with **different event triggers** based on the British Airways attack pattern that used `mouseup` and `touchend` events instead of form submission.
+This variant demonstrates the same e-skimming attack but with **different event
+triggers** based on the British Airways attack pattern that used `mouseup` and
+`touchend` events instead of form submission.
 
 ## Key Differences from Base Lab
 
 ### Event Trigger Changes
-1. **Multiple Event Listeners**: Uses `mouseup`, `touchend`, and `blur` events instead of `submit`
-2. **Field-Level Monitoring**: Monitors individual form fields rather than form submission
+
+1. **Multiple Event Listeners**: Uses `mouseup`, `touchend`, and `blur` events
+   instead of `submit`
+2. **Field-Level Monitoring**: Monitors individual form fields rather than form
+   submission
 3. **Real-Time Collection**: Captures data as user completes each field
-4. **Button Click Detection**: Triggers on "Complete Purchase" button interaction
+4. **Button Click Detection**: Triggers on "Complete Purchase" button
+   interaction
 5. **Mobile-Friendly**: Includes touch events for mobile devices
 
 ### What Stays the Same
+
 - **Functionality**: Identical form field extraction and POST exfiltration
 - **Target Elements**: Same CSS selectors and form fields
 - **C2 Communication**: Same HTTP POST to localhost:3000/collect
@@ -20,6 +27,7 @@ This variant demonstrates the same e-skimming attack but with **different event 
 ## ML Training Value
 
 This variant tests whether detection models can:
+
 - **Recognize different event patterns** vs form submission monitoring
 - **Detect real-time field monitoring** instead of batch collection
 - **Identify touch event abuse** commonly used on mobile
@@ -29,6 +37,7 @@ This variant tests whether detection models can:
 ## Detection Signatures
 
 Expected detection patterns:
+
 - Multiple `addEventListener` calls on form fields
 - `mouseup` and `touchend` event listeners
 - `blur` event monitoring on input fields
@@ -38,6 +47,7 @@ Expected detection patterns:
 ## Technical Details
 
 Based on the British Airways attack analysis:
+
 - **22 lines of JavaScript** (keeping original brevity)
 - **Mouse and touch events** for cross-device compatibility
 - **Field blur detection** to capture completed entries
@@ -46,9 +56,11 @@ Based on the British Airways attack analysis:
 
 ## Usage
 
-1. **Copy vulnerable site files**: `cp -r ../../vulnerable-site/* ./vulnerable-site/`
+1. **Copy vulnerable site files**:
+   `cp -r ../../vulnerable-site/* ./vulnerable-site/`
 2. **Replace skimmer**: Use `checkout-compromised.js` from this variant
 3. **Start C2 server**: Use same malicious-code infrastructure as base lab
 4. **Run tests**: Playwright tests should still pass (same functionality)
 
-This variant validates that event pattern changes don't break functionality while providing training data for behavioral-based detection systems.
+This variant validates that event pattern changes don't break functionality
+while providing training data for behavioral-based detection systems.
