@@ -208,37 +208,37 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>E-Skimming Labs - Interactive Training Platform</title>
     <meta name="description" content="Interactive e-skimming attack labs for cybersecurity training and awareness">
-    
+
     <!-- SEO Meta Tags -->
     <meta name="robots" content="index, follow">
     <meta name="keywords" content="e-skimming, cybersecurity, training, labs, payment security">
     <link rel="canonical" href="{{.Scheme}}://{{.Domain}}/">
-    
+
     <!-- Open Graph -->
     <meta property="og:title" content="E-Skimming Labs - Interactive Training Platform">
     <meta property="og:description" content="Interactive e-skimming attack labs for cybersecurity training and awareness">
     <meta property="og:url" content="{{.Scheme}}://{{.Domain}}/">
     <meta property="og:type" content="website">
-    
+
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="E-Skimming Labs - Interactive Training Platform">
     <meta name="twitter:description" content="Interactive e-skimming attack labs for cybersecurity training and awareness">
-    
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
-        
+
         :root {
             --bg-primary: #0a0e27;
             --bg-secondary: #121733;
             --bg-tertiary: #1a1f3a;
             --bg-card: #1e2440;
             --bg-hover: #252b4a;
-            
+
             --text-primary: #ffffff;
             --text-secondary: #b8c5db;
             --text-muted: #8b9dc3;
-            
+
             --accent-red: #ff6b6b;
             --accent-orange: #ff922b;
             --accent-green: #51cf66;
@@ -246,23 +246,23 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
             --accent-purple: #b197fc;
             --accent-pink: #e64980;
             --accent-yellow: #ffd43b;
-            
+
             --border-color: #2a3f5f;
             --shadow-sm: 0 2px 4px rgba(0,0,0,0.2);
             --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
             --shadow-lg: 0 8px 24px rgba(0,0,0,0.4);
-            
+
             --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             --gradient-2: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
             --gradient-3: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
         }
-        
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--bg-primary);
@@ -270,13 +270,13 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
             line-height: 1.6;
             overflow-x: hidden;
         }
-        
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 0 20px;
         }
-        
+
         /* Header */
         .header {
             background: var(--bg-secondary);
@@ -286,25 +286,25 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
             top: 0;
             z-index: 100;
         }
-        
+
         .header-content {
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-        
+
         .logo {
             font-size: 24px;
             font-weight: 700;
             color: var(--accent-blue);
             text-decoration: none;
         }
-        
+
         .nav-tabs {
             display: flex;
             gap: 20px;
         }
-        
+
         .nav-tab {
             padding: 10px 20px;
             background: var(--bg-card);
@@ -315,20 +315,20 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
             transition: all 0.3s ease;
             font-weight: 500;
         }
-        
+
         .nav-tab:hover {
             background: var(--bg-hover);
             color: var(--text-primary);
             transform: translateY(-2px);
             box-shadow: var(--shadow-md);
         }
-        
+
         .nav-tab.active {
             background: var(--gradient-1);
             color: var(--text-primary);
             border-color: transparent;
         }
-        
+
         /* Hero Section */
         .hero {
             padding: 80px 0;
@@ -336,7 +336,7 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
             background: var(--gradient-1);
             margin-bottom: 60px;
         }
-        
+
         .hero h1 {
             font-size: 48px;
             font-weight: 800;
@@ -346,19 +346,19 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
-        
+
         .hero p {
             font-size: 20px;
             color: rgba(255, 255, 255, 0.9);
             max-width: 600px;
             margin: 0 auto;
         }
-        
+
         /* Labs Section */
         .labs-section {
             padding: 60px 0;
         }
-        
+
         .section-title {
             font-size: 36px;
             font-weight: 700;
@@ -366,7 +366,7 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
             margin-bottom: 20px;
             color: var(--text-primary);
         }
-        
+
         .section-subtitle {
             font-size: 18px;
             color: var(--text-secondary);
@@ -376,14 +376,14 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
             margin-left: auto;
             margin-right: auto;
         }
-        
+
         .labs-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 30px;
             margin-bottom: 60px;
         }
-        
+
         .lab-card {
             background: var(--bg-card);
             border: 1px solid var(--border-color);
@@ -393,7 +393,7 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
             position: relative;
             overflow: hidden;
         }
-        
+
         .lab-card::before {
             content: '';
             position: absolute;
@@ -403,33 +403,33 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
             height: 4px;
             background: var(--gradient-2);
         }
-        
+
         .lab-card:hover {
             transform: translateY(-5px);
             box-shadow: var(--shadow-lg);
             border-color: var(--accent-blue);
         }
-        
+
         .lab-title {
             font-size: 24px;
             font-weight: 600;
             margin-bottom: 15px;
             color: var(--text-primary);
         }
-        
+
         .lab-description {
             color: var(--text-secondary);
             margin-bottom: 20px;
             line-height: 1.6;
         }
-        
+
         .lab-meta {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 25px;
         }
-        
+
         .difficulty {
             padding: 6px 12px;
             border-radius: 20px;
@@ -437,28 +437,28 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
             font-weight: 600;
             text-transform: uppercase;
         }
-        
+
         .difficulty.beginner {
             background: rgba(81, 207, 102, 0.2);
             color: var(--accent-green);
         }
-        
+
         .difficulty.intermediate {
             background: rgba(255, 210, 59, 0.2);
             color: var(--accent-yellow);
         }
-        
+
         .difficulty.advanced {
             background: rgba(255, 107, 107, 0.2);
             color: var(--accent-red);
         }
-        
+
         .lab-status {
             font-size: 14px;
             color: var(--accent-green);
             font-weight: 500;
         }
-        
+
         .lab-button {
             display: inline-block;
             padding: 12px 24px;
@@ -471,12 +471,12 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
             width: 100%;
             text-align: center;
         }
-        
+
         .lab-button:hover {
             transform: translateY(-2px);
             box-shadow: var(--shadow-md);
         }
-        
+
         /* Resources Section */
         .resources-section {
             padding: 60px 0;
@@ -484,13 +484,13 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
             border-radius: 20px;
             margin: 60px 0;
         }
-        
+
         .resources-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 30px;
         }
-        
+
         .resource-card {
             background: var(--bg-card);
             border: 1px solid var(--border-color);
@@ -499,31 +499,31 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
             text-align: center;
             transition: all 0.3s ease;
         }
-        
+
         .resource-card:hover {
             transform: translateY(-5px);
             box-shadow: var(--shadow-lg);
             border-color: var(--accent-purple);
         }
-        
+
         .resource-icon {
             font-size: 48px;
             margin-bottom: 20px;
         }
-        
+
         .resource-title {
             font-size: 24px;
             font-weight: 600;
             margin-bottom: 15px;
             color: var(--text-primary);
         }
-        
+
         .resource-description {
             color: var(--text-secondary);
             margin-bottom: 25px;
             line-height: 1.6;
         }
-        
+
         .resource-button {
             display: inline-block;
             padding: 12px 24px;
@@ -534,12 +534,12 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
             font-weight: 600;
             transition: all 0.3s ease;
         }
-        
+
         .resource-button:hover {
             transform: translateY(-2px);
             box-shadow: var(--shadow-md);
         }
-        
+
         /* Footer */
         .footer {
             background: var(--bg-secondary);
@@ -548,35 +548,35 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
             text-align: center;
             color: var(--text-muted);
         }
-        
+
         .footer a {
             color: var(--accent-blue);
             text-decoration: none;
         }
-        
+
         .footer a:hover {
             text-decoration: underline;
         }
-        
+
         /* Responsive */
         @media (max-width: 768px) {
             .hero h1 {
                 font-size: 36px;
             }
-            
+
             .hero p {
                 font-size: 18px;
             }
-            
+
             .nav-tabs {
                 flex-direction: column;
                 gap: 10px;
             }
-            
+
             .labs-grid {
                 grid-template-columns: 1fr;
             }
-            
+
             .resources-grid {
                 grid-template-columns: 1fr;
             }
@@ -609,7 +609,7 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
             <div class="container">
                 <h2 class="section-title">Available Labs</h2>
                 <p class="section-subtitle">Choose from our interactive labs designed to teach you about different e-skimming attack techniques and defense strategies.</p>
-                
+
                 <div class="labs-grid">
                     {{range .Labs}}
                     <div class="lab-card">
@@ -630,7 +630,7 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
             <div class="container">
                 <h2 class="section-title">Learning Resources</h2>
                 <p class="section-subtitle">Explore our comprehensive resources to deepen your understanding of e-skimming attacks.</p>
-                
+
                 <div class="resources-grid">
                     <div class="resource-card">
                         <div class="resource-icon">🎯</div>
@@ -638,7 +638,7 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
                         <p class="resource-description">Explore the comprehensive MITRE ATT&CK matrix specifically tailored for e-skimming attacks and payment card fraud.</p>
                         <a href="{{.MITREURL}}" class="resource-button">View ATT&CK Matrix</a>
                     </div>
-                    
+
                     <div class="resource-card">
                         <div class="resource-icon">🔍</div>
                         <h3 class="resource-title">Interactive Threat Model</h3>
@@ -666,7 +666,7 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
                 });
             });
         });
-        
+
         // Add loading states for lab buttons
         document.querySelectorAll('.lab-button').forEach(button => {
             button.addEventListener('click', function(e) {

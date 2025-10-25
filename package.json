@@ -9,7 +9,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint:go": "golangci-lint run",
+    "lint:go": "cd deploy/shared-components/home-index-service && golangci-lint run && cd ../seo-service && golangci-lint run && cd ../analytics-service && golangci-lint run",
     "lint:go:fix": "golangci-lint run --fix",
     "lint:all": "npm run lint && npm run lint:go",
     "lint:all:fix": "npm run lint:fix && npm run lint:go:fix",

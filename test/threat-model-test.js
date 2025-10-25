@@ -34,3 +34,4 @@ async function testThreatModelBackButton() {
 
 // Export for MCP use
 module.exports = { testThreatModelBackButton }
+

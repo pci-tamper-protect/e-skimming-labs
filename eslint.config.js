@@ -49,7 +49,9 @@ export default [
       }
     },
     rules: {
-      'no-console': 'off'
+      'no-console': 'off',
+      'no-unused-vars': 'off', // Test files may have unused vars for assertions
+      'prefer-const': 'off' // Test files may use let for reassignment
     }
   },
   {
@@ -59,7 +61,16 @@ export default [
     }
   },
   {
-    files: ['**/malicious-code/**/*.js', '**/vulnerable-site/**/*.js'],
+    files: [
+      '**/malicious-code/**/*.js',
+      '**/vulnerable-site/**/*.js',
+      '**/legitimate-extension/**/*.js',
+      '**/malicious-extension/**/*.js',
+      '**/test-automation.js',
+      '**/extension-data-server.js',
+      '**/manual-test.js',
+      '**/test/**/*.js'
+    ],
     rules: {
       'no-console': 'off',
       'no-alert': 'off',
@@ -67,7 +78,15 @@ export default [
       'no-implied-eval': 'off',
       'no-new-func': 'off',
       'prefer-const': 'off', // May need var for compatibility
-      'no-var': 'off'
+      'no-var': 'off',
+      'no-unused-vars': 'off', // Lab code may have unused vars for demo purposes
+      'no-undef': 'off', // Lab code may reference undefined functions
+      'curly': 'off', // Lab code may use single-line if statements
+      'brace-style': 'off', // Lab code may use different brace styles
+      'prefer-arrow-callback': 'off', // Lab code may use function expressions
+      'no-debugger': 'off', // Lab code may contain debugger statements
+      'no-useless-escape': 'off', // Lab code may have intentional escapes
+      'no-case-declarations': 'off' // Lab code may declare vars in case blocks
     }
   }
 ]
