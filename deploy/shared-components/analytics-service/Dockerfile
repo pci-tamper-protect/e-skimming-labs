@@ -1,10 +1,17 @@
 FROM golang:1.24.3-alpine AS builder
 
 WORKDIR /app
+
+# Copy go.mod and go.sum first for better caching
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
 COPY . .
 
-RUN go mod init analytics-service
-RUN go mod tidy
+# Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -o analytics-service main.go
 
 FROM alpine:3.20

@@ -1,0 +1,91 @@
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+linters-settings:
+  gci:
+    sections:
+      - standard
+      - default
+      - prefix(github.com)
+  gofmt:
+    simplify: true
+  goimports:
+    local-prefixes: github.com/pcioasis
+  govet:
+    settings:
+      printf:
+        funcs:
+          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Infof
+          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Warnf
+          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Errorf
+          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Fatalf
+  lll:
+    line-length: 120
+  misspell:
+    locale: US
+  nolintlint:
+    allow-leading-space: true
+    allow-unused: false
+    require-explanation: false
+    require-specific: false
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - style
+      - performance
+    disabled-checks:
+      - exitAfterDefer
+      - hugeParam
+
+linters:
+  enable:
+    - bodyclose
+    - dogsled
+    - dupl
+    - exhaustive
+    - gochecknoinits
+    - goconst
+    - gocritic
+    - gocyclo
+    - gofmt
+    - goimports
+    - goprintffuncname
+    - gosimple
+    - govet
+    - ineffassign
+    - misspell
+    - nakedret
+    - noctx
+    - nolintlint
+    - staticcheck
+    - stylecheck
+    - typecheck
+    - unconvert
+    - whitespace
+  disable:
+    - errcheck
+    - unused
+    - gci
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - funlen
+        - goconst
+    - path: deploy/
+      linters:
+        - funlen
+        - revive
+        - errcheck
+        - gosec
+        - depguard
+        - lll
+        - unparam
+        - unused
+    - text: "MITRE"
+      linters:
+        - misspell
+  max-issues-per-linter: 0
+  max-same-issues: 0

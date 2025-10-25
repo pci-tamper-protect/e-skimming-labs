@@ -1,0 +1,29 @@
+{
+  "name": "e-skimming-labs",
+  "version": "1.0.0",
+  "description": "E-Skimming Labs - Interactive Training Platform",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint:go": "cd deploy/shared-components/home-index-service && golangci-lint run && cd ../seo-service && golangci-lint run && cd ../analytics-service && golangci-lint run",
+    "lint:go:fix": "golangci-lint run --fix",
+    "lint:all": "npm run lint && npm run lint:go",
+    "lint:all:fix": "npm run lint:fix && npm run lint:go:fix",
+    "pre-commit:install": "pre-commit install",
+    "pre-commit:run": "pre-commit run --all-files"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.25.0",
+    "eslint": "^9.25.0",
+    "globals": "^16.0.0",
+    "prettier": "^3.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}

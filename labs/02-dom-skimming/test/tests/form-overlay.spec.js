@@ -1,15 +1,14 @@
 // @ts-check
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('@playwright/test')
 
 test.describe('DOM-Based Skimming Lab - Form Overlay Injection', () => {
-
   test.beforeEach(async ({ page }) => {
     // Enable console logging to capture attack logs
     page.on('console', msg => {
       if (msg.text().includes('[Form-Overlay]')) {
-        console.log('🎭 FORM-OVERLAY LOG:', msg.text());
+        console.log('🎭 FORM-OVERLAY LOG:', msg.text())
       }
-    });
+    })
 
     // Capture network requests to C2 server
     page.on('request', request => {
@@ -19,9 +18,9 @@ test.describe('DOM-Based Skimming Lab - Form Overlay Injection', () => {
           method: request.method(),
           headers: request.headers(),
           postData: request.postData()
-        });
+        })
       }
-    });
+    })
 
     page.on('response', response => {
       if (response.url().includes('localhost:9004/collect')) {
@@ -29,65 +28,64 @@ test.describe('DOM-Based Skimming Lab - Form Overlay Injection', () => {
           url: response.url(),
           status: response.status(),
           headers: response.headers()
-        });
+        })
       }
-    });
-  });
+    })
+  })
 
   test('should inject overlay on high-priority forms', async ({ page }) => {
-    console.log('🚀 Testing form overlay injection...');
+    console.log('🚀 Testing form overlay injection...')
 
     await page.goto('/banking.html', {
       baseURL: 'http://localhost:8080'
-    });
+    })
 
     // Inject form overlay attack
     await page.addScriptTag({
       path: './malicious-code/form-overlay.js'
-    });
+    })
 
-    await expect(page).toHaveTitle(/SecureBank/);
+    await expect(page).toHaveTitle(/SecureBank/)
 
     // Navigate to transfer section (high-priority form)
-    await page.waitForSelector('[data-section="transfer"]', { timeout: 2000 });
-    await page.click('[data-section="transfer"]');
-    await page.waitForTimeout(500);
+    await page.waitForSelector('[data-section="transfer"]', { timeout: 2000 })
+    await page.click('[data-section="transfer"]')
+    await page.waitForTimeout(500)
 
-    console.log('⏳ Waiting for overlay injection delay...');
+    console.log('⏳ Waiting for overlay injection delay...')
 
     // Wait for overlay injection delay (2 seconds)
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(3000)
 
     // Check if overlay was injected
-    const overlayExists = await page.locator('#form-overlay-backdrop').isVisible();
-    console.log('🎭 Overlay injection status:', overlayExists);
+    const overlayExists = await page.locator('#form-overlay-backdrop').isVisible()
+    console.log('🎭 Overlay injection status:', overlayExists)
 
     if (overlayExists) {
-      console.log('✅ Form overlay successfully injected');
+      console.log('✅ Form overlay successfully injected')
 
       // Verify overlay content
-      await expect(page.locator('.overlay-title')).toBeVisible();
-      await expect(page.locator('.overlay-form')).toBeVisible();
-      await expect(page.locator('.overlay-submit')).toBeVisible();
+      await expect(page.locator('.overlay-title')).toBeVisible()
+      await expect(page.locator('.overlay-form')).toBeVisible()
+      await expect(page.locator('.overlay-submit')).toBeVisible()
 
       // Check that original form is hidden/disabled
-      const originalForm = page.locator('#transfer-form');
+      const originalForm = page.locator('#transfer-form')
       const isHidden = await originalForm.evaluate(el => {
-        return el.classList.contains('form-overlay-hidden');
-      });
+        return el.classList.contains('form-overlay-hidden')
+      })
 
-      console.log('👻 Original form hidden status:', isHidden);
-      expect(isHidden).toBe(true);
-
+      console.log('👻 Original form hidden status:', isHidden)
+      expect(isHidden).toBe(true)
     } else {
-      console.log('⚠️ Overlay not injected - may need to trigger manually');
+      console.log('⚠️ Overlay not injected - may need to trigger manually')
     }
 
-    console.log('🎭 Form overlay injection test completed');
-  });
+    console.log('🎭 Form overlay injection test completed')
+  })
 
   test('should capture credentials through fake overlay', async ({ page }) => {
-    const networkRequests = [];
+    const networkRequests = []
 
     // Capture network requests for credential exfiltration
     page.on('request', request => {
@@ -97,225 +95,222 @@ test.describe('DOM-Based Skimming Lab - Form Overlay Injection', () => {
           method: request.method(),
           postData: request.postData(),
           timestamp: Date.now()
-        });
+        })
       }
-    });
+    })
 
-    console.log('🎣 Testing credential capture through overlay...');
+    console.log('🎣 Testing credential capture through overlay...')
 
     await page.goto('/banking.html', {
       baseURL: 'http://localhost:8080'
-    });
+    })
 
     // Inject form overlay attack
     await page.addScriptTag({
       path: './malicious-code/form-overlay.js'
-    });
+    })
 
     // Navigate to cards section for security verification
-    await page.click('[data-section="cards"]');
-    await page.waitForTimeout(3000);
+    await page.click('[data-section="cards"]')
+    await page.waitForTimeout(3000)
 
     // Check if overlay appeared
-    const overlayVisible = await page.locator('#form-overlay-backdrop').isVisible();
+    const overlayVisible = await page.locator('#form-overlay-backdrop').isVisible()
 
     if (overlayVisible) {
-      console.log('🎭 Overlay detected, filling fake form...');
+      console.log('🎭 Overlay detected, filling fake form...')
 
       // Fill the fake overlay form
-      const passwordField = page.locator('#overlay-form input[type="password"]');
-      const cvvField = page.locator('#overlay-form input[name*="cvv"]');
+      const passwordField = page.locator('#overlay-form input[type="password"]')
+      const cvvField = page.locator('#overlay-form input[name*="cvv"]')
 
       if (await passwordField.isVisible()) {
-        await passwordField.fill('fakepassword123');
-        console.log('🔐 Password entered in overlay');
+        await passwordField.fill('fakepassword123')
+        console.log('🔐 Password entered in overlay')
       }
 
       if (await cvvField.isVisible()) {
-        await cvvField.fill('456');
-        console.log('💳 CVV entered in overlay');
+        await cvvField.fill('456')
+        console.log('💳 CVV entered in overlay')
       }
 
       // Submit the fake form
-      await page.click('.overlay-submit');
-      console.log('📤 Fake form submitted');
+      await page.click('.overlay-submit')
+      console.log('📤 Fake form submitted')
 
       // Wait for processing and exfiltration
-      await page.waitForTimeout(4000);
+      await page.waitForTimeout(4000)
 
-      console.log('🌐 Network requests captured:', networkRequests.length);
+      console.log('🌐 Network requests captured:', networkRequests.length)
 
       // Verify credential capture
       const credentialRequests = networkRequests.filter(req => {
         if (req.postData) {
           try {
-            const data = JSON.parse(req.postData);
-            return data.type === 'form_overlay_capture';
+            const data = JSON.parse(req.postData)
+            return data.type === 'form_overlay_capture'
           } catch (e) {
-            return false;
+            return false
           }
         }
-        return false;
-      });
+        return false
+      })
 
-      console.log('🎣 Credential capture requests:', credentialRequests.length);
+      console.log('🎣 Credential capture requests:', credentialRequests.length)
 
       if (credentialRequests.length > 0) {
-        const captureData = JSON.parse(credentialRequests[0].postData);
+        const captureData = JSON.parse(credentialRequests[0].postData)
         console.log('💰 Captured credentials structure:', {
           type: captureData.type,
           hasCaptureData: !!captureData.data,
           hasCredentials: !!captureData.data?.credentials,
           formType: captureData.data?.formType
-        });
+        })
 
-        expect(captureData.type).toBe('form_overlay_capture');
-        expect(captureData.data).toBeDefined();
-        expect(captureData.data.credentials).toBeDefined();
+        expect(captureData.type).toBe('form_overlay_capture')
+        expect(captureData.data).toBeDefined()
+        expect(captureData.data.credentials).toBeDefined()
       }
 
       // Verify overlay closes after submission
-      await page.waitForTimeout(2000);
-      const overlayStillVisible = await page.locator('#form-overlay-backdrop').isVisible();
-      console.log('🚪 Overlay closed after submission:', !overlayStillVisible);
-
+      await page.waitForTimeout(2000)
+      const overlayStillVisible = await page.locator('#form-overlay-backdrop').isVisible()
+      console.log('🚪 Overlay closed after submission:', !overlayStillVisible)
     } else {
-      console.log('⚠️ Overlay not visible, checking overlay attack status...');
+      console.log('⚠️ Overlay not visible, checking overlay attack status...')
 
       const attackStatus = await page.evaluate(() => {
-        return window.formOverlayAttack ? window.formOverlayAttack.getStatus() : null;
-      });
+        return window.formOverlayAttack ? window.formOverlayAttack.getStatus() : null
+      })
 
-      console.log('📊 Overlay attack status:', attackStatus);
+      console.log('📊 Overlay attack status:', attackStatus)
     }
 
-    console.log('🎣 Credential capture test completed');
-  });
+    console.log('🎣 Credential capture test completed')
+  })
 
   test('should show appropriate overlay for different form types', async ({ page }) => {
-    console.log('🎨 Testing form-specific overlay customization...');
+    console.log('🎨 Testing form-specific overlay customization...')
 
     await page.goto('/banking.html', {
       baseURL: 'http://localhost:8080'
-    });
+    })
 
     // Inject form overlay attack
     await page.addScriptTag({
       path: './malicious-code/form-overlay.js'
-    });
+    })
 
     // Test different form types
     const formTests = [
       { section: 'transfer', expectedTitle: 'Transaction Verification' },
       { section: 'payments', expectedTitle: 'Payment Security Check' },
       { section: 'settings', expectedTitle: 'Security Verification' }
-    ];
+    ]
 
     for (const test of formTests) {
-      console.log(`🧪 Testing ${test.section} form overlay...`);
+      console.log(`🧪 Testing ${test.section} form overlay...`)
 
       // Navigate to section
-      await page.waitForSelector(`[data-section="${test.section}"]`, { timeout: 2000 });
-      await page.click(`[data-section="${test.section}"]`);
-      await page.waitForTimeout(2000);
+      await page.waitForSelector(`[data-section="${test.section}"]`, { timeout: 2000 })
+      await page.click(`[data-section="${test.section}"]`)
+      await page.waitForTimeout(2000)
 
       // Check if overlay appears with appropriate content
-      const overlayVisible = await page.locator('#form-overlay-backdrop').isVisible();
+      const overlayVisible = await page.locator('#form-overlay-backdrop').isVisible()
 
       if (overlayVisible) {
-        const overlayTitle = await page.locator('.overlay-title').textContent();
-        console.log(`📝 Overlay title for ${test.section}:`, overlayTitle);
+        const overlayTitle = await page.locator('.overlay-title').textContent()
+        console.log(`📝 Overlay title for ${test.section}:`, overlayTitle)
 
         // Verify contextual content
-        expect(overlayTitle).toContain('Security');
+        expect(overlayTitle).toContain('Security')
 
         // Close overlay for next test
-        await page.click('.overlay-close');
-        await page.waitForTimeout(1000);
-
+        await page.click('.overlay-close')
+        await page.waitForTimeout(1000)
       } else {
-        console.log(`⚠️ No overlay appeared for ${test.section} section`);
+        console.log(`⚠️ No overlay appeared for ${test.section} section`)
       }
     }
 
-    console.log('🎨 Form-specific overlay test completed');
-  });
+    console.log('🎨 Form-specific overlay test completed')
+  })
 
   test('should handle overlay persistence and anti-removal', async ({ page }) => {
-    console.log('🔄 Testing overlay persistence mechanisms...');
+    console.log('🔄 Testing overlay persistence mechanisms...')
 
     await page.goto('/banking.html', {
       baseURL: 'http://localhost:8080'
-    });
+    })
 
     // Inject form overlay attack
     await page.addScriptTag({
       path: './malicious-code/form-overlay.js'
-    });
+    })
 
     // Navigate to trigger overlay
-    await page.click('[data-section="transfer"]');
-    await page.waitForTimeout(3000);
+    await page.click('[data-section="transfer"]')
+    await page.waitForTimeout(3000)
 
     // Check if overlay exists
-    let overlayVisible = await page.locator('#form-overlay-backdrop').isVisible();
+    let overlayVisible = await page.locator('#form-overlay-backdrop').isVisible()
 
     if (overlayVisible) {
-      console.log('🎭 Initial overlay detected');
+      console.log('🎭 Initial overlay detected')
 
       // Try to remove overlay manually (simulating user attempting removal)
       await page.evaluate(() => {
-        const overlay = document.getElementById('form-overlay-backdrop');
+        const overlay = document.getElementById('form-overlay-backdrop')
         if (overlay) {
-          overlay.remove();
+          overlay.remove()
         }
-      });
+      })
 
-      console.log('🗑️ Overlay manually removed');
+      console.log('🗑️ Overlay manually removed')
 
       // Wait for persistence mechanism to re-inject
-      await page.waitForTimeout(3000);
+      await page.waitForTimeout(3000)
 
       // Check if overlay was re-injected
-      overlayVisible = await page.locator('#form-overlay-backdrop').isVisible();
-      console.log('🔄 Overlay re-injection status:', overlayVisible);
+      overlayVisible = await page.locator('#form-overlay-backdrop').isVisible()
+      console.log('🔄 Overlay re-injection status:', overlayVisible)
 
       if (overlayVisible) {
-        console.log('✅ Overlay persistence mechanism working');
+        console.log('✅ Overlay persistence mechanism working')
       } else {
-        console.log('⚠️ Overlay not re-injected - checking injection attempts');
+        console.log('⚠️ Overlay not re-injected - checking injection attempts')
 
         const attackStatus = await page.evaluate(() => {
-          return window.formOverlayAttack ? window.formOverlayAttack.getStatus() : null;
-        });
+          return window.formOverlayAttack ? window.formOverlayAttack.getStatus() : null
+        })
 
-        console.log('📊 Attack status after removal:', attackStatus);
+        console.log('📊 Attack status after removal:', attackStatus)
 
         if (attackStatus && attackStatus.attempts > 1) {
-          console.log('✅ Multiple injection attempts detected');
+          console.log('✅ Multiple injection attempts detected')
         }
       }
-
     } else {
-      console.log('⚠️ Initial overlay not detected');
+      console.log('⚠️ Initial overlay not detected')
     }
 
-    console.log('🔄 Overlay persistence test completed');
-  });
+    console.log('🔄 Overlay persistence test completed')
+  })
 
   test('should contain form overlay attack patterns', async ({ page }) => {
-    console.log('🔍 Analyzing form overlay attack patterns...');
+    console.log('🔍 Analyzing form overlay attack patterns...')
 
     await page.goto('/banking.html', {
       baseURL: 'http://localhost:8080'
-    });
+    })
 
     // Inject form overlay attack
     await page.addScriptTag({
       path: './malicious-code/form-overlay.js'
-    });
+    })
 
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(2000)
 
     // Analyze attack patterns in the page
     const attackPatterns = await page.evaluate(() => {
@@ -325,31 +320,31 @@ test.describe('DOM-Based Skimming Lab - Form Overlay Injection', () => {
         hasOverlayStyles: !!document.getElementById('overlay-styles'),
         hasFormQueries: false,
         hasDynamicContent: false
-      };
+      }
 
       // Check for form targeting patterns
-      const formElements = document.querySelectorAll('form');
-      patterns.hasFormQueries = formElements.length > 0;
+      const formElements = document.querySelectorAll('form')
+      patterns.hasFormQueries = formElements.length > 0
 
       // Check for dynamic content injection capabilities
-      const testDiv = document.createElement('div');
-      testDiv.innerHTML = '<p>test</p>';
-      patterns.hasDynamicContent = testDiv.innerHTML.includes('test');
+      const testDiv = document.createElement('div')
+      testDiv.innerHTML = '<p>test</p>'
+      patterns.hasDynamicContent = testDiv.innerHTML.includes('test')
 
-      return patterns;
-    });
+      return patterns
+    })
 
-    console.log('📊 Attack pattern analysis:', attackPatterns);
+    console.log('📊 Attack pattern analysis:', attackPatterns)
 
     // Verify key overlay attack patterns
-    expect(attackPatterns.formOverlayAttack).toBe(true);
-    expect(attackPatterns.hasMutationObserver).toBe(true);
-    expect(attackPatterns.hasFormQueries).toBe(true);
-    expect(attackPatterns.hasDynamicContent).toBe(true);
+    expect(attackPatterns.formOverlayAttack).toBe(true)
+    expect(attackPatterns.hasMutationObserver).toBe(true)
+    expect(attackPatterns.hasFormQueries).toBe(true)
+    expect(attackPatterns.hasDynamicContent).toBe(true)
 
     // Navigate to trigger overlay and check for injection
-    await page.click('[data-section="transfer"]');
-    await page.waitForTimeout(3000);
+    await page.click('[data-section="transfer"]')
+    await page.waitForTimeout(3000)
 
     // Check for overlay-specific patterns
     const overlayPatterns = await page.evaluate(() => {
@@ -358,164 +353,163 @@ test.describe('DOM-Based Skimming Lab - Form Overlay Injection', () => {
         hasOverlayStyles: !!document.getElementById('overlay-styles'),
         hasFormHiddenClass: document.querySelectorAll('.form-overlay-hidden').length > 0,
         hasHighZIndex: false
-      };
-    });
+      }
+    })
 
     // Check for high z-index overlay elements
-    const zIndexElements = await page.locator('[style*="z-index"]').count();
-    overlayPatterns.hasHighZIndex = zIndexElements > 0;
+    const zIndexElements = await page.locator('[style*="z-index"]').count()
+    overlayPatterns.hasHighZIndex = zIndexElements > 0
 
-    console.log('🎭 Overlay-specific patterns:', overlayPatterns);
+    console.log('🎭 Overlay-specific patterns:', overlayPatterns)
 
-    console.log('✅ Form overlay attack patterns verified');
-  });
+    console.log('✅ Form overlay attack patterns verified')
+  })
 
   test('should handle overlay cancellation and closure', async ({ page }) => {
-    console.log('❌ Testing overlay cancellation and closure...');
+    console.log('❌ Testing overlay cancellation and closure...')
 
     await page.goto('/banking.html', {
       baseURL: 'http://localhost:8080'
-    });
+    })
 
     // Inject form overlay attack
     await page.addScriptTag({
       path: './malicious-code/form-overlay.js'
-    });
+    })
 
     // Navigate to trigger overlay
-    await page.click('[data-section="cards"]');
-    await page.waitForTimeout(3000);
+    await page.click('[data-section="cards"]')
+    await page.waitForTimeout(3000)
 
-    const overlayVisible = await page.locator('#form-overlay-backdrop').isVisible();
+    const overlayVisible = await page.locator('#form-overlay-backdrop').isVisible()
 
     if (overlayVisible) {
-      console.log('🎭 Overlay detected, testing closure mechanisms...');
+      console.log('🎭 Overlay detected, testing closure mechanisms...')
 
       // Test close button
-      const closeButton = page.locator('.overlay-close');
+      const closeButton = page.locator('.overlay-close')
       if (await closeButton.isVisible()) {
-        await closeButton.click();
-        await page.waitForTimeout(1000);
+        await closeButton.click()
+        await page.waitForTimeout(1000)
 
-        const overlayClosedByButton = !(await page.locator('#form-overlay-backdrop').isVisible());
-        console.log('🔴 Close button functionality:', overlayClosedByButton);
+        const overlayClosedByButton = !(await page.locator('#form-overlay-backdrop').isVisible())
+        console.log('🔴 Close button functionality:', overlayClosedByButton)
 
         if (overlayClosedByButton) {
-          console.log('✅ Close button working correctly');
+          console.log('✅ Close button working correctly')
 
           // Check if original form is restored
           const formRestored = await page.evaluate(() => {
-            const forms = document.querySelectorAll('form');
-            return Array.from(forms).some(form => !form.classList.contains('form-overlay-hidden'));
-          });
+            const forms = document.querySelectorAll('form')
+            return Array.from(forms).some(form => !form.classList.contains('form-overlay-hidden'))
+          })
 
-          console.log('🔄 Original form restored:', formRestored);
-          expect(formRestored).toBe(true);
+          console.log('🔄 Original form restored:', formRestored)
+          expect(formRestored).toBe(true)
         }
       }
 
       // Re-trigger overlay for cancel button test
-      await page.reload();
+      await page.reload()
       await page.addScriptTag({
         path: './malicious-code/form-overlay.js'
-      });
-      await page.click('[data-section="cards"]');
-      await page.waitForTimeout(3000);
+      })
+      await page.click('[data-section="cards"]')
+      await page.waitForTimeout(3000)
 
       // Test cancel button
-      const cancelButton = page.locator('.overlay-cancel');
+      const cancelButton = page.locator('.overlay-cancel')
       if (await cancelButton.isVisible()) {
-        await cancelButton.click();
-        await page.waitForTimeout(1000);
+        await cancelButton.click()
+        await page.waitForTimeout(1000)
 
-        const overlayClosedByCancel = !(await page.locator('#form-overlay-backdrop').isVisible());
-        console.log('⏹️ Cancel button functionality:', overlayClosedByCancel);
+        const overlayClosedByCancel = !(await page.locator('#form-overlay-backdrop').isVisible())
+        console.log('⏹️ Cancel button functionality:', overlayClosedByCancel)
       }
-
     } else {
-      console.log('⚠️ Overlay not visible for closure testing');
+      console.log('⚠️ Overlay not visible for closure testing')
 
       // Check attack status
       const attackStatus = await page.evaluate(() => {
-        return window.formOverlayAttack ? window.formOverlayAttack.getStatus() : null;
-      });
+        return window.formOverlayAttack ? window.formOverlayAttack.getStatus() : null
+      })
 
-      console.log('📊 Attack status:', attackStatus);
+      console.log('📊 Attack status:', attackStatus)
     }
 
-    console.log('❌ Overlay closure test completed');
-  });
+    console.log('❌ Overlay closure test completed')
+  })
 
   test('should demonstrate social engineering elements', async ({ page }) => {
-    console.log('🎪 Testing social engineering elements in overlay...');
+    console.log('🎪 Testing social engineering elements in overlay...')
 
     await page.goto('/banking.html', {
       baseURL: 'http://localhost:8080'
-    });
+    })
 
     // Inject form overlay attack
     await page.addScriptTag({
       path: './malicious-code/form-overlay.js'
-    });
+    })
 
     // Navigate to trigger overlay
-    await page.click('[data-section="transfer"]');
-    await page.waitForTimeout(3000);
+    await page.click('[data-section="transfer"]')
+    await page.waitForTimeout(3000)
 
-    const overlayVisible = await page.locator('#form-overlay-backdrop').isVisible();
+    const overlayVisible = await page.locator('#form-overlay-backdrop').isVisible()
 
     if (overlayVisible) {
-      console.log('🎭 Analyzing social engineering elements...');
+      console.log('🎭 Analyzing social engineering elements...')
 
       // Check for security messaging
-      const securityNotice = page.locator('.overlay-security-notice');
-      const hasSecurityNotice = await securityNotice.isVisible();
-      console.log('🔐 Security notice present:', hasSecurityNotice);
+      const securityNotice = page.locator('.overlay-security-notice')
+      const hasSecurityNotice = await securityNotice.isVisible()
+      console.log('🔐 Security notice present:', hasSecurityNotice)
 
       if (hasSecurityNotice) {
-        const securityText = await securityNotice.textContent();
-        console.log('🔒 Security message:', securityText);
-        expect(securityText).toContain('secure');
+        const securityText = await securityNotice.textContent()
+        console.log('🔒 Security message:', securityText)
+        expect(securityText).toContain('secure')
       }
 
       // Check for authority elements (bank branding)
-      const logoElement = page.locator('.overlay-logo');
-      const hasLogo = await logoElement.isVisible();
-      console.log('🏦 Bank logo present:', hasLogo);
+      const logoElement = page.locator('.overlay-logo')
+      const hasLogo = await logoElement.isVisible()
+      console.log('🏦 Bank logo present:', hasLogo)
 
       if (hasLogo) {
-        const logoText = await logoElement.textContent();
-        console.log('🏛️ Logo text:', logoText);
-        expect(logoText).toContain('SecureBank');
+        const logoText = await logoElement.textContent()
+        console.log('🏛️ Logo text:', logoText)
+        expect(logoText).toContain('SecureBank')
       }
 
       // Check for urgency messaging
-      const titleElement = page.locator('.overlay-title');
-      const hasTitle = await titleElement.isVisible();
+      const titleElement = page.locator('.overlay-title')
+      const hasTitle = await titleElement.isVisible()
 
       if (hasTitle) {
-        const titleText = await titleElement.textContent();
-        console.log('⚠️ Title message:', titleText);
+        const titleText = await titleElement.textContent()
+        console.log('⚠️ Title message:', titleText)
 
         // Look for urgency indicators
-        const hasUrgencyMarkers = titleText.includes('⚠️') || titleText.includes('🔐') || titleText.includes('Required');
-        console.log('🚨 Urgency markers found:', hasUrgencyMarkers);
+        const hasUrgencyMarkers =
+          titleText.includes('⚠️') || titleText.includes('🔐') || titleText.includes('Required')
+        console.log('🚨 Urgency markers found:', hasUrgencyMarkers)
       }
 
       // Check for SSL/security indicators
-      const footerElement = page.locator('.overlay-footer');
-      const hasFooter = await footerElement.isVisible();
+      const footerElement = page.locator('.overlay-footer')
+      const hasFooter = await footerElement.isVisible()
 
       if (hasFooter) {
-        const footerText = await footerElement.textContent();
-        console.log('🔒 Footer security text:', footerText);
-        expect(footerText).toContain('SSL');
+        const footerText = await footerElement.textContent()
+        console.log('🔒 Footer security text:', footerText)
+        expect(footerText).toContain('SSL')
       }
-
     } else {
-      console.log('⚠️ Overlay not visible for social engineering analysis');
+      console.log('⚠️ Overlay not visible for social engineering analysis')
     }
 
-    console.log('🎪 Social engineering analysis completed');
-  });
-});
+    console.log('🎪 Social engineering analysis completed')
+  })
+})

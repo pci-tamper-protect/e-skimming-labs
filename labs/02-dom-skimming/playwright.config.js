@@ -1,5 +1,5 @@
 // @ts-check
-const { defineConfig } = require('@playwright/test');
+const { defineConfig } = require('@playwright/test')
 
 module.exports = defineConfig({
   testDir: './test',
@@ -17,7 +17,7 @@ module.exports = defineConfig({
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL: 'http://localhost:9003',
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
+    trace: 'on-first-retry'
   },
 
   /* Configure projects for major browsers */
@@ -28,7 +28,7 @@ module.exports = defineConfig({
         browserName: 'chromium',
         headless: false,
         viewport: { width: 1280, height: 720 }
-      },
-    },
-  ],
-});
+      }
+    }
+  ]
+})

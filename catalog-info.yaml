@@ -52,7 +52,7 @@ ptp:
     alerting:
       enabled: true
       channels:
-      - '#platform-alerts'
+        - '#platform-alerts'
   security:
     vulnerability-scan: true
     dependency-check: true

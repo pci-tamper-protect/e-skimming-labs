@@ -1,22 +1,22 @@
 // @ts-check
-const { defineConfig, devices } = require('@playwright/test');
+const { defineConfig, devices } = require('@playwright/test')
 
 // Get the variant from environment variable (defaults to 'base')
-const SKIMMER_VARIANT = process.env.SKIMMER_VARIANT || 'base';
+const SKIMMER_VARIANT = process.env.SKIMMER_VARIANT || 'base'
 
 // Map variants to their test files
 const variantTestMap = {
-  'base': ['checkout.spec.js'],
+  base: ['checkout.spec.js'],
   'obfuscated-base64': ['obfuscated-base64.spec.js'],
   'event-listener-variant': ['event-listener-variant.spec.js'],
   'websocket-exfil': ['websocket-exfil.spec.js']
-};
+}
 
 // Get test pattern for current variant
-const testMatch = variantTestMap[SKIMMER_VARIANT] || ['checkout.spec.js'];
+const testMatch = variantTestMap[SKIMMER_VARIANT] || ['checkout.spec.js']
 
-console.log(`🧪 Running tests for variant: ${SKIMMER_VARIANT}`);
-console.log(`📋 Test files: ${testMatch.join(', ')}`);
+console.log(`🧪 Running tests for variant: ${SKIMMER_VARIANT}`)
+console.log(`📋 Test files: ${testMatch.join(', ')}`)
 
 /**
  * @see https://playwright.dev/docs/test-configuration
@@ -57,7 +57,7 @@ module.exports = defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: { ...devices['Desktop Chrome'] }
     }
   ],
 
@@ -66,6 +66,6 @@ module.exports = defineConfig({
     command: 'cd ../../.. && docker-compose up lab1-vulnerable-site lab1-c2-server',
     url: 'http://localhost:9001',
     reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
-  },
-});
+    timeout: 120 * 1000
+  }
+})

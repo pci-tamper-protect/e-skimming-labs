@@ -24,7 +24,9 @@
       "Bash(docker-compose restart:*)",
       "Bash(docker-compose build:*)",
       "Bash(gh pr view:*)",
-      "Bash(gh api:*)"
+      "Bash(gh api:*)",
+      "Bash(docker-compose:*)",
+      "Bash(npm install)"
     ],
     "deny": [],
     "ask": []

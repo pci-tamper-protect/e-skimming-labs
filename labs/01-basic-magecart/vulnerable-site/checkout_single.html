@@ -1,350 +1,381 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Checkout - TechGear Store</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: #f5f5f5;
-            color: #333;
-            line-height: 1.6;
-        }
-        
-        .header {
-            background: #2c3e50;
-            color: white;
-            padding: 1rem 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
-        
-        .header h1 {
-            font-size: 1.5rem;
-        }
-        
-        .main {
-            max-width: 600px;
-            margin: 2rem auto;
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        
-        .checkout-header {
-            margin-bottom: 2rem;
-            padding-bottom: 1rem;
-            border-bottom: 2px solid #2c3e50;
-        }
-        
-        .checkout-header h2 {
-            color: #2c3e50;
-        }
-        
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: #555;
-        }
-        
-        input[type="text"],
-        input[type="email"],
-        input[type="tel"],
-        select {
-            width: 100%;
-            padding: 0.75rem;
-            border: 2px solid #ddd;
-            border-radius: 4px;
-            font-size: 1rem;
-            transition: border-color 0.3s;
-        }
-        
-        input:focus,
-        select:focus {
-            outline: none;
-            border-color: #3498db;
-        }
-        
-        .card-row {
-            display: grid;
-            grid-template-columns: 2fr 1fr 1fr;
-            gap: 1rem;
-        }
-        
-        .submit-btn {
-            width: 100%;
-            padding: 1rem;
-            background: #27ae60;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-        
-        .submit-btn:hover {
-            background: #229954;
-        }
-        
-        .security-badge {
-            margin-top: 1rem;
-            padding: 1rem;
-            background: #ecf0f1;
-            border-radius: 4px;
-            text-align: center;
-            font-size: 0.9rem;
-            color: #7f8c8d;
-        }
-        
-        .warning {
-            background: #fff3cd;
-            border: 2px solid #ffc107;
-            padding: 1rem;
-            margin-bottom: 2rem;
-            border-radius: 4px;
-        }
-        
-        .warning strong {
-            color: #856404;
-        }
-        
-        .attack-method {
-            background: #ffe8e8;
-            border: 2px solid #e74c3c;
-            padding: 1rem;
-            margin-bottom: 2rem;
-            border-radius: 4px;
-        }
-        
-        .attack-method strong {
-            color: #c0392b;
-        }
-        
-        .attack-method code {
-            background: #34495e;
-            color: #ecf0f1;
-            padding: 0.2rem 0.5rem;
-            border-radius: 3px;
-            font-family: 'Courier New', monospace;
-        }
-        
-        .success-message {
-            display: none;
-            background: #d4edda;
-            border: 2px solid #28a745;
-            padding: 1.5rem;
-            border-radius: 4px;
-            margin-top: 1rem;
-            text-align: center;
-        }
-        
-        .success-message.show {
-            display: block;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell,
+          sans-serif;
+        background: #f5f5f5;
+        color: #333;
+        line-height: 1.6;
+      }
+
+      .header {
+        background: #2c3e50;
+        color: white;
+        padding: 1rem 0;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px;
+      }
+
+      .header h1 {
+        font-size: 1.5rem;
+      }
+
+      .main {
+        max-width: 600px;
+        margin: 2rem auto;
+        background: white;
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .checkout-header {
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #2c3e50;
+      }
+
+      .checkout-header h2 {
+        color: #2c3e50;
+      }
+
+      .form-group {
+        margin-bottom: 1.5rem;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: #555;
+      }
+
+      input[type='text'],
+      input[type='email'],
+      input[type='tel'],
+      select {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid #ddd;
+        border-radius: 4px;
+        font-size: 1rem;
+        transition: border-color 0.3s;
+      }
+
+      input:focus,
+      select:focus {
+        outline: none;
+        border-color: #3498db;
+      }
+
+      .card-row {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr;
+        gap: 1rem;
+      }
+
+      .submit-btn {
+        width: 100%;
+        padding: 1rem;
+        background: #27ae60;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.3s;
+      }
+
+      .submit-btn:hover {
+        background: #229954;
+      }
+
+      .security-badge {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #ecf0f1;
+        border-radius: 4px;
+        text-align: center;
+        font-size: 0.9rem;
+        color: #7f8c8d;
+      }
+
+      .warning {
+        background: #fff3cd;
+        border: 2px solid #ffc107;
+        padding: 1rem;
+        margin-bottom: 2rem;
+        border-radius: 4px;
+      }
+
+      .warning strong {
+        color: #856404;
+      }
+
+      .attack-method {
+        background: #ffe8e8;
+        border: 2px solid #e74c3c;
+        padding: 1rem;
+        margin-bottom: 2rem;
+        border-radius: 4px;
+      }
+
+      .attack-method strong {
+        color: #c0392b;
+      }
+
+      .attack-method code {
+        background: #34495e;
+        color: #ecf0f1;
+        padding: 0.2rem 0.5rem;
+        border-radius: 3px;
+        font-family: 'Courier New', monospace;
+      }
+
+      .success-message {
+        display: none;
+        background: #d4edda;
+        border: 2px solid #28a745;
+        padding: 1.5rem;
+        border-radius: 4px;
+        margin-top: 1rem;
+        text-align: center;
+      }
+
+      .success-message.show {
+        display: block;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <header class="header">
-        <div class="container">
-            <h1>🛒 TechGear Store</h1>
-            <div style="float: right; margin-top: 5px;">
-                <a href="http://localhost:3000" style="color: white; text-decoration: none; padding: 5px 15px; background: #27ae60; border-radius: 4px; margin-right: 10px;">← Back to Labs</a>
-                <a href="http://localhost:9002" target="_blank" style="color: white; text-decoration: none; padding: 5px 15px; background: #e74c3c; border-radius: 4px;">🕵️ View Stolen Data</a>
-                <a href="index.html" style="color: white; text-decoration: none; padding: 5px 15px; background: #34495e; border-radius: 4px; margin-left: 10px;">← Back to Store</a>
-            </div>
+      <div class="container">
+        <h1>🛒 TechGear Store</h1>
+        <div style="float: right; margin-top: 5px">
+          <a
+            href="http://localhost:3000"
+            style="
+              color: white;
+              text-decoration: none;
+              padding: 5px 15px;
+              background: #27ae60;
+              border-radius: 4px;
+              margin-right: 10px;
+            "
+            >← Back to Labs</a
+          >
+          <a
+            href="http://localhost:9002"
+            target="_blank"
+            style="
+              color: white;
+              text-decoration: none;
+              padding: 5px 15px;
+              background: #e74c3c;
+              border-radius: 4px;
+            "
+            >🕵️ View Stolen Data</a
+          >
+          <a
+            href="index.html"
+            style="
+              color: white;
+              text-decoration: none;
+              padding: 5px 15px;
+              background: #34495e;
+              border-radius: 4px;
+              margin-left: 10px;
+            "
+            >← Back to Store</a
+          >
         </div>
+      </div>
     </header>
-    
+
     <main class="main">
-        <div class="checkout-header">
-            <h2>Secure Checkout</h2>
-            <p>Complete your purchase</p>
-        </div>
-        
-        <div class="warning">
-            <strong>⚠️ LAB ENVIRONMENT:</strong> This is a vulnerable website for educational purposes. 
-            The checkout form has been compromised with a credit card skimmer. 
-            Use ONLY test data (never real payment information).
-        </div>
-        
-        <div class="attack-method">
-            <strong>🔴 ATTACK METHOD: Modified Existing File</strong><br>
-            This page loads ONE JavaScript file that has been compromised:
-            <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
-                <li><code>checkout-compromised.js</code> - Contains BOTH legitimate code AND malicious skimmer</li>
-            </ul>
-            <p style="margin-top: 0.5rem;">
-                <strong>Real-world scenario:</strong> Attacker gained access and modified the existing file:
-                <br>• Compromised admin/developer credentials (no MFA)
-                <br>• Appended malicious code to bottom of file
-                <br>• File looks normal at first glance
-                <br>• Last modified: August 21, 2018 (outside business hours)
-            </p>
-            <p style="margin-top: 0.5rem; font-weight: bold; color: #c0392b;">
-                ⚠️ This is MORE REALISTIC - attackers rarely add new files, they modify existing ones!
-            </p>
+      <div class="checkout-header">
+        <h2>Secure Checkout</h2>
+        <p>Complete your purchase</p>
+      </div>
+
+      <div class="warning">
+        <strong>⚠️ LAB ENVIRONMENT:</strong> This is a vulnerable website for educational purposes.
+        The checkout form has been compromised with a credit card skimmer. Use ONLY test data (never
+        real payment information).
+      </div>
+
+      <div class="attack-method">
+        <strong>🔴 ATTACK METHOD: Modified Existing File</strong><br />
+        This page loads ONE JavaScript file that has been compromised:
+        <ul style="margin-top: 0.5rem; margin-left: 1.5rem">
+          <li>
+            <code>checkout-compromised.js</code> - Contains BOTH legitimate code AND malicious
+            skimmer
+          </li>
+        </ul>
+        <p style="margin-top: 0.5rem">
+          <strong>Real-world scenario:</strong> Attacker gained access and modified the existing
+          file: <br />• Compromised admin/developer credentials (no MFA) <br />• Appended malicious
+          code to bottom of file <br />• File looks normal at first glance <br />• Last modified:
+          August 21, 2018 (outside business hours)
+        </p>
+        <p style="margin-top: 0.5rem; font-weight: bold; color: #c0392b">
+          ⚠️ This is MORE REALISTIC - attackers rarely add new files, they modify existing ones!
+        </p>
+      </div>
+
+      <div
+        style="
+          background: #e8f5e8;
+          border: 2px solid #27ae60;
+          padding: 1rem;
+          margin-bottom: 2rem;
+          border-radius: 4px;
+        "
+      >
+        <strong>💳 VALID TEST CARD NUMBERS:</strong><br />
+        <ul style="margin-top: 0.5rem; margin-left: 1.5rem; color: #27ae60">
+          <li><code>4532123456789010</code> - Visa (16 digits)</li>
+          <li><code>4000000000000002</code> - Visa (16 digits)</li>
+          <li><code>5555555555554444</code> - Mastercard (16 digits)</li>
+          <li><code>378282246310005</code> - American Express (15 digits)</li>
+        </ul>
+        <p style="margin-top: 0.5rem; font-size: 0.9rem">
+          These numbers pass Luhn algorithm validation. Use any future expiry date (MM/YY) and any
+          3-4 digit CVV.
+        </p>
+      </div>
+
+      <form id="payment-form">
+        <!-- Payment Information -->
+        <h3 style="margin-bottom: 1rem; color: #2c3e50">Payment Information</h3>
+
+        <div class="form-group">
+          <label for="card-number">Card Number</label>
+          <input
+            type="text"
+            id="card-number"
+            name="cardNumber"
+            placeholder="4532 1234 5678 9012"
+            maxlength="19"
+            required
+          />
         </div>
 
-        <div style="background: #e8f5e8; border: 2px solid #27ae60; padding: 1rem; margin-bottom: 2rem; border-radius: 4px;">
-            <strong>💳 VALID TEST CARD NUMBERS:</strong><br>
-            <ul style="margin-top: 0.5rem; margin-left: 1.5rem; color: #27ae60;">
-                <li><code>4532123456789010</code> - Visa (16 digits)</li>
-                <li><code>4000000000000002</code> - Visa (16 digits)</li>
-                <li><code>5555555555554444</code> - Mastercard (16 digits)</li>
-                <li><code>378282246310005</code> - American Express (15 digits)</li>
-            </ul>
-            <p style="margin-top: 0.5rem; font-size: 0.9rem;">
-                These numbers pass Luhn algorithm validation. Use any future expiry date (MM/YY) and any 3-4 digit CVV.
-            </p>
+        <div class="form-group">
+          <label for="cardholder-name">Cardholder Name</label>
+          <input
+            type="text"
+            id="cardholder-name"
+            name="cardholderName"
+            placeholder="John Doe"
+            required
+          />
         </div>
-        
-        <form id="payment-form">
-            <!-- Payment Information -->
-            <h3 style="margin-bottom: 1rem; color: #2c3e50;">Payment Information</h3>
-            
-            <div class="form-group">
-                <label for="card-number">Card Number</label>
-                <input type="text" 
-                       id="card-number" 
-                       name="cardNumber"
-                       placeholder="4532 1234 5678 9012" 
-                       maxlength="19"
-                       required>
-            </div>
-            
-            <div class="form-group">
-                <label for="cardholder-name">Cardholder Name</label>
-                <input type="text" 
-                       id="cardholder-name" 
-                       name="cardholderName"
-                       placeholder="John Doe" 
-                       required>
-            </div>
-            
-            <div class="card-row">
-                <div class="form-group">
-                    <label for="expiry">Expiry Date</label>
-                    <input type="text" 
-                           id="expiry" 
-                           name="expiry"
-                           placeholder="MM/YY" 
-                           maxlength="5"
-                           required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="cvv">CVV</label>
-                    <input type="text" 
-                           id="cvv" 
-                           name="cvv"
-                           placeholder="123" 
-                           maxlength="4"
-                           required>
-                </div>
-            </div>
-            
-            <!-- Billing Information -->
-            <h3 style="margin: 2rem 0 1rem; color: #2c3e50;">Billing Address</h3>
-            
-            <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" 
-                       id="email" 
-                       name="email"
-                       placeholder="john.doe@example.com" 
-                       required>
-            </div>
-            
-            <div class="form-group">
-                <label for="billing-address">Street Address</label>
-                <input type="text" 
-                       id="billing-address" 
-                       name="billingAddress"
-                       placeholder="123 Main St" 
-                       required>
-            </div>
-            
-            <div class="card-row">
-                <div class="form-group">
-                    <label for="city">City</label>
-                    <input type="text" 
-                           id="city" 
-                           name="city"
-                           placeholder="San Francisco" 
-                           required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="zip">ZIP Code</label>
-                    <input type="text" 
-                           id="zip" 
-                           name="zip"
-                           placeholder="94102" 
-                           maxlength="10"
-                           required>
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <label for="country">Country</label>
-                <select id="country" name="country" required>
-                    <option value="">Select Country</option>
-                    <option value="US" selected>United States</option>
-                    <option value="CA">Canada</option>
-                    <option value="UK">United Kingdom</option>
-                    <option value="AU">Australia</option>
-                    <option value="DE">Germany</option>
-                    <option value="FR">France</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="phone">Phone Number</label>
-                <input type="tel" 
-                       id="phone" 
-                       name="phone"
-                       placeholder="+1 (555) 123-4567">
-            </div>
-            
-            <button type="submit" class="submit-btn">
-                Complete Purchase - $299.99
-            </button>
-            
-            <div class="security-badge">
-                🔒 Your payment is secure and encrypted
-            </div>
-        </form>
-        
-        <div id="success-message" class="success-message">
-            <h3>✅ Order Placed Successfully!</h3>
-            <p>Thank you for your purchase. Your order has been confirmed.</p>
-            <p style="margin-top: 1rem; color: #856404;">
-                <strong>Educational Note:</strong> Your payment data was also sent to the attacker's C2 server.
-                Check <a href="http://localhost:3000/stolen" target="_blank">the C2 dashboard</a> to see the stolen data.
-            </p>
+
+        <div class="card-row">
+          <div class="form-group">
+            <label for="expiry">Expiry Date</label>
+            <input
+              type="text"
+              id="expiry"
+              name="expiry"
+              placeholder="MM/YY"
+              maxlength="5"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="cvv">CVV</label>
+            <input type="text" id="cvv" name="cvv" placeholder="123" maxlength="4" required />
+          </div>
         </div>
+
+        <!-- Billing Information -->
+        <h3 style="margin: 2rem 0 1rem; color: #2c3e50">Billing Address</h3>
+
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" placeholder="john.doe@example.com" required />
+        </div>
+
+        <div class="form-group">
+          <label for="billing-address">Street Address</label>
+          <input
+            type="text"
+            id="billing-address"
+            name="billingAddress"
+            placeholder="123 Main St"
+            required
+          />
+        </div>
+
+        <div class="card-row">
+          <div class="form-group">
+            <label for="city">City</label>
+            <input type="text" id="city" name="city" placeholder="San Francisco" required />
+          </div>
+
+          <div class="form-group">
+            <label for="zip">ZIP Code</label>
+            <input type="text" id="zip" name="zip" placeholder="94102" maxlength="10" required />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="country">Country</label>
+          <select id="country" name="country" required>
+            <option value="">Select Country</option>
+            <option value="US" selected>United States</option>
+            <option value="CA">Canada</option>
+            <option value="UK">United Kingdom</option>
+            <option value="AU">Australia</option>
+            <option value="DE">Germany</option>
+            <option value="FR">France</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="phone">Phone Number</label>
+          <input type="tel" id="phone" name="phone" placeholder="+1 (555) 123-4567" />
+        </div>
+
+        <button type="submit" class="submit-btn">Complete Purchase - $299.99</button>
+
+        <div class="security-badge">🔒 Your payment is secure and encrypted</div>
+      </form>
+
+      <div id="success-message" class="success-message">
+        <h3>✅ Order Placed Successfully!</h3>
+        <p>Thank you for your purchase. Your order has been confirmed.</p>
+        <p style="margin-top: 1rem; color: #856404">
+          <strong>Educational Note:</strong> Your payment data was also sent to the attacker's C2
+          server. Check
+          <a href="http://localhost:3000/stolen" target="_blank">the C2 dashboard</a> to see the
+          stolen data.
+        </p>
+      </div>
     </main>
-    
+
     <!-- COMPROMISED FILE -->
     <!-- This file was modified by the attacker on August 21, 2018 at 22:58 BST
          They used compromised admin credentials to access the server
@@ -357,60 +388,60 @@
          This is the MOST REALISTIC attack scenario!
     -->
     <script src="js/checkout-compromised.js"></script>
-    
+
     <script>
-        // Format card number with spaces as user types
-        document.getElementById('card-number').addEventListener('input', function(e) {
-            let value = e.target.value.replace(/\s/g, '');
-            let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value;
-            e.target.value = formattedValue;
-        });
-        
-        // Format expiry date as MM/YY
-        document.getElementById('expiry').addEventListener('input', function(e) {
-            let value = e.target.value.replace(/\D/g, '');
-            if (value.length >= 2) {
-                value = value.substring(0, 2) + '/' + value.substring(2, 4);
-            }
-            e.target.value = value;
-        });
-        
-        // Only allow digits in CVV
-        document.getElementById('cvv').addEventListener('input', function(e) {
-            e.target.value = e.target.value.replace(/\D/g, '');
-        });
+      // Format card number with spaces as user types
+      document.getElementById('card-number').addEventListener('input', function (e) {
+        let value = e.target.value.replace(/\s/g, '')
+        let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value
+        e.target.value = formattedValue
+      })
 
-        // Environment-aware URL configuration
-        (function() {
-            const hostname = window.location.hostname;
-            const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+      // Format expiry date as MM/YY
+      document.getElementById('expiry').addEventListener('input', function (e) {
+        let value = e.target.value.replace(/\D/g, '')
+        if (value.length >= 2) {
+          value = value.substring(0, 2) + '/' + value.substring(2, 4)
+        }
+        e.target.value = value
+      })
 
-            let homeUrl, c2Url;
+      // Only allow digits in CVV
+      document.getElementById('cvv').addEventListener('input', function (e) {
+        e.target.value = e.target.value.replace(/\D/g, '')
+      })
 
-            if (isLocal) {
-                homeUrl = 'http://localhost:3000';
-                c2Url = 'http://localhost:9002';
-            } else if (hostname.includes('labs.stg.pcioasis.com')) {
-                homeUrl = 'https://labs.stg.pcioasis.com';
-                c2Url = 'https://labs.stg.pcioasis.com/01-basic-magecart-c2';
-            } else if (hostname.includes('labs.pcioasis.com')) {
-                homeUrl = 'https://labs.pcioasis.com';
-                c2Url = 'https://labs.pcioasis.com/01-basic-magecart-c2';
-            } else {
-                homeUrl = window.location.protocol + '//' + hostname;
-                c2Url = window.location.protocol + '//' + hostname + '/c2';
-            }
+      // Environment-aware URL configuration
+      ;(function () {
+        const hostname = window.location.hostname
+        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
 
-            // Update header links
-            const headerLinks = document.querySelectorAll('.header a');
-            headerLinks.forEach(link => {
-                if (link.textContent.includes('Back to Labs')) {
-                    link.href = homeUrl;
-                } else if (link.textContent.includes('View Stolen Data')) {
-                    link.href = c2Url;
-                }
-            });
-        })();
+        let homeUrl, c2Url
+
+        if (isLocal) {
+          homeUrl = 'http://localhost:3000'
+          c2Url = 'http://localhost:9002'
+        } else if (hostname.includes('labs.stg.pcioasis.com')) {
+          homeUrl = 'https://labs.stg.pcioasis.com'
+          c2Url = 'https://labs.stg.pcioasis.com/01-basic-magecart-c2'
+        } else if (hostname.includes('labs.pcioasis.com')) {
+          homeUrl = 'https://labs.pcioasis.com'
+          c2Url = 'https://labs.pcioasis.com/01-basic-magecart-c2'
+        } else {
+          homeUrl = window.location.protocol + '//' + hostname
+          c2Url = window.location.protocol + '//' + hostname + '/c2'
+        }
+
+        // Update header links
+        const headerLinks = document.querySelectorAll('.header a')
+        headerLinks.forEach(link => {
+          if (link.textContent.includes('Back to Labs')) {
+            link.href = homeUrl
+          } else if (link.textContent.includes('View Stolen Data')) {
+            link.href = c2Url
+          }
+        })
+      })()
     </script>
-</body>
+  </body>
 </html>

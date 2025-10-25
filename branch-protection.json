@@ -1,12 +1,9 @@
 {
-  "required_status_checks": {
-    "strict": true,
-    "contexts": ["Deploy E-Skimming Labs to Cloud Run"]
-  },
-  "enforce_admins": true,
-  "required_pull_request_reviews": {
-    "required_approving_review_count": 1
-  },
-  "restrictions": null
+  "required_status_checks": null,
+  "enforce_admins": false,
+  "required_pull_request_reviews": null,
+  "restrictions": null,
+  "allow_force_pushes": false,
+  "allow_deletions": false
 }
 

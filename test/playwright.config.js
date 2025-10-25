@@ -1,5 +1,5 @@
 // @ts-check
-const { defineConfig, devices } = require('@playwright/test');
+const { defineConfig, devices } = require('@playwright/test')
 
 /**
  * @see https://playwright.dev/docs/test-configuration
@@ -45,42 +45,42 @@ module.exports = defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { 
+      use: {
         ...devices['Desktop Chrome'],
         // Ensure proper cleanup
         launchOptions: {
           headless: true,
           args: ['--no-sandbox', '--disable-dev-shm-usage']
         }
-      },
+      }
     },
     {
       name: 'chrome-mobile',
-      use: { 
+      use: {
         ...devices['Pixel 5'],
         launchOptions: {
           headless: true,
           args: ['--no-sandbox', '--disable-dev-shm-usage']
         }
-      },
+      }
     },
     {
       name: 'chrome-tablet',
-      use: { 
+      use: {
         ...devices['iPad Pro'],
         launchOptions: {
           headless: true,
           args: ['--no-sandbox', '--disable-dev-shm-usage']
         }
-      },
-    },
+      }
+    }
   ],
 
   /* Run your local dev server before starting the tests */
   webServer: {
     command: 'cd .. && ./docker-labs.sh start home-index',
-    url: 'http://localhost:3000',  // Changed from 8080 to 3000
+    url: 'http://localhost:3000', // Changed from 8080 to 3000
     reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
-  },
-});
+    timeout: 120 * 1000
+  }
+})
