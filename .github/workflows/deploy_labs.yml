@@ -78,23 +78,38 @@ jobs:
         run: |
           gcloud auth configure-docker ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build SEO Service
-        run: |
-          docker build \
-            --build-arg ENVIRONMENT=${{ needs.setup.outputs.environment }} \
-            -t ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:${{ github.sha }} \
-            -t ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:latest \
-            -f deploy/shared-components/seo-service/Dockerfile \
-            deploy/shared-components/seo-service/
+        uses: docker/build-push-action@v5
+        with:
+          context: deploy/shared-components/seo-service
+          file: deploy/shared-components/seo-service/Dockerfile
+          push: false
+          tags: |
+            ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:${{ github.sha }}
+            ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:latest
+          build-args: |
+            ENVIRONMENT=${{ needs.setup.outputs.environment }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          load: true
 
       - name: Build Index Service
-        run: |
-          docker build \
-            --build-arg ENVIRONMENT=${{ needs.setup.outputs.environment }} \
-            -t ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:${{ github.sha }} \
-            -t ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:latest \
-            -f deploy/shared-components/home-index-service/Dockerfile \
-            .
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: deploy/shared-components/home-index-service/Dockerfile
+          push: false
+          tags: |
+            ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:${{ github.sha }}
+            ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:latest
+          build-args: |
+            ENVIRONMENT=${{ needs.setup.outputs.environment }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          load: true
 
       - name: Push SEO Service to Artifact Registry
         run: |
@@ -156,14 +171,23 @@ jobs:
         run: |
           gcloud auth configure-docker ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build Analytics Service
-        run: |
-          docker build \
-            --build-arg ENVIRONMENT=${{ needs.setup.outputs.environment }} \
-            -t ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ github.sha }} \
-            -t ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:latest \
-            -f deploy/shared-components/analytics-service/Dockerfile \
-            deploy/shared-components/analytics-service/
+        uses: docker/build-push-action@v5
+        with:
+          context: deploy/shared-components/analytics-service
+          file: deploy/shared-components/analytics-service/Dockerfile
+          push: false
+          tags: |
+            ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ github.sha }}
+            ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:latest
+          build-args: |
+            ENVIRONMENT=${{ needs.setup.outputs.environment }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          load: true
 
       - name: Push Analytics Service to Artifact Registry
         run: |
@@ -218,16 +242,24 @@ jobs:
             --repository-format=docker \
             --description="E-Skimming Labs container images"
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build lab container image
-        run: |
-          # Build lab-specific image
-          docker build \
-            --build-arg LAB_NAME=${{ matrix.lab }} \
-            --build-arg ENVIRONMENT=${{ needs.setup.outputs.environment }} \
-            -t ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }} \
-            -t ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:latest \
-            -f labs/${{ matrix.lab }}/Dockerfile \
-            labs/${{ matrix.lab }}/
+        uses: docker/build-push-action@v5
+        with:
+          context: labs/${{ matrix.lab }}
+          file: labs/${{ matrix.lab }}/Dockerfile
+          push: false
+          tags: |
+            ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }}
+            ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:latest
+          build-args: |
+            LAB_NAME=${{ matrix.lab }}
+            ENVIRONMENT=${{ needs.setup.outputs.environment }}
+          cache-from: type=gha,scope=lab-${{ matrix.lab }}
+          cache-to: type=gha,mode=max,scope=lab-${{ matrix.lab }}
+          load: true
 
       - name: Push container image to Artifact Registry
         run: |
@@ -287,16 +319,24 @@ jobs:
         run: |
           gcloud auth configure-docker ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build index page container
-        run: |
-          # Build index page with lab discovery
-          docker build \
-            --build-arg ENVIRONMENT=${{ needs.setup.outputs.environment }} \
-            --build-arg DOMAIN=${{ needs.setup.outputs.domain_prefix }} \
-            -t ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:${{ github.sha }} \
-            -t ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:latest \
-            -f deploy/Dockerfile.index \
-            .
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: deploy/Dockerfile.index
+          push: false
+          tags: |
+            ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:${{ github.sha }}
+            ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:latest
+          build-args: |
+            ENVIRONMENT=${{ needs.setup.outputs.environment }}
+            DOMAIN=${{ needs.setup.outputs.domain_prefix }}
+          cache-from: type=gha,scope=index
+          cache-to: type=gha,mode=max,scope=index
+          load: true
 
       - name: Push index container to Artifact Registry
         run: |
@@ -338,7 +378,7 @@ jobs:
             echo "✅ All labs deployed successfully to ${{ needs.setup.outputs.domain_prefix }}"
             echo "Labs available at:"
             echo "  - Index: https://${{ needs.setup.outputs.domain_prefix }}"
-            
+
             # List deployed labs
             labs='${{ needs.setup.outputs.labs }}'
             echo "$labs" | jq -r '.[]' | while read lab; do
