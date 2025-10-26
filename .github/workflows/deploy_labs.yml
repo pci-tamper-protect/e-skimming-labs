@@ -77,6 +77,8 @@ jobs:
       - name: Configure Docker to use gcloud as credential helper
         run: |
           gcloud auth configure-docker ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev
+          # Also configure cross-project access for golden images
+          gcloud auth configure-docker us-central1-docker.pkg.dev
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -170,6 +172,8 @@ jobs:
       - name: Configure Docker to use gcloud as credential helper
         run: |
           gcloud auth configure-docker ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev
+          # Also configure cross-project access for golden images
+          gcloud auth configure-docker us-central1-docker.pkg.dev
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -232,6 +236,8 @@ jobs:
       - name: Configure Docker to use gcloud as credential helper
         run: |
           gcloud auth configure-docker ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev
+          # Also configure cross-project access for golden images
+          gcloud auth configure-docker us-central1-docker.pkg.dev
 
       - name: Create Artifact Registry repository if not exists
         run: |
@@ -318,6 +324,8 @@ jobs:
       - name: Configure Docker to use gcloud as credential helper
         run: |
           gcloud auth configure-docker ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev
+          # Also configure cross-project access for golden images
+          gcloud auth configure-docker us-central1-docker.pkg.dev
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
