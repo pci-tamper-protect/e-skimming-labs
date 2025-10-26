@@ -13,12 +13,22 @@
 - **Lab 2 - DOM Skimming**: https://lab-02-dom-skimming-prd-mmwwcfi5za-uc.a.run.app
 - **Lab 3 - Extension Hijacking**: https://lab-03-extension-hijacking-prd-mmwwcfi5za-uc.a.run.app
 
+## C2 Servers
+Each lab has a built-in C2 server accessible at:
+- **Lab 1**: https://lab-01-basic-magecart-prd-mmwwcfi5za-uc.a.run.app/stolen
+- **Lab 2**: https://lab-02-dom-skimming-prd-mmwwcfi5za-uc.a.run.app/stolen-data
+- **Lab 3**: https://lab-03-extension-hijacking-prd-mmwwcfi5za-uc.a.run.app/data-exfil
+
 ## Status
 ✅ All services deployed successfully
 ✅ Artifact Registry repositories created
 ✅ Service accounts configured
 ✅ GitHub Actions workflow running automatically on push
+✅ Lab URLs now point to actual Cloud Run service URLs
+✅ C2 servers working correctly
 
-## Next Steps
-1. Configure custom domain mappings (requires DNS setup)
-2. Set up Cloud Load Balancer for proper routing
+## How It Works
+1. Home page (labs-index-prd) generates lab URLs using environment variables
+2. Each lab is deployed as a separate Cloud Run service
+3. C2 servers are built into each lab service at different endpoints
+4. Navigation buttons detect Cloud Run hostnames and use correct URLs
