@@ -115,17 +115,6 @@ jobs:
           cache-to: type=gha,mode=max
           load: true
 
-      - name: Create Artifact Registry repository if not exists
-        run: |
-          gcloud artifacts repositories describe ${{ env.HOME_REPOSITORY }} \
-            --location=${{ env.HOME_GAR_LOCATION }} \
-            --project=${{ env.HOME_PROJECT_ID }} || \
-          gcloud artifacts repositories create ${{ env.HOME_REPOSITORY }} \
-            --location=${{ env.HOME_GAR_LOCATION }} \
-            --repository-format=docker \
-            --description="E-Skimming Labs Home components" \
-            --project=${{ env.HOME_PROJECT_ID }}
-
       - name: Push SEO Service to Artifact Registry
         run: |
           docker push ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:${{ github.sha }}
@@ -206,17 +195,6 @@ jobs:
           cache-to: type=gha,mode=max
           load: true
 
-      - name: Create Artifact Registry repository if not exists
-        run: |
-          gcloud artifacts repositories describe ${{ env.LABS_REPOSITORY }} \
-            --location=${{ env.LABS_GAR_LOCATION }} \
-            --project=${{ env.LABS_PROJECT_ID }} || \
-          gcloud artifacts repositories create ${{ env.LABS_REPOSITORY }} \
-            --location=${{ env.LABS_GAR_LOCATION }} \
-            --repository-format=docker \
-            --description="E-Skimming Labs components" \
-            --project=${{ env.LABS_PROJECT_ID }}
-
       - name: Push Analytics Service to Artifact Registry
         run: |
           docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ github.sha }}
@@ -262,15 +240,6 @@ jobs:
           gcloud auth configure-docker ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev
           # Also configure cross-project access for golden images
           gcloud auth configure-docker us-central1-docker.pkg.dev
-
-      - name: Create Artifact Registry repository if not exists
-        run: |
-          gcloud artifacts repositories describe ${{ env.LABS_REPOSITORY }} \
-            --location=${{ env.LABS_GAR_LOCATION }} || \
-          gcloud artifacts repositories create ${{ env.LABS_REPOSITORY }} \
-            --location=${{ env.LABS_GAR_LOCATION }} \
-            --repository-format=docker \
-            --description="E-Skimming Labs container images"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -369,17 +338,6 @@ jobs:
           cache-from: type=gha,scope=index
           cache-to: type=gha,mode=max,scope=index
           load: true
-
-      - name: Create Artifact Registry repository if not exists
-        run: |
-          gcloud artifacts repositories describe ${{ env.LABS_REPOSITORY }} \
-            --location=${{ env.LABS_GAR_LOCATION }} \
-            --project=${{ env.LABS_PROJECT_ID }} || \
-          gcloud artifacts repositories create ${{ env.LABS_REPOSITORY }} \
-            --location=${{ env.LABS_GAR_LOCATION }} \
-            --repository-format=docker \
-            --description="E-Skimming Labs components" \
-            --project=${{ env.LABS_PROJECT_ID }}
 
       - name: Push index container to Artifact Registry
         run: |
