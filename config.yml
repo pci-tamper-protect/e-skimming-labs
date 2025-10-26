@@ -25,7 +25,7 @@ projects:
       - name: home-seo-prd
         description: "SEO service for cross-domain integration"
         url: https://home-seo-prd-171147998109-uc.a.run.app
-        
+
   labs:
     id: labs-prd
     region: us-central1
@@ -71,19 +71,19 @@ golden_images:
       tag: latest
       full: us-central1-docker.pkg.dev/pcioasis-operations/containers/go-base:latest
       description: "Go services base image with pre-installed dependencies"
-      
+
     alpine_base:
       name: alpine-base
       tag: latest
       full: us-central1-docker.pkg.dev/pcioasis-operations/containers/alpine-base:latest
       description: "Alpine base image for runtime containers"
-      
+
     nginx_base:
       name: nginx-base
       tag: latest
       full: us-central1-docker.pkg.dev/pcioasis-operations/containers/nginx-base:latest
       description: "Nginx services base image with common configuration"
-      
+
     node_base:
       name: node-base
       tag: latest
@@ -115,4 +115,3 @@ local_development:
     lab2_vulnerable: 9003
     lab2_c2: 9004
     lab3_vulnerable: 9005
-
