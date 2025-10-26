@@ -346,22 +346,22 @@ function generateDashboard(records) {
         </head>
         <body>
             <h1>⚠️ ATTACKER C2 DASHBOARD ⚠️</h1>
-            
+
             <div class="warning">
                 🚨 EDUCATIONAL DEMONSTRATION ONLY 🚨<br>
                 This simulates an attacker's data collection server
             </div>
-            
+
             <div class="stats">
                 <h2>Statistics</h2>
                 <p><strong>Total Records:</strong> ${records.length}</p>
                 <p><strong>Valid Cards:</strong> ${records.filter(r => r.validation?.valid).length}</p>
                 <p><strong>Incomplete Records:</strong> ${records.filter(r => !r.validation?.valid).length}</p>
             </div>
-            
+
             <h2>Stolen Credit Card Data</h2>
             ${records.length === 0 ? '<p>No data collected yet. Visit the vulnerable site and complete checkout.</p>' : recordsHtml}
-            
+
             <div style="margin-top: 40px; padding: 20px; border-top: 1px solid #0f0;">
                 <p><strong>In real attacks, this data would be:</strong></p>
                 <ul>

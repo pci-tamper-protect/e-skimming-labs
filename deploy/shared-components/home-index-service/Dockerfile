@@ -1,5 +1,6 @@
 # Build stage
 FROM golang:1.24.3-alpine AS builder
+RUN apk add --no-cache git ca-certificates
 
 # Set working directory
 WORKDIR /app
@@ -19,9 +20,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 
 # Final stage
 FROM alpine:3.20
-
-# Install ca-certificates for HTTPS requests
-RUN apk --no-cache add ca-certificates
+RUN apk --no-cache add ca-certificates wget
+RUN adduser -D -s /bin/sh appuser
 
 # Create app directory
 WORKDIR /app
@@ -35,8 +35,7 @@ COPY docs ./docs
 # Copy catalog info for service metadata
 COPY catalog-info.yaml ./catalog-info.yaml
 
-# Create non-root user
-RUN adduser -D -s /bin/sh appuser
+# Switch to non-root user
 USER appuser
 
 # Expose port

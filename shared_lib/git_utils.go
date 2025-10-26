@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -166,7 +165,7 @@ func createDeploymentInfo(outputPath string) DeploymentInfo {
 	if data, err := json.MarshalIndent(deploymentInfo, "", "  "); err == nil {
 		if err := os.WriteFile(outputPath, data, 0644); err != nil {
 			log.Printf("⚠️ Failed to save deployment info to %s: %v", outputPath, err)
-			
+
 			// Try fallback to current working directory
 			fallbackPath := filepath.Join(".", "deployment_info.json")
 			if err := os.WriteFile(fallbackPath, data, 0644); err != nil {
@@ -186,9 +185,9 @@ func createDeploymentInfo(outputPath string) DeploymentInfo {
 func logGitInfo() {
 	gitInfo := getGitCommitInfo()
 	commitDisplay := getCommitShortInfo()
-	
+
 	log.Printf("🔗 Git commit: %s", commitDisplay)
-	log.Printf("🔗 Git info: commit=%s, branch=%s, author=%s, dirty=%t, source=%s", 
+	log.Printf("🔗 Git info: commit=%s, branch=%s, author=%s, dirty=%t, source=%s",
 		gitInfo.CommitSHA, gitInfo.Branch, gitInfo.CommitAuthor, gitInfo.IsDirty, gitInfo.Source)
 }
 
@@ -215,5 +214,3 @@ func getGitInfoForTemplate() map[string]interface{} {
 		"CommitDisplay":  getCommitShortInfo(),
 	}
 }
-
-
