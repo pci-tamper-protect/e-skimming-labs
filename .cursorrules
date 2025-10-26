@@ -1,0 +1,31 @@
+# Cursor Rules for e-skimming-labs
+
+## Data Structure Changes
+- **ALWAYS ASK** before changing key names in YAML or JSON files
+- Key names may have dependencies across multiple repositories
+- This affects: secrets.yml, config.yml, GitHub Actions workflows, and any structured data files
+- Changes to key names can break:
+  - Scripts that parse these files
+  - GitHub Actions workflows
+  - Other tools that read these configurations
+  - Cross-repo integrations
+- Before changing a key name:
+  1. Search for all usages across all repos
+  2. Identify all dependent code
+  3. Propose the change and wait for approval
+  4. Update all references atomically
+
+## Git Workflow
+- Create feature branches for changes
+- Create PRs to main branch
+- Don't push directly to main (branch protection enabled)
+
+## Configuration vs Secrets
+- Configuration values (project IDs, regions, URLs) should be in config.yml or hardcoded in workflows
+- Only actual secrets (service account keys) should be in secrets.yml
+- This prevents masking of non-secret values in GitHub Actions logs
+
+## Docker and Deployment
+- Use golden base images from pcioasis-operations/containers
+- All services must listen on port 8080 for Cloud Run
+- Docker layer caching is enabled in GitHub Actions workflows
