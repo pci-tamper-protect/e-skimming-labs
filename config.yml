@@ -57,6 +57,43 @@ domains:
     main: labs.pcioasis.com
     labs: labs.pcioasis.com
   staging:
+
+# Service Account Configuration
+service_accounts:
+  labs:
+    email: github-actions@labs-prd.iam.gserviceaccount.com
+    account_name: github-actions
+    project_id: labs-prd
+    description: "Service account for GitHub Actions deployments in labs-prd"
+    roles:
+      - role: roles/run.admin
+        description: "Deploy and manage Cloud Run services"
+      - role: roles/artifactregistry.writer
+        description: "Push Docker images to Artifact Registry"
+      - role: roles/iam.serviceAccountUser
+        description: "Act as Cloud Run service accounts"
+      - role: roles/artifactregistry.reader
+        description: "Pull golden base images from pcioasis-operations"
+        scope: cross-project
+        target_project: pcioasis-operations
+
+  home:
+    email: github-actions@labs-home-prd.iam.gserviceaccount.com
+    account_name: github-actions
+    project_id: labs-home-prd
+    description: "Service account for GitHub Actions deployments in labs-home-prd"
+    roles:
+      - role: roles/run.admin
+        description: "Deploy and manage Cloud Run services"
+      - role: roles/artifactregistry.writer
+        description: "Push Docker images to Artifact Registry"
+      - role: roles/iam.serviceAccountUser
+        description: "Act as Cloud Run service accounts"
+      - role: roles/artifactregistry.reader
+        description: "Pull golden base images from pcioasis-operations"
+        scope: cross-project
+        target_project: pcioasis-operations
+
     main: labs.stg.pcioasis.com
     labs: labs.stg.pcioasis.com
 
