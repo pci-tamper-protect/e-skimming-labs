@@ -132,21 +132,19 @@ func main() {
 	}
 
 	// Define available labs with detailed descriptions
-	// Note: In production, labs are served from their own Cloud Run service URLs
-	// For local development, use port-based routing; for production, use direct service URLs
+	// Use path-based routing for both local and production
 	var lab1URL, lab2URL, lab3URL string
 
 	if isLocal {
-		// Local development uses docker-compose with specific ports
-		lab1URL = "http://localhost:9001"
-		lab2URL = "http://localhost:9003"
-		lab3URL = "http://localhost:9005"
+		// Local development uses path-based routing to services
+		lab1URL = fmt.Sprintf("%s://%s/lab-01-basic-magecart", scheme, labsDomain)
+		lab2URL = fmt.Sprintf("%s://%s/lab-02-dom-skimming", scheme, labsDomain)
+		lab3URL = fmt.Sprintf("%s://%s/lab-03-extension-hijacking", scheme, labsDomain)
 	} else {
-		// Production uses Cloud Run service URLs
-		// Pattern: https://lab-{lab-id}-prd-{unique-id}-uc.a.run.app
-		lab1URL = fmt.Sprintf("https://lab-01-basic-magecart-%s-mmwwcfi5za-uc.a.run.app", environment)
-		lab2URL = fmt.Sprintf("https://lab-02-dom-skimming-%s-mmwwcfi5za-uc.a.run.app", environment)
-		lab3URL = fmt.Sprintf("https://lab-03-extension-hijacking-%s-mmwwcfi5za-uc.a.run.app", environment)
+		// Production uses path-based routing
+		lab1URL = fmt.Sprintf("%s://%s/lab-01-basic-magecart", scheme, labsDomain)
+		lab2URL = fmt.Sprintf("%s://%s/lab-02-dom-skimming", scheme, labsDomain)
+		lab3URL = fmt.Sprintf("%s://%s/lab-03-extension-hijacking", scheme, labsDomain)
 	}
 
 	labs := []Lab{
