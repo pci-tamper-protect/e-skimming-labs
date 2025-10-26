@@ -1,4 +1,4 @@
-FROM us-central1-docker.pkg.dev/pcioasis-operations/containers/nginx-base:latest
+FROM nginx:alpine
 
 # Copy website files to nginx html directory
 COPY vulnerable-site/ /usr/share/nginx/html/

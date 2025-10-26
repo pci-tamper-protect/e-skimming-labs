@@ -46,4 +46,3 @@ Dockerfile text eol=lf
 *.bz2 binary
 *.xz binary
 *.7z binary
-
