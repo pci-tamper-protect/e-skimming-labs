@@ -1,4 +1,4 @@
-FROM us-central1-docker.pkg.dev/pcioasis-operations/containers/nginx-base:latest
+FROM nginx:alpine
 
 # Copy index page files
 COPY docs/ /usr/share/nginx/html/
