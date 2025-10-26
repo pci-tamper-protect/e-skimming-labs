@@ -1,4 +1,4 @@
-FROM nginx:alpine
+FROM us-central1-docker.pkg.dev/pcioasis-operations/containers/nginx-base:latest
 
 # Copy index page files
 COPY docs/ /usr/share/nginx/html/
@@ -24,6 +24,3 @@ RUN echo 'server { \
 EXPOSE 8080
 
 CMD ["nginx", "-g", "daemon off;"]
-
-
-
