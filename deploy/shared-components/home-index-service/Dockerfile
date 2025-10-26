@@ -1,6 +1,5 @@
 # Build stage
-FROM golang:1.24.3-alpine AS builder
-RUN apk add --no-cache git ca-certificates
+FROM us-central1-docker.pkg.dev/pcioasis-operations/containers/go-base:latest AS builder
 
 # Set working directory
 WORKDIR /app

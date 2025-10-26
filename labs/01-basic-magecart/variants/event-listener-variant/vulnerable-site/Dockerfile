@@ -1,5 +1,5 @@
 
-FROM nginx:alpine
+FROM us-central1-docker.pkg.dev/pcioasis-operations/containers/nginx-base:latest
 
 # Copy website files to nginx html directory
 COPY . /usr/share/nginx/html/
