@@ -98,6 +98,9 @@ func main() {
 	lab1Domain := os.Getenv("LAB1_DOMAIN")
 	lab2Domain := os.Getenv("LAB2_DOMAIN")
 	lab3Domain := os.Getenv("LAB3_DOMAIN")
+	lab1URL := os.Getenv("LAB1_URL")
+	lab2URL := os.Getenv("LAB2_URL")
+	lab3URL := os.Getenv("LAB3_URL")
 	mainDomain := os.Getenv("MAIN_DOMAIN")
 	labsProjectID := os.Getenv("LABS_PROJECT_ID")
 
@@ -132,18 +135,14 @@ func main() {
 	}
 
 	// Define available labs with detailed descriptions
-	// Use path-based routing for both local and production
-	var lab1URL, lab2URL, lab3URL string
-
-	if isLocal {
-		// Local development uses path-based routing to services
+	// Use environment variables for lab URLs if provided, otherwise generate path-based URLs
+	if lab1URL == "" {
 		lab1URL = fmt.Sprintf("%s://%s/lab-01-basic-magecart", scheme, labsDomain)
+	}
+	if lab2URL == "" {
 		lab2URL = fmt.Sprintf("%s://%s/lab-02-dom-skimming", scheme, labsDomain)
-		lab3URL = fmt.Sprintf("%s://%s/lab-03-extension-hijacking", scheme, labsDomain)
-	} else {
-		// Production uses path-based routing
-		lab1URL = fmt.Sprintf("%s://%s/lab-01-basic-magecart", scheme, labsDomain)
-		lab2URL = fmt.Sprintf("%s://%s/lab-02-dom-skimming", scheme, labsDomain)
+	}
+	if lab3URL == "" {
 		lab3URL = fmt.Sprintf("%s://%s/lab-03-extension-hijacking", scheme, labsDomain)
 	}
 
