@@ -62,7 +62,7 @@ show_usage() {
 # Function to start services
 start_services() {
     local service=$1
-    
+
     if [ -z "$service" ]; then
         print_header "Starting All E-Skimming Labs Services"
         docker-compose up -d
@@ -101,7 +101,7 @@ start_services() {
 # Function to stop services
 stop_services() {
     local service=$1
-    
+
     if [ -z "$service" ]; then
         print_header "Stopping All Services"
         docker-compose down
@@ -134,7 +134,7 @@ stop_services() {
 # Function to restart services
 restart_services() {
     local service=$1
-    
+
     if [ -z "$service" ]; then
         print_header "Restarting All Services"
         docker-compose restart
@@ -167,7 +167,7 @@ restart_services() {
 # Function to build services
 build_services() {
     local service=$1
-    
+
     if [ -z "$service" ]; then
         print_header "Building All Services"
         docker-compose build
@@ -182,7 +182,7 @@ build_services() {
 # Function to show logs
 show_logs() {
     local service=$1
-    
+
     if [ -z "$service" ]; then
         print_header "Showing Logs for All Services"
         docker-compose logs -f
@@ -286,6 +286,3 @@ case $1 in
         exit 1
         ;;
 esac
-
-
-

@@ -1,4 +1,4 @@
-FROM nginx:1.25-alpine
+FROM nginx:alpine
 
 # Copy website files to nginx html directory
 COPY vulnerable-site/ /usr/share/nginx/html/
