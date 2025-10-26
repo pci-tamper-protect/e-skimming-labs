@@ -294,9 +294,8 @@ jobs:
           # Create domain mapping (requires Cloud Run domain mapping API)
           gcloud run domain-mappings create \
             --service=lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
-            --domain=${{ needs.setup.outputs.domain_prefix }} \
-            --region=${{ env.LABS_GAR_LOCATION }} \
-            --path-prefix=/${{ matrix.lab }} || true
+            --domain=${{ matrix.lab }}.${{ needs.setup.outputs.domain_prefix }} \
+            --region=${{ env.LABS_GAR_LOCATION }} || true
 
   deploy-index:
     needs: [setup, deploy-labs, deploy-home-components]
@@ -361,11 +360,9 @@ jobs:
 
       - name: Configure index domain mapping
         run: |
-          # Map root domain to index service
-          gcloud run domain-mappings create \
-            --service=labs-index-${{ needs.setup.outputs.environment }} \
-            --domain=${{ needs.setup.outputs.domain_prefix }} \
-            --region=${{ env.LABS_GAR_LOCATION }} || true
+          # Cloud Run domain mapping is limited and doesn't support path-based routing
+          # For now, we use direct Cloud Run URLs
+          echo "Index service deployed at: https://labs-index-${{ needs.setup.outputs.environment }}-hash.a.run.app"
 
   notify-deployment:
     needs: [setup, deploy-labs, deploy-home-components, deploy-labs-components]
