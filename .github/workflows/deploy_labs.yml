@@ -19,14 +19,14 @@ env:
   # Home page project (labs-home-prd) - Configuration (from config.yml)
   HOME_PROJECT_ID: "labs-home-prd"
   HOME_GAR_LOCATION: "us-central1"
-  HOME_REPOSITORY: "home-images"
+  HOME_REPOSITORY: "home"
   # Secrets (only service account keys)
   HOME_GCP_SA_KEY: ${{ secrets.GCP_HOME_SA_KEY }}
 
   # Individual labs project (labs-prd) - Configuration (from config.yml)
   LABS_PROJECT_ID: "labs-prd"
   LABS_GAR_LOCATION: "us-central1"
-  LABS_REPOSITORY: "lab-images"
+  LABS_REPOSITORY: "labs"
   # Secrets (only service account keys)
   LABS_GCP_SA_KEY: ${{ secrets.GCP_LABS_SA_KEY }}
 
