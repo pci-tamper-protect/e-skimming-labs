@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM us-central1-docker.pkg.dev/pcioasis-operations/containers/node-base:latest
 
 WORKDIR /app
 
