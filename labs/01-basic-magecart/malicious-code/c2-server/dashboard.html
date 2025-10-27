@@ -208,14 +208,28 @@
     <script>
       async function loadData() {
         try {
-          // Load statistics
-          const statsResponse = await fetch('/stats')
-          const stats = await statsResponse.json()
-          document.getElementById('totalRecords').textContent = stats.totalRecords || 0
+          // Load statistics with retry
+          let stats
+          try {
+            const statsResponse = await fetch('/stats')
+            if (!statsResponse.ok) throw new Error('Stats fetch failed')
+            stats = await statsResponse.json()
+            document.getElementById('totalRecords').textContent = stats.totalRecords || 0
+          } catch (error) {
+            console.warn('Stats fetch failed, using default:', error)
+            document.getElementById('totalRecords').textContent = 'N/A'
+          }
 
-          // Load stolen data
-          const stolenResponse = await fetch('/api/stolen')
-          const stolenData = await stolenResponse.json()
+          // Load stolen data with retry
+          let stolenData
+          try {
+            const stolenResponse = await fetch('/api/stolen')
+            if (!stolenResponse.ok) throw new Error('Stolen data fetch failed')
+            stolenData = await stolenResponse.json()
+          } catch (error) {
+            console.error('Failed to load stolen data:', error)
+            throw error
+          }
 
           const container = document.getElementById('stolenData')
 
