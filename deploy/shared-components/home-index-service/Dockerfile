@@ -1,12 +1,12 @@
 # Build stage
-FROM golang:1.24.3-alpine AS builder
-RUN apk add --no-cache git ca-certificates
+FROM us-central1-docker.pkg.dev/pcioasis-operations/containers/go-base:latest AS builder
 
 # Set working directory
 WORKDIR /app
 
-# Copy go.mod from the home-index-service directory (no go.sum needed for no external deps)
+# Copy go.mod and go.sum from the home-index-service directory
 COPY deploy/shared-components/home-index-service/go.mod ./
+COPY deploy/shared-components/home-index-service/go.sum ./
 
 # Download dependencies
 RUN go mod download
@@ -19,9 +19,7 @@ RUN go mod tidy
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 
 # Final stage
-FROM alpine:3.20
-RUN apk --no-cache add ca-certificates wget
-RUN adduser -D -s /bin/sh appuser
+FROM us-central1-docker.pkg.dev/pcioasis-operations/containers/alpine-base:latest
 
 # Create app directory
 WORKDIR /app

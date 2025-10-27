@@ -1,60 +1,106 @@
-# E-Skimming Labs Infrastructure
+# E-Skimming Labs Deployment Setup
 
-This directory contains Terraform infrastructure for deploying the
-e-skimming-labs to Google Cloud.
+This directory contains scripts for setting up the deployment infrastructure for e-skimming-labs.
 
-## Project Structure
+## Setup Sequence
 
-```
-deploy/
-├── terraform/
-│   ├── main.tf                 # Main Terraform configuration
-│   ├── variables.tf            # Input variables
-│   ├── outputs.tf              # Output values
-│   ├── service-accounts.tf     # Service account definitions
-│   ├── cloud-run.tf           # Cloud Run services
-│   ├── firestore.tf            # Firestore database
-│   ├── storage.tf              # Cloud Storage buckets
-│   ├── networking.tf            # VPC and networking
-│   └── monitoring.tf           # Monitoring and logging
-├── shared-components/          # Shared services
-│   ├── analytics-service/      # Analytics and progress tracking
-│   ├── seo-service/            # SEO integration service
-│   └── common-utils/           # Common utilities
-└── README.md                   # This file
+Run these scripts in order for initial infrastructure setup:
+
+### 1. Create Service Accounts
+
+```bash
+./deploy/create-service-accounts.sh
 ```
 
-## Deployment
+This script:
+- Creates `github-actions@labs-prd.iam.gserviceaccount.com` service account
+- Creates `github-actions@labs-home-prd.iam.gserviceaccount.com` service account
+- Grants necessary IAM roles:
+  - `roles/run.admin` - Deploy to Cloud Run
+  - `roles/artifactregistry.writer` - Push Docker images
+  - `roles/iam.serviceAccountUser` - Use service accounts
+- Grants cross-project access to read from `pcioasis-operations/containers`
+- Creates and downloads service account keys
 
-The infrastructure deploys to:
+**Output**: `deploy/labs-sa-key.json` and `deploy/home-sa-key.json`
 
-- **Project**: `labs-prd` (ID: 747803540613)
-- **Region**: `us-central1`
-- **Domain**: `labs.pcioasis.com`
+### 2. Add Service Account Keys to GitHub Secrets
 
-## Service Accounts
+```bash
+# Add labs key
+gh secret set GCP_LABS_SA_KEY --body "$(cat deploy/labs-sa-key.json | base64)" --repo pci-tamper-protect/e-skimming-labs
 
-1. **labs-runtime-sa**: Service account for running Cloud Run services
-2. **labs-deploy-sa**: Service account for GitHub Actions deployment
-3. **labs-analytics-sa**: Service account for analytics service
-4. **labs-seo-sa**: Service account for SEO service
+# Add home key
+gh secret set GCP_HOME_SA_KEY --body "$(cat deploy/home-sa-key.json | base64)" --repo pci-tamper-protect/e-skimming-labs
+```
 
-## Components
+### 3. Create Artifact Registry Repositories
 
-### Core Services
+```bash
+./deploy/setup-artifact-registry.sh
+```
 
-- **Lab Services**: Individual Cloud Run services for each lab
-- **Index Service**: Main landing page and lab hub
-- **Analytics Service**: Progress tracking and usage analytics
-- **SEO Service**: Integration with main pcioasis.com for SEO benefits
+This script:
+- Creates `labs` repository in `labs-prd` project
+- Creates `home` repository in `labs-home-prd` project
+- Grants necessary permissions to service accounts:
+  - `roles/artifactregistry.writer` - Push images
+  - `roles/artifactregistry.reader` - Pull images
+- Grants read access to golden base images from `pcioasis-operations`
 
-### Data Persistence
+### 4. Clean Up Key Files
 
-- **Firestore**: User progress, analytics data, lab completion tracking
-- **Cloud Storage**: Lab-specific data, C2 server logs, test results
+```bash
+# Remove keys after adding to GitHub secrets
+rm deploy/*-sa-key.json
+```
 
-### Monitoring
+## Verify Setup
 
-- **Cloud Monitoring**: Service health and performance metrics
-- **Cloud Logging**: Centralized logging for all services
-- **Error Reporting**: Error tracking and alerting
+After running the setup scripts, verify:
+
+1. **Service Accounts exist**:
+   ```bash
+   gcloud iam service-accounts describe github-actions@labs-prd.iam.gserviceaccount.com --project=labs-prd
+   gcloud iam service-accounts describe github-actions@labs-home-prd.iam.gserviceaccount.com --project=labs-home-prd
+   ```
+
+2. **GitHub Secrets exist**:
+   ```bash
+   gh secret list --repo pci-tamper-protect/e-skimming-labs
+   ```
+
+3. **Artifact Registry repositories exist**:
+   ```bash
+   gcloud artifacts repositories list --location=us-central1 --project=labs-prd
+   gcloud artifacts repositories list --location=us-central1 --project=labs-home-prd
+   ```
+
+4. **Permissions are granted**:
+   ```bash
+   gcloud artifacts repositories get-iam-policy labs --location=us-central1 --project=labs-prd
+   gcloud artifacts repositories get-iam-policy home --location=us-central1 --project=labs-home-prd
+   ```
+
+## Troubleshooting
+
+### Permission denied errors
+
+If you see `Permission "artifactregistry.repositories.downloadArtifacts" denied`:
+- Ensure the service accounts have `roles/artifactregistry.reader` on the repositories
+- Check that cross-project access to `pcioasis-operations` was granted
+- Verify service account keys are correctly added to GitHub secrets
+
+### Repository not found errors
+
+If you see `Repository "***" not found`:
+- Ensure you ran `./deploy/setup-artifact-registry.sh`
+- Verify the repositories were created successfully
+- Check the repository names match those in the GitHub workflow
+
+### Service account key errors
+
+If GitHub Actions can't authenticate:
+- Verify the keys were added to GitHub secrets with the correct names
+- Check that the keys are base64 encoded correctly
+- Ensure the service account key files were deleted after adding to GitHub

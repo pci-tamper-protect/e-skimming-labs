@@ -40,3 +40,13 @@ npm-debug.log*
 **/*.tfvars
 **/*.tfvars.json
 private-data/
+
+# Service Account Keys (should not be committed)
+deploy/*-sa-key.json
+deploy/*.json
+*.json
+!package.json
+!go.mod
+!go.sum
+!tsconfig.json
+

@@ -1,0 +1,154 @@
+# E-Skimming Labs Configuration
+# This file defines configuration values (non-secret) for services and deployments
+
+# Repository Configuration
+repository:
+  org: pci-tamper-protect
+  name: e-skimming-labs
+  description: "Interactive e-skimming attack labs for cybersecurity training"
+  default_branch: main
+
+# GCP Project Configuration
+projects:
+  home:
+    id: labs-home-prd
+    region: us-central1
+    description: "Home project for landing page and shared services"
+    artifact_registry:
+      location: us-central1
+      repository: home-images
+      url: us-central1-docker.pkg.dev/labs-home-prd/home-images
+    cloud_run_services:
+      - name: home-index-prd
+        description: "Home page index service"
+        url: https://home-index-prd-171147998109-uc.a.run.app
+      - name: home-seo-prd
+        description: "SEO service for cross-domain integration"
+        url: https://home-seo-prd-171147998109-uc.a.run.app
+
+  labs:
+    id: labs-prd
+    region: us-central1
+    description: "Labs project for individual lab services"
+    artifact_registry:
+      location: us-central1
+      repository: lab-images
+      url: us-central1-docker.pkg.dev/labs-prd/lab-images
+    cloud_run_services:
+      - name: labs-analytics-prd
+        description: "Analytics service for lab progress tracking"
+        url: https://labs-analytics-prd-207478017187-uc.a.run.app
+      - name: labs-index-prd
+        description: "Index page service"
+        url: https://labs-index-prd-207478017187-uc.a.run.app
+      - name: lab-01-basic-magecart-prd
+        description: "Lab 1: Basic Magecart Attack"
+        url: https://lab-01-basic-magecart-prd-mmwwcfi5za-uc.a.run.app
+      - name: lab-02-dom-skimming-prd
+        description: "Lab 2: DOM-Based Skimming"
+        url: https://lab-02-dom-skimming-prd-mmwwcfi5za-uc.a.run.app
+      - name: lab-03-extension-hijacking-prd
+        description: "Lab 3: Browser Extension Hijacking"
+        url: https://lab-03-extension-hijacking-prd-mmwwcfi5za-uc.a.run.app
+
+# Domain Configuration
+domains:
+  production:
+    main: labs.pcioasis.com
+    labs: labs.pcioasis.com
+  staging:
+
+# Service Account Configuration
+service_accounts:
+  labs:
+    email: github-actions@labs-prd.iam.gserviceaccount.com
+    account_name: github-actions
+    project_id: labs-prd
+    description: "Service account for GitHub Actions deployments in labs-prd"
+    roles:
+      - role: roles/run.admin
+        description: "Deploy and manage Cloud Run services"
+      - role: roles/artifactregistry.writer
+        description: "Push Docker images to Artifact Registry"
+      - role: roles/iam.serviceAccountUser
+        description: "Act as Cloud Run service accounts"
+      - role: roles/artifactregistry.reader
+        description: "Pull golden base images from pcioasis-operations"
+        scope: cross-project
+        target_project: pcioasis-operations
+
+  home:
+    email: github-actions@labs-home-prd.iam.gserviceaccount.com
+    account_name: github-actions
+    project_id: labs-home-prd
+    description: "Service account for GitHub Actions deployments in labs-home-prd"
+    roles:
+      - role: roles/run.admin
+        description: "Deploy and manage Cloud Run services"
+      - role: roles/artifactregistry.writer
+        description: "Push Docker images to Artifact Registry"
+      - role: roles/iam.serviceAccountUser
+        description: "Act as Cloud Run service accounts"
+      - role: roles/artifactregistry.reader
+        description: "Pull golden base images from pcioasis-operations"
+        scope: cross-project
+        target_project: pcioasis-operations
+
+    main: labs.stg.pcioasis.com
+    labs: labs.stg.pcioasis.com
+
+# Golden Base Images (from pcioasis-operations)
+golden_images:
+  source_project: pcioasis-operations
+  source_repo: containers
+  location: us-central1
+  images:
+    go_base:
+      name: go-base
+      tag: latest
+      full: us-central1-docker.pkg.dev/pcioasis-operations/containers/go-base:latest
+      description: "Go services base image with pre-installed dependencies"
+
+    alpine_base:
+      name: alpine-base
+      tag: latest
+      full: us-central1-docker.pkg.dev/pcioasis-operations/containers/alpine-base:latest
+      description: "Alpine base image for runtime containers"
+
+    nginx_base:
+      name: nginx-base
+      tag: latest
+      full: us-central1-docker.pkg.dev/pcioasis-operations/containers/nginx-base:latest
+      description: "Nginx services base image with common configuration"
+
+    node_base:
+      name: node-base
+      tag: latest
+      full: us-central1-docker.pkg.dev/pcioasis-operations/containers/node-base:latest
+      description: "Node.js services base image"
+
+# GitHub Actions Configuration
+github_actions:
+  workflow_file: .github/workflows/deploy_labs.yml
+  uses_golden_images: true
+  builds_services:
+    - analytics-service
+    - seo-service
+    - home-index-service
+    - index-page
+    - lab-01-basic-magecart
+    - lab-02-dom-skimming
+    - lab-03-extension-hijacking
+
+# Local Development Configuration
+local_development:
+  docker_compose_file: docker-compose.yml
+  ports:
+    home_index: 8080
+    home_seo: 8081
+    analytics: 8082
+    lab1_vulnerable: 9001
+    lab1_c2: 9002
+    lab2_vulnerable: 9003
+    lab2_c2: 9004
+    lab3_vulnerable: 9005

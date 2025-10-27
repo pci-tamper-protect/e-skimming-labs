@@ -1,113 +1,88 @@
 #!/bin/bash
 
-# Add GitHub Secrets for E-Skimming Labs Repository
-# This script pulls values from gcloud and adds them as GitHub repository secrets
+# Add GitHub Secrets for E-Skimming Labs
+# This script adds all required secrets to the GitHub repository
 
 set -e
 
-# Configuration
-REPO_OWNER="pci-tamper-protect"
-REPO_NAME="e-skimming-labs"
-PROJECT_ID="labs-prd"
-REGION="us-central1"
-REPOSITORY_NAME="e-skimming-labs"
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
-echo "🔐 Adding GitHub Secrets for E-Skimming Labs"
-echo "============================================="
-echo "Repository: $REPO_OWNER/$REPO_NAME"
-echo "Project: $PROJECT_ID"
-echo ""
+print_header() {
+    echo -e "${GREEN}=== $1 ===${NC}"
+}
+
+print_status() {
+    echo -e "${YELLOW}$1${NC}"
+}
+
+print_error() {
+    echo -e "${RED}ERROR: $1${NC}"
+}
+
+print_info() {
+    echo -e "${BLUE}$1${NC}"
+}
+
+# Configuration
+REPO="pci-tamper-protect/e-skimming-labs"
+HOME_PROJECT_ID="labs-home-prd"
+LABS_PROJECT_ID="labs-prd"
+HOME_REGION="us-central1"
+LABS_REGION="us-central1"
+HOME_REPO="home-images"
+LABS_REPO="lab-images"
+
+print_header "Adding GitHub Secrets to $REPO"
 
 # Check if gh CLI is installed
 if ! command -v gh &> /dev/null; then
-    echo "❌ GitHub CLI (gh) is not installed. Please install it first."
-    echo "   Visit: https://cli.github.com/"
+    print_error "gh CLI is required but not installed"
     exit 1
 fi
 
-# Check if gcloud CLI is installed
-if ! command -v gcloud &> /dev/null; then
-    echo "❌ Google Cloud CLI (gcloud) is not installed. Please install it first."
-    echo "   Visit: https://cloud.google.com/sdk/docs/install"
-    exit 1
-fi
-
-# Check if user is authenticated with GitHub
+# Check if authenticated
 if ! gh auth status &> /dev/null; then
-    echo "❌ Not authenticated with GitHub. Please run: gh auth login"
+    print_error "Not authenticated to GitHub. Run: gh auth login"
     exit 1
 fi
 
-# Check if user is authenticated with Google Cloud
-if ! gcloud auth list --filter=status:ACTIVE --format="value(account)" | grep -q .; then
-    echo "❌ Not authenticated with Google Cloud. Please run: gcloud auth login"
-    exit 1
-fi
+print_status "Authenticated to GitHub ✓"
 
-# Set the correct project
-echo "🔧 Setting Google Cloud project to $PROJECT_ID..."
-gcloud config set project $PROJECT_ID
+# Add Project ID secrets
+print_header "Adding Project ID Secrets"
+gh secret set GCP_HOME_PROJECT_ID --body "$HOME_PROJECT_ID" --repo $REPO
+print_status "GCP_HOME_PROJECT_ID added ✓"
 
-# Get the service account key for GitHub Actions
-echo "🔑 Getting service account key..."
-SERVICE_ACCOUNT_EMAIL="labs-deploy-sa@$PROJECT_ID.iam.gserviceaccount.com"
+gh secret set GCP_LABS_PROJECT_ID --body "$LABS_PROJECT_ID" --repo $REPO
+print_status "GCP_LABS_PROJECT_ID added ✓"
 
-# Check if service account exists
-if ! gcloud iam service-accounts describe $SERVICE_ACCOUNT_EMAIL &> /dev/null; then
-    echo "❌ Service account $SERVICE_ACCOUNT_EMAIL not found."
-    echo "   Please run the Terraform deployment first."
-    exit 1
-fi
+# Add Artifact Registry location secrets
+print_header "Adding Artifact Registry Location Secrets"
+gh secret set GAR_HOME_LOCATION --body "$HOME_REGION" --repo $REPO
+print_status "GAR_HOME_LOCATION added ✓"
 
-# Create a temporary key file
-TEMP_KEY_FILE=$(mktemp)
-echo "📝 Creating service account key..."
+gh secret set GAR_LABS_LOCATION --body "$LABS_REGION" --repo $REPO
+print_status "GAR_LABS_LOCATION added ✓"
 
-# Create the key
-gcloud iam service-accounts keys create $TEMP_KEY_FILE \
-    --iam-account=$SERVICE_ACCOUNT_EMAIL \
-    --key-file-type=json
+# Add Repository name secrets
+print_header "Adding Repository Name Secrets"
+gh secret set REPOSITORY_HOME --body "$HOME_REPO" --repo $REPO
+print_status "REPOSITORY_HOME added ✓"
 
-# Read the key content
-SERVICE_ACCOUNT_KEY=$(cat $TEMP_KEY_FILE)
+gh secret set REPOSITORY_LABS --body "$LABS_REPO" --repo $REPO
+print_status "REPOSITORY_LABS added ✓"
 
-# Clean up the temporary file
-rm $TEMP_KEY_FILE
+print_header "Verifying Secrets"
 
-echo "✅ Service account key retrieved"
+# List all secrets to verify
+print_status "Current secrets in $REPO:"
+gh secret list --repo $REPO
 
-# Add secrets to GitHub repository
-echo ""
-echo "🚀 Adding secrets to GitHub repository..."
-
-# Add GCP_LABS_PROJECT_ID
-echo "  - Adding GCP_LABS_PROJECT_ID..."
-echo "$PROJECT_ID" | gh secret set GCP_LABS_PROJECT_ID --repo $REPO_OWNER/$REPO_NAME
-
-# Add GCP_LABS_SA_KEY
-echo "  - Adding GCP_LABS_SA_KEY..."
-echo "$SERVICE_ACCOUNT_KEY" | gh secret set GCP_LABS_SA_KEY --repo $REPO_OWNER/$REPO_NAME
-
-# Add GAR_LABS_LOCATION
-echo "  - Adding GAR_LABS_LOCATION..."
-echo "$REGION" | gh secret set GAR_LABS_LOCATION --repo $REPO_OWNER/$REPO_NAME
-
-# Add REPOSITORY_LABS
-echo "  - Adding REPOSITORY_LABS..."
-echo "$REPOSITORY_NAME" | gh secret set REPOSITORY_LABS --repo $REPO_OWNER/$REPO_NAME
-
-echo ""
-echo "✅ All secrets added successfully!"
-echo ""
-echo "📋 Added secrets:"
-echo "  - GCP_LABS_PROJECT_ID: $PROJECT_ID"
-echo "  - GCP_LABS_SA_KEY: [Service account key]"
-echo "  - GAR_LABS_LOCATION: $REGION"
-echo "  - REPOSITORY_LABS: $REPOSITORY_NAME"
-echo ""
-echo "🎉 GitHub Actions workflow can now deploy to Google Cloud!"
-echo ""
-echo "💡 Next steps:"
-echo "  1. Push code to trigger the GitHub Actions workflow"
-echo "  2. Monitor the deployment in the Actions tab"
-echo "  3. Check Cloud Run services in the Google Cloud Console"
+print_header "GitHub Secrets Setup Complete!"
+print_info "All required configuration secrets have been added to the repository."
+print_info "Service account keys (GCP_HOME_SA_KEY and GCP_LABS_SA_KEY) should already be set from the create-service-accounts script."
