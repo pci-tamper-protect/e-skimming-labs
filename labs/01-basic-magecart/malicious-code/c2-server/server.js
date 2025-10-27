@@ -418,12 +418,13 @@ app.get('/stats', async (req, res) => {
 async function start() {
   await ensureDataDir()
 
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log('═══════════════════════════════════════════════════')
     console.log('🚨 ATTACKER C2 SERVER OPERATIONAL 🚨')
     console.log('═══════════════════════════════════════════════════')
     console.log(`Port: ${PORT}`)
     console.log(`Dashboard: http://localhost:${PORT}/stolen`)
+    console.log(`Listening on: 0.0.0.0:${PORT}`)
     console.log(`Data Directory: ${DATA_DIR}`)
     console.log('═══════════════════════════════════════════════════')
     console.log('⚠️  FOR EDUCATIONAL PURPOSES ONLY ⚠️')
