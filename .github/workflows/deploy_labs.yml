@@ -16,16 +16,18 @@ on:
           - stg
 
 env:
-  # Home page project (labs-home-prd)
-  HOME_PROJECT_ID: ${{ secrets.GCP_HOME_PROJECT_ID }}
-  HOME_GAR_LOCATION: ${{ secrets.GAR_HOME_LOCATION }}
-  HOME_REPOSITORY: ${{ secrets.REPOSITORY_HOME }}
+  # Home page project (labs-home-prd) - Configuration (from config.yml)
+  HOME_PROJECT_ID: "labs-home-prd"
+  HOME_GAR_LOCATION: "us-central1"
+  HOME_REPOSITORY: "home"
+  # Secrets (only service account keys)
   HOME_GCP_SA_KEY: ${{ secrets.GCP_HOME_SA_KEY }}
 
-  # Individual labs project (labs-prd)
-  LABS_PROJECT_ID: ${{ secrets.GCP_LABS_PROJECT_ID }}
-  LABS_GAR_LOCATION: ${{ secrets.GAR_LABS_LOCATION }}
-  LABS_REPOSITORY: ${{ secrets.REPOSITORY_LABS }}
+  # Individual labs project (labs-prd) - Configuration (from config.yml)
+  LABS_PROJECT_ID: "labs-prd"
+  LABS_GAR_LOCATION: "us-central1"
+  LABS_REPOSITORY: "labs"
+  # Secrets (only service account keys)
   LABS_GCP_SA_KEY: ${{ secrets.GCP_LABS_SA_KEY }}
 
 jobs:
@@ -77,6 +79,8 @@ jobs:
       - name: Configure Docker to use gcloud as credential helper
         run: |
           gcloud auth configure-docker ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev
+          # Also configure cross-project access for golden images
+          gcloud auth configure-docker us-central1-docker.pkg.dev
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -148,7 +152,7 @@ jobs:
             --cpu=1 \
             --min-instances=0 \
             --max-instances=5 \
-            --set-env-vars="PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }}" \
+            --set-env-vars="PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app" \
             --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs-home"
 
   deploy-labs-components:
@@ -170,6 +174,8 @@ jobs:
       - name: Configure Docker to use gcloud as credential helper
         run: |
           gcloud auth configure-docker ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev
+          # Also configure cross-project access for golden images
+          gcloud auth configure-docker us-central1-docker.pkg.dev
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -232,15 +238,8 @@ jobs:
       - name: Configure Docker to use gcloud as credential helper
         run: |
           gcloud auth configure-docker ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev
-
-      - name: Create Artifact Registry repository if not exists
-        run: |
-          gcloud artifacts repositories describe ${{ env.LABS_REPOSITORY }} \
-            --location=${{ env.LABS_GAR_LOCATION }} || \
-          gcloud artifacts repositories create ${{ env.LABS_REPOSITORY }} \
-            --location=${{ env.LABS_GAR_LOCATION }} \
-            --repository-format=docker \
-            --description="E-Skimming Labs container images"
+          # Also configure cross-project access for golden images
+          gcloud auth configure-docker us-central1-docker.pkg.dev
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -295,9 +294,8 @@ jobs:
           # Create domain mapping (requires Cloud Run domain mapping API)
           gcloud run domain-mappings create \
             --service=lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
-            --domain=${{ needs.setup.outputs.domain_prefix }} \
-            --region=${{ env.LABS_GAR_LOCATION }} \
-            --path-prefix=/${{ matrix.lab }} || true
+            --domain=${{ matrix.lab }}.${{ needs.setup.outputs.domain_prefix }} \
+            --region=${{ env.LABS_GAR_LOCATION }} || true
 
   deploy-index:
     needs: [setup, deploy-labs, deploy-home-components]
@@ -318,6 +316,8 @@ jobs:
       - name: Configure Docker to use gcloud as credential helper
         run: |
           gcloud auth configure-docker ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev
+          # Also configure cross-project access for golden images
+          gcloud auth configure-docker us-central1-docker.pkg.dev
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -360,11 +360,9 @@ jobs:
 
       - name: Configure index domain mapping
         run: |
-          # Map root domain to index service
-          gcloud run domain-mappings create \
-            --service=labs-index-${{ needs.setup.outputs.environment }} \
-            --domain=${{ needs.setup.outputs.domain_prefix }} \
-            --region=${{ env.LABS_GAR_LOCATION }} || true
+          # Cloud Run domain mapping is limited and doesn't support path-based routing
+          # For now, we use direct Cloud Run URLs
+          echo "Index service deployed at: https://labs-index-${{ needs.setup.outputs.environment }}-hash.a.run.app"
 
   notify-deployment:
     needs: [setup, deploy-labs, deploy-home-components, deploy-labs-components]

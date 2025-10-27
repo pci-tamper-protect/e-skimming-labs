@@ -71,9 +71,13 @@
           homeUrl = 'https://labs.stg.pcioasis.com'
           c2Url = 'https://labs.stg.pcioasis.com/01-basic-magecart-c2'
         } else if (hostname.includes('labs.pcioasis.com')) {
-          // Production environment
+          // Production environment (legacy, for future)
           homeUrl = 'https://labs.pcioasis.com'
           c2Url = 'https://labs.pcioasis.com/01-basic-magecart-c2'
+        } else if (hostname.includes('lab-01-basic-magecart')) {
+          // Production Cloud Run
+          homeUrl = 'https://labs-index-prd-mmwwcfi5za-uc.a.run.app'
+          c2Url = 'https://' + hostname + '/stolen'
         } else {
           // Fallback for unknown environments
           homeUrl = window.location.protocol + '//' + hostname

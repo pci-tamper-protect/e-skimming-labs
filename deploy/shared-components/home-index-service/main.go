@@ -98,6 +98,9 @@ func main() {
 	lab1Domain := os.Getenv("LAB1_DOMAIN")
 	lab2Domain := os.Getenv("LAB2_DOMAIN")
 	lab3Domain := os.Getenv("LAB3_DOMAIN")
+	lab1URL := os.Getenv("LAB1_URL")
+	lab2URL := os.Getenv("LAB2_URL")
+	lab3URL := os.Getenv("LAB3_URL")
 	mainDomain := os.Getenv("MAIN_DOMAIN")
 	labsProjectID := os.Getenv("LABS_PROJECT_ID")
 
@@ -132,13 +135,24 @@ func main() {
 	}
 
 	// Define available labs with detailed descriptions
+	// Use environment variables for lab URLs if provided, otherwise generate path-based URLs
+	if lab1URL == "" {
+		lab1URL = fmt.Sprintf("%s://%s/lab-01-basic-magecart", scheme, labsDomain)
+	}
+	if lab2URL == "" {
+		lab2URL = fmt.Sprintf("%s://%s/lab-02-dom-skimming", scheme, labsDomain)
+	}
+	if lab3URL == "" {
+		lab3URL = fmt.Sprintf("%s://%s/lab-03-extension-hijacking", scheme, labsDomain)
+	}
+
 	labs := []Lab{
 		{
 			ID:          "lab1-basic-magecart",
 			Name:        "Basic Magecart Attack",
 			Description: "Learn the fundamentals of payment card skimming attacks through JavaScript injection. Understand how attackers compromise e-commerce sites, intercept form submissions, and exfiltrate credit card data. Practice detection using browser DevTools and implement basic defensive measures.",
 			Difficulty:  "Beginner",
-			URL:         fmt.Sprintf("%s://%s/01-basic-magecart", scheme, labsDomain),
+			URL:         lab1URL,
 			Status:      "Available",
 		},
 		{
@@ -146,7 +160,7 @@ func main() {
 			Name:        "DOM-Based Skimming",
 			Description: "Master advanced DOM manipulation techniques for stealthy payment data capture. Learn real-time field monitoring, dynamic form injection, Shadow DOM abuse, and DOM tree manipulation. Understand how attackers bypass traditional detection methods.",
 			Difficulty:  "Intermediate",
-			URL:         fmt.Sprintf("%s://%s/02-dom-skimming", scheme, labsDomain),
+			URL:         lab2URL,
 			Status:      "Available",
 		},
 		{
@@ -154,7 +168,7 @@ func main() {
 			Name:        "Browser Extension Hijacking",
 			Description: "Explore sophisticated browser extension-based attacks that exploit privileged APIs and persistent access. Learn about content script injection, background script persistence, cross-origin communication, and supply chain attacks through malicious extensions.",
 			Difficulty:  "Advanced",
-			URL:         fmt.Sprintf("%s://%s/03-extension-hijacking", scheme, labsDomain),
+			URL:         lab3URL,
 			Status:      "Available",
 		},
 	}

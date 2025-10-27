@@ -320,6 +320,10 @@
         } else if (hostname.includes('labs.pcioasis.com')) {
           homeUrl = 'https://labs.pcioasis.com'
           c2Url = 'https://labs.pcioasis.com/03-extension-hijacking-c2'
+        } else if (hostname.includes('lab-03-extension-hijacking')) {
+          // Production Cloud Run
+          homeUrl = 'https://labs-index-prd-mmwwcfi5za-uc.a.run.app'
+          c2Url = 'https://' + hostname + '/data-exfil'
         } else {
           homeUrl = window.location.protocol + '//' + hostname
           c2Url = window.location.protocol + '//' + hostname + '/c2'
