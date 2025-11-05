@@ -3,8 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>SecureBank Online Banking</title>
-    <link rel="stylesheet" href="css/banking.css" />
+    <link rel="stylesheet" href="css/banking.css" id="main-css" />
+    <script>
+      // Cache busting for development - inject before page loads
+      (function() {
+        const hostname = window.location.hostname
+        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
+        if (isLocal) {
+          const timestamp = Date.now()
+          const cssLink = document.getElementById('main-css')
+          if (cssLink && !cssLink.href.includes('?')) {
+            cssLink.href = cssLink.href + '?v=' + timestamp
+          }
+        }
+      })()
+    </script>
   </head>
   <body>
     <header class="bank-header">
@@ -13,21 +30,6 @@
           <h1>🏦 SecureBank</h1>
           <span class="tagline">Your Trust, Our Priority</span>
         </div>
-        <nav class="main-nav">
-          <ul>
-            <li><a href="http://localhost:3000" class="nav-link back-button">← Back to Labs</a></li>
-            <li>
-              <a href="http://localhost:9004" class="nav-link c2-button" target="_blank"
-                >🕵️ View Stolen Data</a
-              >
-            </li>
-            <li><a href="#" class="nav-link active" data-section="dashboard">Dashboard</a></li>
-            <li><a href="#" class="nav-link" data-section="transfer">Transfer</a></li>
-            <li><a href="#" class="nav-link" data-section="payments">Bill Pay</a></li>
-            <li><a href="#" class="nav-link" data-section="cards">Cards</a></li>
-            <li><a href="#" class="nav-link" data-section="settings">Settings</a></li>
-          </ul>
-        </nav>
         <div class="user-info">
           <span class="welcome">Welcome, John Doe</span>
           <button class="logout-btn">Logout</button>
@@ -35,10 +37,30 @@
       </div>
     </header>
 
+    <!-- Navigation Buttons Row (Above Lab Tabs) -->
+    <div class="nav-buttons-row">
+      <div class="container">
+        <a href="http://localhost:3000" class="nav-button back-button" id="back-button">← Back to Labs</a>
+        <a href="http://localhost:9004" class="nav-button c2-button" id="view-stolen-button" target="_blank">🕵️ View Stolen Data</a>
+      </div>
+    </div>
+
+    <!-- Lab Page Tabs -->
+    <nav class="lab-tabs">
+      <div class="container">
+        <ul>
+          <li><a href="#" class="tab-link" data-section="dashboard">Dashboard</a></li>
+          <li><a href="#" class="tab-link" data-section="transfer">Transfer</a></li>
+          <li><a href="#" class="tab-link" data-section="payments">Bill Pay</a></li>
+          <li><a href="#" class="tab-link active" data-section="cards">Cards</a></li>
+        </ul>
+      </div>
+    </nav>
+
     <main class="main-content">
       <div class="container">
         <!-- Dashboard Section -->
-        <section id="dashboard" class="section active">
+        <section id="dashboard" class="section">
           <h2>Account Dashboard</h2>
           <div class="account-grid">
             <div class="account-card">
@@ -123,20 +145,6 @@
                 <input type="text" id="transfer-memo" name="memo" placeholder="What's this for?" />
               </div>
 
-              <div class="security-section">
-                <h4>🔐 Security Verification</h4>
-                <div class="form-group">
-                  <label for="transfer-password">Account Password</label>
-                  <input
-                    type="password"
-                    id="transfer-password"
-                    name="password"
-                    autocomplete="current-password"
-                    required
-                  />
-                </div>
-              </div>
-
               <button type="submit" class="submit-btn">Transfer Money</button>
             </form>
           </div>
@@ -188,29 +196,94 @@
                 <input type="date" id="payment-date" name="paymentDate" required />
               </div>
 
-              <div class="security-section">
-                <h4>🔐 Payment Authorization</h4>
-                <div class="form-group">
-                  <label for="payment-password">Account Password</label>
-                  <input
-                    type="password"
-                    id="payment-password"
-                    name="password"
-                    autocomplete="current-password"
-                    required
-                  />
-                </div>
-              </div>
-
               <button type="submit" class="submit-btn">Schedule Payment</button>
             </form>
           </div>
         </section>
 
         <!-- Credit Cards Section -->
-        <section id="cards" class="section">
+        <section id="cards" class="section active">
           <h2>Credit Card Management</h2>
-          <div class="cards-container">
+          
+          <!-- Add New Card Form (Default View) -->
+          <div id="add-card-form-container" class="card-form-container">
+            <h3>Add New Card</h3>
+            <form id="add-card-form" class="banking-form">
+              <div class="form-group">
+                <label for="card-number">Card Number</label>
+                <input
+                  type="text"
+                  id="card-number"
+                  name="cardNumber"
+                  data-validate="card-number"
+                  placeholder="1234 5678 9012 3456"
+                  autocomplete="cc-number"
+                  maxlength="19"
+                  required
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="card-holder-name">Cardholder Name</label>
+                <input
+                  type="text"
+                  id="card-holder-name"
+                  name="cardHolderName"
+                  placeholder="JOHN DOE"
+                  autocomplete="cc-name"
+                  required
+                />
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="card-expiry">Expiry Date</label>
+                  <input
+                    type="text"
+                    id="card-expiry"
+                    name="cardExpiry"
+                    data-validate="card-expiry"
+                    placeholder="MM/YY"
+                    autocomplete="cc-exp"
+                    maxlength="5"
+                    required
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="card-cvv-input">CVV</label>
+                  <input
+                    type="text"
+                    id="card-cvv-input"
+                    name="cvv"
+                    data-validate="cvv"
+                    placeholder="123"
+                    autocomplete="cc-csc"
+                    maxlength="4"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="card-billing-zip">Billing ZIP Code</label>
+                <input
+                  type="text"
+                  id="card-billing-zip"
+                  name="billingZip"
+                  placeholder="12345"
+                  autocomplete="postal-code"
+                  maxlength="10"
+                  required
+                />
+              </div>
+
+              <button type="submit" class="submit-btn">Add Card</button>
+            </form>
+          </div>
+
+          <!-- Existing Cards View (Hidden by default) -->
+          <div id="existing-cards-container" class="cards-container" style="display: none;">
             <div class="card-details">
               <h3>Primary Credit Card</h3>
               <div class="card-visual">
@@ -222,6 +295,7 @@
 
             <div class="card-actions">
               <h4>Card Services</h4>
+              <button class="action-btn" onclick="showAddCardForm()">Add New Card</button>
               <button class="action-btn" onclick="showPasswordPrompt('activate')">
                 Activate New Card
               </button>
@@ -231,21 +305,11 @@
             </div>
           </div>
 
-          <!-- Hidden password prompt for card actions -->
+          <!-- Hidden CVV prompt for card actions -->
           <div id="password-modal" class="modal" style="display: none">
             <div class="modal-content">
-              <h4>Security Verification Required</h4>
+              <h4>Card Verification</h4>
               <form id="card-action-form">
-                <div class="form-group">
-                  <label for="card-password">Account Password</label>
-                  <input
-                    type="password"
-                    id="card-password"
-                    name="password"
-                    autocomplete="current-password"
-                    required
-                  />
-                </div>
                 <div class="form-group">
                   <label for="card-cvv">Card CVV</label>
                   <input
@@ -269,71 +333,6 @@
           </div>
         </section>
 
-        <!-- Settings Section -->
-        <section id="settings" class="section">
-          <h2>Account Settings</h2>
-          <div class="settings-container">
-            <form id="settings-form" class="banking-form">
-              <h3>Personal Information</h3>
-              <div class="form-group">
-                <label for="email">Email Address</label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value="john.doe@email.com"
-                  autocomplete="email"
-                  required
-                />
-              </div>
-
-              <div class="form-group">
-                <label for="phone">Phone Number</label>
-                <input
-                  type="tel"
-                  id="phone"
-                  name="phone"
-                  value="(555) 123-4567"
-                  autocomplete="tel"
-                  required
-                />
-              </div>
-
-              <h3>Security Settings</h3>
-              <div class="form-group">
-                <label for="current-password">Current Password</label>
-                <input
-                  type="password"
-                  id="current-password"
-                  name="currentPassword"
-                  autocomplete="current-password"
-                />
-              </div>
-
-              <div class="form-group">
-                <label for="new-password">New Password</label>
-                <input
-                  type="password"
-                  id="new-password"
-                  name="newPassword"
-                  autocomplete="new-password"
-                />
-              </div>
-
-              <div class="form-group">
-                <label for="confirm-password">Confirm New Password</label>
-                <input
-                  type="password"
-                  id="confirm-password"
-                  name="confirmPassword"
-                  autocomplete="new-password"
-                />
-              </div>
-
-              <button type="submit" class="submit-btn">Update Settings</button>
-            </form>
-          </div>
-        </section>
       </div>
     </main>
 
@@ -348,8 +347,53 @@
       <button class="close-message" onclick="closeMessage('error')">&times;</button>
     </div>
 
+    <!-- Development: Clear Cache Button (only shows in localhost) -->
+    <script>
+      (function() {
+        const hostname = window.location.hostname
+        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
+        if (isLocal) {
+          const clearCacheBtn = document.createElement('button')
+          clearCacheBtn.textContent = '🗑️ Clear Cache'
+          clearCacheBtn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9999;padding:10px 20px;background:#dc2626;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;box-shadow:0 4px 6px rgba(0,0,0,0.3);'
+          clearCacheBtn.onclick = function() {
+            // Clear all caches
+            if ('caches' in window) {
+              caches.keys().then(names => {
+                names.forEach(name => caches.delete(name))
+              })
+            }
+            // Clear localStorage and sessionStorage
+            localStorage.clear()
+            sessionStorage.clear()
+            // Force reload with cache bypass
+            window.location.href = window.location.href.split('?')[0] + '?nocache=' + Date.now()
+          }
+          document.body.appendChild(clearCacheBtn)
+        }
+      })()
+    </script>
+
     <!-- Scripts -->
-    <script src="js/banking.js"></script>
+    <script>
+      // Cache busting for JS - must happen before script loads
+      (function() {
+        const hostname = window.location.hostname
+        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
+        if (isLocal) {
+          const timestamp = Date.now()
+          const script = document.createElement('script')
+          script.src = 'js/banking.js?v=' + timestamp
+          script.id = 'main-js'
+          document.body.appendChild(script)
+        } else {
+          const script = document.createElement('script')
+          script.src = 'js/banking.js'
+          script.id = 'main-js'
+          document.body.appendChild(script)
+        }
+      })()
+    </script>
     <script>
       // Environment-aware URL configuration
       ;(function () {
@@ -376,15 +420,16 @@
           c2Url = window.location.protocol + '//' + hostname + '/c2'
         }
 
-        // Update nav links
-        const navLinks = document.querySelectorAll('.main-nav a')
-        navLinks.forEach(link => {
-          if (link.classList.contains('back-button')) {
-            link.href = homeUrl
-          } else if (link.classList.contains('c2-button')) {
-            link.href = c2Url
-          }
-        })
+        // Update navigation buttons
+        const backButton = document.getElementById('back-button')
+        const viewStolenButton = document.getElementById('view-stolen-button')
+        
+        if (backButton) {
+          backButton.href = homeUrl
+        }
+        if (viewStolenButton) {
+          viewStolenButton.href = c2Url
+        }
       })()
     </script>
   </body>

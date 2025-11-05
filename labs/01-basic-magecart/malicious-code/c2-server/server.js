@@ -378,8 +378,10 @@ function generateDashboard(records) {
 
 /**
  * Dashboard endpoint - serves the main dashboard
+ * Note: In production, this is accessed via /stolen or /dashboard
+ * The root / is handled by nginx to serve the vulnerable site
  */
-app.get('/', async (req, res) => {
+app.get('/dashboard', async (req, res) => {
   try {
     const dashboardPath = path.join(__dirname, 'dashboard.html')
     const dashboard = await fs.readFile(dashboardPath, 'utf8')
