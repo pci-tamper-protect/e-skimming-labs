@@ -85,3 +85,4 @@ echo ""
 echo "Repositories:"
 echo "  - labs-prd: us-central1-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}"
 echo "  - labs-home-prd: us-central1-docker.pkg.dev/${HOME_PROJECT_ID}/${HOME_REPOSITORY}"
+

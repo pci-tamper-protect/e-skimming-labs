@@ -188,12 +188,64 @@
       .tab-content.active {
         display: block;
       }
+
+      .nav-buttons-row {
+        background: rgba(0, 0, 0, 0.2);
+        padding: 1rem 2rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .nav-buttons-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+      }
+
+      .nav-button {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.2s;
+        font-size: 0.875rem;
+      }
+
+      .nav-button.back-button {
+        background: rgba(255, 255, 255, 0.1);
+        color: #ffffff;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .nav-button.back-button:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      .nav-button.home-button {
+        background: #dc2626;
+        color: #ffffff;
+        border: 1px solid #991b1b;
+      }
+
+      .nav-button.home-button:hover {
+        background: #b91c1c;
+      }
     </style>
   </head>
   <body>
     <div class="header">
       <h1>🕵️ C2 Server Dashboard - Lab 2 DOM Skimming</h1>
       <p><span class="status-indicator"></span>Command & Control Server Active</p>
+    </div>
+
+    <!-- Navigation Buttons Row -->
+    <div class="nav-buttons-row">
+      <div class="nav-buttons-container">
+        <a href="#" class="nav-button back-button" id="back-button">← Back to Lab</a>
+        <a href="#" class="nav-button home-button" id="home-button">🏠 Home</a>
+      </div>
     </div>
 
     <div class="container">
@@ -325,6 +377,47 @@
 
       // Auto-refresh every 5 seconds
       setInterval(loadData, 5000)
+
+      // Environment-aware URL configuration
+      ;(function () {
+        const hostname = window.location.hostname
+        let labUrl = 'http://localhost:9003'
+        let homeUrl = 'http://localhost:3000'
+
+        // Check if we're in staging
+        if (hostname.includes('stg.pcioasis.com') || hostname.includes('staging')) {
+          labUrl = 'https://labs.stg.pcioasis.com/02-dom-skimming'
+          homeUrl = 'https://labs.stg.pcioasis.com'
+        }
+        // Check if we're in production
+        else if (hostname.includes('pcioasis.com') && !hostname.includes('stg')) {
+          labUrl = 'https://labs.pcioasis.com/02-dom-skimming'
+          homeUrl = 'https://labs.pcioasis.com'
+        }
+        // Check if we're in Cloud Run
+        else if (hostname.includes('run.app')) {
+          const baseUrl = window.location.origin
+          // Extract lab name from path or use default
+          const pathParts = window.location.pathname.split('/')
+          if (pathParts.length > 1 && pathParts[1].includes('dom-skimming')) {
+            labUrl = `${baseUrl}`
+            homeUrl = baseUrl.replace('/02-dom-skimming-c2', '').replace('/stolen-data', '')
+          } else {
+            labUrl = `${baseUrl}`.replace('-c2', '').replace('/stolen-data', '')
+            homeUrl = baseUrl.replace('/02-dom-skimming-c2', '').replace('/stolen-data', '')
+          }
+        }
+
+        const backButton = document.getElementById('back-button')
+        const homeButton = document.getElementById('home-button')
+
+        if (backButton) {
+          backButton.href = labUrl
+        }
+        if (homeButton) {
+          homeButton.href = homeUrl
+        }
+      })()
     </script>
   </body>
 </html>

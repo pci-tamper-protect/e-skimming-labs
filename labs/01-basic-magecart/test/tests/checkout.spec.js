@@ -52,17 +52,8 @@ test.describe('E-Skimming Lab - Checkout Flow', () => {
 
     // Payment Information
     await page.fill('#card-number', '4000000000000002')
-    await page.fill('#cardholder-name', 'John Doe Test')
     await page.fill('#expiry', '12/28')
     await page.fill('#cvv', '123')
-
-    // Billing Information
-    await page.fill('#email', 'john.doe@example.com')
-    await page.fill('#billing-address', '123 Test Street')
-    await page.fill('#city', 'Test City')
-    await page.fill('#zip', '12345')
-    await page.selectOption('#country', 'US')
-    await page.fill('#phone', '+1 (555) 123-4567')
 
     console.log('✅ Form filled, submitting...')
 
@@ -75,10 +66,25 @@ test.describe('E-Skimming Lab - Checkout Flow', () => {
 
     console.log('✅ Form submitted successfully')
 
-    // Wait a bit for skimmer to process
-    await page.waitForTimeout(2000)
+    // Wait for skimmer to process and exfiltrate data
+    await page.waitForTimeout(3000)
 
-    console.log('🔍 Test completed - check logs above for skimmer activity')
+    // Verify data was exfiltrated to C2 server
+    console.log('🔍 Verifying data exfiltration to C2 server...')
+    const c2Response = await page.request.get('http://localhost:9002/api/stolen')
+    expect(c2Response.ok()).toBeTruthy()
+    
+    const stolenData = await c2Response.json()
+    console.log('📊 Stolen data records:', stolenData.length)
+    
+    // Verify our test data is in the stolen records
+    const testRecord = stolenData.find(record => 
+      record.cardNumber && record.cardNumber.includes('4000000000000002')
+    )
+    expect(testRecord).toBeTruthy()
+    console.log('✅ Test credit card data found in C2 server:', testRecord ? 'Yes' : 'No')
+    
+    console.log('🔍 Test completed - data successfully exfiltrated to C2 server')
   })
 
   test('should capture console logs from skimmer', async ({ page }) => {
@@ -93,13 +99,8 @@ test.describe('E-Skimming Lab - Checkout Flow', () => {
 
     // Fill minimal required fields
     await page.fill('#card-number', '4000000000000002')
-    await page.fill('#cardholder-name', 'Test User')
     await page.fill('#expiry', '06/29')
     await page.fill('#cvv', '456')
-    await page.fill('#email', 'test@example.com')
-    await page.fill('#billing-address', '456 Test Ave')
-    await page.fill('#city', 'Test Town')
-    await page.fill('#zip', '67890')
 
     // Submit form
     await page.click('button[type="submit"]')
@@ -137,13 +138,8 @@ test.describe('E-Skimming Lab - Checkout Flow', () => {
     await page.goto('/checkout.html')
 
     await page.fill('#card-number', '5555555555554444')
-    await page.fill('#cardholder-name', 'Network Test')
     await page.fill('#expiry', '03/27')
     await page.fill('#cvv', '789')
-    await page.fill('#email', 'network@test.com')
-    await page.fill('#billing-address', '789 Network St')
-    await page.fill('#city', 'Network City')
-    await page.fill('#zip', '54321')
 
     await page.click('button[type="submit"]')
     await page.waitForTimeout(3000)
@@ -161,5 +157,17 @@ test.describe('E-Skimming Lab - Checkout Flow', () => {
 
     // Verify network request was made
     expect(networkRequests.length).toBeGreaterThan(0)
+
+    // Verify data was exfiltrated to C2 server
+    console.log('🔍 Verifying data exfiltration to C2 server...')
+    const c2Response = await page.request.get('http://localhost:9002/api/stolen')
+    expect(c2Response.ok()).toBeTruthy()
+    
+    const stolenData = await c2Response.json()
+    const testRecord = stolenData.find(record => 
+      record.cardNumber && record.cardNumber.includes('5555555555554444')
+    )
+    expect(testRecord).toBeTruthy()
+    console.log('✅ Network test data found in C2 server:', testRecord ? 'Yes' : 'No')
   })
 })
