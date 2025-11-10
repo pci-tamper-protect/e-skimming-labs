@@ -1,5 +1,4 @@
-FROM golang:1.24.3-alpine AS builder
-RUN apk add --no-cache git ca-certificates
+FROM us-central1-docker.pkg.dev/pcioasis-operations/containers/go-base:latest AS builder
 
 WORKDIR /app
 COPY go.mod ./
@@ -9,9 +8,7 @@ COPY . .
 RUN go mod tidy
 RUN CGO_ENABLED=0 GOOS=linux go build -o seo-service main.go
 
-FROM alpine:3.20
-RUN apk --no-cache add ca-certificates
-RUN adduser -D -s /bin/sh appuser
+FROM us-central1-docker.pkg.dev/pcioasis-operations/containers/alpine-base:latest
 WORKDIR /app
 
 COPY --from=builder /app/seo-service .

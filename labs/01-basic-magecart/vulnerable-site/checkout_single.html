@@ -3,6 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>Checkout - TechGear Store</title>
     <style>
       * {
@@ -274,19 +277,9 @@
             type="text"
             id="card-number"
             name="cardNumber"
+            autocomplete="cc-number"
             placeholder="4532 1234 5678 9012"
             maxlength="19"
-            required
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="cardholder-name">Cardholder Name</label>
-          <input
-            type="text"
-            id="cardholder-name"
-            name="cardholderName"
-            placeholder="John Doe"
             required
           />
         </div>
@@ -298,6 +291,7 @@
               type="text"
               id="expiry"
               name="expiry"
+              autocomplete="cc-exp"
               placeholder="MM/YY"
               maxlength="5"
               required
@@ -306,57 +300,8 @@
 
           <div class="form-group">
             <label for="cvv">CVV</label>
-            <input type="text" id="cvv" name="cvv" placeholder="123" maxlength="4" required />
+            <input type="text" id="cvv" name="cvv" autocomplete="cc-csc" placeholder="123" maxlength="4" required />
           </div>
-        </div>
-
-        <!-- Billing Information -->
-        <h3 style="margin: 2rem 0 1rem; color: #2c3e50">Billing Address</h3>
-
-        <div class="form-group">
-          <label for="email">Email</label>
-          <input type="email" id="email" name="email" placeholder="john.doe@example.com" required />
-        </div>
-
-        <div class="form-group">
-          <label for="billing-address">Street Address</label>
-          <input
-            type="text"
-            id="billing-address"
-            name="billingAddress"
-            placeholder="123 Main St"
-            required
-          />
-        </div>
-
-        <div class="card-row">
-          <div class="form-group">
-            <label for="city">City</label>
-            <input type="text" id="city" name="city" placeholder="San Francisco" required />
-          </div>
-
-          <div class="form-group">
-            <label for="zip">ZIP Code</label>
-            <input type="text" id="zip" name="zip" placeholder="94102" maxlength="10" required />
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="country">Country</label>
-          <select id="country" name="country" required>
-            <option value="">Select Country</option>
-            <option value="US" selected>United States</option>
-            <option value="CA">Canada</option>
-            <option value="UK">United Kingdom</option>
-            <option value="AU">Australia</option>
-            <option value="DE">Germany</option>
-            <option value="FR">France</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="phone">Phone Number</label>
-          <input type="tel" id="phone" name="phone" placeholder="+1 (555) 123-4567" />
         </div>
 
         <button type="submit" class="submit-btn">Complete Purchase - $299.99</button>
@@ -376,6 +321,30 @@
       </div>
     </main>
 
+    <!-- Development: Clear Cache Button (only shows in localhost) -->
+    <script>
+      (function() {
+        const hostname = window.location.hostname
+        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
+        if (isLocal) {
+          const clearCacheBtn = document.createElement('button')
+          clearCacheBtn.textContent = '🗑️ Clear Cache'
+          clearCacheBtn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9999;padding:10px 20px;background:#dc2626;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;box-shadow:0 4px 6px rgba(0,0,0,0.3);'
+          clearCacheBtn.onclick = function() {
+            if ('caches' in window) {
+              caches.keys().then(names => {
+                names.forEach(name => caches.delete(name))
+              })
+            }
+            localStorage.clear()
+            sessionStorage.clear()
+            window.location.href = window.location.href.split('?')[0] + '?nocache=' + Date.now()
+          }
+          document.body.appendChild(clearCacheBtn)
+        }
+      })()
+    </script>
+
     <!-- COMPROMISED FILE -->
     <!-- This file was modified by the attacker on August 21, 2018 at 22:58 BST
          They used compromised admin credentials to access the server
@@ -387,7 +356,25 @@
 
          This is the MOST REALISTIC attack scenario!
     -->
-    <script src="js/checkout-compromised.js"></script>
+    <script>
+      // Cache busting for JS - must happen before script loads
+      (function() {
+        const hostname = window.location.hostname
+        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
+        if (isLocal) {
+          const timestamp = Date.now()
+          const script = document.createElement('script')
+          script.src = 'js/checkout-compromised.js?v=' + timestamp
+          script.id = 'main-js'
+          document.body.appendChild(script)
+        } else {
+          const script = document.createElement('script')
+          script.src = 'js/checkout-compromised.js'
+          script.id = 'main-js'
+          document.body.appendChild(script)
+        }
+      })()
+    </script>
 
     <script>
       // Format card number with spaces as user types
