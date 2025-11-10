@@ -78,6 +78,18 @@ test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
       expect(monitorStatus.fieldsCount).toBeGreaterThan(0)
     }
 
+    // Verify data was exfiltrated to C2 server
+    console.log('🔍 Verifying data exfiltration to C2 server...')
+    const c2Response = await page.request.get('http://localhost:9004/stats')
+    expect(c2Response.ok()).toBeTruthy()
+    
+    const stats = await c2Response.json()
+    console.log('📊 C2 Server Stats:', stats)
+    
+    // Verify attack was recorded
+    expect(stats.totalAttacks).toBeGreaterThan(0)
+    console.log('✅ DOM monitoring attack recorded in C2 server')
+    
     console.log('🔍 DOM mutation monitoring test completed')
   })
 
@@ -132,6 +144,18 @@ test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
       expect(capturedData.keystrokes.length).toBeGreaterThan(0)
       expect(capturedData.sessions.length).toBeGreaterThan(0)
     }
+
+    // Verify data was exfiltrated to C2 server
+    console.log('🔍 Verifying data exfiltration to C2 server...')
+    const c2Response = await page.request.get('http://localhost:9004/stats')
+    expect(c2Response.ok()).toBeTruthy()
+    
+    const stats = await c2Response.json()
+    console.log('📊 C2 Server Stats:', stats)
+    
+    // Verify attack was recorded
+    expect(stats.totalAttacks).toBeGreaterThan(0)
+    console.log('✅ Keystroke monitoring attack recorded in C2 server')
 
     console.log('⌨️ Keystroke monitoring test completed')
   })

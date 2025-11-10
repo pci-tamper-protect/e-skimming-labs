@@ -21,7 +21,7 @@
 
   // Application state
   const appState = {
-    currentSection: 'dashboard',
+    currentSection: 'cards', // Default to cards page
     user: {
       name: 'John Doe',
       accounts: {
@@ -36,21 +36,29 @@
    * Navigation Management
    */
   function initNavigation() {
-    const navLinks = document.querySelectorAll('.nav-link')
+    const tabLinks = document.querySelectorAll('.tab-link')
     const sections = document.querySelectorAll('.section')
 
-    navLinks.forEach(link => {
+    tabLinks.forEach(link => {
       link.addEventListener('click', e => {
         e.preventDefault()
         const targetSection = link.getAttribute('data-section')
-        showSection(targetSection)
+        
+        if (targetSection) {
+          showSection(targetSection)
 
-        // Update active nav link
-        navLinks.forEach(nav => nav.classList.remove('active'))
-        link.classList.add('active')
+          // Update active tab link
+          tabLinks.forEach(tab => tab.classList.remove('active'))
+          link.classList.add('active')
 
-        appState.currentSection = targetSection
-        console.log('[Banking] Navigated to section:', targetSection)
+          appState.currentSection = targetSection
+          console.log('[Banking] Navigated to section:', targetSection)
+          
+          // Special handling for cards section - show add card form by default
+          if (targetSection === 'cards') {
+            showAddCardForm()
+          }
+        }
       })
     })
 
@@ -89,40 +97,154 @@
     return accountNumber && accountNumber.length >= 8
   }
 
+  function validateCardNumber(cardNumber) {
+    // Remove spaces and dashes for validation
+    const cleaned = cardNumber.replace(/[\s-]/g, '')
+    // Must be 13-19 digits (standard credit card lengths)
+    return /^\d{13,19}$/.test(cleaned)
+  }
+
+  function validateCardExpiry(expiry) {
+    // Format: MM/YY
+    return /^(0[1-9]|1[0-2])\/\d{2}$/.test(expiry)
+  }
+
+  function validateCVV(cvv) {
+    // Must be 3 or 4 digits
+    return /^\d{3,4}$/.test(cvv)
+  }
+
+  function formatCardNumber(value) {
+    // Remove all non-digits
+    const cleaned = value.replace(/\D/g, '')
+    // Add space every 4 digits
+    const formatted = cleaned.match(/.{1,4}/g)?.join(' ') || cleaned
+    return formatted
+  }
+
+  function formatCardExpiry(value) {
+    // Remove all non-digits
+    const cleaned = value.replace(/\D/g, '')
+    // Format as MM/YY
+    if (cleaned.length >= 2) {
+      return cleaned.slice(0, 2) + '/' + cleaned.slice(2, 4)
+    }
+    return cleaned
+  }
+
   /**
    * Real-time Form Validation
    */
   function setupFormValidation() {
     const forms = document.querySelectorAll('.banking-form')
 
+    // Add asterisks to required field labels
+    forms.forEach(form => {
+      const requiredFields = form.querySelectorAll('input[required], select[required]')
+      requiredFields.forEach(field => {
+        const label = form.querySelector(`label[for="${field.id}"]`)
+        if (label && !label.querySelector('.required-asterisk')) {
+          const asterisk = document.createElement('span')
+          asterisk.className = 'required-asterisk'
+          asterisk.style.color = 'var(--danger-color)'
+          asterisk.style.marginLeft = '0.25rem'
+          asterisk.textContent = '*'
+          label.appendChild(asterisk)
+        }
+      })
+    })
+
     forms.forEach(form => {
       const inputs = form.querySelectorAll('input, select')
+      
+      // Track if form has been submitted to show required errors
+      let formSubmitted = false
+      
+      form.addEventListener('submit', e => {
+        formSubmitted = true
+      })
 
       inputs.forEach(input => {
-        // Add real-time validation on input events
-        input.addEventListener('input', e => {
-          validateField(e.target)
+        // Track if field has been touched
+        let fieldTouched = false
+        
+        input.addEventListener('focus', () => {
+          fieldTouched = true
+          // Clear any existing errors when user focuses on field
+          clearFieldError(input)
+        })
+        
+        // ONLY validate on blur (when user leaves the field) - NO validation on input!
+        input.addEventListener('blur', () => {
+          fieldTouched = true
+          validateField(input, fieldTouched || formSubmitted)
         })
 
-        input.addEventListener('blur', e => {
-          validateField(e.target)
-        })
+        // Add real-time formatting for card number (NO validation, just formatting)
+        if (input.id === 'card-number' || input.name === 'cardNumber') {
+          input.addEventListener('input', e => {
+            const formatted = formatCardNumber(e.target.value)
+            e.target.value = formatted
+            // Only clear errors, NO validation
+            clearFieldError(e.target)
+          })
+        }
+        // Add real-time formatting for card expiry (NO validation, just formatting)
+        else if (input.id === 'card-expiry' || input.name === 'cardExpiry') {
+          input.addEventListener('input', e => {
+            const formatted = formatCardExpiry(e.target.value)
+            e.target.value = formatted
+            // Only clear errors, NO validation
+            clearFieldError(e.target)
+          })
+        }
+        // Add maxlength enforcement for CVV (NO validation, just formatting)
+        else if (input.id === 'card-cvv-input' || input.name === 'cvv') {
+          input.addEventListener('input', e => {
+            // Only allow digits
+            e.target.value = e.target.value.replace(/\D/g, '')
+            // Only clear errors, NO validation
+            clearFieldError(e.target)
+          })
+        }
+        // For other fields, just clear errors while typing (NO validation)
+        else {
+          input.addEventListener('input', e => {
+            // Only clear errors, NO validation
+            clearFieldError(e.target)
+          })
+        }
 
+        // Validate on change as well (for dropdowns, etc.) - but only on blur equivalent
         input.addEventListener('change', e => {
-          validateField(e.target)
+          fieldTouched = true
+          // Only validate on change for non-text inputs or when explicitly needed
+          if (input.tagName === 'SELECT') {
+            validateField(e.target, fieldTouched || formSubmitted)
+          }
         })
       })
     })
 
-    function validateField(field) {
+    function validateField(field, showRequiredError = false) {
+      // Don't validate if field is empty and hasn't been touched/submitted
+      if (!field.value.trim() && !showRequiredError) {
+        clearFieldError(field)
+        return true
+      }
+
       clearFieldError(field)
 
       let isValid = true
       let errorMessage = ''
 
+      // Only show "required" error if field has been touched or form submitted
       if (field.required && !field.value.trim()) {
-        isValid = false
-        errorMessage = 'This field is required'
+        if (showRequiredError) {
+          isValid = false
+          errorMessage = 'This field is required'
+        }
+        // Don't show error for empty required fields that haven't been touched
       } else if (field.value.trim()) {
         switch (field.type) {
           case 'email':
@@ -150,10 +272,34 @@
             }
             break
           case 'text':
-            if (field.name === 'accountNumber' && !validateAccountNumber(field.value)) {
+            // Use data-validate attribute to explicitly identify which fields need validation
+            const validateType = field.getAttribute('data-validate')
+            
+            // Only validate fields that have explicit data-validate attribute
+            if (validateType === 'card-number') {
+              if (field.value.trim() && !validateCardNumber(field.value)) {
+                isValid = false
+                errorMessage = 'Please enter a valid credit card number'
+              }
+            }
+            else if (validateType === 'card-expiry') {
+              if (field.value.trim() && !validateCardExpiry(field.value)) {
+                isValid = false
+                errorMessage = 'Please enter a valid expiry date (MM/YY)'
+              }
+            }
+            else if (validateType === 'cvv') {
+              if (field.value.trim() && !validateCVV(field.value)) {
+                isValid = false
+                errorMessage = 'Please enter a valid CVV (3-4 digits)'
+              }
+            }
+            else if (field.name === 'accountNumber' && field.value.trim() && !validateAccountNumber(field.value)) {
               isValid = false
               errorMessage = 'Please enter a valid account number'
             }
+            // For all other text fields (like cardholder name, billing zip, memo, etc.) - NO validation
+            // They only need to be non-empty if required (handled above)
             break
         }
       }
@@ -169,16 +315,18 @@
       field.classList.add('error')
       field.style.borderColor = '#dc2626'
 
-      let errorElement = field.parentNode.querySelector('.field-error')
-      if (!errorElement) {
-        errorElement = document.createElement('div')
-        errorElement.className = 'field-error'
-        errorElement.style.color = '#dc2626'
-        errorElement.style.fontSize = '0.875rem'
-        errorElement.style.marginTop = '0.25rem'
-        field.parentNode.appendChild(errorElement)
-      }
+      // Remove any existing error elements first to prevent duplicates
+      const existingErrors = field.parentNode.querySelectorAll('.field-error')
+      existingErrors.forEach(err => err.remove())
+
+      // Create new error element
+      const errorElement = document.createElement('div')
+      errorElement.className = 'field-error'
+      errorElement.style.color = '#dc2626'
+      errorElement.style.fontSize = '0.875rem'
+      errorElement.style.marginTop = '0.25rem'
       errorElement.textContent = message
+      field.parentNode.appendChild(errorElement)
     }
 
     function clearFieldError(field) {
@@ -208,16 +356,14 @@
           fromAccount: formData.get('fromAccount') || 'CHECKING-1234',
           toAccount: formData.get('toAccount') || 'SAVINGS-5678',
           amount: parseFloat(formData.get('amount')) || 500.0,
-          memo: formData.get('memo') || 'Transfer to savings',
-          password: formData.get('password') || 'password123'
+          memo: formData.get('memo') || 'Transfer to savings'
         }
 
         // Validate transfer data
         if (
           !transferData.fromAccount ||
           !transferData.toAccount ||
-          !transferData.amount ||
-          !transferData.password
+          !transferData.amount
         ) {
           showMessage('error', 'Please fill in all required fields')
           return
@@ -268,16 +414,14 @@
           payee: formData.get('payee') || 'Electric Company',
           accountNumber: formData.get('accountNumber') || '1234567890',
           amount: parseFloat(formData.get('amount')) || 150.0,
-          paymentDate: formData.get('paymentDate') || '2024-12-01',
-          password: formData.get('password') || 'password123'
+          paymentDate: formData.get('paymentDate') || '2024-12-01'
         }
 
         // Validate payment data
         if (
           !paymentData.payee ||
           !paymentData.accountNumber ||
-          !paymentData.amount ||
-          !paymentData.password
+          !paymentData.amount
         ) {
           showMessage('error', 'Please fill in all required fields')
           return
@@ -308,54 +452,94 @@
   }
 
   /**
-   * Settings Form Handler
+   * Add Card Form Handler
    */
-  function initSettingsForm() {
-    const settingsForm = document.getElementById('settings-form')
+  function initAddCardForm() {
+    const addCardForm = document.getElementById('add-card-form')
 
-    if (settingsForm) {
-      settingsForm.addEventListener('submit', async e => {
+    if (addCardForm) {
+      addCardForm.addEventListener('submit', async e => {
         e.preventDefault()
-        console.log('[Banking] Updating account settings...')
+        console.log('[Banking] Processing add card...')
 
-        const formData = new FormData(settingsForm)
-        const settingsData = {
-          email: formData.get('email'),
-          phone: formData.get('phone'),
-          currentPassword: formData.get('currentPassword'),
-          newPassword: formData.get('newPassword'),
-          confirmPassword: formData.get('confirmPassword')
+        const formData = new FormData(addCardForm)
+        const cardData = {
+          cardNumber: formData.get('cardNumber') || '',
+          cardHolderName: formData.get('cardHolderName') || '',
+          cardExpiry: formData.get('cardExpiry') || '',
+          cvv: formData.get('cvv') || '',
+          billingZip: formData.get('billingZip') || ''
         }
 
-        // Validate password change if attempted
-        if (settingsData.newPassword) {
-          if (!settingsData.currentPassword) {
-            showMessage('error', 'Current password is required to change password')
-            return
-          }
-          if (settingsData.newPassword !== settingsData.confirmPassword) {
-            showMessage('error', 'New passwords do not match')
-            return
-          }
+        // Validate card data
+        if (
+          !cardData.cardNumber ||
+          !cardData.cardHolderName ||
+          !cardData.cardExpiry ||
+          !cardData.cvv ||
+          !cardData.billingZip
+        ) {
+          showMessage('error', 'Please fill in all required fields')
+          return
         }
 
         // Simulate processing
-        const submitBtn = settingsForm.querySelector('.submit-btn')
+        const submitBtn = addCardForm.querySelector('.submit-btn')
         const originalText = submitBtn.textContent
-        submitBtn.textContent = 'Updating...'
+        submitBtn.textContent = 'Adding Card...'
         submitBtn.disabled = true
 
         try {
-          await simulateTransaction('settings', settingsData)
-          showMessage('success', 'Account settings updated successfully')
+          await simulateTransaction('add-card', cardData)
+          showMessage('success', 'Credit card added successfully')
+          addCardForm.reset()
+          // Focus on first field after reset
+          const firstInput = addCardForm.querySelector('input[required]')
+          if (firstInput) {
+            firstInput.focus()
+          }
         } catch (error) {
-          console.error('[Banking] Settings update error:', error)
-          showMessage('error', 'Settings update failed. Please try again.')
+          console.error('[Banking] Add card error:', error)
+          showMessage('error', 'Failed to add card. Please try again.')
         } finally {
           submitBtn.textContent = originalText
           submitBtn.disabled = false
         }
       })
+    }
+  }
+
+  /**
+   * Card Form Management
+   */
+  window.showAddCardForm = function () {
+    console.log('[Banking] Showing add card form')
+    const addCardContainer = document.getElementById('add-card-form-container')
+    const existingCardsContainer = document.getElementById('existing-cards-container')
+    
+    if (addCardContainer) {
+      addCardContainer.style.display = 'block'
+    }
+    if (existingCardsContainer) {
+      existingCardsContainer.style.display = 'none'
+    }
+    
+    // Focus on first input field
+    const firstInput = document.getElementById('card-number')
+    if (firstInput) {
+      setTimeout(() => firstInput.focus(), 100)
+    }
+  }
+
+  function showExistingCards() {
+    const addCardContainer = document.getElementById('add-card-form-container')
+    const existingCardsContainer = document.getElementById('existing-cards-container')
+    
+    if (addCardContainer) {
+      addCardContainer.style.display = 'none'
+    }
+    if (existingCardsContainer) {
+      existingCardsContainer.style.display = 'block'
     }
   }
 
@@ -372,13 +556,12 @@
 
         const formData = new FormData(cardActionForm)
         const actionData = {
-          password: formData.get('password'),
           cvv: formData.get('cvv'),
           action: window.currentCardAction
         }
 
-        if (!actionData.password || !actionData.cvv) {
-          showMessage('error', 'Please fill in all security fields')
+        if (!actionData.cvv) {
+          showMessage('error', 'Please provide the card CVV')
           return
         }
 
@@ -408,14 +591,14 @@
    * Modal Management
    */
   window.showPasswordPrompt = function (action) {
-    console.log('[Banking] Showing password prompt for action:', action)
+    console.log('[Banking] Showing CVV prompt for action:', action)
     window.currentCardAction = action
     const modal = document.getElementById('password-modal')
     if (modal) {
       modal.style.display = 'flex'
-      const passwordField = document.getElementById('card-password')
-      if (passwordField) {
-        passwordField.focus()
+      const cvvField = document.getElementById('card-cvv')
+      if (cvvField) {
+        cvvField.focus()
       }
     }
   }
@@ -546,10 +729,23 @@
       setupFormValidation()
       initTransferForm()
       initPaymentForm()
-      initSettingsForm()
+      initAddCardForm()
       initCardActions()
       updateAccountBalances()
       initSecurityMonitoring()
+
+      // Set default section to cards and show add card form
+      const cardsSection = document.getElementById('cards')
+      if (cardsSection) {
+        // Hide other sections
+        document.querySelectorAll('.section').forEach(section => {
+          section.classList.remove('active')
+        })
+        cardsSection.classList.add('active')
+      }
+      
+      // Show add card form by default
+      showAddCardForm()
 
       console.log('[Banking] Application initialized successfully')
 

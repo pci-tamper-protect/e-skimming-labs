@@ -3,8 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>SecureShop - Premium E-commerce Platform</title>
-    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/style.css" id="main-css" />
+    <script>
+      // Cache busting for development - inject before page loads
+      (function() {
+        const hostname = window.location.hostname
+        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
+        if (isLocal) {
+          const timestamp = Date.now()
+          const cssLink = document.getElementById('main-css')
+          if (cssLink && !cssLink.href.includes('?')) {
+            cssLink.href = cssLink.href + '?v=' + timestamp
+          }
+        }
+      })()
+    </script>
   </head>
   <body>
     <div class="container">
@@ -302,7 +319,49 @@
       </div>
     </div>
 
-    <script src="js/checkout.js"></script>
+    <!-- Development: Clear Cache Button (only shows in localhost) -->
+    <script>
+      (function() {
+        const hostname = window.location.hostname
+        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
+        if (isLocal) {
+          const clearCacheBtn = document.createElement('button')
+          clearCacheBtn.textContent = '🗑️ Clear Cache'
+          clearCacheBtn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9999;padding:10px 20px;background:#dc2626;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;box-shadow:0 4px 6px rgba(0,0,0,0.3);'
+          clearCacheBtn.onclick = function() {
+            if ('caches' in window) {
+              caches.keys().then(names => {
+                names.forEach(name => caches.delete(name))
+              })
+            }
+            localStorage.clear()
+            sessionStorage.clear()
+            window.location.href = window.location.href.split('?')[0] + '?nocache=' + Date.now()
+          }
+          document.body.appendChild(clearCacheBtn)
+        }
+      })()
+    </script>
+
+    <script>
+      // Cache busting for JS - must happen before script loads
+      (function() {
+        const hostname = window.location.hostname
+        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
+        if (isLocal) {
+          const timestamp = Date.now()
+          const script = document.createElement('script')
+          script.src = 'js/checkout.js?v=' + timestamp
+          script.id = 'main-js'
+          document.body.appendChild(script)
+        } else {
+          const script = document.createElement('script')
+          script.src = 'js/checkout.js'
+          script.id = 'main-js'
+          document.body.appendChild(script)
+        }
+      })()
+    </script>
     <script>
       // Environment-aware URL configuration
       ;(function () {
