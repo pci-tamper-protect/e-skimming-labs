@@ -16,7 +16,8 @@ const fs = require('fs').promises
 const path = require('path')
 
 const app = express()
-const PORT = process.env.PORT || 3002
+// Always use port 3000 for C2 server (Cloud Run sets PORT=8080 but we want to remain on 3000)
+const PORT = 3000
 
 // Middleware
 app.use(cors())
