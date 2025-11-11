@@ -70,8 +70,7 @@ test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
     await page.selectOption('#from-account', 'checking')
     await page.fill('#to-account', '987654321')
     await page.fill('#transfer-amount', '1500.00')
-    await page.fill('#transfer-memo', 'Test transfer for DOM monitoring')
-    await page.fill('#transfer-password', 'testpassword123')
+    await page.fill('#transfer-memo', 'Test transfer for DOM monitoring - testpassword123')
 
     console.log('✅ Form filled - DOM monitor should have captured field data')
 
@@ -391,9 +390,13 @@ test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
     // Generate some activity
     await page.locator('[data-section="transfer"]').click({ timeout: 3000 })
     await page.waitForTimeout(500)
-    await page.fill('#from-account', 'checking')
+    
+    // Wait for transfer form to be visible
+    await expect(page.locator('#transfer-form')).toBeVisible()
+    
+    await page.selectOption('#from-account', 'checking')
     await page.fill('#to-account', '555666777')
-    await page.fill('#transfer-password', 'unloadtest')
+    await page.fill('#transfer-memo', 'unloadtest')
 
     await page.waitForTimeout(2000)
 

@@ -9,7 +9,7 @@
         - link "← Back to Labs" [ref=e6] [cursor=pointer]:
           - /url: http://localhost:3000
         - link "🕵️ View Stolen Data" [ref=e7] [cursor=pointer]:
-          - /url: http://localhost:9002
+          - /url: http://localhost:9002/stolen
         - link "← Back to Store" [ref=e8] [cursor=pointer]:
           - /url: index.html
   - main [ref=e9]:

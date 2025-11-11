@@ -31,7 +31,18 @@
       "mcp__playwright__browser_navigate",
       "Bash(npx playwright test:*)",
       "Bash(TEST_ENV=local npx playwright test:*)",
-      "Bash(TEST_ENV=prd npx playwright test:*)"
+      "Bash(TEST_ENV=prd npx playwright test:*)",
+      "WebFetch(domain:lab-01-basic-magecart-prd-mmwwcfi5za-uc.a.run.app)",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_type",
+      "Bash(for file in labs/01-basic-magecart/variants/*/vulnerable-site/js/checkout*compromised.js)",
+      "Bash(do)",
+      "Bash(if grep -q \"localhost:9002\" \"$file\")",
+      "Bash(then)",
+      "Bash(echo:*)",
+      "Bash(fi)",
+      "Bash(done)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []
