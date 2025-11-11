@@ -560,6 +560,18 @@ app.get('/', async (req, res) => {
   }
 })
 
+// Also serve dashboard at /skimmed-data for nginx proxy (similar to Lab 2's /stolen-data)
+app.get('/skimmed-data', async (req, res) => {
+  try {
+    const dashboardPath = path.join(__dirname, 'dashboard.html')
+    const dashboard = await fs.readFile(dashboardPath, 'utf8')
+    res.send(dashboard)
+  } catch (error) {
+    console.error('[Extension Server] Failed to serve dashboard:', error)
+    res.status(500).send('Dashboard not available')
+  }
+})
+
 /**
  * Start Server
  */

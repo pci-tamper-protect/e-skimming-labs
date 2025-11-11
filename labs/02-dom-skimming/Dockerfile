@@ -25,6 +25,35 @@ RUN echo 'server { \
     # Environment-based routing \
     # Production (labs.pcioasis.com): serve lab versions with warnings \
     # Staging (labs.stg.pcioasis.com): serve training versions without warnings \
+    # Handle both root paths (/) and path-prefixed routes (/lab-02-dom-skimming/) \
+    # C2 server proxy routes (must come before static file routes) \
+    location ~ ^/(stolen-data|api|stats|health|collect) { \
+        proxy_pass http://127.0.0.1:3000; \
+        proxy_http_version 1.1; \
+        proxy_set_header Upgrade $http_upgrade; \
+        proxy_set_header Connection "upgrade"; \
+        proxy_set_header Host $host; \
+        proxy_set_header X-Real-IP $remote_addr; \
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; \
+        proxy_set_header X-Forwarded-Proto $scheme; \
+        proxy_cache_bypass $http_upgrade; \
+        proxy_connect_timeout 10s; \
+        proxy_send_timeout 30s; \
+        proxy_read_timeout 30s; \
+        proxy_buffering off; \
+    } \
+    \
+    # Handle path-prefixed routes (production Cloud Run) \
+    location ~ ^/lab-02-dom-skimming(/.*)?$ { \
+        set $path $1; \
+        if ($path = "") { set $path /; } \
+        if ($host ~* "stg\.pcioasis\.com") { \
+            rewrite ^/lab-02-dom-skimming(/.*)?$ /banking-train.html last; \
+        } \
+        try_files $path /banking.html =404; \
+    } \
+    \
+    # Handle root paths (localhost and production root) \
     location = /banking.html { \
         if ($host ~* "stg\.pcioasis\.com") { \
             rewrite ^/banking.html$ /banking-train.html last; \
@@ -41,22 +70,6 @@ RUN echo 'server { \
     \
     location / { \
         try_files $uri $uri/ /banking.html =404; \
-    } \
-    \
-    location ~ ^/(stolen-data|api|stats|health|collect) { \
-        proxy_pass http://127.0.0.1:3000; \
-        proxy_http_version 1.1; \
-        proxy_set_header Upgrade $http_upgrade; \
-        proxy_set_header Connection "upgrade"; \
-        proxy_set_header Host $host; \
-        proxy_set_header X-Real-IP $remote_addr; \
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; \
-        proxy_set_header X-Forwarded-Proto $scheme; \
-        proxy_cache_bypass $http_upgrade; \
-        proxy_connect_timeout 10s; \
-        proxy_send_timeout 30s; \
-        proxy_read_timeout 30s; \
-        proxy_buffering off; \
     } \
     \
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ { \
