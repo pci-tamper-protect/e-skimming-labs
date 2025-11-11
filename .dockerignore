@@ -11,8 +11,9 @@ test/
 *.md
 README.md
 **/README.md
-docs/
-**/docs/
+# Keep docs/ for home-index service build
+# docs/
+# **/docs/
 
 # Git
 .git/
