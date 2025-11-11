@@ -327,15 +327,76 @@
                     </div>
                 `
 
-          // For now, show a message about extension data collection
+          // Load collected data
+          const dataResponse = await fetch('/api/data')
+          const dataResult = await dataResponse.json()
+          
           const sessionsContainer = document.getElementById('sessionsData')
-          sessionsContainer.innerHTML = `
+          
+          if (dataResult.success && dataResult.data && dataResult.data.length > 0) {
+            // Display collected data
+            sessionsContainer.innerHTML = dataResult.data.map((entry, index) => {
+              const payload = entry.payload || {}
+              const analysis = entry.analysis || {}
+              
+              // Extract form submission data
+              const formSubmissions = payload.data ? payload.data.filter(item => item.type === 'form_submission') : []
+              const fieldData = payload.data ? payload.data.filter(item => item.type === 'field_data') : []
+              
+              let dataHtml = `
+                <div class="session-record">
+                  <h4>Session #${index + 1} - ${new Date(entry.timestamp).toLocaleString()}</h4>
+                  <p><strong>Session ID:</strong> ${payload.sessionId || 'N/A'}</p>
+                  <p><strong>URL:</strong> ${payload.url || 'N/A'}</p>
+                  <p><strong>Risk Level:</strong> <span style="color: ${analysis.riskLevel === 'high' ? '#ef4444' : analysis.riskLevel === 'medium' ? '#f59e0b' : '#10b981'}">${analysis.riskLevel || 'low'}</span></p>
+                  <p><strong>Data Types:</strong> ${analysis.dataTypes ? analysis.dataTypes.join(', ') : 'None'}</p>
+                  <p><strong>Sensitive Fields:</strong> ${analysis.sensitiveFieldCount || 0}</p>
+              `
+              
+              // Show form submissions
+              if (formSubmissions.length > 0) {
+                dataHtml += `<div style="margin-top: 1rem;"><strong>Form Submissions:</strong>`
+                formSubmissions.forEach((submission, subIndex) => {
+                  const formData = submission.data || {}
+                  dataHtml += `<div style="margin-left: 1rem; margin-top: 0.5rem; padding: 0.5rem; background: rgba(220,38,38,0.2); border-radius: 4px;">`
+                  dataHtml += `<strong>Form ${subIndex + 1}:</strong><br>`
+                  if (formData.fields) {
+                    formData.fields.forEach(field => {
+                      const isSensitive = field.name.toLowerCase().includes('card') || 
+                                         field.name.toLowerCase().includes('cvv') || 
+                                         field.name.toLowerCase().includes('password')
+                      const displayValue = isSensitive ? '***' : field.value
+                      dataHtml += `${field.name}: ${displayValue}<br>`
+                    })
+                  }
+                  dataHtml += `</div>`
+                })
+                dataHtml += `</div>`
+              }
+              
+              // Show sensitive findings
+              if (analysis.sensitiveFingdings && analysis.sensitiveFingdings.length > 0) {
+                dataHtml += `<div style="margin-top: 1rem;"><strong>🚨 Sensitive Data Detected:</strong><ul style="margin-left: 1.5rem; margin-top: 0.5rem;">`
+                analysis.sensitiveFingdings.forEach(finding => {
+                  dataHtml += `<li>${finding.type}: ${finding.description}${finding.sample ? ` (${finding.sample})` : ''}</li>`
+                })
+                dataHtml += `</ul></div>`
+              }
+              
+              dataHtml += `</div>`
+              return dataHtml
+            }).join('')
+          } else {
+            // No data yet
+            sessionsContainer.innerHTML = `
                     <div class="session-record">
                         <h4>Extension Data Collection Active</h4>
                         <p>This server is ready to receive data from malicious browser extensions. When Lab 3 is triggered, extension data will appear here.</p>
                         <p><strong>Server Uptime:</strong> ${stats.stats.uptime ? Math.floor(stats.stats.uptime / (1000 * 60 * 60)) + 'h ' + Math.floor((stats.stats.uptime % (1000 * 60 * 60)) / (1000 * 60)) + 'm' : 'Unknown'}</p>
+                        <p><strong>Data Received:</strong> 0 sessions</p>
                     </div>
                 `
+          }
         } catch (error) {
           console.error('Failed to load data:', error)
           document.getElementById('sessionsData').innerHTML =

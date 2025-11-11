@@ -451,6 +451,26 @@ async function saveDataToFile(dataEntry) {
 }
 
 /**
+ * API Endpoint - Get all collected data
+ */
+app.get('/api/data', (req, res) => {
+  try {
+    res.json({
+      success: true,
+      count: collectedData.length,
+      data: collectedData,
+      stats: stats
+    })
+  } catch (error) {
+    console.error('Error retrieving collected data:', error)
+    res.status(500).json({
+      success: false,
+      error: error.message
+    })
+  }
+})
+
+/**
  * Status Dashboard Endpoint
  */
 app.get('/status', (req, res) => {

