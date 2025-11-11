@@ -1,0 +1,52 @@
+# Test files
+test/
+**/test/
+**/*.spec.js
+**/*.test.js
+**/test-results/
+**/playwright-report/
+playwright.config.js
+
+# Documentation
+*.md
+README.md
+**/README.md
+docs/
+**/docs/
+
+# Git
+.git/
+.gitignore
+
+# Node modules (should be installed in container)
+node_modules/
+**/node_modules/
+
+# Logs
+*.log
+**/*.log
+logs/
+**/logs/
+
+# IDE
+.idea/
+.vscode/
+.DS_Store
+
+# Build artifacts
+build/
+dist/
+*.tmp
+
+# Extensions (not needed in container)
+legitimate-extension/
+malicious-extension/
+
+# Test automation
+test-automation.js
+test-extension-hijacking.sh
+
+# Docker
+Dockerfile*
+.dockerignore
+

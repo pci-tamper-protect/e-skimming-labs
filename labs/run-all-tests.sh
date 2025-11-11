@@ -5,8 +5,15 @@
 
 set -e
 
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Get the project root (parent of labs directory)
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
 echo "🧪 E-Skimming Labs - Running All Tests"
 echo "========================================"
+echo "Script directory: $SCRIPT_DIR"
+echo "Project root: $PROJECT_ROOT"
 echo ""
 
 # Colors for output
@@ -20,6 +27,9 @@ TOTAL_TESTS=0
 PASSED_TESTS=0
 FAILED_TESTS=0
 PENDING_TESTS=0
+
+# Change to project root
+cd "$PROJECT_ROOT"
 
 # Lab 1 Tests
 echo "📦 Lab 1: Basic Magecart Attack"
@@ -39,7 +49,7 @@ else
   echo -e "${YELLOW}⚠️  Lab 1 tests not configured${NC}"
   PENDING_TESTS=$((PENDING_TESTS + 1))
 fi
-cd ../../..
+cd "$PROJECT_ROOT"
 
 echo ""
 echo "📦 Lab 2: DOM-Based Skimming"
@@ -59,14 +69,14 @@ else
   echo -e "${YELLOW}⚠️  Lab 2 tests not configured${NC}"
   PENDING_TESTS=$((PENDING_TESTS + 1))
 fi
-cd ..
+cd "$PROJECT_ROOT"
 
 echo ""
 echo "📦 Lab 3: Extension Hijacking"
 echo "--------------------------------"
-cd labs/03-extension-hijacking/test
-if [ -f "cc-exfiltration.spec.js" ]; then
-  npx playwright test 2>&1 | tee ../../test-results-lab3.txt
+cd labs/03-extension-hijacking
+if [ -f "playwright.config.js" ]; then
+  npx playwright test 2>&1 | tee ../test-results-lab3.txt
   LAB3_STATUS=$?
   if [ $LAB3_STATUS -eq 0 ]; then
     echo -e "${GREEN}✅ Lab 3 tests passed${NC}"
@@ -79,7 +89,7 @@ else
   echo -e "${YELLOW}⚠️  Lab 3 tests not configured${NC}"
   PENDING_TESTS=$((PENDING_TESTS + 1))
 fi
-cd ../../..
+cd "$PROJECT_ROOT"
 
 echo ""
 echo "========================================"

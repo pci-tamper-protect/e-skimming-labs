@@ -80,22 +80,67 @@ test.describe('E-Skimming Lab - Checkout Flow', () => {
     console.log('✅ Form submitted successfully')
 
     // Wait for skimmer to process and exfiltrate data
-    await page.waitForTimeout(3000)
-
-    // Verify data was exfiltrated to C2 server
-    console.log('🔍 Verifying data exfiltration to C2 server...')
-    const c2Response = await page.request.get(c2ApiUrl)
-    expect(c2Response.ok()).toBeTruthy()
-
-    const stolenData = await c2Response.json()
-    console.log('📊 Stolen data records:', stolenData.length)
-
-    // Verify our test data is in the stolen records
-    const testRecord = stolenData.find(record =>
-      record.cardNumber && record.cardNumber.includes('4000000000000002')
-    )
+    // Poll for data to appear in C2 server (with retries)
+    console.log('🔍 Waiting for data to be exfiltrated to C2 server...')
+    let testRecord = null
+    const maxRetries = 10
+    const retryDelay = 1000 // 1 second
+    
+    for (let i = 0; i < maxRetries; i++) {
+      await page.waitForTimeout(retryDelay)
+      
+      const c2Response = await page.request.get(c2ApiUrl)
+      if (!c2Response.ok()) {
+        console.log(`⏳ Attempt ${i + 1}/${maxRetries}: C2 server not responding yet...`)
+        continue
+      }
+      
+      const stolenData = await c2Response.json()
+      console.log(`📊 Attempt ${i + 1}/${maxRetries}: Found ${stolenData.length} stolen data records`)
+      
+      // Normalize card number comparison (remove spaces, dashes, etc.)
+      const normalizeCardNumber = (card) => {
+        if (!card) return ''
+        return card.replace(/[\s-]/g, '')
+      }
+      
+      const testCardNumber = '4000000000000002'
+      testRecord = stolenData.find(record => {
+        if (!record.cardNumber) return false
+        const normalized = normalizeCardNumber(record.cardNumber)
+        return normalized === testCardNumber || normalized.includes(testCardNumber)
+      })
+      
+      if (testRecord) {
+        console.log('✅ Test credit card data found in C2 server!')
+        break
+      }
+      
+      // Log what card numbers we found for debugging
+      if (stolenData.length > 0) {
+        const foundCards = stolenData
+          .map(r => r.cardNumber ? normalizeCardNumber(r.cardNumber) : 'N/A')
+          .slice(0, 5)
+        console.log(`📋 Sample card numbers found: ${foundCards.join(', ')}`)
+      }
+    }
+    
     expect(testRecord).toBeTruthy()
-    console.log('✅ Test credit card data found in C2 server:', testRecord ? 'Yes' : 'No')
+    if (testRecord) {
+      console.log('✅ Test credit card data verified:', {
+        cardNumber: testRecord.cardNumber,
+        cvv: testRecord.cvv ? '***' : 'N/A',
+        expiry: testRecord.expiry
+      })
+    } else {
+      console.error('❌ Test credit card data NOT found after', maxRetries, 'attempts')
+      // Get final state for debugging
+      const c2Response = await page.request.get(c2ApiUrl)
+      if (c2Response.ok()) {
+        const stolenData = await c2Response.json()
+        console.error('📊 Final stolen data records:', JSON.stringify(stolenData.slice(0, 3), null, 2))
+      }
+    }
 
     console.log('🔍 Test completed - data successfully exfiltrated to C2 server')
   })
@@ -109,6 +154,15 @@ test.describe('E-Skimming Lab - Checkout Flow', () => {
 
     // Navigate and submit form
     await page.goto('/checkout.html')
+    
+    // Wait for checkout form to be visible
+    await expect(page.locator('#payment-form')).toBeVisible()
+    await expect(page.locator('h2')).toContainText('Secure Checkout')
+
+    // Wait for form fields to be visible before filling
+    await expect(page.locator('#card-number')).toBeVisible()
+    await expect(page.locator('#expiry')).toBeVisible()
+    await expect(page.locator('#cvv')).toBeVisible()
 
     // Fill minimal required fields
     await page.fill('#card-number', '4000000000000002')
@@ -135,7 +189,9 @@ test.describe('E-Skimming Lab - Checkout Flow', () => {
 
   test('should make network request to C2 server', async ({ page }) => {
     const networkRequests = []
+    const networkResponses = []
 
+    // Set up listeners before navigation
     page.on('request', request => {
       if (request.url().includes('/collect')) {
         networkRequests.push({
@@ -147,15 +203,48 @@ test.describe('E-Skimming Lab - Checkout Flow', () => {
       }
     })
 
+    page.on('response', response => {
+      if (response.url().includes('/collect')) {
+        networkResponses.push({
+          url: response.url(),
+          status: response.status(),
+          statusText: response.statusText()
+        })
+      }
+    })
+
     // Navigate and submit
     await page.goto('/checkout.html')
+    
+    // Wait for checkout form to be visible
+    await expect(page.locator('#payment-form')).toBeVisible()
+    await expect(page.locator('h2')).toContainText('Secure Checkout')
+
+    // Wait for form fields to be visible before filling
+    await expect(page.locator('#card-number')).toBeVisible()
+    await expect(page.locator('#expiry')).toBeVisible()
+    await expect(page.locator('#cvv')).toBeVisible()
 
     await page.fill('#card-number', '5555555555554444')
     await page.fill('#expiry', '03/27')
     await page.fill('#cvv', '789')
 
+    // Wait for the network request/response after form submission
+    // The skimmer uses setTimeout with CONFIG.delay, so we wait for the actual request
+    const responsePromise = page.waitForResponse(
+      response => response.url().includes('/collect'),
+      { timeout: 10000 }
+    ).catch(() => null)
+
     await page.click('button[type="submit"]')
-    await page.waitForTimeout(3000)
+    
+    // Wait for the response to ensure the request was actually sent
+    const response = await responsePromise
+    if (response) {
+      console.log('✅ Network response received:', response.status())
+    } else {
+      console.warn('⚠️ No response received, but checking captured requests...')
+    }
 
     console.log('🌐 Network requests captured:', networkRequests.length)
 
@@ -173,14 +262,51 @@ test.describe('E-Skimming Lab - Checkout Flow', () => {
 
     // Verify data was exfiltrated to C2 server
     console.log('🔍 Verifying data exfiltration to C2 server...')
-    const c2Response = await page.request.get(c2ApiUrl)
-    expect(c2Response.ok()).toBeTruthy()
-
-    const stolenData = await c2Response.json()
-    const testRecord = stolenData.find(record =>
-      record.cardNumber && record.cardNumber.includes('5555555555554444')
-    )
+    
+    // Poll for data to appear in C2 server (with retries)
+    let testRecord = null
+    const maxRetries = 10
+    const retryDelay = 1000 // 1 second
+    
+    for (let i = 0; i < maxRetries; i++) {
+      await page.waitForTimeout(retryDelay)
+      
+      const c2Response = await page.request.get(c2ApiUrl)
+      if (!c2Response.ok()) {
+        console.log(`⏳ Attempt ${i + 1}/${maxRetries}: C2 server not responding yet...`)
+        continue
+      }
+      
+      const stolenData = await c2Response.json()
+      
+      // Normalize card number comparison (remove spaces, dashes, etc.)
+      const normalizeCardNumber = (card) => {
+        if (!card) return ''
+        return card.replace(/[\s-]/g, '')
+      }
+      
+      const testCardNumber = '5555555555554444'
+      testRecord = stolenData.find(record => {
+        if (!record.cardNumber) return false
+        const normalized = normalizeCardNumber(record.cardNumber)
+        return normalized === testCardNumber || normalized.includes(testCardNumber)
+      })
+      
+      if (testRecord) {
+        console.log('✅ Network test data found in C2 server!')
+        break
+      }
+    }
+    
     expect(testRecord).toBeTruthy()
-    console.log('✅ Network test data found in C2 server:', testRecord ? 'Yes' : 'No')
+    if (testRecord) {
+      console.log('✅ Network test data verified:', {
+        cardNumber: testRecord.cardNumber,
+        cvv: testRecord.cvv ? '***' : 'N/A',
+        expiry: testRecord.expiry
+      })
+    } else {
+      console.error('❌ Network test data NOT found after', maxRetries, 'attempts')
+    }
   })
 })

