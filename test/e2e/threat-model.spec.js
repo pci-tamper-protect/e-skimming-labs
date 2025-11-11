@@ -139,10 +139,9 @@ test.describe('Threat Model Page', () => {
     // Click play button
     await playButton.click()
 
-    // Check that button text changes (indicating state change)
-    // expect will automatically wait and retry until the pause button appears
-    const pauseButton = page.locator('button').filter({ hasText: /⏸|Pause/ })
-    await expect(pauseButton).toBeVisible()
+    // Wait for state change - the play button should no longer be visible
+    // (button changes to pause state)
+    await expect(playButton).not.toBeVisible({ timeout: 3000 })
   })
 
   test('should display tooltips on hover', async ({ page }) => {
@@ -159,8 +158,8 @@ test.describe('Threat Model Page', () => {
     await backButton.click()
     await expect(page).toHaveURL('http://localhost:3000/')
 
-    // Navigate back to threat model
-    const threatModelLink = page.getByRole('link', { name: 'Threat Model' })
+    // Navigate back to threat model (use .first() for duplicate links)
+    const threatModelLink = page.getByRole('link', { name: 'Threat Model' }).first()
     await threatModelLink.click()
     await expect(page).toHaveURL('http://localhost:3000/threat-model')
 
