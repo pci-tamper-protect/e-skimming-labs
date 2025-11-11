@@ -1,5 +1,16 @@
 // @ts-check
 const { test, expect } = require('@playwright/test')
+const path = require('path')
+
+// Load environment configuration
+const testEnvPath = path.resolve(__dirname, '../../../../test/config/test-env.js')
+const { currentEnv, TEST_ENV } = require(testEnvPath)
+
+// Get URLs for lab 2
+const lab2VulnerableUrl = currentEnv.lab2.vulnerable
+
+console.log(`🧪 Test environment: ${TEST_ENV}`)
+console.log(`📍 Lab 2 Vulnerable URL: ${lab2VulnerableUrl}`)
 
 test.describe('Lab 2: DOM-Based Skimming - UI Improvements', () => {
   test.beforeEach(async ({ page }) => {
@@ -14,9 +25,7 @@ test.describe('Lab 2: DOM-Based Skimming - UI Improvements', () => {
   test('should display navigation buttons above lab page tabs', async ({ page }) => {
     console.log('🧪 Testing navigation buttons layout...')
 
-    await page.goto('/banking.html', {
-      baseURL: 'http://localhost:8080'
-    })
+    await page.goto(`${lab2VulnerableUrl}/banking.html`)
     await page.waitForLoadState('networkidle')
 
     // Check that navigation buttons row exists
@@ -41,9 +50,7 @@ test.describe('Lab 2: DOM-Based Skimming - UI Improvements', () => {
   test('should have Back and View Stolen Data buttons that work', async ({ page }) => {
     console.log('🧪 Testing navigation buttons functionality...')
 
-    await page.goto('/banking.html', {
-      baseURL: 'http://localhost:8080'
-    })
+    await page.goto(`${lab2VulnerableUrl}/banking.html`)
     await page.waitForLoadState('networkidle')
 
     // Check Back button exists and has correct href

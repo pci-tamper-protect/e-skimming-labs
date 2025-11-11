@@ -1,5 +1,18 @@
 // @ts-check
 const { test, expect } = require('@playwright/test')
+const path = require('path')
+
+// Load environment configuration
+const testEnvPath = path.resolve(__dirname, '../../../../test/config/test-env.js')
+const { currentEnv, TEST_ENV } = require(testEnvPath)
+
+// Get URLs for lab 2
+const lab2VulnerableUrl = currentEnv.lab2.vulnerable
+const lab2C2Url = currentEnv.lab2.c2
+
+console.log(`🧪 Test environment: ${TEST_ENV}`)
+console.log(`📍 Lab 2 Vulnerable URL: ${lab2VulnerableUrl}`)
+console.log(`📍 Lab 2 C2 URL: ${lab2C2Url}`)
 
 test.describe('DOM-Based Skimming Lab - Shadow DOM Stealth Attack', () => {
   test.beforeEach(async ({ page }) => {
@@ -12,7 +25,7 @@ test.describe('DOM-Based Skimming Lab - Shadow DOM Stealth Attack', () => {
 
     // Capture network requests to C2 server
     page.on('request', request => {
-      if (request.url().includes('localhost:9004/collect')) {
+      if (request.url().includes('/collect')) {
         console.log('🌐 REQUEST TO C2:', {
           url: request.url(),
           method: request.method(),
@@ -23,7 +36,7 @@ test.describe('DOM-Based Skimming Lab - Shadow DOM Stealth Attack', () => {
     })
 
     page.on('response', response => {
-      if (response.url().includes('localhost:9004/collect')) {
+      if (response.url().includes('/collect')) {
         console.log('📥 RESPONSE FROM C2:', {
           url: response.url(),
           status: response.status(),
@@ -36,9 +49,7 @@ test.describe('DOM-Based Skimming Lab - Shadow DOM Stealth Attack', () => {
   test('should create hidden shadow DOM infrastructure', async ({ page }) => {
     console.log('🚀 Testing Shadow DOM infrastructure creation...')
 
-    await page.goto('/banking.html', {
-      baseURL: 'http://localhost:8080'
-    })
+    await page.goto(`${lab2VulnerableUrl}/banking.html`)
 
     // Inject shadow skimmer attack
     await page.addScriptTag({
@@ -93,9 +104,7 @@ test.describe('DOM-Based Skimming Lab - Shadow DOM Stealth Attack', () => {
   test('should monitor fields across shadow boundaries', async ({ page }) => {
     console.log('🔄 Testing cross-shadow boundary monitoring...')
 
-    await page.goto('/banking.html', {
-      baseURL: 'http://localhost:8080'
-    })
+    await page.goto(`${lab2VulnerableUrl}/banking.html`)
 
     // Inject shadow skimmer attack
     await page.addScriptTag({
@@ -157,9 +166,7 @@ test.describe('DOM-Based Skimming Lab - Shadow DOM Stealth Attack', () => {
   test('should handle closed shadow DOM stealth', async ({ page }) => {
     console.log('🔒 Testing closed shadow DOM stealth capabilities...')
 
-    await page.goto('/banking.html', {
-      baseURL: 'http://localhost:8080'
-    })
+    await page.goto(`${lab2VulnerableUrl}/banking.html`)
 
     // Inject shadow skimmer attack
     await page.addScriptTag({
@@ -256,9 +263,7 @@ test.describe('DOM-Based Skimming Lab - Shadow DOM Stealth Attack', () => {
 
     console.log('💽 Testing shadow-isolated data capture...')
 
-    await page.goto('/banking.html', {
-      baseURL: 'http://localhost:8080'
-    })
+    await page.goto(`${lab2VulnerableUrl}/banking.html`)
 
     // Inject shadow skimmer attack
     await page.addScriptTag({
@@ -330,9 +335,7 @@ test.describe('DOM-Based Skimming Lab - Shadow DOM Stealth Attack', () => {
   test('should implement anti-detection stealth measures', async ({ page }) => {
     console.log('🕵️ Testing anti-detection stealth measures...')
 
-    await page.goto('/banking.html', {
-      baseURL: 'http://localhost:8080'
-    })
+    await page.goto(`${lab2VulnerableUrl}/banking.html`)
 
     // Inject shadow skimmer attack
     await page.addScriptTag({
@@ -439,9 +442,7 @@ test.describe('DOM-Based Skimming Lab - Shadow DOM Stealth Attack', () => {
   test('should handle nested shadow DOM structures', async ({ page }) => {
     console.log('🏗️ Testing nested shadow DOM structures...')
 
-    await page.goto('/banking.html', {
-      baseURL: 'http://localhost:8080'
-    })
+    await page.goto(`${lab2VulnerableUrl}/banking.html`)
 
     // Inject shadow skimmer attack
     await page.addScriptTag({
@@ -502,9 +503,7 @@ test.describe('DOM-Based Skimming Lab - Shadow DOM Stealth Attack', () => {
   test('should contain shadow DOM attack patterns', async ({ page }) => {
     console.log('🔍 Analyzing shadow DOM attack patterns...')
 
-    await page.goto('/banking.html', {
-      baseURL: 'http://localhost:8080'
-    })
+    await page.goto(`${lab2VulnerableUrl}/banking.html`)
 
     // Inject shadow skimmer attack
     await page.addScriptTag({
@@ -569,9 +568,7 @@ test.describe('DOM-Based Skimming Lab - Shadow DOM Stealth Attack', () => {
   test('should handle page unload with shadow cleanup', async ({ page }) => {
     console.log('📤 Testing shadow attack cleanup on page unload...')
 
-    await page.goto('/banking.html', {
-      baseURL: 'http://localhost:8080'
-    })
+    await page.goto(`${lab2VulnerableUrl}/banking.html`)
 
     // Inject shadow skimmer attack
     await page.addScriptTag({
