@@ -6,6 +6,8 @@ test/
 **/test-results/
 **/playwright-report/
 playwright.config.js
+manual-test.js
+test-report.md
 
 # Documentation
 *.md
@@ -13,6 +15,7 @@ README.md
 **/README.md
 docs/
 **/docs/
+PRODUCTION_VERIFICATION.md
 
 # Git
 .git/
@@ -21,6 +24,8 @@ docs/
 # Node modules (should be installed in container)
 node_modules/
 **/node_modules/
+# Keep package.json for C2 server (it's needed for npm install)
+# Don't ignore package.json - it's needed for the build
 
 # Logs
 *.log
@@ -46,7 +51,4 @@ malicious-code/stolen-data/
 Dockerfile*
 .dockerignore
 Dockerfile.c2
-
-# Manual test files
-manual-test.js
 
