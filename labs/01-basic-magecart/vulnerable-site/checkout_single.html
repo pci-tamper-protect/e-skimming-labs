@@ -415,9 +415,9 @@
           homeUrl = 'https://labs.pcioasis.com'
           c2Url = 'https://labs.pcioasis.com/01-basic-magecart-c2'
         } else if (hostname.includes('lab-01-basic-magecart')) {
-          // Production Cloud Run
-          homeUrl = 'https://labs-index-prd-mmwwcfi5za-uc.a.run.app'
-          c2Url = 'https://' + hostname + '/stolen'
+          // Production Cloud Run (combined deployment - nginx + C2 in same container)
+          homeUrl = 'https://labs.pcioasis.com'
+          c2Url = window.location.protocol + '//' + hostname + '/dashboard'
         } else {
           homeUrl = window.location.protocol + '//' + hostname
           c2Url = window.location.protocol + '//' + hostname + '/c2'
