@@ -5,7 +5,7 @@ RUN apk add --no-cache nodejs npm
 
 # Copy C2 server dependencies first (for better caching)
 WORKDIR /app/c2-server
-COPY package*.json ./
+COPY package.json package-lock.json ./
 RUN npm install --production
 
 # Copy C2 server source files (this layer will be invalidated only when C2 code changes)
