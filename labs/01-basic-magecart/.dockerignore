@@ -1,0 +1,55 @@
+# Test files
+test/
+**/test/
+**/*.spec.js
+**/*.test.js
+**/test-results/
+**/playwright-report/
+
+# Documentation
+*.md
+README.md
+**/README.md
+docs/
+**/docs/
+
+# Git
+.git/
+.gitignore
+
+# Node modules (should be installed in container)
+node_modules/
+**/node_modules/
+
+# Logs
+*.log
+**/*.log
+logs/
+**/logs/
+
+# IDE
+.idea/
+.vscode/
+.DS_Store
+
+# Build artifacts
+build/
+dist/
+*.tmp
+
+# Analysis and stolen data (runtime data)
+analysis/
+**/analysis/
+stolen-data/
+**/stolen-data/
+
+# Variants (separate builds)
+variants/
+
+# Exercises
+exercises/
+
+# Docker
+Dockerfile*
+.dockerignore
+

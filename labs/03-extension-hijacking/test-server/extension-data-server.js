@@ -480,14 +480,31 @@ app.get('/status', (req, res) => {
  */
 app.get('/export/:date?', async (req, res) => {
   try {
-    const date = req.params.date || new Date().toISOString().split('T')[0]
+    let date = req.params.date || new Date().toISOString().split('T')[0]
+    
+    // Security: Validate date format to prevent path traversal
+    // Only allow ISO date format: YYYY-MM-DD
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+    if (!dateRegex.test(date) || date.includes('..') || date.includes('/') || date.includes('\\')) {
+      return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' })
+    }
+    
+    // Use path.basename to strip any directory separators
+    const safeDate = path.basename(date)
     const stolenDataDir = path.join(__dirname, 'stolen-data')
-    const dataFile = path.join(stolenDataDir, `full-data-${date}.json`)
+    const dataFile = path.join(stolenDataDir, `full-data-${safeDate}.json`)
+    
+    // Verify the resolved path is within stolenDataDir (prevent path traversal)
+    const resolvedPath = path.resolve(dataFile)
+    const resolvedStolenDataDir = path.resolve(stolenDataDir)
+    if (!resolvedPath.startsWith(resolvedStolenDataDir)) {
+      return res.status(403).json({ error: 'Access denied' })
+    }
 
     const data = await fs.readFile(dataFile, 'utf8')
     const jsonData = JSON.parse(data)
 
-    res.setHeader('Content-Disposition', `attachment; filename="extension-data-${date}.json"`)
+    res.setHeader('Content-Disposition', `attachment; filename="extension-data-${safeDate}.json"`)
     res.setHeader('Content-Type', 'application/json')
     res.send(JSON.stringify(jsonData, null, 2))
   } catch (error) {

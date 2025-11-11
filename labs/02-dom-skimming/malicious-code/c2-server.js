@@ -381,7 +381,23 @@ app.get('/recent/:count?', (req, res) => {
 app.get('/attack/:filename', (req, res) => {
   try {
     const filename = req.params.filename
-    const filepath = path.join(DATA_DIR, filename)
+    
+    // Security: Prevent path traversal attacks
+    // Only allow alphanumeric, hyphens, underscores, and dots in filename
+    if (!/^[a-zA-Z0-9._-]+$/.test(filename) || filename.includes('..')) {
+      return res.status(400).json({ error: 'Invalid filename' })
+    }
+    
+    // Use path.basename to strip any directory separators
+    const safeFilename = path.basename(filename)
+    const filepath = path.join(DATA_DIR, safeFilename)
+    
+    // Verify the resolved path is within DATA_DIR (prevent path traversal)
+    const resolvedPath = path.resolve(filepath)
+    const resolvedDataDir = path.resolve(DATA_DIR)
+    if (!resolvedPath.startsWith(resolvedDataDir)) {
+      return res.status(403).json({ error: 'Access denied' })
+    }
 
     if (!fs.existsSync(filepath)) {
       return res.status(404).json({ error: 'Attack data not found' })
@@ -399,7 +415,23 @@ app.get('/attack/:filename', (req, res) => {
 app.get('/analysis/:filename', (req, res) => {
   try {
     const filename = req.params.filename
-    const analysisPath = path.join(ANALYSIS_DIR, `analysis_${filename}`)
+    
+    // Security: Prevent path traversal attacks
+    // Only allow alphanumeric, hyphens, underscores, and dots in filename
+    if (!/^[a-zA-Z0-9._-]+$/.test(filename) || filename.includes('..')) {
+      return res.status(400).json({ error: 'Invalid filename' })
+    }
+    
+    // Use path.basename to strip any directory separators
+    const safeFilename = path.basename(filename)
+    const analysisPath = path.join(ANALYSIS_DIR, `analysis_${safeFilename}`)
+    
+    // Verify the resolved path is within ANALYSIS_DIR (prevent path traversal)
+    const resolvedPath = path.resolve(analysisPath)
+    const resolvedAnalysisDir = path.resolve(ANALYSIS_DIR)
+    if (!resolvedPath.startsWith(resolvedAnalysisDir)) {
+      return res.status(403).json({ error: 'Access denied' })
+    }
 
     if (!fs.existsSync(analysisPath)) {
       return res.status(404).json({ error: 'Analysis not found' })

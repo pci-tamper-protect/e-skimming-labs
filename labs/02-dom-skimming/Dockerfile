@@ -3,14 +3,16 @@ FROM us-central1-docker.pkg.dev/pcioasis-operations/containers/nginx-base:latest
 # Install node for C2 server
 RUN apk add --no-cache nodejs npm
 
-# Copy website files to nginx html directory
-COPY vulnerable-site/ /usr/share/nginx/html/
-
-# Copy C2 server
+# Copy C2 server dependencies first (for better caching)
 WORKDIR /app/c2-server
 COPY package*.json ./
 RUN npm install --production
+
+# Copy C2 server source files (this layer will be invalidated only when C2 code changes)
 COPY malicious-code/c2-server.js malicious-code/c2-server/dashboard.html ./
+
+# Copy vulnerable site files last (this layer will be invalidated only when site files change)
+COPY vulnerable-site/ /usr/share/nginx/html/
 
 # Create default nginx config for banking site with C2 proxy
 RUN echo 'server { \
