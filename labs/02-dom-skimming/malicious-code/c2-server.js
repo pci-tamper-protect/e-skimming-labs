@@ -320,7 +320,31 @@ app.get('/stats', (req, res) => {
   res.json(stats)
 })
 
-// Get recent attack data
+// Get all stolen data (similar to Lab 1's /api/stolen)
+app.get('/api/stolen', (req, res) => {
+  try {
+    const files = fs
+      .readdirSync(DATA_DIR)
+      .filter(file => file.endsWith('.json'))
+      .sort((a, b) => {
+        const statA = fs.statSync(path.join(DATA_DIR, a))
+        const statB = fs.statSync(path.join(DATA_DIR, b))
+        return statB.mtime - statA.mtime
+      })
+
+    const stolenRecords = files.map(file => {
+      const filepath = path.join(DATA_DIR, file)
+      return JSON.parse(fs.readFileSync(filepath, 'utf8'))
+    })
+
+    res.json(stolenRecords)
+  } catch (error) {
+    logToConsole('error', 'Error fetching stolen data', { error: error.message })
+    res.status(500).json({ error: 'Error fetching data' })
+  }
+})
+
+// Get recent attack data (metadata only)
 app.get('/recent/:count?', (req, res) => {
   try {
     const count = parseInt(req.params.count) || 10
@@ -475,7 +499,8 @@ app.listen(PORT, () => {
   logToConsole('info', 'Available endpoints:')
   logToConsole('info', '  POST /collect - Main data collection')
   logToConsole('info', '  GET  /stats - Attack statistics')
-  logToConsole('info', '  GET  /recent/:count - Recent attacks')
+  logToConsole('info', '  GET  /api/stolen - All stolen data (full records)')
+  logToConsole('info', '  GET  /recent/:count - Recent attacks (metadata)')
   logToConsole('info', '  GET  /attack/:filename - Specific attack data')
   logToConsole('info', '  GET  /analysis/:filename - Attack analysis')
   logToConsole('info', '  GET  /health - Health check')
