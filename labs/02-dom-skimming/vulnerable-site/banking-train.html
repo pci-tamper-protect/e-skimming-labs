@@ -205,49 +205,6 @@
         <section id="cards" class="section active">
           <h2>Credit Card Management</h2>
           
-          <div class="warning" style="background: #fff3cd; border: 2px solid #ffc107; padding: 1rem; margin-bottom: 2rem; border-radius: 4px;">
-            <strong style="color: #856404;">⚠️ LAB ENVIRONMENT:</strong> This is a vulnerable website for educational purposes.
-            The banking forms have been compromised with DOM-based skimming attacks. Use ONLY test data (never
-            real payment information).
-          </div>
-
-          <div class="attack-method" style="background: #ffe8e8; border: 2px solid #e74c3c; padding: 1rem; margin-bottom: 2rem; border-radius: 4px;">
-            <strong style="color: #c0392b;">🔴 ATTACK METHOD: DOM-Based Skimming</strong><br />
-            This page uses DOM manipulation attacks that intercept form data:
-            <ul style="margin-top: 0.5rem; margin-left: 1.5rem">
-              <li>
-                <code style="background: #34495e; color: #ecf0f1; padding: 0.2rem 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace;">Form Overlay Attack</code> - Invisible overlay captures keystrokes
-              </li>
-              <li>
-                <code style="background: #34495e; color: #ecf0f1; padding: 0.2rem 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace;">DOM Monitoring</code> - Watches for form field changes
-              </li>
-              <li>
-                <code style="background: #34495e; color: #ecf0f1; padding: 0.2rem 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace;">Shadow DOM Attack</code> - Uses Shadow DOM to hide malicious code
-              </li>
-            </ul>
-            <p style="margin-top: 0.5rem">
-              <strong>Real-world scenario:</strong> Attacker injected malicious JavaScript that manipulates the DOM:<br />
-              • No file modifications needed - runs entirely in browser<br />
-              • Bypasses Content Security Policy (CSP) in some cases<br />
-              • Harder to detect than traditional skimmers<br />
-              • Can persist across page reloads via localStorage
-            </p>
-          </div>
-
-          <div style="background: #e8f5e8; border: 2px solid #27ae60; padding: 1rem; margin-bottom: 2rem; border-radius: 4px;">
-            <strong>💳 VALID TEST CARD NUMBERS:</strong><br />
-            <ul style="margin-top: 0.5rem; margin-left: 1.5rem; color: #27ae60">
-              <li><code style="background: #34495e; color: #ecf0f1; padding: 0.2rem 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace;">4532123456789010</code> - Visa (16 digits)</li>
-              <li><code style="background: #34495e; color: #ecf0f1; padding: 0.2rem 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace;">4000000000000002</code> - Visa (16 digits)</li>
-              <li><code style="background: #34495e; color: #ecf0f1; padding: 0.2rem 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace;">5555555555554444</code> - Mastercard (16 digits)</li>
-              <li><code style="background: #34495e; color: #ecf0f1; padding: 0.2rem 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace;">378282246310005</code> - American Express (15 digits)</li>
-            </ul>
-            <p style="margin-top: 0.5rem; font-size: 0.9rem">
-              These numbers pass Luhn algorithm validation. Use any future expiry date (MM/YY) and any
-              3-4 digit CVV.
-            </p>
-          </div>
-          
           <!-- Add New Card Form (Default View) -->
           <div id="add-card-form-container" class="card-form-container">
             <h3>Add New Card</h3>
@@ -426,12 +383,12 @@
         if (isLocal) {
           const timestamp = Date.now()
           const script = document.createElement('script')
-          script.src = 'js/banking.js?v=' + timestamp
+          script.src = 'js/banking-process-train.js?v=' + timestamp
           script.id = 'main-js'
           document.body.appendChild(script)
         } else {
           const script = document.createElement('script')
-          script.src = 'js/banking.js'
+          script.src = 'js/banking-process-train.js'
           script.id = 'main-js'
           document.body.appendChild(script)
         }

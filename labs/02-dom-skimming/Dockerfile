@@ -19,6 +19,16 @@ RUN echo 'server { \
     root /usr/share/nginx/html; \
     index banking.html; \
     \
+    # Environment-based routing \
+    # Production (labs.pcioasis.com): serve lab versions with warnings \
+    # Staging (labs.stg.pcioasis.com): serve training versions without warnings \
+    location = /banking.html { \
+        if ($host ~* "stg\.pcioasis\.com") { \
+            rewrite ^/banking.html$ /banking-train.html last; \
+        } \
+        try_files $uri =404; \
+    } \
+    \
     location / { \
         try_files $uri $uri/ =404; \
     } \

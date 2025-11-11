@@ -19,6 +19,23 @@ RUN echo 'server { \
     root /usr/share/nginx/html; \
     index index.html; \
     \
+    # Environment-based routing \
+    # Production (labs.pcioasis.com): serve lab versions with warnings \
+    # Staging (labs.stg.pcioasis.com): serve training versions without warnings \
+    location = /index.html { \
+        if ($host ~* "stg\.pcioasis\.com") { \
+            rewrite ^/index.html$ /index-train.html last; \
+        } \
+        try_files $uri =404; \
+    } \
+    \
+    location = / { \
+        if ($host ~* "stg\.pcioasis\.com") { \
+            rewrite ^/$ /index-train.html last; \
+        } \
+        try_files /index.html =404; \
+    } \
+    \
     location / { \
         try_files $uri $uri/ =404; \
     } \
