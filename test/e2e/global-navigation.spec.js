@@ -6,12 +6,19 @@ const path = require('path')
 const testEnvPath = path.resolve(__dirname, '../config/test-env.js')
 const { currentEnv, TEST_ENV } = require(testEnvPath)
 
+// Load dangerous warning handler
+const { handleDangerousWarning } = require('../utils/handle-dangerous-warning')
+
 console.log(`🧪 Global Navigation Test - Environment: ${TEST_ENV}`)
 
 test.describe('Global Navigation', () => {
   test.beforeEach(async ({ page }) => {
     // Start at the home page
     await page.goto(currentEnv.homeIndex)
+    
+    // Handle dangerous warning page if present (for production)
+    await handleDangerousWarning(page)
+    
     await page.waitForLoadState('networkidle')
   })
 

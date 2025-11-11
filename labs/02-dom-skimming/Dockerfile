@@ -5,7 +5,8 @@ RUN apk add --no-cache nodejs npm
 
 # Copy C2 server dependencies first (for better caching)
 WORKDIR /app/c2-server
-COPY package*.json ./
+# Copy package.json (package-lock.json is optional and will be generated if missing)
+COPY package.json ./
 RUN npm install --production
 
 # Copy C2 server source files (this layer will be invalidated only when C2 code changes)
@@ -24,17 +25,8 @@ RUN echo 'server { \
     # Environment-based routing \
     # Production (labs.pcioasis.com): serve lab versions with warnings \
     # Staging (labs.stg.pcioasis.com): serve training versions without warnings \
-    location = /banking.html { \
-        if ($host ~* "stg\.pcioasis\.com") { \
-            rewrite ^/banking.html$ /banking-train.html last; \
-        } \
-        try_files $uri =404; \
-    } \
-    \
-    location / { \
-        try_files $uri $uri/ =404; \
-    } \
-    \
+    # Handle both root paths (/) and path-prefixed routes (/lab-02-dom-skimming/) \
+    # C2 server proxy routes (must come before static file routes) \
     location ~ ^/(stolen-data|api|stats|health|collect) { \
         proxy_pass http://127.0.0.1:3000; \
         proxy_http_version 1.1; \
@@ -49,6 +41,35 @@ RUN echo 'server { \
         proxy_send_timeout 30s; \
         proxy_read_timeout 30s; \
         proxy_buffering off; \
+    } \
+    \
+    # Handle path-prefixed routes (production Cloud Run) \
+    location ~ ^/lab-02-dom-skimming(/.*)?$ { \
+        set $path $1; \
+        if ($path = "") { set $path /; } \
+        if ($host ~* "stg\.pcioasis\.com") { \
+            rewrite ^/lab-02-dom-skimming(/.*)?$ /banking-train.html last; \
+        } \
+        try_files $path /banking.html =404; \
+    } \
+    \
+    # Handle root paths (localhost and production root) \
+    location = /banking.html { \
+        if ($host ~* "stg\.pcioasis\.com") { \
+            rewrite ^/banking.html$ /banking-train.html last; \
+        } \
+        try_files $uri =404; \
+    } \
+    \
+    location = / { \
+        if ($host ~* "stg\.pcioasis\.com") { \
+            rewrite ^/$ /banking-train.html last; \
+        } \
+        try_files $uri $uri/ /banking.html =404; \
+    } \
+    \
+    location / { \
+        try_files $uri $uri/ /banking.html =404; \
     } \
     \
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ { \
