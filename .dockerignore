@@ -1,36 +1,66 @@
-# Terraform artifacts
-**/.terraform/**
-**/*.tfstate
-**/*.tfstate.*
-**/tfplan
-**/*.tfvars
-**/*.tfvars.json
+# Test files
+test/
+**/test/
+**/*.spec.js
+**/*.test.js
+**/test-results/
+**/playwright-report/
+**/playwright.config.js
 
-# Node/JS
+# Documentation
+*.md
+README.md
+**/README.md
+# Keep docs/ for home-index service build
+# docs/
+# **/docs/
+
+# Git
+.git/
+.gitignore
+
+# Node modules (should be installed in container)
 node_modules/
 **/node_modules/
 
-# Git
-.git
-.gitignore
-
 # Logs
 *.log
+**/*.log
+logs/
+**/logs/
 
-# OS/IDE
-.DS_Store
+# IDE
 .idea/
 .vscode/
+.DS_Store
 
-# Build outputs
+# Build artifacts
 build/
 dist/
-out/
+*.tmp
+
+# Labs (only build when needed)
+labs/
+**/labs/
+
+# Test results
+test-results/
+playwright-report/
 
 # Docker
 Dockerfile*
-**/Dockerfile*
+.dockerignore
 
-# Misc
-*.tmp
-*.swp
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Secrets
+secrets.yml
+*.key
+*.pem

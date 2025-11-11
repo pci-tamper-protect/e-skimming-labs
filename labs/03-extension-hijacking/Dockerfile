@@ -24,6 +24,35 @@ RUN echo 'server { \
     # Environment-based routing \
     # Production (labs.pcioasis.com): serve lab versions with warnings \
     # Staging (labs.stg.pcioasis.com): serve training versions without warnings \
+    # Handle both root paths (/) and path-prefixed routes (/lab-03-extension-hijacking/) \
+    # C2 server proxy routes (must come before static file routes) \
+    location ~ ^/(data-exfil|skimmed-data|api|stats|health|dashboard) { \
+        proxy_pass http://127.0.0.1:3000; \
+        proxy_http_version 1.1; \
+        proxy_set_header Upgrade $http_upgrade; \
+        proxy_set_header Connection "upgrade"; \
+        proxy_set_header Host $host; \
+        proxy_set_header X-Real-IP $remote_addr; \
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; \
+        proxy_set_header X-Forwarded-Proto $scheme; \
+        proxy_cache_bypass $http_upgrade; \
+        proxy_connect_timeout 10s; \
+        proxy_send_timeout 30s; \
+        proxy_read_timeout 30s; \
+        proxy_buffering off; \
+    } \
+    \
+    # Handle path-prefixed routes (production Cloud Run) \
+    location ~ ^/lab-03-extension-hijacking(/.*)?$ { \
+        set $path $1; \
+        if ($path = "") { set $path /; } \
+        if ($host ~* "stg\.pcioasis\.com") { \
+            rewrite ^/lab-03-extension-hijacking(/.*)?$ /index-train.html last; \
+        } \
+        try_files $path /index.html =404; \
+    } \
+    \
+    # Handle root paths (localhost and production root) \
     location = /index.html { \
         if ($host ~* "stg\.pcioasis\.com") { \
             rewrite ^/index.html$ /index-train.html last; \
@@ -35,20 +64,11 @@ RUN echo 'server { \
         if ($host ~* "stg\.pcioasis\.com") { \
             rewrite ^/$ /index-train.html last; \
         } \
-        try_files /index.html =404; \
+        try_files $uri $uri/ /index.html =404; \
     } \
     \
     location / { \
-        try_files $uri $uri/ =404; \
-    } \
-    \
-    location ~ ^/(data-exfil|skimmed-data|api|stats|health) { \
-        proxy_pass http://127.0.0.1:3000; \
-        proxy_http_version 1.1; \
-        proxy_set_header Upgrade $http_upgrade; \
-        proxy_set_header Connection "upgrade"; \
-        proxy_set_header Host $host; \
-        proxy_cache_bypass $http_upgrade; \
+        try_files $uri $uri/ /index.html =404; \
     } \
     \
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ { \
@@ -62,6 +82,25 @@ RUN cat > /init.sh << 'EOF'
 #!/bin/sh
 # Start C2 server in background
 cd /app/c2-server && node extension-data-server.js &
+C2_PID=$!
+
+# Wait for C2 server to be ready (check health endpoint)
+echo "Waiting for C2 server to start..."
+MAX_ATTEMPTS=30
+ATTEMPT=0
+while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+  if wget --no-verbose --tries=1 --spider --timeout=2 http://127.0.0.1:3000/health 2>/dev/null; then
+    echo "C2 server is ready!"
+    break
+  fi
+  ATTEMPT=$((ATTEMPT + 1))
+  sleep 1
+done
+
+if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+  echo "WARNING: C2 server did not become ready in time, starting nginx anyway..."
+fi
+
 # Start nginx in foreground
 nginx -g "daemon off;"
 EOF
