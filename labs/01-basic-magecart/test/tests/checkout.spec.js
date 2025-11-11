@@ -1,5 +1,18 @@
 // @ts-check
 const { test, expect } = require('@playwright/test')
+const path = require('path')
+
+// Load environment configuration
+const testEnvPath = path.resolve(__dirname, '../../../../test/config/test-env.js')
+const { getC2ApiEndpoint, getC2CollectEndpoint, TEST_ENV } = require(testEnvPath)
+
+// Get C2 endpoints for lab 1
+const c2ApiUrl = getC2ApiEndpoint(1)
+const c2CollectUrl = getC2CollectEndpoint(1)
+
+console.log(`🧪 Test environment: ${TEST_ENV}`)
+console.log(`📍 C2 API URL: ${c2ApiUrl}`)
+console.log(`📍 C2 Collect URL: ${c2CollectUrl}`)
 
 test.describe('E-Skimming Lab - Checkout Flow', () => {
   test.beforeEach(async ({ page }) => {
@@ -12,7 +25,7 @@ test.describe('E-Skimming Lab - Checkout Flow', () => {
 
     // Capture network requests to C2 server
     page.on('request', request => {
-      if (request.url().includes('localhost:9002/collect')) {
+      if (request.url().includes('/collect')) {
         console.log('🌐 REQUEST TO C2:', {
           url: request.url(),
           method: request.method(),
@@ -23,7 +36,7 @@ test.describe('E-Skimming Lab - Checkout Flow', () => {
     })
 
     page.on('response', response => {
-      if (response.url().includes('localhost:9002/collect')) {
+      if (response.url().includes('/collect')) {
         console.log('📥 RESPONSE FROM C2:', {
           url: response.url(),
           status: response.status(),
@@ -71,19 +84,19 @@ test.describe('E-Skimming Lab - Checkout Flow', () => {
 
     // Verify data was exfiltrated to C2 server
     console.log('🔍 Verifying data exfiltration to C2 server...')
-    const c2Response = await page.request.get('http://localhost:9002/api/stolen')
+    const c2Response = await page.request.get(c2ApiUrl)
     expect(c2Response.ok()).toBeTruthy()
-    
+
     const stolenData = await c2Response.json()
     console.log('📊 Stolen data records:', stolenData.length)
-    
+
     // Verify our test data is in the stolen records
-    const testRecord = stolenData.find(record => 
+    const testRecord = stolenData.find(record =>
       record.cardNumber && record.cardNumber.includes('4000000000000002')
     )
     expect(testRecord).toBeTruthy()
     console.log('✅ Test credit card data found in C2 server:', testRecord ? 'Yes' : 'No')
-    
+
     console.log('🔍 Test completed - data successfully exfiltrated to C2 server')
   })
 
@@ -160,11 +173,11 @@ test.describe('E-Skimming Lab - Checkout Flow', () => {
 
     // Verify data was exfiltrated to C2 server
     console.log('🔍 Verifying data exfiltration to C2 server...')
-    const c2Response = await page.request.get('http://localhost:9002/api/stolen')
+    const c2Response = await page.request.get(c2ApiUrl)
     expect(c2Response.ok()).toBeTruthy()
-    
+
     const stolenData = await c2Response.json()
-    const testRecord = stolenData.find(record => 
+    const testRecord = stolenData.find(record =>
       record.cardNumber && record.cardNumber.includes('5555555555554444')
     )
     expect(testRecord).toBeTruthy()
