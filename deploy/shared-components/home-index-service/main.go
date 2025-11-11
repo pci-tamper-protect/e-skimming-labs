@@ -137,14 +137,14 @@ func main() {
 	// Define available labs with detailed descriptions
 	// Use environment variables for lab URLs if provided
 	// For local development: use direct domain URLs (e.g., http://localhost:9001/)
-	// For production: use path-based URLs (e.g., https://labs.pcioasis.com/lab-01-basic-magecart)
+	// For production: use direct Cloud Run URLs (e.g., https://lab-02-dom-skimming-prd-mmwwcfi5za-uc.a.run.app)
 	if lab1URL == "" {
 		if isLocal && lab1Domain != "" {
 			// Local development: use direct port-based URL
 			lab1URL = fmt.Sprintf("%s://%s/", scheme, lab1Domain)
 		} else {
-			// Production: use path-based URL on labs domain
-			lab1URL = fmt.Sprintf("%s://%s/lab-01-basic-magecart", scheme, labsDomain)
+			// Production: use direct Cloud Run URL
+			lab1URL = "https://lab-01-basic-magecart-prd-mmwwcfi5za-uc.a.run.app/"
 		}
 	}
 	if lab2URL == "" {
@@ -152,8 +152,8 @@ func main() {
 			// Local development: use direct port-based URL
 			lab2URL = fmt.Sprintf("%s://%s/", scheme, lab2Domain)
 		} else {
-			// Production: use path-based URL on labs domain
-			lab2URL = fmt.Sprintf("%s://%s/lab-02-dom-skimming", scheme, labsDomain)
+			// Production: use direct Cloud Run URL
+			lab2URL = "https://lab-02-dom-skimming-prd-mmwwcfi5za-uc.a.run.app/"
 		}
 	}
 	if lab3URL == "" {
@@ -161,8 +161,8 @@ func main() {
 			// Local development: use direct port-based URL
 			lab3URL = fmt.Sprintf("%s://%s/", scheme, lab3Domain)
 		} else {
-			// Production: use path-based URL on labs domain
-			lab3URL = fmt.Sprintf("%s://%s/lab-03-extension-hijacking", scheme, labsDomain)
+			// Production: use direct Cloud Run URL
+			lab3URL = "https://lab-03-extension-hijacking-prd-mmwwcfi5za-uc.a.run.app/"
 		}
 	}
 
