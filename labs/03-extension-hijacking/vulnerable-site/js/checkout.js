@@ -17,15 +17,13 @@
   let formValidation = {
     customer: false,
     shipping: false,
-    payment: false,
-    account: false
+    payment: false
   }
 
   let orderData = {
     customer: {},
     shipping: {},
     payment: {},
-    account: {},
     items: [
       {
         name: 'Premium Wireless Headphones',
@@ -74,7 +72,7 @@
    * Setup Form Handlers
    */
   function setupFormHandlers() {
-    const forms = ['customer-form', 'shipping-form', 'payment-form', 'account-form']
+    const forms = ['customer-form', 'shipping-form', 'payment-form']
 
     forms.forEach(formId => {
       const form = document.getElementById(formId)
@@ -679,7 +677,7 @@
     window.SecureShop = {
       fillTestData: simulateAutofill,
       validateAllForms: () => {
-        ;['customer-form', 'shipping-form', 'payment-form', 'account-form'].forEach(validateForm)
+        ;['customer-form', 'shipping-form', 'payment-form'].forEach(validateForm)
       },
       getOrderData: () => orderData,
       clearAllForms: () => {

