@@ -26,7 +26,10 @@
       "Bash(gh pr view:*)",
       "Bash(gh api:*)",
       "Bash(docker-compose:*)",
-      "Bash(npm install)"
+      "Bash(npm install)",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_navigate",
+      "Bash(npx playwright test:*)"
     ],
     "deny": [],
     "ask": []
