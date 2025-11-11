@@ -406,6 +406,10 @@
             labUrl = `${baseUrl}`.replace('-c2', '').replace('/stolen-data', '')
             homeUrl = baseUrl.replace('/02-dom-skimming-c2', '').replace('/stolen-data', '')
           }
+          // Ensure home URL uses the public domain
+          if (hostname.includes('lab-02-dom-skimming')) {
+            homeUrl = 'https://labs.pcioasis.com'
+          }
         }
 
         const backButton = document.getElementById('back-button')
