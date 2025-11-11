@@ -175,9 +175,10 @@
         })
         
         // ONLY validate on blur (when user leaves the field) - NO validation on input!
-        input.addEventListener('blur', () => {
+        input.addEventListener('blur', (e) => {
           fieldTouched = true
-          validateField(input, fieldTouched || formSubmitted)
+          // Only validate the specific field that lost focus, not all fields
+          validateField(e.target, fieldTouched || formSubmitted)
         })
 
         // Add real-time formatting for card number (NO validation, just formatting)
@@ -276,19 +277,23 @@
             const validateType = field.getAttribute('data-validate')
             
             // Only validate fields that have explicit data-validate attribute
+            // Cardholder name and other fields without data-validate should NOT be validated
             if (validateType === 'card-number') {
+              // Only validate card number field - show error only if value exists and is invalid
               if (field.value.trim() && !validateCardNumber(field.value)) {
                 isValid = false
                 errorMessage = 'Please enter a valid credit card number'
               }
             }
             else if (validateType === 'card-expiry') {
+              // Only validate expiry field - show its own error message
               if (field.value.trim() && !validateCardExpiry(field.value)) {
                 isValid = false
                 errorMessage = 'Please enter a valid expiry date (MM/YY)'
               }
             }
             else if (validateType === 'cvv') {
+              // Only validate CVV field - show its own error message
               if (field.value.trim() && !validateCVV(field.value)) {
                 isValid = false
                 errorMessage = 'Please enter a valid CVV (3-4 digits)'
@@ -300,6 +305,7 @@
             }
             // For all other text fields (like cardholder name, billing zip, memo, etc.) - NO validation
             // They only need to be non-empty if required (handled above)
+            // Do NOT show any validation errors for these fields
             break
         }
       }

