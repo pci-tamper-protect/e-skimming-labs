@@ -18,26 +18,23 @@ RUN cat > /init.sh << 'EOF'
 #!/bin/sh
 set -e
 
+# Start nginx first (it needs to listen on PORT immediately for Cloud Run health check)
+echo "Starting nginx..."
+nginx -g "daemon off;" &
+NGINX_PID=$!
+
+# Wait briefly for nginx to bind to port
+sleep 1
+
 # Start C2 server in background
 echo "Starting C2 server..."
 cd /app/c2-server && node server.js > /tmp/c2-server.log 2>&1 &
 C2_PID=$!
 
-# Wait a moment for C2 server to start
-sleep 2
+echo "Services started - nginx (PID: $NGINX_PID), C2 server (PID: $C2_PID)"
 
-# Check if C2 server is still running
-if ! ps -p $C2_PID > /dev/null; then
-  echo "C2 server failed to start. Logs:"
-  cat /tmp/c2-server.log
-  exit 1
-fi
-
-echo "C2 server started (PID: $C2_PID)"
-echo "Starting nginx..."
-
-# Start nginx in foreground
-exec nginx -g "daemon off;"
+# Wait for nginx (this keeps container running)
+wait $NGINX_PID
 EOF
 RUN chmod +x /init.sh
 
