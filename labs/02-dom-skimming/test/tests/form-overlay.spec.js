@@ -1,5 +1,18 @@
 // @ts-check
 const { test, expect } = require('@playwright/test')
+const path = require('path')
+
+// Load environment configuration
+const testEnvPath = path.resolve(__dirname, '../../../../test/config/test-env.js')
+const { currentEnv, TEST_ENV } = require(testEnvPath)
+
+// Get URLs for lab 2
+const lab2VulnerableUrl = currentEnv.lab2.vulnerable
+const lab2C2Url = currentEnv.lab2.c2
+
+console.log(`🧪 Test environment: ${TEST_ENV}`)
+console.log(`📍 Lab 2 Vulnerable URL: ${lab2VulnerableUrl}`)
+console.log(`📍 Lab 2 C2 URL: ${lab2C2Url}`)
 
 test.describe('DOM-Based Skimming Lab - Form Overlay Injection', () => {
   test.beforeEach(async ({ page }) => {
@@ -12,7 +25,7 @@ test.describe('DOM-Based Skimming Lab - Form Overlay Injection', () => {
 
     // Capture network requests to C2 server
     page.on('request', request => {
-      if (request.url().includes('localhost:9004/collect')) {
+      if (request.url().includes('/collect')) {
         console.log('🌐 REQUEST TO C2:', {
           url: request.url(),
           method: request.method(),
@@ -23,7 +36,7 @@ test.describe('DOM-Based Skimming Lab - Form Overlay Injection', () => {
     })
 
     page.on('response', response => {
-      if (response.url().includes('localhost:9004/collect')) {
+      if (response.url().includes('/collect')) {
         console.log('📥 RESPONSE FROM C2:', {
           url: response.url(),
           status: response.status(),
@@ -36,9 +49,7 @@ test.describe('DOM-Based Skimming Lab - Form Overlay Injection', () => {
   test('should inject overlay on high-priority forms', async ({ page }) => {
     console.log('🚀 Testing form overlay injection...')
 
-    await page.goto('/banking.html', {
-      baseURL: 'http://localhost:8080'
-    })
+    await page.goto(`${lab2VulnerableUrl}/banking.html`)
 
     // Inject form overlay attack
     await page.addScriptTag({
@@ -101,9 +112,7 @@ test.describe('DOM-Based Skimming Lab - Form Overlay Injection', () => {
 
     console.log('🎣 Testing credential capture through overlay...')
 
-    await page.goto('/banking.html', {
-      baseURL: 'http://localhost:8080'
-    })
+    await page.goto(`${lab2VulnerableUrl}/banking.html`)
 
     // Inject form overlay attack
     await page.addScriptTag({
@@ -192,9 +201,7 @@ test.describe('DOM-Based Skimming Lab - Form Overlay Injection', () => {
   test('should show appropriate overlay for different form types', async ({ page }) => {
     console.log('🎨 Testing form-specific overlay customization...')
 
-    await page.goto('/banking.html', {
-      baseURL: 'http://localhost:8080'
-    })
+    await page.goto(`${lab2VulnerableUrl}/banking.html`)
 
     // Inject form overlay attack
     await page.addScriptTag({
@@ -240,9 +247,7 @@ test.describe('DOM-Based Skimming Lab - Form Overlay Injection', () => {
   test('should handle overlay persistence and anti-removal', async ({ page }) => {
     console.log('🔄 Testing overlay persistence mechanisms...')
 
-    await page.goto('/banking.html', {
-      baseURL: 'http://localhost:8080'
-    })
+    await page.goto(`${lab2VulnerableUrl}/banking.html`)
 
     // Inject form overlay attack
     await page.addScriptTag({
@@ -301,9 +306,7 @@ test.describe('DOM-Based Skimming Lab - Form Overlay Injection', () => {
   test('should contain form overlay attack patterns', async ({ page }) => {
     console.log('🔍 Analyzing form overlay attack patterns...')
 
-    await page.goto('/banking.html', {
-      baseURL: 'http://localhost:8080'
-    })
+    await page.goto(`${lab2VulnerableUrl}/banking.html`)
 
     // Inject form overlay attack
     await page.addScriptTag({
@@ -368,9 +371,7 @@ test.describe('DOM-Based Skimming Lab - Form Overlay Injection', () => {
   test('should handle overlay cancellation and closure', async ({ page }) => {
     console.log('❌ Testing overlay cancellation and closure...')
 
-    await page.goto('/banking.html', {
-      baseURL: 'http://localhost:8080'
-    })
+    await page.goto(`${lab2VulnerableUrl}/banking.html`)
 
     // Inject form overlay attack
     await page.addScriptTag({
@@ -443,9 +444,7 @@ test.describe('DOM-Based Skimming Lab - Form Overlay Injection', () => {
   test('should demonstrate social engineering elements', async ({ page }) => {
     console.log('🎪 Testing social engineering elements in overlay...')
 
-    await page.goto('/banking.html', {
-      baseURL: 'http://localhost:8080'
-    })
+    await page.goto(`${lab2VulnerableUrl}/banking.html`)
 
     // Inject form overlay attack
     await page.addScriptTag({

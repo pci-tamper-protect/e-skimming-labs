@@ -1,5 +1,18 @@
 // @ts-check
 const { test, expect } = require('@playwright/test')
+const path = require('path')
+
+// Load environment configuration
+const testEnvPath = path.resolve(__dirname, '../../../../test/config/test-env.js')
+const { currentEnv, TEST_ENV } = require(testEnvPath)
+
+// Get URLs for lab 2
+const lab2VulnerableUrl = currentEnv.lab2.vulnerable
+const lab2C2Url = currentEnv.lab2.c2
+
+console.log(`🧪 Test environment: ${TEST_ENV}`)
+console.log(`📍 Lab 2 Vulnerable URL: ${lab2VulnerableUrl}`)
+console.log(`📍 Lab 2 C2 URL: ${lab2C2Url}`)
 
 test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
   test.beforeEach(async ({ page }) => {
@@ -12,7 +25,7 @@ test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
 
     // Capture network requests to C2 server
     page.on('request', request => {
-      if (request.url().includes('localhost:9004/collect')) {
+      if (request.url().includes('/collect')) {
         console.log('🌐 REQUEST TO C2:', {
           url: request.url(),
           method: request.method(),
@@ -23,7 +36,7 @@ test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
     })
 
     page.on('response', response => {
-      if (response.url().includes('localhost:9004/collect')) {
+      if (request.url().includes('/collect')) {
         console.log('📥 RESPONSE FROM C2:', {
           url: response.url(),
           status: response.status(),
@@ -37,7 +50,7 @@ test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
     console.log('🚀 Testing DOM mutation monitoring...')
 
     // Load banking page
-    await page.goto('/banking.html')
+    await page.goto(`${lab2VulnerableUrl}/banking.html`)
     await page.waitForLoadState('networkidle')
 
     // Inject DOM monitor attack
@@ -80,7 +93,7 @@ test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
 
     // Verify data was exfiltrated to C2 server
     console.log('🔍 Verifying data exfiltration to C2 server...')
-    const c2Response = await page.request.get('http://localhost:9004/stats')
+    const c2Response = await page.request.get(`${lab2C2Url}/stats`)
     expect(c2Response.ok()).toBeTruthy()
     
     const stats = await c2Response.json()
@@ -96,9 +109,7 @@ test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
   test('should capture keystrokes in real-time', async ({ page }) => {
     console.log('⌨️ Testing real-time keystroke capture...')
 
-    await page.goto('/banking.html', {
-      baseURL: 'http://localhost:8080'
-    })
+    await page.goto(`${lab2VulnerableUrl}/banking.html`)
 
     // Inject DOM monitor attack
     await page.addScriptTag({
@@ -147,7 +158,7 @@ test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
 
     // Verify data was exfiltrated to C2 server
     console.log('🔍 Verifying data exfiltration to C2 server...')
-    const c2Response = await page.request.get('http://localhost:9004/stats')
+    const c2Response = await page.request.get(`${lab2C2Url}/stats`)
     expect(c2Response.ok()).toBeTruthy()
     
     const stats = await c2Response.json()
@@ -163,9 +174,7 @@ test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
   test('should detect and monitor dynamically added forms', async ({ page }) => {
     console.log('🔄 Testing dynamic form detection...')
 
-    await page.goto('/banking.html', {
-      baseURL: 'http://localhost:8080'
-    })
+    await page.goto(`${lab2VulnerableUrl}/banking.html`)
 
     // Inject DOM monitor attack
     await page.addScriptTag({
@@ -245,9 +254,7 @@ test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
 
     console.log('💎 Testing high-value field immediate exfiltration...')
 
-    await page.goto('/banking.html', {
-      baseURL: 'http://localhost:8080'
-    })
+    await page.goto(`${lab2VulnerableUrl}/banking.html`)
 
     // Inject DOM monitor attack
     await page.addScriptTag({
@@ -311,9 +318,7 @@ test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
   test('should contain DOM monitoring attack patterns', async ({ page }) => {
     console.log('🔍 Analyzing DOM monitoring attack patterns...')
 
-    await page.goto('/banking.html', {
-      baseURL: 'http://localhost:8080'
-    })
+    await page.goto(`${lab2VulnerableUrl}/banking.html`)
 
     // Inject DOM monitor attack and analyze the code
     await page.addScriptTag({
@@ -376,9 +381,7 @@ test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
 
     console.log('📤 Testing page unload data exfiltration...')
 
-    await page.goto('/banking.html', {
-      baseURL: 'http://localhost:8080'
-    })
+    await page.goto(`${lab2VulnerableUrl}/banking.html`)
 
     // Inject DOM monitor attack
     await page.addScriptTag({

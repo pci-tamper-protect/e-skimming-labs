@@ -2,6 +2,18 @@
 const { test, expect } = require('@playwright/test')
 const path = require('path')
 
+// Load environment configuration
+const testEnvPath = path.resolve(__dirname, '../../../test/config/test-env.js')
+const { currentEnv, TEST_ENV } = require(testEnvPath)
+
+// Get URLs for lab 3
+const lab3VulnerableUrl = currentEnv.lab3.vulnerable
+const lab3C2Url = currentEnv.lab3.c2
+
+console.log(`🧪 Test environment: ${TEST_ENV}`)
+console.log(`📍 Lab 3 Vulnerable URL: ${lab3VulnerableUrl}`)
+console.log(`📍 Lab 3 C2 URL: ${lab3C2Url}`)
+
 test.describe('Lab 3: Extension Hijacking - Credit Card Exfiltration', () => {
   test.beforeEach(async ({ page, context }) => {
     // Enable console logging
@@ -13,7 +25,7 @@ test.describe('Lab 3: Extension Hijacking - Credit Card Exfiltration', () => {
 
     // Capture network requests to C2 server
     page.on('request', request => {
-      if (request.url().includes('localhost:9006/skimmed-data')) {
+      if (request.url().includes('/skimmed-data')) {
         console.log('🌐 REQUEST TO C2:', {
           url: request.url(),
           method: request.method(),
@@ -36,7 +48,7 @@ test.describe('Lab 3: Extension Hijacking - Credit Card Exfiltration', () => {
     })
 
     // Navigate to vulnerable site
-    await page.goto('http://localhost:9005/index.html')
+    await page.goto(`${lab3VulnerableUrl}/index.html`)
     await page.waitForLoadState('networkidle')
 
     // Wait for checkout form to be visible
@@ -71,7 +83,7 @@ test.describe('Lab 3: Extension Hijacking - Credit Card Exfiltration', () => {
 
     // Verify data was exfiltrated to C2 server
     console.log('🔍 Verifying data exfiltration to C2 server...')
-    const c2StatusResponse = await page.request.get('http://localhost:9006/status')
+    const c2StatusResponse = await page.request.get(`${lab3C2Url}/status`)
     expect(c2StatusResponse.ok()).toBeTruthy()
     
     const status = await c2StatusResponse.json()
@@ -83,7 +95,7 @@ test.describe('Lab 3: Extension Hijacking - Credit Card Exfiltration', () => {
     console.log('✅ Extension data collection recorded in C2 server')
 
     // Verify our test data is in the collected data
-    const exportResponse = await page.request.get('http://localhost:9006/export')
+    const exportResponse = await page.request.get(`${lab3C2Url}/export`)
     expect(exportResponse.ok()).toBeTruthy()
     
     const collectedData = await exportResponse.json()
