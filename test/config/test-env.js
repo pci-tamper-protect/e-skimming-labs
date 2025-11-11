@@ -31,15 +31,17 @@ const environments = {
   prd: {
     homeIndex: 'https://labs.pcioasis.com',
     lab1: {
-      // Production uses Cloud Run endpoints
+      // Lab 1 uses combined deployment (nginx + C2 in same container)
       vulnerable: 'https://lab-01-basic-magecart-prd-mmwwcfi5za-uc.a.run.app',
-      c2: 'https://lab-01-basic-magecart-c2-prd-mmwwcfi5za-uc.a.run.app',
+      c2: 'https://lab-01-basic-magecart-prd-mmwwcfi5za-uc.a.run.app',
     },
     lab2: {
+      // Lab 2 uses separate deployments for vulnerable site and C2 server
       vulnerable: 'https://lab-02-dom-skimming-prd-mmwwcfi5za-uc.a.run.app',
       c2: 'https://lab-02-dom-skimming-c2-prd-mmwwcfi5za-uc.a.run.app',
     },
     lab3: {
+      // Lab 3 uses separate deployments for vulnerable site and C2 server
       vulnerable: 'https://lab-03-extension-hijacking-prd-mmwwcfi5za-uc.a.run.app',
       c2: 'https://lab-03-extension-hijacking-c2-prd-mmwwcfi5za-uc.a.run.app',
     },
