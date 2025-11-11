@@ -29,7 +29,9 @@
       "Bash(npm install)",
       "mcp__playwright__browser_snapshot",
       "mcp__playwright__browser_navigate",
-      "Bash(npx playwright test:*)"
+      "Bash(npx playwright test:*)",
+      "Bash(TEST_ENV=local npx playwright test:*)",
+      "Bash(TEST_ENV=prd npx playwright test:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,5 +1,19 @@
 // @ts-check
 const { test, expect } = require('@playwright/test')
+const path = require('path')
+
+// Load environment configuration
+const testEnvPath = path.resolve(__dirname, '../../../../test/config/test-env.js')
+const { currentEnv, getC2ApiEndpoint, getC2CollectEndpoint, TEST_ENV } = require(testEnvPath)
+
+// Get URLs for lab 2
+const lab2VulnerableUrl = currentEnv.lab2.vulnerable
+const lab2C2Url = currentEnv.lab2.c2
+const c2CollectUrl = getC2CollectEndpoint(2)
+
+console.log(`🧪 Test environment: ${TEST_ENV}`)
+console.log(`📍 Lab 2 Vulnerable URL: ${lab2VulnerableUrl}`)
+console.log(`📍 Lab 2 C2 URL: ${lab2C2Url}`)
 
 test.describe('Lab 2: DOM-Based Skimming - Credit Card Exfiltration', () => {
   test.beforeEach(async ({ page }) => {
@@ -12,7 +26,7 @@ test.describe('Lab 2: DOM-Based Skimming - Credit Card Exfiltration', () => {
 
     // Capture network requests to C2 server
     page.on('request', request => {
-      if (request.url().includes('localhost:9004/collect')) {
+      if (request.url().includes('/collect')) {
         console.log('🌐 REQUEST TO C2:', {
           url: request.url(),
           method: request.method(),
@@ -25,9 +39,7 @@ test.describe('Lab 2: DOM-Based Skimming - Credit Card Exfiltration', () => {
   test('should enter CC information and verify C2 server shows exfiltrated data', async ({ page }) => {
     console.log('🧪 Testing credit card exfiltration...')
 
-    await page.goto('/banking.html', {
-      baseURL: 'http://localhost:9003'
-    })
+    await page.goto(`${lab2VulnerableUrl}/banking.html`)
     await page.waitForLoadState('networkidle')
 
     // Wait for cards section to be active (default)
@@ -54,18 +66,18 @@ test.describe('Lab 2: DOM-Based Skimming - Credit Card Exfiltration', () => {
 
     // Verify data was exfiltrated to C2 server
     console.log('🔍 Verifying data exfiltration to C2 server...')
-    const c2StatsResponse = await page.request.get('http://localhost:9004/stats')
+    const c2StatsResponse = await page.request.get(`${lab2C2Url}/stats`)
     expect(c2StatsResponse.ok()).toBeTruthy()
-    
+
     const stats = await c2StatsResponse.json()
     console.log('📊 C2 Server Stats:', stats)
-    
+
     // Verify attack was recorded
     expect(stats.totalAttacks).toBeGreaterThan(0)
     console.log('✅ Attack recorded in C2 server')
 
     // Get recent attacks to verify our data
-    const recentResponse = await page.request.get('http://localhost:9004/recent/10')
+    const recentResponse = await page.request.get(`${lab2C2Url}/recent/10`)
     expect(recentResponse.ok()).toBeTruthy()
     
     const recentAttacks = await recentResponse.json()
