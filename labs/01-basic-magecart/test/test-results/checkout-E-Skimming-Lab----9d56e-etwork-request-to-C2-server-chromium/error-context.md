@@ -7,9 +7,9 @@
       - heading "🛒 TechGear Store" [level=1] [ref=e4]
       - generic [ref=e5]:
         - link "← Back to Labs" [ref=e6] [cursor=pointer]:
-          - /url: http://localhost:3000
+          - /url: https://labs.pcioasis.com
         - link "🕵️ View Stolen Data" [ref=e7] [cursor=pointer]:
-          - /url: http://localhost:9002/stolen
+          - /url: https://lab-01-basic-magecart-prd-mmwwcfi5za-uc.a.run.app/dashboard
         - link "← Back to Store" [ref=e8] [cursor=pointer]:
           - /url: index.html
   - main [ref=e9]:
@@ -59,5 +59,4 @@
         - link "the C2 dashboard" [ref=e40] [cursor=pointer]:
           - /url: http://localhost:3000/stolen
         - text: to see the stolen data.
-  - button "🗑️ Clear Cache" [ref=e41] [cursor=pointer]
 ```

@@ -4,11 +4,22 @@
  * This utility function detects and handles Chrome's dangerous site warning page.
  * It clicks "Details" and then clicks "this unsafe site" link if the warning is present.
  * 
+ * Only runs in production environments (not localhost).
+ * 
  * @param {import('@playwright/test').Page} page - Playwright page object
- * @returns {Promise<boolean>} - Returns true if warning was handled, false if not present
+ * @returns {Promise<boolean>} - Returns true if warning was handled, false if not present or not production
  */
 async function handleDangerousWarning(page) {
   try {
+    // Only handle dangerous warnings in production, not on localhost
+    const url = page.url()
+    const isLocalhost = url.includes('localhost') || url.includes('127.0.0.1') || url.includes('0.0.0.0')
+    
+    if (isLocalhost) {
+      // Skip handling on localhost
+      return false
+    }
+    
     // Check if the dangerous warning page is present
     // Look for the details button or the proceed link
     const detailsButton = page.locator('#details-button')
