@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>Checkout - TechGear Store</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell,
+          sans-serif;
+        background: #f5f5f5;
+        color: #333;
+        line-height: 1.6;
+      }
+
+      .header {
+        background: #2c3e50;
+        color: white;
+        padding: 1rem 0;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px;
+      }
+
+      .header h1 {
+        font-size: 1.5rem;
+      }
+
+      .main {
+        max-width: 600px;
+        margin: 2rem auto;
+        background: white;
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .checkout-header {
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #2c3e50;
+      }
+
+      .checkout-header h2 {
+        color: #2c3e50;
+      }
+
+      .form-group {
+        margin-bottom: 1.5rem;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: #555;
+      }
+
+      input[type='text'],
+      input[type='email'],
+      input[type='tel'],
+      select {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid #ddd;
+        border-radius: 4px;
+        font-size: 1rem;
+        transition: border-color 0.3s;
+      }
+
+      input:focus,
+      select:focus {
+        outline: none;
+        border-color: #3498db;
+      }
+
+      .card-row {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr;
+        gap: 1rem;
+      }
+
+      .submit-btn {
+        width: 100%;
+        padding: 1rem;
+        background: #27ae60;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.3s;
+      }
+
+      .submit-btn:hover {
+        background: #229954;
+      }
+
+      .security-badge {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #ecf0f1;
+        border-radius: 4px;
+        text-align: center;
+        font-size: 0.9rem;
+        color: #7f8c8d;
+      }
+
+      .success-message {
+        display: none;
+        background: #d4edda;
+        border: 2px solid #28a745;
+        padding: 1.5rem;
+        border-radius: 4px;
+        margin-top: 1rem;
+        text-align: center;
+      }
+
+      .success-message.show {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="header">
+      <div class="container">
+        <h1>🛒 TechGear Store</h1>
+        <div style="float: right; margin-top: 5px">
+          <a
+            href="http://localhost:3000"
+            style="
+              color: white;
+              text-decoration: none;
+              padding: 5px 15px;
+              background: #27ae60;
+              border-radius: 4px;
+              margin-right: 10px;
+            "
+            >← Back to Labs</a
+          >
+          <a
+            href="http://localhost:9002"
+            target="_blank"
+            style="
+              color: white;
+              text-decoration: none;
+              padding: 5px 15px;
+              background: #e74c3c;
+              border-radius: 4px;
+            "
+            >🕵️ View Stolen Data</a
+          >
+          <a
+            href="index.html"
+            style="
+              color: white;
+              text-decoration: none;
+              padding: 5px 15px;
+              background: #34495e;
+              border-radius: 4px;
+              margin-left: 10px;
+            "
+            >← Back to Store</a
+          >
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <div class="checkout-header">
+        <h2>Secure Checkout</h2>
+        <p>Complete your purchase</p>
+      </div>
+
+      <form id="payment-form">
+        <!-- Payment Information -->
+        <h3 style="margin-bottom: 1rem; color: #2c3e50">Payment Information</h3>
+
+        <div class="form-group">
+          <label for="card-number">Card Number</label>
+          <input
+            type="text"
+            id="card-number"
+            name="cardNumber"
+            autocomplete="cc-number"
+            placeholder="4532 1234 5678 9012"
+            maxlength="19"
+            required
+          />
+        </div>
+
+        <div class="card-row">
+          <div class="form-group">
+            <label for="expiry">Expiry Date</label>
+            <input
+              type="text"
+              id="expiry"
+              name="expiry"
+              autocomplete="cc-exp"
+              placeholder="MM/YY"
+              maxlength="5"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="cvv">CVV</label>
+            <input type="text" id="cvv" name="cvv" autocomplete="cc-csc" placeholder="123" maxlength="4" required />
+          </div>
+        </div>
+
+        <button type="submit" class="submit-btn">Complete Purchase - $299.99</button>
+
+        <div class="security-badge">🔒 Your payment is secure and encrypted</div>
+      </form>
+
+      <div id="success-message" class="success-message">
+        <h3>✅ Order Placed Successfully!</h3>
+        <p>Thank you for your purchase. Your order has been confirmed.</p>
+      </div>
+    </main>
+
+    <!-- Development: Clear Cache Button (only shows in localhost) -->
+    <script>
+      (function() {
+        const hostname = window.location.hostname
+        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
+        if (isLocal) {
+          const clearCacheBtn = document.createElement('button')
+          clearCacheBtn.textContent = '🗑️ Clear Cache'
+          clearCacheBtn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9999;padding:10px 20px;background:#dc2626;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;box-shadow:0 4px 6px rgba(0,0,0,0.3);'
+          clearCacheBtn.onclick = function() {
+            if ('caches' in window) {
+              caches.keys().then(names => {
+                names.forEach(name => caches.delete(name))
+              })
+            }
+            localStorage.clear()
+            sessionStorage.clear()
+            window.location.href = window.location.href.split('?')[0] + '?nocache=' + Date.now()
+          }
+          document.body.appendChild(clearCacheBtn)
+        }
+      })()
+    </script>
+
+    <!-- Training version: Uses benign function names for AI training -->
+    <script>
+      // Cache busting for JS - must happen before script loads
+      (function() {
+        const hostname = window.location.hostname
+        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
+        if (isLocal) {
+          const timestamp = Date.now()
+          const script = document.createElement('script')
+          script.src = 'js/checkout-process-train.js?v=' + timestamp
+          script.id = 'main-js'
+          document.body.appendChild(script)
+        } else {
+          const script = document.createElement('script')
+          script.src = 'js/checkout-process-train.js'
+          script.id = 'main-js'
+          document.body.appendChild(script)
+        }
+      })()
+    </script>
+
+    <script>
+      // Format card number with spaces as user types
+      document.getElementById('card-number').addEventListener('input', function (e) {
+        let value = e.target.value.replace(/\s/g, '')
+        let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value
+        e.target.value = formattedValue
+      })
+
+      // Format expiry date as MM/YY
+      document.getElementById('expiry').addEventListener('input', function (e) {
+        let value = e.target.value.replace(/\D/g, '')
+        if (value.length >= 2) {
+          value = value.substring(0, 2) + '/' + value.substring(2, 4)
+        }
+        e.target.value = value
+      })
+
+      // Only allow digits in CVV
+      document.getElementById('cvv').addEventListener('input', function (e) {
+        e.target.value = e.target.value.replace(/\D/g, '')
+      })
+
+      // Environment-aware URL configuration
+      ;(function () {
+        const hostname = window.location.hostname
+        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
+
+        let homeUrl, c2Url
+
+        if (isLocal) {
+          homeUrl = 'http://localhost:3000'
+          c2Url = 'http://localhost:9002'
+        } else if (hostname.includes('labs.stg.pcioasis.com')) {
+          homeUrl = 'https://labs.stg.pcioasis.com'
+          c2Url = 'https://labs.stg.pcioasis.com/01-basic-magecart-c2'
+        } else if (hostname.includes('labs.pcioasis.com')) {
+          homeUrl = 'https://labs.pcioasis.com'
+          c2Url = 'https://labs.pcioasis.com/01-basic-magecart-c2'
+        } else if (hostname.includes('lab-01-basic-magecart')) {
+          // Production Cloud Run (combined deployment - nginx + C2 in same container)
+          homeUrl = 'https://labs.pcioasis.com'
+          c2Url = window.location.protocol + '//' + hostname + '/dashboard'
+        } else {
+          homeUrl = window.location.protocol + '//' + hostname
+          c2Url = window.location.protocol + '//' + hostname + '/c2'
+        }
+
+        // Update header links
+        const headerLinks = document.querySelectorAll('.header a')
+        headerLinks.forEach(link => {
+          if (link.textContent.includes('Back to Labs')) {
+            link.href = homeUrl
+          } else if (link.textContent.includes('View Stolen Data')) {
+            link.href = c2Url
+          }
+        })
+      })()
+    </script>
+  </body>
+</html>
+
