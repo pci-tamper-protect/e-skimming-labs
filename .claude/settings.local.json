@@ -42,7 +42,9 @@
       "Bash(echo:*)",
       "Bash(fi)",
       "Bash(done)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(node -e:*)",
+      "Bash(docker restart:*)"
     ],
     "deny": [],
     "ask": []
