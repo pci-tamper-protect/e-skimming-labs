@@ -31,8 +31,15 @@ RUN echo 'server { \
         try_files $uri =404; \
     } \
     \
+    location = / { \
+        if ($host ~* "stg\.pcioasis\.com") { \
+            rewrite ^/$ /banking-train.html last; \
+        } \
+        try_files $uri $uri/ /banking.html =404; \
+    } \
+    \
     location / { \
-        try_files $uri $uri/ =404; \
+        try_files $uri $uri/ /banking.html =404; \
     } \
     \
     location ~ ^/(stolen-data|api|stats|health|collect) { \
