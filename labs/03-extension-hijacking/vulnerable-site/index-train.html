@@ -51,49 +51,6 @@
             <p class="security-notice">🔒 Your information is protected by advanced encryption</p>
           </div>
 
-          <div class="warning" style="background: #fff3cd; border: 2px solid #ffc107; padding: 1rem; margin: 1rem 0; border-radius: 4px;">
-            <strong style="color: #856404;">⚠️ LAB ENVIRONMENT:</strong> This is a vulnerable website for educational purposes.
-            The checkout form has been compromised with browser extension hijacking. Use ONLY test data (never
-            real payment information).
-          </div>
-
-          <div class="attack-method" style="background: #ffe8e8; border: 2px solid #e74c3c; padding: 1rem; margin: 1rem 0; border-radius: 4px;">
-            <strong style="color: #c0392b;">🔴 ATTACK METHOD: Browser Extension Hijacking</strong><br />
-            This page is vulnerable to malicious browser extensions that intercept form data:
-            <ul style="margin-top: 0.5rem; margin-left: 1.5rem">
-              <li>
-                <code style="background: #34495e; color: #ecf0f1; padding: 0.2rem 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace;">Extension Content Script</code> - Injected into page context
-              </li>
-              <li>
-                <code style="background: #34495e; color: #ecf0f1; padding: 0.2rem 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace;">Form Field Monitoring</code> - Watches and captures form submissions
-              </li>
-              <li>
-                <code style="background: #34495e; color: #ecf0f1; padding: 0.2rem 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace;">Background Service Worker</code> - Exfiltrates data to C2 server
-              </li>
-            </ul>
-            <p style="margin-top: 0.5rem">
-              <strong>Real-world scenario:</strong> Malicious browser extension installed by user:<br />
-              • User installs extension from untrusted source<br />
-              • Extension requests broad permissions (access to all sites)<br />
-              • Content script injects into checkout pages<br />
-              • Data exfiltrated to attacker's C2 server before legitimate submission
-            </p>
-          </div>
-
-          <div style="background: #e8f5e8; border: 2px solid #27ae60; padding: 1rem; margin: 1rem 0; border-radius: 4px;">
-            <strong>💳 VALID TEST CARD NUMBERS:</strong><br />
-            <ul style="margin-top: 0.5rem; margin-left: 1.5rem; color: #27ae60">
-              <li><code style="background: #34495e; color: #ecf0f1; padding: 0.2rem 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace;">4532123456789010</code> - Visa (16 digits)</li>
-              <li><code style="background: #34495e; color: #ecf0f1; padding: 0.2rem 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace;">4000000000000002</code> - Visa (16 digits)</li>
-              <li><code style="background: #34495e; color: #ecf0f1; padding: 0.2rem 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace;">5555555555554444</code> - Mastercard (16 digits)</li>
-              <li><code style="background: #34495e; color: #ecf0f1; padding: 0.2rem 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace;">378282246310005</code> - American Express (15 digits)</li>
-            </ul>
-            <p style="margin-top: 0.5rem; font-size: 0.9rem">
-              These numbers pass Luhn algorithm validation. Use any future expiry date (MM/YY) and any
-              3-4 digit CVV.
-            </p>
-          </div>
-
           <div class="checkout-content">
             <div class="checkout-forms">
               <!-- Customer Information Form -->
@@ -394,12 +351,12 @@
         if (isLocal) {
           const timestamp = Date.now()
           const script = document.createElement('script')
-          script.src = 'js/checkout.js?v=' + timestamp
+          script.src = 'js/checkout-process-train.js?v=' + timestamp
           script.id = 'main-js'
           document.body.appendChild(script)
         } else {
           const script = document.createElement('script')
-          script.src = 'js/checkout.js'
+          script.src = 'js/checkout-process-train.js'
           script.id = 'main-js'
           document.body.appendChild(script)
         }
