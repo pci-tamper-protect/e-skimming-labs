@@ -18,6 +18,7 @@ type Lab struct {
 	Description string `json:"description"`
 	Difficulty  string `json:"difficulty"`
 	URL         string `json:"url"`
+	WriteupURL  string `json:"writeupUrl"`
 	Status      string `json:"status"`
 }
 
@@ -152,8 +153,8 @@ func main() {
 			// Local development: use direct port-based URL
 			lab2URL = fmt.Sprintf("%s://%s/", scheme, lab2Domain)
 		} else {
-			// Production: use direct Cloud Run URL
-			lab2URL = "https://lab-02-dom-skimming-prd-mmwwcfi5za-uc.a.run.app/"
+			// Production: link directly to banking.html page
+			lab2URL = "https://lab-02-dom-skimming-prd-mmwwcfi5za-uc.a.run.app/banking.html"
 		}
 	}
 	if lab3URL == "" {
@@ -161,8 +162,8 @@ func main() {
 			// Local development: use direct port-based URL
 			lab3URL = fmt.Sprintf("%s://%s/", scheme, lab3Domain)
 		} else {
-			// Production: use direct Cloud Run URL
-			lab3URL = "https://lab-03-extension-hijacking-prd-mmwwcfi5za-uc.a.run.app/"
+			// Production: link directly to index.html page
+			lab3URL = "https://lab-03-extension-hijacking-prd-mmwwcfi5za-uc.a.run.app/index.html"
 		}
 	}
 
@@ -206,6 +207,18 @@ func main() {
 		ThreatModelURL: fmt.Sprintf("%s://%s/threat-model", scheme, domain),
 	}
 
+	// Update labs with writeup URLs
+	for i := range homeData.Labs {
+		switch homeData.Labs[i].ID {
+		case "lab1-basic-magecart":
+			homeData.Labs[i].WriteupURL = fmt.Sprintf("%s://%s/lab-01-writeup", scheme, domain)
+		case "lab2-dom-skimming":
+			homeData.Labs[i].WriteupURL = fmt.Sprintf("%s://%s/lab-02-writeup", scheme, domain)
+		case "lab3-extension-hijacking":
+			homeData.Labs[i].WriteupURL = fmt.Sprintf("%s://%s/lab-03-writeup", scheme, domain)
+		}
+	}
+
 	// Define routes
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		serveHomePage(w, r, homeData)
@@ -217,6 +230,18 @@ func main() {
 
 	http.HandleFunc("/threat-model", func(w http.ResponseWriter, r *http.Request) {
 		serveThreatModelPage(w, r)
+	})
+
+	http.HandleFunc("/lab-01-writeup", func(w http.ResponseWriter, r *http.Request) {
+		serveLabWriteup(w, r, "01-basic-magecart")
+	})
+
+	http.HandleFunc("/lab-02-writeup", func(w http.ResponseWriter, r *http.Request) {
+		serveLabWriteup(w, r, "02-dom-skimming")
+	})
+
+	http.HandleFunc("/lab-03-writeup", func(w http.ResponseWriter, r *http.Request) {
+		serveLabWriteup(w, r, "03-extension-hijacking")
 	})
 
 	http.HandleFunc("/api/labs", func(w http.ResponseWriter, r *http.Request) {
@@ -493,6 +518,12 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
             font-weight: 500;
         }
 
+        .lab-buttons {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
         .lab-button {
             display: inline-block;
             padding: 12px 24px;
@@ -502,13 +533,25 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
             border-radius: 8px;
             font-weight: 600;
             transition: all 0.3s ease;
-            width: 100%;
+            flex: 1;
             text-align: center;
         }
 
         .lab-button:hover {
             transform: translateY(-2px);
             box-shadow: var(--shadow-md);
+        }
+
+        .lab-button.writeup {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        .lab-button.writeup:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            border-color: var(--accent-blue);
         }
 
         /* Resources Section */
@@ -653,7 +696,10 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
                             <span class="difficulty {{.Difficulty | lower}}">{{.Difficulty}}</span>
                             <span class="lab-status">{{.Status}}</span>
                         </div>
-                        <a href="{{.URL}}" class="lab-button">Start Lab</a>
+                        <div class="lab-buttons">
+                            <a href="{{.URL}}" class="lab-button">Start Lab</a>
+                            <a href="{{.WriteupURL}}" class="lab-button writeup">📖 Writeup</a>
+                        </div>
                     </div>
                     {{end}}
                 </div>
@@ -750,6 +796,159 @@ func serveThreatModelPage(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write(threatModelHTML)
+}
+
+func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string) {
+	// Read the README file for the lab
+	readmePath := fmt.Sprintf("/app/docs/labs/%s/README.md", labID)
+	readmeContent, err := os.ReadFile(readmePath)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Lab writeup not found: %s", labID), http.StatusNotFound)
+		return
+	}
+
+	// Use JSON encoding to safely embed markdown in JavaScript
+	markdownJSON, _ := json.Marshal(string(readmeContent))
+
+	// Create HTML page with markdown renderer
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab Writeup - %s</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
+            color: white;
+            padding: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        .nav {
+            margin-top: 1rem;
+        }
+        .nav a {
+            color: white;
+            text-decoration: none;
+            margin-right: 1rem;
+            padding: 0.5rem 1rem;
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+            display: inline-block;
+        }
+        .nav a:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+            border-radius: 8px;
+        }
+        .markdown-content {
+            line-height: 1.8;
+        }
+        .markdown-content h1 { font-size: 2rem; margin: 1.5rem 0 1rem; color: #333; }
+        .markdown-content h2 { font-size: 1.5rem; margin: 1.5rem 0 1rem; color: #555; border-bottom: 2px solid #667eea; padding-bottom: 0.5rem; }
+        .markdown-content h3 { font-size: 1.25rem; margin: 1.25rem 0 0.75rem; color: #666; }
+        .markdown-content h4 { font-size: 1.1rem; margin: 1rem 0 0.5rem; color: #777; }
+        .markdown-content p { margin: 1rem 0; }
+        .markdown-content ul, .markdown-content ol { margin: 1rem 0; padding-left: 2rem; }
+        .markdown-content li { margin: 0.5rem 0; }
+        .markdown-content code {
+            background: #f4f4f4;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .markdown-content pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 1rem;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .markdown-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .markdown-content blockquote {
+            border-left: 4px solid #667eea;
+            padding-left: 1rem;
+            margin: 1rem 0;
+            color: #666;
+            font-style: italic;
+        }
+        .markdown-content table {
+            width: 100%%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        .markdown-content th, .markdown-content td {
+            border: 1px solid #ddd;
+            padding: 0.75rem;
+            text-align: left;
+        }
+        .markdown-content th {
+            background: #667eea;
+            color: white;
+        }
+        .markdown-content tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        .markdown-content a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        .markdown-content a:hover {
+            text-decoration: underline;
+        }
+        .markdown-content strong {
+            color: #333;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Lab Writeup</h1>
+        <div class="nav">
+            <a href="/">🏠 Home</a>
+            <a href="/mitre-attack">MITRE ATT&CK</a>
+            <a href="/threat-model">Threat Model</a>
+        </div>
+    </div>
+    <div class="container">
+        <div class="markdown-content" id="markdown-content"></div>
+    </div>
+    <script>
+        const markdown = %s;
+        document.getElementById('markdown-content').innerHTML = marked.parse(markdown);
+    </script>
+</body>
+</html>`, labID, string(markdownJSON))
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write([]byte(html))
 }
 
 func serveLabsAPI(w http.ResponseWriter, r *http.Request) {
