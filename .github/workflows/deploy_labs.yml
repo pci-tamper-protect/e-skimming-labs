@@ -1,4 +1,4 @@
-name: Deploy E-Skimming Labs to Cloud Run
+name: Deploy CloudRun
 
 on:
   pull_request:
