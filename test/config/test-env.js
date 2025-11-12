@@ -18,14 +18,17 @@ const environments = {
     lab1: {
       vulnerable: 'http://localhost:9001',
       c2: 'http://localhost:9002',
+      writeup: 'http://localhost:3000/lab-01-writeup',
     },
     lab2: {
       vulnerable: 'http://localhost:9003',
       c2: 'http://localhost:9004',
+      writeup: 'http://localhost:3000/lab-02-writeup',
     },
     lab3: {
       vulnerable: 'http://localhost:9005',
       c2: 'http://localhost:9006',
+      writeup: 'http://localhost:3000/lab-03-writeup',
     },
   },
   prd: {
@@ -34,16 +37,19 @@ const environments = {
       // Lab 1 uses combined deployment (nginx + C2 in same container)
       vulnerable: 'https://lab-01-basic-magecart-prd-mmwwcfi5za-uc.a.run.app',
       c2: 'https://lab-01-basic-magecart-prd-mmwwcfi5za-uc.a.run.app',
+      writeup: 'https://labs.pcioasis.com/lab-01-writeup',
     },
     lab2: {
       // Lab 2 uses separate deployments for vulnerable site and C2 server
       vulnerable: 'https://lab-02-dom-skimming-prd-mmwwcfi5za-uc.a.run.app',
       c2: 'https://lab-02-dom-skimming-c2-prd-mmwwcfi5za-uc.a.run.app',
+      writeup: 'https://labs.pcioasis.com/lab-02-writeup',
     },
     lab3: {
       // Lab 3 uses separate deployments for vulnerable site and C2 server
       vulnerable: 'https://lab-03-extension-hijacking-prd-mmwwcfi5za-uc.a.run.app',
       c2: 'https://lab-03-extension-hijacking-c2-prd-mmwwcfi5za-uc.a.run.app',
+      writeup: 'https://labs.pcioasis.com/lab-03-writeup',
     },
   },
 }
