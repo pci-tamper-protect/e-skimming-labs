@@ -11,6 +11,7 @@ test/
 *.md
 README.md
 **/README.md
+# Allow lab README files for home-index service (exceptions handled in labs section below)
 # Keep docs/ for home-index service build
 # docs/
 # **/docs/
@@ -40,8 +41,10 @@ dist/
 *.tmp
 
 # Labs (only build when needed)
+# Exclude labs but allow README files for home-index service
+# Pattern: exclude all labs, but allow README.md files in any lab subdirectory
 labs/
-**/labs/
+!labs/*/README.md
 
 # Test results
 test-results/

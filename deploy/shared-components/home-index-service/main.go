@@ -7,8 +7,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 
+	"github.com/gomarkdown/markdown"
+	"github.com/gomarkdown/markdown/html"
 	"gopkg.in/yaml.v3"
 )
 
@@ -233,15 +236,15 @@ func main() {
 	})
 
 	http.HandleFunc("/lab-01-writeup", func(w http.ResponseWriter, r *http.Request) {
-		serveLabWriteup(w, r, "01-basic-magecart")
+		serveLabWriteup(w, r, "01-basic-magecart", lab1URL, homeData)
 	})
 
 	http.HandleFunc("/lab-02-writeup", func(w http.ResponseWriter, r *http.Request) {
-		serveLabWriteup(w, r, "02-dom-skimming")
+		serveLabWriteup(w, r, "02-dom-skimming", lab2URL, homeData)
 	})
 
 	http.HandleFunc("/lab-03-writeup", func(w http.ResponseWriter, r *http.Request) {
-		serveLabWriteup(w, r, "03-extension-hijacking")
+		serveLabWriteup(w, r, "03-extension-hijacking", lab3URL, homeData)
 	})
 
 	http.HandleFunc("/api/labs", func(w http.ResponseWriter, r *http.Request) {
@@ -518,12 +521,6 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
             font-weight: 500;
         }
 
-        .lab-buttons {
-            display: flex;
-            gap: 0.75rem;
-            margin-top: 1rem;
-        }
-
         .lab-button {
             display: inline-block;
             padding: 12px 24px;
@@ -533,25 +530,13 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
             border-radius: 8px;
             font-weight: 600;
             transition: all 0.3s ease;
-            flex: 1;
+            width: 100%;
             text-align: center;
         }
 
         .lab-button:hover {
             transform: translateY(-2px);
             box-shadow: var(--shadow-md);
-        }
-
-        .lab-button.writeup {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            color: var(--text-secondary);
-        }
-
-        .lab-button.writeup:hover {
-            background: var(--bg-hover);
-            color: var(--text-primary);
-            border-color: var(--accent-blue);
         }
 
         /* Resources Section */
@@ -696,10 +681,7 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
                             <span class="difficulty {{.Difficulty | lower}}">{{.Difficulty}}</span>
                             <span class="lab-status">{{.Status}}</span>
                         </div>
-                        <div class="lab-buttons">
-                            <a href="{{.URL}}" class="lab-button">Start Lab</a>
-                            <a href="{{.WriteupURL}}" class="lab-button writeup">📖 Writeup</a>
-                        </div>
+                        <a href="{{.URL}}" class="lab-button">Start Lab</a>
                     </div>
                     {{end}}
                 </div>
@@ -798,26 +780,95 @@ func serveThreatModelPage(w http.ResponseWriter, r *http.Request) {
 	w.Write(threatModelHTML)
 }
 
-func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string) {
+func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, labURL string, homeData HomePageData) {
 	// Read the README file for the lab
+	// In container: /app/docs/labs/{lab-id}/README.md (copied from labs/{lab-id}/README.md)
+	// Local dev: labs/{lab-id}/README.md (original location, no duplication)
+
 	readmePath := fmt.Sprintf("/app/docs/labs/%s/README.md", labID)
+
+	// Log for debugging
+	log.Printf("Attempting to read writeup for lab: %s", labID)
+	log.Printf("Trying container path: %s", readmePath)
+
 	readmeContent, err := os.ReadFile(readmePath)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Lab writeup not found: %s", labID), http.StatusNotFound)
-		return
+		log.Printf("Failed to read %s: %v", readmePath, err)
+
+		// Try local development path (original location, no duplication)
+		localPath := fmt.Sprintf("labs/%s/README.md", labID)
+		log.Printf("Trying local development path: %s", localPath)
+		readmeContent, err = os.ReadFile(localPath)
+		if err != nil {
+			log.Printf("Failed to read %s: %v", localPath, err)
+
+			// List what's actually in /app/docs for debugging
+			if entries, listErr := os.ReadDir("/app/docs"); listErr == nil {
+				var names []string
+				for _, e := range entries {
+					names = append(names, e.Name())
+				}
+				log.Printf("Contents of /app/docs: %v", names)
+			}
+
+			http.Error(w, fmt.Sprintf("Lab writeup not found: %s\n\nTried paths:\n- %s (container)\n- %s (local dev)\n\nCheck container logs for details.", labID, readmePath, localPath), http.StatusNotFound)
+			return
+		}
+		log.Printf("Successfully read from local development path: %s", localPath)
+	} else {
+		log.Printf("Successfully read from container path: %s", readmePath)
 	}
 
-	// Use JSON encoding to safely embed markdown in JavaScript
-	markdownJSON, _ := json.Marshal(string(readmeContent))
+	// Convert markdown to HTML server-side
+	md := []byte(readmeContent)
+	htmlFlags := html.CommonFlags | html.HrefTargetBlank
+	opts := html.RendererOptions{Flags: htmlFlags}
+	renderer := html.NewRenderer(opts)
+	htmlContent := markdown.ToHTML(md, nil, renderer)
 
-	// Create HTML page with markdown renderer
+	// Highlight attack lines in code blocks
+	htmlContent = highlightAttackLines(htmlContent)
+
+	// Determine lab URL for "Back to Lab" button
+	labBackURL := labURL
+	if labBackURL == "" {
+		// Fallback: construct URL based on lab ID and environment
+		hostname := r.Host
+		isLocal := hostname == "localhost:3000" || hostname == "127.0.0.1:3000" || hostname == "localhost" || hostname == "127.0.0.1"
+
+		switch labID {
+		case "01-basic-magecart":
+			if isLocal {
+				labBackURL = "http://localhost:9001/"
+			} else {
+				labBackURL = "https://lab-01-basic-magecart-prd-mmwwcfi5za-uc.a.run.app/"
+			}
+		case "02-dom-skimming":
+			// Lab 2 uses banking.html as the main page
+			if isLocal {
+				labBackURL = "http://localhost:9003/banking.html"
+			} else {
+				labBackURL = "https://lab-02-dom-skimming-prd-mmwwcfi5za-uc.a.run.app/banking.html"
+			}
+		case "03-extension-hijacking":
+			// Lab 3 uses index.html as the main page
+			if isLocal {
+				labBackURL = "http://localhost:9005/index.html"
+			} else {
+				labBackURL = "https://lab-03-extension-hijacking-prd-mmwwcfi5za-uc.a.run.app/index.html"
+			}
+		}
+	}
+
+	// Create HTML page
 	html := fmt.Sprintf(`<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lab Writeup - %s</title>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -885,11 +936,27 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string) {
             border-radius: 4px;
             overflow-x: auto;
             margin: 1rem 0;
+            position: relative;
         }
         .markdown-content pre code {
             background: none;
             padding: 0;
             color: inherit;
+        }
+        .markdown-content pre code.hljs {
+            padding: 0;
+        }
+        .markdown-content pre .attack-line {
+            background: rgba(255, 107, 107, 0.3);
+            border-left: 4px solid #ff6b6b;
+            padding-left: 0.5rem;
+            margin-left: -0.5rem;
+            display: block;
+        }
+        .markdown-content pre .attack-line::before {
+            content: "⚠️";
+            margin-right: 0.5rem;
+            color: #ff6b6b;
         }
         .markdown-content blockquote {
             border-left: 4px solid #667eea;
@@ -933,22 +1000,81 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string) {
         <h1>Lab Writeup</h1>
         <div class="nav">
             <a href="/">🏠 Home</a>
-            <a href="/mitre-attack">MITRE ATT&CK</a>
-            <a href="/threat-model">Threat Model</a>
+            <a href="%s">← Back to Lab</a>
+            <a href="%s">MITRE ATT&CK</a>
+            <a href="%s">Threat Model</a>
         </div>
     </div>
     <div class="container">
-        <div class="markdown-content" id="markdown-content"></div>
+        <div class="markdown-content">%s</div>
     </div>
     <script>
-        const markdown = %s;
-        document.getElementById('markdown-content').innerHTML = marked.parse(markdown);
+        // Highlight code blocks
+        document.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightElement(block);
+        });
     </script>
 </body>
-</html>`, labID, string(markdownJSON))
+</html>`, labID, labBackURL, homeData.MITREURL, homeData.ThreatModelURL, template.HTML(htmlContent))
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(html))
+}
+
+// highlightAttackLines highlights lines in code blocks that contain attack patterns
+func highlightAttackLines(htmlContent []byte) []byte {
+	htmlStr := string(htmlContent)
+
+	// Pattern to match code blocks
+	codeBlockPattern := regexp.MustCompile(`<pre><code[^>]*>([\s\S]*?)</code></pre>`)
+
+	htmlStr = codeBlockPattern.ReplaceAllStringFunc(htmlStr, func(match string) string {
+		// Extract the code content
+		codeMatch := regexp.MustCompile(`<pre><code[^>]*>([\s\S]*?)</code></pre>`)
+		submatches := codeMatch.FindStringSubmatch(match)
+		if len(submatches) < 2 {
+			return match
+		}
+
+		codeContent := submatches[1]
+		lines := strings.Split(codeContent, "\n")
+
+		// Attack line patterns
+		attackPatterns := []*regexp.Regexp{
+			regexp.MustCompile(`exfilUrl|exfiltrate`),
+			regexp.MustCompile(`\bC2\b|collect`),
+			regexp.MustCompile(`MALICIOUS|skimmer`),
+			regexp.MustCompile(`addEventListener.*(?:submit|input)`),
+			regexp.MustCompile(`MutationObserver|shadowRoot`),
+			regexp.MustCompile(`chrome\.runtime|sendMessage`),
+			regexp.MustCompile(`/collect|/exfil|localhost:90\d{2}`),
+		}
+
+		highlightedLines := make([]string, len(lines))
+		for i, line := range lines {
+			isAttackLine := false
+			for _, pattern := range attackPatterns {
+				if pattern.MatchString(line) {
+					isAttackLine = true
+					break
+				}
+			}
+
+			if isAttackLine && strings.TrimSpace(line) != "" {
+				// Escape HTML in the line first, then wrap it
+				escapedLine := template.HTMLEscapeString(line)
+				highlightedLines[i] = `<span class="attack-line">` + escapedLine + `</span>`
+			} else {
+				highlightedLines[i] = line
+			}
+		}
+
+		// Reconstruct the code block
+		newCodeContent := strings.Join(highlightedLines, "\n")
+		return strings.Replace(match, codeContent, newCodeContent, 1)
+	})
+
+	return []byte(htmlStr)
 }
 
 func serveLabsAPI(w http.ResponseWriter, r *http.Request) {
