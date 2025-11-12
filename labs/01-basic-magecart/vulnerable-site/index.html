@@ -36,6 +36,9 @@
         <li>
           <a href="http://localhost:9002/stolen" class="c2-button" target="_blank" aria-label="View Stolen Data">🕵️ View Stolen Data</a>
         </li>
+        <li>
+          <a href="http://localhost:3000/lab-01-writeup" class="writeup-button" target="_blank" aria-label="Lab Writeup">📖 Writeup</a>
+        </li>
         <li><a href="#">Home</a></li>
         <li><a href="checkout.html">Checkout</a></li>
       </ul>
@@ -104,36 +107,43 @@
         const hostname = window.location.hostname
         const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
 
-        let homeUrl, c2Url
+        let homeUrl, c2Url, writeupUrl
 
         if (isLocal) {
           // Local development
           homeUrl = 'http://localhost:3000'
           c2Url = 'http://localhost:9002/stolen'
+          writeupUrl = 'http://localhost:3000/lab-01-writeup'
         } else if (hostname.includes('labs.stg.pcioasis.com')) {
           // Staging environment
           homeUrl = 'https://labs.stg.pcioasis.com'
           c2Url = 'https://labs.stg.pcioasis.com/01-basic-magecart-c2'
+          writeupUrl = 'https://labs.stg.pcioasis.com/lab-01-writeup'
         } else if (hostname.includes('labs.pcioasis.com')) {
           // Production environment (legacy, for future)
           homeUrl = 'https://labs.pcioasis.com'
           c2Url = 'https://labs.pcioasis.com/01-basic-magecart-c2'
+          writeupUrl = 'https://labs.pcioasis.com/lab-01-writeup'
         } else if (hostname.includes('lab-01-basic-magecart')) {
           // Production Cloud Run (combined deployment - nginx + C2 in same container)
           homeUrl = 'https://labs.pcioasis.com'
-          c2Url = window.location.protocol + '//' + hostname + '/dashboard'
+          c2Url = window.location.protocol + '//' + hostname + '/stolen'
+          writeupUrl = 'https://labs.pcioasis.com/lab-01-writeup'
         } else {
           // Fallback for unknown environments
           homeUrl = window.location.protocol + '//' + hostname
           c2Url = window.location.protocol + '//' + hostname + '/c2'
+          writeupUrl = window.location.protocol + '//' + hostname.replace('lab-01-basic-magecart', 'labs.pcioasis.com') + '/lab-01-writeup'
         }
 
         // Update links
         const backButton = document.querySelector('.back-button')
         const c2Button = document.querySelector('.c2-button')
+        const writeupButton = document.querySelector('.writeup-button')
 
         if (backButton) backButton.href = homeUrl
         if (c2Button) c2Button.href = c2Url
+        if (writeupButton) writeupButton.href = writeupUrl
       })()
     </script>
   </body>
