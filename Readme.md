@@ -35,6 +35,8 @@ payment information during checkout. These attacks:
 
 ## 🏗️ Repository Structure
 
+* Planned  
+
 ```
 e-skimming-labs/
 ├── README.md                          # This file
@@ -42,13 +44,13 @@ e-skimming-labs/
 │   ├── 01-basic-magecart/            # Simple credit card skimmer
 │   ├── 02-localstorage-scraper/      # Multi-form data collection
 │   ├── 03-supply-chain-attack/       # Third-party script compromise
-│   ├── 04-gtm-disguise/              # Google Tag Manager masquerading
-│   ├── 05-websocket-exfiltration/    # WebSocket-based C2
-│   ├── 06-404-page-injection/        # Error page hiding technique
-│   ├── 07-image-steganography/       # Code hidden in images
-│   ├── 08-woocommerce-skimmers/      # WooTheme, Slect, Gateway variants
-│   ├── 09-cosmicsting-exploit/       # CVE-2024-34102 Magento XXE
-│   └── 10-advanced-evasion/          # Anti-debugging & geofencing
+│   ├── 04-gtm-disguise/*              # Google Tag Manager masquerading
+│   ├── 05-websocket-exfiltration/*    # WebSocket-based C2
+│   ├── 06-404-page-injection/*        # Error page hiding technique
+│   ├── 07-image-steganography/*       # Code hidden in images
+│   ├── 08-woocommerce-skimmers/*      # WooTheme, Slect, Gateway variants
+│   ├── 09-cosmicstingel*o**it/       # CVE-2024-34102 Magento XXE
+│   └── 10-advanced-vas**ion/          # Anti-debugging & geofencing
 ├── detection/                         # Detection tools and techniques
 │   ├── semgrep-rules/                # Static analysis rules
 │   ├── browser-extensions/           # Runtime detection demos
