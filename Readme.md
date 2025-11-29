@@ -35,7 +35,7 @@ payment information during checkout. These attacks:
 
 ## 🏗️ Repository Structure
 
-* Planned  
+`*` Planned  
 
 ```
 e-skimming-labs/
