@@ -85,10 +85,10 @@ test.describe('Lab 3: Extension Hijacking - Credit Card Exfiltration', () => {
     console.log('🔍 Verifying data exfiltration to C2 server...')
     const c2StatusResponse = await page.request.get(`${lab3C2Url}/status`)
     expect(c2StatusResponse.ok()).toBeTruthy()
-    
+
     const status = await c2StatusResponse.json()
     console.log('📊 C2 Server Status:', status)
-    
+
     // Verify data was collected
     expect(status.stats.totalSessions).toBeGreaterThan(0)
     expect(status.stats.totalFields).toBeGreaterThan(0)
@@ -97,15 +97,15 @@ test.describe('Lab 3: Extension Hijacking - Credit Card Exfiltration', () => {
     // Verify our test data is in the collected data
     const exportResponse = await page.request.get(`${lab3C2Url}/export`)
     expect(exportResponse.ok()).toBeTruthy()
-    
+
     const collectedData = await exportResponse.json()
     console.log('📊 Collected data records:', collectedData.length)
-    
+
     // Verify our test data is in the collected records
-    const testRecord = collectedData.find(record => 
+    const testRecord = collectedData.find(record =>
       record.cardNumber && record.cardNumber.includes('4532123456789010')
     )
-    
+
     if (testRecord) {
       console.log('✅ Test credit card data found in C2 server')
       console.log('📋 Collected data:', JSON.stringify(testRecord, null, 2))
@@ -115,5 +115,51 @@ test.describe('Lab 3: Extension Hijacking - Credit Card Exfiltration', () => {
 
     console.log('🔍 Extension hijacking credit card exfiltration test completed')
   })
-})
 
+  test('should navigate to writeup page and back to lab', async ({ page }) => {
+    console.log('📖 Testing writeup navigation...')
+
+    // Navigate to lab 3 checkout page
+    await page.goto(`${lab3VulnerableUrl}/index.html`)
+    await page.waitForLoadState('networkidle')
+
+    // Verify we're on the lab page
+    await expect(page).toHaveTitle(/SecureShop|Checkout/i)
+    console.log('✅ On Lab 3 page')
+
+    // Find and click the writeup button
+    const writeupButton = page.locator('#writeup-button.writeup-button, .writeup-button')
+    await expect(writeupButton).toBeVisible()
+    await expect(writeupButton).toHaveText(/Writeup|📖/i)
+    console.log('✅ Writeup button found')
+
+    // Click writeup button (opens in new tab)
+    const [writeupPage] = await Promise.all([
+      page.context().waitForEvent('page'),
+      writeupButton.click()
+    ])
+
+    await writeupPage.waitForLoadState('networkidle')
+
+    // Verify we're on the writeup page
+    const expectedWriteupUrl = currentEnv.lab3.writeup
+    await expect(writeupPage).toHaveURL(new RegExp(expectedWriteupUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+    await expect(writeupPage).toHaveTitle(/Lab Writeup|03-extension-hijacking/i)
+    console.log('✅ On writeup page')
+
+    // Find and click "Back to Lab" button
+    const backToLabButton = writeupPage.getByRole('link', { name: /Back to Lab/i })
+    await expect(backToLabButton).toBeVisible()
+    console.log('✅ Back to Lab button found')
+
+    await backToLabButton.click()
+    await writeupPage.waitForLoadState('networkidle')
+
+    // Verify we're back on the lab page (should be index.html)
+    await expect(writeupPage).toHaveURL(new RegExp(`${lab3VulnerableUrl}/index\\.html`))
+    await expect(writeupPage).toHaveTitle(/SecureShop|Checkout/i)
+    console.log('✅ Back on Lab 3 page')
+
+    await writeupPage.close()
+  })
+})
