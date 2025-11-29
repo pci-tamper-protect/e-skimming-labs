@@ -266,7 +266,51 @@ test.describe('Lab 2: DOM-Based Skimming - UI Improvements', () => {
 
     console.log('✅ Tab navigation works correctly')
   })
+
+  test('should navigate to writeup page and back to lab', async ({ page }) => {
+    console.log('📖 Testing writeup navigation...')
+
+    // Navigate to lab 2 banking page
+    await page.goto(`${lab2VulnerableUrl}/banking.html`)
+    await page.waitForLoadState('networkidle')
+
+    // Verify we're on the lab page
+    await expect(page).toHaveTitle(/SecureBank Online Banking/)
+    console.log('✅ On Lab 2 page')
+
+    // Find and click the writeup button
+    const writeupButton = page.locator('#writeup-button.writeup-button')
+    await expect(writeupButton).toBeVisible()
+    await expect(writeupButton).toHaveText(/Writeup|📖/i)
+    console.log('✅ Writeup button found')
+
+    // Click writeup button (opens in new tab)
+    const [writeupPage] = await Promise.all([
+      page.context().waitForEvent('page'),
+      writeupButton.click()
+    ])
+
+    await writeupPage.waitForLoadState('networkidle')
+
+    // Verify we're on the writeup page
+    const expectedWriteupUrl = currentEnv.lab2.writeup
+    await expect(writeupPage).toHaveURL(new RegExp(expectedWriteupUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+    await expect(writeupPage).toHaveTitle(/Lab Writeup|02-dom-skimming/i)
+    console.log('✅ On writeup page')
+
+    // Find and click "Back to Lab" button
+    const backToLabButton = writeupPage.getByRole('link', { name: /Back to Lab/i })
+    await expect(backToLabButton).toBeVisible()
+    console.log('✅ Back to Lab button found')
+
+    await backToLabButton.click()
+    await writeupPage.waitForLoadState('networkidle')
+
+    // Verify we're back on the lab page (should be banking.html)
+    await expect(writeupPage).toHaveURL(new RegExp(`${lab2VulnerableUrl}/banking\\.html`))
+    await expect(writeupPage).toHaveTitle(/SecureBank Online Banking/)
+    console.log('✅ Back on Lab 2 page')
+
+    await writeupPage.close()
+  })
 })
-
-
-

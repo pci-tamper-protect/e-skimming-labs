@@ -4,7 +4,7 @@ const path = require('path')
 
 // Load environment configuration
 const testEnvPath = path.resolve(__dirname, '../../../../test/config/test-env.js')
-const { getC2ApiEndpoint, getC2CollectEndpoint, TEST_ENV } = require(testEnvPath)
+const { getC2ApiEndpoint, getC2CollectEndpoint, currentEnv, TEST_ENV } = require(testEnvPath)
 
 // Get C2 endpoints for lab 1
 const c2ApiUrl = getC2ApiEndpoint(1)
@@ -85,37 +85,37 @@ test.describe('E-Skimming Lab - Checkout Flow', () => {
     let testRecord = null
     const maxRetries = 10
     const retryDelay = 1000 // 1 second
-    
+
     for (let i = 0; i < maxRetries; i++) {
       await page.waitForTimeout(retryDelay)
-      
+
       const c2Response = await page.request.get(c2ApiUrl)
       if (!c2Response.ok()) {
         console.log(`⏳ Attempt ${i + 1}/${maxRetries}: C2 server not responding yet...`)
         continue
       }
-      
+
       const stolenData = await c2Response.json()
       console.log(`📊 Attempt ${i + 1}/${maxRetries}: Found ${stolenData.length} stolen data records`)
-      
+
       // Normalize card number comparison (remove spaces, dashes, etc.)
       const normalizeCardNumber = (card) => {
         if (!card) return ''
         return card.replace(/[\s-]/g, '')
       }
-      
+
       const testCardNumber = '4000000000000002'
       testRecord = stolenData.find(record => {
         if (!record.cardNumber) return false
         const normalized = normalizeCardNumber(record.cardNumber)
         return normalized === testCardNumber || normalized.includes(testCardNumber)
       })
-      
+
       if (testRecord) {
         console.log('✅ Test credit card data found in C2 server!')
         break
       }
-      
+
       // Log what card numbers we found for debugging
       if (stolenData.length > 0) {
         const foundCards = stolenData
@@ -124,7 +124,7 @@ test.describe('E-Skimming Lab - Checkout Flow', () => {
         console.log(`📋 Sample card numbers found: ${foundCards.join(', ')}`)
       }
     }
-    
+
     expect(testRecord).toBeTruthy()
     if (testRecord) {
       console.log('✅ Test credit card data verified:', {
@@ -154,7 +154,7 @@ test.describe('E-Skimming Lab - Checkout Flow', () => {
 
     // Navigate and submit form
     await page.goto('/checkout.html')
-    
+
     // Wait for checkout form to be visible
     await expect(page.locator('#payment-form')).toBeVisible()
     await expect(page.locator('h2')).toContainText('Secure Checkout')
@@ -215,7 +215,7 @@ test.describe('E-Skimming Lab - Checkout Flow', () => {
 
     // Navigate and submit
     await page.goto('/checkout.html')
-    
+
     // Wait for checkout form to be visible
     await expect(page.locator('#payment-form')).toBeVisible()
     await expect(page.locator('h2')).toContainText('Secure Checkout')
@@ -237,7 +237,7 @@ test.describe('E-Skimming Lab - Checkout Flow', () => {
     ).catch(() => null)
 
     await page.click('button[type="submit"]')
-    
+
     // Wait for the response to ensure the request was actually sent
     const response = await responsePromise
     if (response) {
@@ -262,42 +262,42 @@ test.describe('E-Skimming Lab - Checkout Flow', () => {
 
     // Verify data was exfiltrated to C2 server
     console.log('🔍 Verifying data exfiltration to C2 server...')
-    
+
     // Poll for data to appear in C2 server (with retries)
     let testRecord = null
     const maxRetries = 10
     const retryDelay = 1000 // 1 second
-    
+
     for (let i = 0; i < maxRetries; i++) {
       await page.waitForTimeout(retryDelay)
-      
+
       const c2Response = await page.request.get(c2ApiUrl)
       if (!c2Response.ok()) {
         console.log(`⏳ Attempt ${i + 1}/${maxRetries}: C2 server not responding yet...`)
         continue
       }
-      
+
       const stolenData = await c2Response.json()
-      
+
       // Normalize card number comparison (remove spaces, dashes, etc.)
       const normalizeCardNumber = (card) => {
         if (!card) return ''
         return card.replace(/[\s-]/g, '')
       }
-      
+
       const testCardNumber = '5555555555554444'
       testRecord = stolenData.find(record => {
         if (!record.cardNumber) return false
         const normalized = normalizeCardNumber(record.cardNumber)
         return normalized === testCardNumber || normalized.includes(testCardNumber)
       })
-      
+
       if (testRecord) {
         console.log('✅ Network test data found in C2 server!')
         break
       }
     }
-    
+
     expect(testRecord).toBeTruthy()
     if (testRecord) {
       console.log('✅ Network test data verified:', {
@@ -308,5 +308,52 @@ test.describe('E-Skimming Lab - Checkout Flow', () => {
     } else {
       console.error('❌ Network test data NOT found after', maxRetries, 'attempts')
     }
+  })
+
+  test('should navigate to writeup page and back to lab', async ({ page }) => {
+    console.log('📖 Testing writeup navigation...')
+
+    // Navigate to lab 1 main page
+    const lab1Url = currentEnv.lab1.vulnerable
+    await page.goto(lab1Url)
+    await page.waitForLoadState('networkidle')
+
+    // Verify we're on the lab page
+    await expect(page).toHaveTitle(/TechGear Store/)
+    console.log('✅ On Lab 1 page')
+
+    // Find and click the writeup button
+    const writeupButton = page.getByRole('link', { name: /Writeup|📖/i })
+    await expect(writeupButton).toBeVisible()
+    console.log('✅ Writeup button found')
+
+    // Click writeup button (opens in new tab)
+    const [writeupPage] = await Promise.all([
+      page.context().waitForEvent('page'),
+      writeupButton.click()
+    ])
+
+    await writeupPage.waitForLoadState('networkidle')
+
+    // Verify we're on the writeup page
+    const expectedWriteupUrl = currentEnv.lab1.writeup
+    await expect(writeupPage).toHaveURL(new RegExp(expectedWriteupUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+    await expect(writeupPage).toHaveTitle(/Lab Writeup|01-basic-magecart/i)
+    console.log('✅ On writeup page')
+
+    // Find and click "Back to Lab" button
+    const backToLabButton = writeupPage.getByRole('link', { name: /Back to Lab/i })
+    await expect(backToLabButton).toBeVisible()
+    console.log('✅ Back to Lab button found')
+
+    await backToLabButton.click()
+    await writeupPage.waitForLoadState('networkidle')
+
+    // Verify we're back on the lab page
+    await expect(writeupPage).toHaveURL(new RegExp(lab1Url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+    await expect(writeupPage).toHaveTitle(/TechGear Store/)
+    console.log('✅ Back on Lab 1 page')
+
+    await writeupPage.close()
   })
 })

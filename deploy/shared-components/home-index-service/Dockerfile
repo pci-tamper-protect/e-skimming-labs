@@ -30,6 +30,19 @@ COPY --from=builder /app/main .
 # Copy the docs directory for MITRE ATT&CK and threat model pages
 COPY docs ./docs
 
+# Copy lab README files from their original locations (keep docs close to code, no duplication)
+# Uses wildcard pattern to automatically include all lab README files
+# .dockerignore allows labs/*/README.md, so we copy labs structure temporarily to extract READMEs
+COPY labs/ ./labs-temp/
+# Extract README files and organize them into docs/labs/{lab-id}/ structure
+RUN mkdir -p ./docs/labs && \
+    find ./labs-temp -name "README.md" -type f | while read readme; do \
+      lab_name=$(basename $(dirname "$readme")); \
+      mkdir -p "./docs/labs/$lab_name" && \
+      cp "$readme" "./docs/labs/$lab_name/README.md"; \
+    done && \
+    rm -rf ./labs-temp
+
 # Copy catalog info for service metadata
 COPY catalog-info.yaml ./catalog-info.yaml
 

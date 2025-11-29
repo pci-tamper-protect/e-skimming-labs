@@ -107,6 +107,17 @@ body {
   box-shadow: var(--shadow);
 }
 
+.nav-button.writeup-button {
+  background-color: #667eea;
+  color: white;
+}
+
+.nav-button.writeup-button:hover {
+  background-color: #5568d3;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
 /* Lab Page Tabs */
 .lab-tabs {
   background-color: var(--card-bg);

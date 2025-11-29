@@ -183,6 +183,7 @@
               border-radius: 4px;
               margin-right: 10px;
             "
+            class="back-button"
             >← Back to Labs</a
           >
           <a
@@ -194,8 +195,23 @@
               padding: 5px 15px;
               background: #e74c3c;
               border-radius: 4px;
+              margin-right: 10px;
             "
+            class="c2-button"
             >🕵️ View Stolen Data</a
+          >
+          <a
+            href="http://localhost:3000/lab-01-writeup"
+            target="_blank"
+            style="
+              color: white;
+              text-decoration: none;
+              padding: 5px 15px;
+              background: #667eea;
+              border-radius: 4px;
+            "
+            class="writeup-button"
+            >📖 Writeup</a
           >
           <a
             href="index.html"
@@ -403,33 +419,40 @@
         const hostname = window.location.hostname
         const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
 
-        let homeUrl, c2Url
+        let homeUrl, c2Url, writeupUrl
 
         if (isLocal) {
           homeUrl = 'http://localhost:3000'
           c2Url = 'http://localhost:9002/stolen'
+          writeupUrl = 'http://localhost:3000/lab-01-writeup'
         } else if (hostname.includes('labs.stg.pcioasis.com')) {
           homeUrl = 'https://labs.stg.pcioasis.com'
           c2Url = 'https://labs.stg.pcioasis.com/01-basic-magecart-c2'
+          writeupUrl = 'https://labs.stg.pcioasis.com/lab-01-writeup'
         } else if (hostname.includes('labs.pcioasis.com')) {
           homeUrl = 'https://labs.pcioasis.com'
           c2Url = 'https://labs.pcioasis.com/01-basic-magecart-c2'
+          writeupUrl = 'https://labs.pcioasis.com/lab-01-writeup'
         } else if (hostname.includes('lab-01-basic-magecart')) {
           // Production Cloud Run (combined deployment - nginx + C2 in same container)
           homeUrl = 'https://labs.pcioasis.com'
-          c2Url = window.location.protocol + '//' + hostname + '/dashboard'
+          c2Url = window.location.protocol + '//' + hostname + '/stolen'
+          writeupUrl = 'https://labs.pcioasis.com/lab-01-writeup'
         } else {
           homeUrl = window.location.protocol + '//' + hostname
           c2Url = window.location.protocol + '//' + hostname + '/c2'
+          writeupUrl = window.location.protocol + '//' + hostname.replace('lab-01-basic-magecart', 'labs.pcioasis.com') + '/lab-01-writeup'
         }
 
         // Update header links
         const headerLinks = document.querySelectorAll('.header a')
         headerLinks.forEach(link => {
-          if (link.textContent.includes('Back to Labs')) {
+          if (link.classList.contains('back-button')) {
             link.href = homeUrl
-          } else if (link.textContent.includes('View Stolen Data')) {
+          } else if (link.classList.contains('c2-button')) {
             link.href = c2Url
+          } else if (link.classList.contains('writeup-button')) {
+            link.href = writeupUrl
           }
         })
       })()

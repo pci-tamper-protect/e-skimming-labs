@@ -7,8 +7,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 
+	"github.com/gomarkdown/markdown"
+	"github.com/gomarkdown/markdown/html"
 	"gopkg.in/yaml.v3"
 )
 
@@ -18,6 +21,7 @@ type Lab struct {
 	Description string `json:"description"`
 	Difficulty  string `json:"difficulty"`
 	URL         string `json:"url"`
+	WriteupURL  string `json:"writeupUrl"`
 	Status      string `json:"status"`
 }
 
@@ -137,14 +141,14 @@ func main() {
 	// Define available labs with detailed descriptions
 	// Use environment variables for lab URLs if provided
 	// For local development: use direct domain URLs (e.g., http://localhost:9001/)
-	// For production: use path-based URLs (e.g., https://labs.pcioasis.com/lab-01-basic-magecart)
+	// For production: use direct Cloud Run URLs (e.g., https://lab-02-dom-skimming-prd-mmwwcfi5za-uc.a.run.app)
 	if lab1URL == "" {
 		if isLocal && lab1Domain != "" {
 			// Local development: use direct port-based URL
 			lab1URL = fmt.Sprintf("%s://%s/", scheme, lab1Domain)
 		} else {
-			// Production: use path-based URL on labs domain
-			lab1URL = fmt.Sprintf("%s://%s/lab-01-basic-magecart", scheme, labsDomain)
+			// Production: use direct Cloud Run URL
+			lab1URL = "https://lab-01-basic-magecart-prd-mmwwcfi5za-uc.a.run.app/"
 		}
 	}
 	if lab2URL == "" {
@@ -152,8 +156,8 @@ func main() {
 			// Local development: use direct port-based URL
 			lab2URL = fmt.Sprintf("%s://%s/", scheme, lab2Domain)
 		} else {
-			// Production: use path-based URL on labs domain
-			lab2URL = fmt.Sprintf("%s://%s/lab-02-dom-skimming", scheme, labsDomain)
+			// Production: link directly to banking.html page
+			lab2URL = "https://lab-02-dom-skimming-prd-mmwwcfi5za-uc.a.run.app/banking.html"
 		}
 	}
 	if lab3URL == "" {
@@ -161,8 +165,8 @@ func main() {
 			// Local development: use direct port-based URL
 			lab3URL = fmt.Sprintf("%s://%s/", scheme, lab3Domain)
 		} else {
-			// Production: use path-based URL on labs domain
-			lab3URL = fmt.Sprintf("%s://%s/lab-03-extension-hijacking", scheme, labsDomain)
+			// Production: link directly to index.html page
+			lab3URL = "https://lab-03-extension-hijacking-prd-mmwwcfi5za-uc.a.run.app/index.html"
 		}
 	}
 
@@ -206,6 +210,18 @@ func main() {
 		ThreatModelURL: fmt.Sprintf("%s://%s/threat-model", scheme, domain),
 	}
 
+	// Update labs with writeup URLs
+	for i := range homeData.Labs {
+		switch homeData.Labs[i].ID {
+		case "lab1-basic-magecart":
+			homeData.Labs[i].WriteupURL = fmt.Sprintf("%s://%s/lab-01-writeup", scheme, domain)
+		case "lab2-dom-skimming":
+			homeData.Labs[i].WriteupURL = fmt.Sprintf("%s://%s/lab-02-writeup", scheme, domain)
+		case "lab3-extension-hijacking":
+			homeData.Labs[i].WriteupURL = fmt.Sprintf("%s://%s/lab-03-writeup", scheme, domain)
+		}
+	}
+
 	// Define routes
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		serveHomePage(w, r, homeData)
@@ -217,6 +233,18 @@ func main() {
 
 	http.HandleFunc("/threat-model", func(w http.ResponseWriter, r *http.Request) {
 		serveThreatModelPage(w, r)
+	})
+
+	http.HandleFunc("/lab-01-writeup", func(w http.ResponseWriter, r *http.Request) {
+		serveLabWriteup(w, r, "01-basic-magecart", lab1URL, homeData)
+	})
+
+	http.HandleFunc("/lab-02-writeup", func(w http.ResponseWriter, r *http.Request) {
+		serveLabWriteup(w, r, "02-dom-skimming", lab2URL, homeData)
+	})
+
+	http.HandleFunc("/lab-03-writeup", func(w http.ResponseWriter, r *http.Request) {
+		serveLabWriteup(w, r, "03-extension-hijacking", lab3URL, homeData)
 	})
 
 	http.HandleFunc("/api/labs", func(w http.ResponseWriter, r *http.Request) {
@@ -750,6 +778,303 @@ func serveThreatModelPage(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write(threatModelHTML)
+}
+
+func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, labURL string, homeData HomePageData) {
+	// Read the README file for the lab
+	// In container: /app/docs/labs/{lab-id}/README.md (copied from labs/{lab-id}/README.md)
+	// Local dev: labs/{lab-id}/README.md (original location, no duplication)
+
+	readmePath := fmt.Sprintf("/app/docs/labs/%s/README.md", labID)
+
+	// Log for debugging
+	log.Printf("Attempting to read writeup for lab: %s", labID)
+	log.Printf("Trying container path: %s", readmePath)
+
+	readmeContent, err := os.ReadFile(readmePath)
+	if err != nil {
+		log.Printf("Failed to read %s: %v", readmePath, err)
+
+		// Try local development path (original location, no duplication)
+		localPath := fmt.Sprintf("labs/%s/README.md", labID)
+		log.Printf("Trying local development path: %s", localPath)
+		readmeContent, err = os.ReadFile(localPath)
+		if err != nil {
+			log.Printf("Failed to read %s: %v", localPath, err)
+
+			// List what's actually in /app/docs for debugging
+			if entries, listErr := os.ReadDir("/app/docs"); listErr == nil {
+				var names []string
+				for _, e := range entries {
+					names = append(names, e.Name())
+				}
+				log.Printf("Contents of /app/docs: %v", names)
+			}
+
+			http.Error(w, fmt.Sprintf("Lab writeup not found: %s\n\nTried paths:\n- %s (container)\n- %s (local dev)\n\nCheck container logs for details.", labID, readmePath, localPath), http.StatusNotFound)
+			return
+		}
+		log.Printf("Successfully read from local development path: %s", localPath)
+	} else {
+		log.Printf("Successfully read from container path: %s", readmePath)
+	}
+
+	// Convert markdown to HTML server-side
+	md := []byte(readmeContent)
+	htmlFlags := html.CommonFlags | html.HrefTargetBlank
+	opts := html.RendererOptions{Flags: htmlFlags}
+	renderer := html.NewRenderer(opts)
+	htmlContent := markdown.ToHTML(md, nil, renderer)
+
+	// Highlight attack lines in code blocks
+	htmlContent = highlightAttackLines(htmlContent)
+
+	// Determine lab URL for "Back to Lab" button
+	labBackURL := labURL
+	if labBackURL == "" {
+		// Fallback: construct URL based on lab ID and environment
+		hostname := r.Host
+		isLocal := hostname == "localhost:3000" || hostname == "127.0.0.1:3000" || hostname == "localhost" || hostname == "127.0.0.1"
+
+		switch labID {
+		case "01-basic-magecart":
+			if isLocal {
+				labBackURL = "http://localhost:9001/"
+			} else {
+				labBackURL = "https://lab-01-basic-magecart-prd-mmwwcfi5za-uc.a.run.app/"
+			}
+		case "02-dom-skimming":
+			// Lab 2 uses banking.html as the main page
+			if isLocal {
+				labBackURL = "http://localhost:9003/banking.html"
+			} else {
+				labBackURL = "https://lab-02-dom-skimming-prd-mmwwcfi5za-uc.a.run.app/banking.html"
+			}
+		case "03-extension-hijacking":
+			// Lab 3 uses index.html as the main page
+			if isLocal {
+				labBackURL = "http://localhost:9005/index.html"
+			} else {
+				labBackURL = "https://lab-03-extension-hijacking-prd-mmwwcfi5za-uc.a.run.app/index.html"
+			}
+		}
+	}
+
+	// Create HTML page
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab Writeup - %s</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
+            color: white;
+            padding: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        .nav {
+            margin-top: 1rem;
+        }
+        .nav a {
+            color: white;
+            text-decoration: none;
+            margin-right: 1rem;
+            padding: 0.5rem 1rem;
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+            display: inline-block;
+        }
+        .nav a:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+            border-radius: 8px;
+        }
+        .markdown-content {
+            line-height: 1.8;
+        }
+        .markdown-content h1 { font-size: 2rem; margin: 1.5rem 0 1rem; color: #333; }
+        .markdown-content h2 { font-size: 1.5rem; margin: 1.5rem 0 1rem; color: #555; border-bottom: 2px solid #667eea; padding-bottom: 0.5rem; }
+        .markdown-content h3 { font-size: 1.25rem; margin: 1.25rem 0 0.75rem; color: #666; }
+        .markdown-content h4 { font-size: 1.1rem; margin: 1rem 0 0.5rem; color: #777; }
+        .markdown-content p { margin: 1rem 0; }
+        .markdown-content ul, .markdown-content ol { margin: 1rem 0; padding-left: 2rem; }
+        .markdown-content li { margin: 0.5rem 0; }
+        .markdown-content code {
+            background: #f4f4f4;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .markdown-content pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 1rem;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 1rem 0;
+            position: relative;
+        }
+        .markdown-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .markdown-content pre code.hljs {
+            padding: 0;
+        }
+        .markdown-content pre .attack-line {
+            background: rgba(255, 107, 107, 0.3);
+            border-left: 4px solid #ff6b6b;
+            padding-left: 0.5rem;
+            margin-left: -0.5rem;
+            display: block;
+        }
+        .markdown-content pre .attack-line::before {
+            content: "⚠️";
+            margin-right: 0.5rem;
+            color: #ff6b6b;
+        }
+        .markdown-content blockquote {
+            border-left: 4px solid #667eea;
+            padding-left: 1rem;
+            margin: 1rem 0;
+            color: #666;
+            font-style: italic;
+        }
+        .markdown-content table {
+            width: 100%%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        .markdown-content th, .markdown-content td {
+            border: 1px solid #ddd;
+            padding: 0.75rem;
+            text-align: left;
+        }
+        .markdown-content th {
+            background: #667eea;
+            color: white;
+        }
+        .markdown-content tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        .markdown-content a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        .markdown-content a:hover {
+            text-decoration: underline;
+        }
+        .markdown-content strong {
+            color: #333;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Lab Writeup</h1>
+        <div class="nav">
+            <a href="/">🏠 Home</a>
+            <a href="%s">← Back to Lab</a>
+            <a href="%s">MITRE ATT&CK</a>
+            <a href="%s">Threat Model</a>
+        </div>
+    </div>
+    <div class="container">
+        <div class="markdown-content">%s</div>
+    </div>
+    <script>
+        // Highlight code blocks
+        document.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightElement(block);
+        });
+    </script>
+</body>
+</html>`, labID, labBackURL, homeData.MITREURL, homeData.ThreatModelURL, template.HTML(htmlContent))
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write([]byte(html))
+}
+
+// highlightAttackLines highlights lines in code blocks that contain attack patterns
+func highlightAttackLines(htmlContent []byte) []byte {
+	htmlStr := string(htmlContent)
+
+	// Pattern to match code blocks
+	codeBlockPattern := regexp.MustCompile(`<pre><code[^>]*>([\s\S]*?)</code></pre>`)
+
+	htmlStr = codeBlockPattern.ReplaceAllStringFunc(htmlStr, func(match string) string {
+		// Extract the code content
+		codeMatch := regexp.MustCompile(`<pre><code[^>]*>([\s\S]*?)</code></pre>`)
+		submatches := codeMatch.FindStringSubmatch(match)
+		if len(submatches) < 2 {
+			return match
+		}
+
+		codeContent := submatches[1]
+		lines := strings.Split(codeContent, "\n")
+
+		// Attack line patterns
+		attackPatterns := []*regexp.Regexp{
+			regexp.MustCompile(`exfilUrl|exfiltrate`),
+			regexp.MustCompile(`\bC2\b|collect`),
+			regexp.MustCompile(`MALICIOUS|skimmer`),
+			regexp.MustCompile(`addEventListener.*(?:submit|input)`),
+			regexp.MustCompile(`MutationObserver|shadowRoot`),
+			regexp.MustCompile(`chrome\.runtime|sendMessage`),
+			regexp.MustCompile(`/collect|/exfil|localhost:90\d{2}`),
+		}
+
+		highlightedLines := make([]string, len(lines))
+		for i, line := range lines {
+			isAttackLine := false
+			for _, pattern := range attackPatterns {
+				if pattern.MatchString(line) {
+					isAttackLine = true
+					break
+				}
+			}
+
+			if isAttackLine && strings.TrimSpace(line) != "" {
+				// Escape HTML in the line first, then wrap it
+				escapedLine := template.HTMLEscapeString(line)
+				highlightedLines[i] = `<span class="attack-line">` + escapedLine + `</span>`
+			} else {
+				highlightedLines[i] = line
+			}
+		}
+
+		// Reconstruct the code block
+		newCodeContent := strings.Join(highlightedLines, "\n")
+		return strings.Replace(match, codeContent, newCodeContent, 1)
+	})
+
+	return []byte(htmlStr)
 }
 
 func serveLabsAPI(w http.ResponseWriter, r *http.Request) {

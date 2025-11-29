@@ -42,6 +42,7 @@
       <div class="container">
         <a href="http://localhost:3000" class="nav-button back-button" id="back-button">← Back to Labs</a>
         <a href="http://localhost:9004" class="nav-button c2-button" id="view-stolen-button" target="_blank" aria-label="View Stolen Data">🕵️ View Stolen Data</a>
+        <a href="http://localhost:3000/lab-02-writeup" class="nav-button writeup-button" id="writeup-button" target="_blank" aria-label="Lab Writeup">📖 Writeup</a>
       </div>
     </div>
 
@@ -204,7 +205,7 @@
         <!-- Credit Cards Section -->
         <section id="cards" class="section active">
           <h2>Credit Card Management</h2>
-          
+
           <!-- Add New Card Form (Default View) -->
           <div id="add-card-form-container" class="card-form-container">
             <h3>Add New Card</h3>
@@ -400,35 +401,49 @@
         const hostname = window.location.hostname
         const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
 
-        let homeUrl, c2Url
+        let homeUrl, c2Url, writeupUrl
 
         if (isLocal) {
           homeUrl = 'http://localhost:3000'
           c2Url = 'http://localhost:9004'
+          writeupUrl = 'http://localhost:3000/lab-02-writeup'
         } else if (hostname.includes('labs.stg.pcioasis.com')) {
           homeUrl = 'https://labs.stg.pcioasis.com'
           c2Url = 'https://labs.stg.pcioasis.com/02-dom-skimming-c2'
+          writeupUrl = 'https://labs.stg.pcioasis.com/lab-02-writeup'
         } else if (hostname.includes('labs.pcioasis.com')) {
           homeUrl = 'https://labs.pcioasis.com'
           c2Url = 'https://labs.pcioasis.com/02-dom-skimming-c2'
+          writeupUrl = 'https://labs.pcioasis.com/lab-02-writeup'
         } else if (hostname.includes('lab-02-dom-skimming')) {
           // Production Cloud Run (combined deployment - nginx + C2 in same container)
           homeUrl = 'https://labs.pcioasis.com'
           c2Url = window.location.protocol + '//' + hostname + '/stolen-data'
+          writeupUrl = 'https://labs.pcioasis.com/lab-02-writeup'
+        } else if (hostname.includes('run.app') && hostname.includes('lab-02')) {
+          // Production Cloud Run direct URL
+          homeUrl = 'https://labs.pcioasis.com'
+          c2Url = window.location.protocol + '//' + hostname + '/stolen-data'
+          writeupUrl = 'https://labs.pcioasis.com/lab-02-writeup'
         } else {
           homeUrl = window.location.protocol + '//' + hostname
           c2Url = window.location.protocol + '//' + hostname + '/c2'
+          writeupUrl = window.location.protocol + '//' + hostname.replace('lab-02-dom-skimming', 'labs.pcioasis.com') + '/lab-02-writeup'
         }
 
         // Update navigation buttons
         const backButton = document.getElementById('back-button')
         const viewStolenButton = document.getElementById('view-stolen-button')
-        
+        const writeupButton = document.getElementById('writeup-button')
+
         if (backButton) {
           backButton.href = homeUrl
         }
         if (viewStolenButton) {
           viewStolenButton.href = c2Url
+        }
+        if (writeupButton) {
+          writeupButton.href = writeupUrl
         }
       })()
     </script>
