@@ -12,6 +12,9 @@
 
 const TEST_ENV = process.env.TEST_ENV || 'local'
 
+// Support for custom environment via environment variables
+const CUSTOM_BASE_URL = process.env.CUSTOM_BASE_URL || process.env.CUSTOM_HOME_URL
+
 const environments = {
   local: {
     homeIndex: 'http://localhost:3000',
@@ -52,12 +55,39 @@ const environments = {
       writeup: 'https://labs.pcioasis.com/lab-03-writeup',
     },
   },
+  // Custom environment - can be configured via environment variables
+  custom: CUSTOM_BASE_URL ? {
+    homeIndex: CUSTOM_BASE_URL,
+    lab1: {
+      vulnerable: process.env.CUSTOM_LAB1_URL || `${CUSTOM_BASE_URL}/lab1`,
+      c2: process.env.CUSTOM_LAB1_C2_URL || `${CUSTOM_BASE_URL}/lab1-c2`,
+      writeup: `${CUSTOM_BASE_URL}/lab-01-writeup`,
+    },
+    lab2: {
+      vulnerable: process.env.CUSTOM_LAB2_URL || `${CUSTOM_BASE_URL}/lab2`,
+      c2: process.env.CUSTOM_LAB2_C2_URL || `${CUSTOM_BASE_URL}/lab2-c2`,
+      writeup: `${CUSTOM_BASE_URL}/lab-02-writeup`,
+    },
+    lab3: {
+      vulnerable: process.env.CUSTOM_LAB3_URL || `${CUSTOM_BASE_URL}/lab3`,
+      c2: process.env.CUSTOM_LAB3_C2_URL || `${CUSTOM_BASE_URL}/lab3-c2`,
+      writeup: `${CUSTOM_BASE_URL}/lab-03-writeup`,
+    },
+  } : null,
 }
 
-const currentEnv = environments[TEST_ENV]
+let currentEnv = environments[TEST_ENV]
+
+// Handle custom environment
+if (TEST_ENV === 'custom') {
+  if (!environments.custom) {
+    throw new Error('TEST_ENV=custom requires CUSTOM_BASE_URL environment variable')
+  }
+  currentEnv = environments.custom
+}
 
 if (!currentEnv) {
-  throw new Error(`Invalid TEST_ENV: ${TEST_ENV}. Must be one of: ${Object.keys(environments).join(', ')}`)
+  throw new Error(`Invalid TEST_ENV: ${TEST_ENV}. Must be one of: ${Object.keys(environments).filter(k => k !== 'custom' || environments.custom).join(', ')}`)
 }
 
 // Helper to get C2 API endpoint (adjusts port for local, path for prd)

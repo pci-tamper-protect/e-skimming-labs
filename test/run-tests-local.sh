@@ -29,7 +29,16 @@ case $LAB in
     npm test
     ;;
   all)
-    echo "📍 Testing all labs"
+    echo "📍 Testing all labs and global tests"
+    echo ""
+    
+    # Run global navigation tests first
+    echo "▶️  Global Navigation Tests (test/e2e/)"
+    cd test
+    export TEST_ENV=local
+    npm test || echo "⚠️  Global tests completed with some failures"
+    cd ..
+
     echo ""
     echo "▶️  Lab 1: Basic Magecart"
     cd labs/01-basic-magecart/test

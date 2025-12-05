@@ -12,8 +12,14 @@ module.exports = defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  /* Limit workers to prevent too many browser instances */
-  workers: process.env.CI ? 1 : 2,
+  /* Use more workers for parallel execution (50% of CPU cores, max 4)
+   * Override with PLAYWRIGHT_WORKERS environment variable
+   */
+  workers: process.env.PLAYWRIGHT_WORKERS 
+    ? parseInt(process.env.PLAYWRIGHT_WORKERS)
+    : process.env.CI 
+      ? 1 
+      : Math.min(Math.floor(require('os').cpus().length * 0.5), 4),
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
