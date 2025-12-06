@@ -94,8 +94,8 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
     await expect(countRow.getByText('3 techniques')).toBeVisible() // Initial Access
     await expect(countRow.getByText('1 technique').first()).toBeVisible() // Execution
     await expect(countRow.getByText('2 techniques').first()).toBeVisible() // Persistence
-    await expect(countRow.getByText('0 techniques')).toBeVisible() // Privilege Escalation
-    await expect(countRow.getByText('4 techniques')).toBeVisible() // Defense Evasion
+    await expect(countRow.getByText('0 techniques').first()).toBeVisible() // Privilege Escalation
+    await expect(countRow.getByText('4 techniques').first()).toBeVisible() // Defense Evasion
     await expect(countRow.getByText('2 techniques').nth(1)).toBeVisible() // Collection
   })
 
@@ -127,7 +127,7 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
     // Check Collection techniques with sub-techniques (use .first() for duplicates)
     const collectionCell = matrixTable.locator('tbody tr td').nth(8)
     await expect(collectionCell.getByText('T1056').first()).toBeVisible()
-    await expect(collectionCell.getByText('Input Capture')).toBeVisible()
+    await expect(collectionCell.getByText('Input Capture', {exact: true})).toBeVisible()
     await expect(collectionCell.getByText('T1056.001')).toBeVisible()
     await expect(collectionCell.getByText('Keylogging')).toBeVisible()
     await expect(collectionCell.getByText('T1056.002')).toBeVisible()
