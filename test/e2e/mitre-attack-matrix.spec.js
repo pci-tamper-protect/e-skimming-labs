@@ -88,15 +88,24 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
     // Check the technique count row
     const countRow = matrixTable.locator('thead tr').nth(1)
     const countCells = countRow.locator('td')
+
+    // Verify we have exactly 12 tactic columns (MITRE ATT&CK standard)
     await expect(countCells).toHaveCount(12)
 
-    // Verify specific technique counts (use .first() for duplicates)
-    await expect(countRow.getByText('3 techniques')).toBeVisible() // Initial Access
-    await expect(countRow.getByText('1 technique').first()).toBeVisible() // Execution
-    await expect(countRow.getByText('2 techniques').first()).toBeVisible() // Persistence
-    await expect(countRow.getByText('0 techniques')).toBeVisible() // Privilege Escalation
-    await expect(countRow.getByText('4 techniques')).toBeVisible() // Defense Evasion
-    await expect(countRow.getByText('2 techniques').nth(1)).toBeVisible() // Collection
+    // Use index-based selectors for reliable testing (avoids issues with duplicate counts)
+    // Each assertion maps directly to a specific tactic column
+    await expect(countCells.nth(0)).toHaveText('4 techniques')  // Initial Access
+    await expect(countCells.nth(1)).toHaveText('1 technique')   // Execution
+    await expect(countCells.nth(2)).toHaveText('4 techniques')  // Persistence
+    await expect(countCells.nth(3)).toHaveText('3 techniques')  // Privilege Escalation
+    await expect(countCells.nth(4)).toHaveText('9 techniques')  // Defense Evasion
+    await expect(countCells.nth(5)).toHaveText('4 techniques')  // Credential Access
+    await expect(countCells.nth(6)).toHaveText('6 techniques')  // Discovery
+    await expect(countCells.nth(7)).toHaveText('0 techniques')  // Lateral Movement
+    await expect(countCells.nth(8)).toHaveText('5 techniques')  // Collection
+    await expect(countCells.nth(9)).toHaveText('1 technique')   // Command and Control
+    await expect(countCells.nth(10)).toHaveText('4 techniques') // Exfiltration
+    await expect(countCells.nth(11)).toHaveText('5 techniques') // Impact
   })
 
   test('should display techniques and sub-techniques correctly', async ({ page }) => {
