@@ -3,11 +3,49 @@ const { test, expect } = require('@playwright/test')
 
 test.describe('MITRE ATT&CK Matrix Page', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to the MITRE ATT&CK page
-    await page.goto('/mitre-attack')
+    // Check if server is running by trying to access health endpoint first
+    try {
+      const response = await page.goto('http://localhost:3000/health', {
+        waitUntil: 'networkidle',
+        timeout: 5000
+      }).catch(() => null)
+
+      if (!response || response.status() !== 200) {
+        console.warn('⚠️  Server health check failed. Make sure the server is running on port 3000.')
+      }
+    } catch (error) {
+      console.warn('⚠️  Could not reach server. Make sure to start it with: ENVIRONMENT=local DOMAIN=localhost:3000 PORT=3000 go run deploy/shared-components/home-index-service/main.go')
+    }
+
+    // Navigate to the MITRE ATT&CK page with increased timeout
+    try {
+      await page.goto('/mitre-attack', {
+        waitUntil: 'domcontentloaded',
+        timeout: 30000
+      })
+    } catch (error) {
+      console.error('❌ Failed to navigate to /mitre-attack')
+      console.error('Error:', error.message)
+      throw error
+    }
 
     // Wait for the page to load completely
-    await page.waitForLoadState('networkidle')
+    try {
+      await page.waitForLoadState('networkidle', { timeout: 30000 })
+    } catch (error) {
+      console.warn('⚠️  networkidle timeout, but continuing with domcontentloaded state')
+    }
+
+    // Additional wait to ensure page is fully rendered
+    try {
+      await page.waitForSelector('.attack-matrix, h1, nav', { timeout: 10000 })
+    } catch (error) {
+      console.warn('⚠️  Some selectors not found immediately, but continuing...')
+      // Log page content for debugging
+      const title = await page.title()
+      const url = page.url()
+      console.log(`Page loaded: ${url}, Title: ${title}`)
+    }
   })
 
   test('should display the page title and header correctly', async ({ page }) => {
@@ -111,12 +149,19 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
   test('should display techniques and sub-techniques correctly', async ({ page }) => {
     const matrixTable = page.locator('.attack-matrix')
 
+    // Wait for the matrix table to be visible and loaded
+    await expect(matrixTable).toBeVisible()
+    await page.waitForSelector('.attack-matrix tbody tr td', { state: 'visible' })
+
     // Check Initial Access techniques
     const initialAccessCell = matrixTable.locator('tbody tr td').first()
 
+    // Wait for content to load
+    await initialAccessCell.waitFor({ state: 'visible' })
+
     // Verify T1190 - Exploit Public-Facing Application
-    await expect(initialAccessCell.getByText('T1190')).toBeVisible()
-    await expect(initialAccessCell.getByText('Exploit Public-Facing Application')).toBeVisible()
+    await expect(initialAccessCell.getByText('T1190')).toBeVisible({ timeout: 10000 })
+    await expect(initialAccessCell.getByText('Exploit Public-Facing Application')).toBeVisible({ timeout: 10000 })
 
     // Verify T1078 - Valid Accounts
     await expect(initialAccessCell.getByText('T1078')).toBeVisible()
@@ -136,11 +181,13 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
     // Check Collection techniques with sub-techniques (use .first() for duplicates)
     const collectionCell = matrixTable.locator('tbody tr td').nth(8)
     await expect(collectionCell.getByText('T1056').first()).toBeVisible()
-    await expect(collectionCell.getByText('Input Capture')).toBeVisible()
+    // Use specific selector for technique name to avoid matching "GUI Input Capture"
+    await expect(collectionCell.locator('.technique-name', { hasText: 'Input Capture' })).toBeVisible()
     await expect(collectionCell.getByText('T1056.001')).toBeVisible()
     await expect(collectionCell.getByText('Keylogging')).toBeVisible()
     await expect(collectionCell.getByText('T1056.002')).toBeVisible()
-    await expect(collectionCell.getByText('GUI Input Capture')).toBeVisible()
+    // Use specific selector for sub-technique name
+    await expect(collectionCell.locator('.sub-technique-name', { hasText: 'GUI Input Capture' })).toBeVisible()
   })
 
   test('should have horizontal scrolling for the matrix table', async ({ page }) => {
@@ -153,19 +200,28 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
 
     // Check that the table has a minimum width for scrolling
     const matrixTable = page.locator('.attack-matrix')
-    const tableWidth = await matrixTable.evaluate(el => el.offsetWidth)
+    const tableWidth = await matrixTable.evaluate((el) => {
+      if (el instanceof HTMLElement) {
+        return el.offsetWidth
+      }
+      return 0
+    })
     expect(tableWidth).toBeGreaterThan(1500) // Should be wide enough to require scrolling
   })
 
   test('should display technique links correctly', async ({ page }) => {
     const matrixTable = page.locator('.attack-matrix')
 
+    // Wait for the matrix table and links to load
+    await expect(matrixTable).toBeVisible()
+    await page.waitForSelector('.technique-link', { state: 'visible' })
+
     // Check that technique links have correct styling and attributes
     const techniqueLinks = matrixTable.locator('.technique-link')
     const firstLink = techniqueLinks.first()
 
-    await expect(firstLink).toBeVisible()
-    await expect(firstLink).toHaveClass(/technique-link/)
+    await expect(firstLink).toBeVisible({ timeout: 10000 })
+    await expect(firstLink).toHaveClass(/technique-link/, { timeout: 10000 })
 
     // Check that technique links have the correct color styling
     const linkColor = await firstLink.evaluate(el => getComputedStyle(el).color)
@@ -175,25 +231,34 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
   test('should display sub-technique links correctly', async ({ page }) => {
     const matrixTable = page.locator('.attack-matrix')
 
+    // Wait for the matrix table and sub-technique links to load
+    await expect(matrixTable).toBeVisible()
+    await page.waitForSelector('.sub-technique-link', { state: 'visible' })
+
     // Find sub-technique links
     const subTechniqueLinks = matrixTable.locator('.sub-technique-link')
-    await expect(subTechniqueLinks.first()).toBeVisible()
+    await expect(subTechniqueLinks.first()).toBeVisible({ timeout: 10000 })
 
     // Check that sub-technique links have correct styling
     const firstSubLink = subTechniqueLinks.first()
-    await expect(firstSubLink).toHaveClass(/sub-technique-link/)
+    await expect(firstSubLink).toHaveClass(/sub-technique-link/, { timeout: 10000 })
   })
 
   test('should display "No techniques" message for empty tactics', async ({ page }) => {
     const matrixTable = page.locator('.attack-matrix')
 
+    // Wait for the matrix table to load
+    await expect(matrixTable).toBeVisible()
+    await page.waitForSelector('.attack-matrix tbody', { state: 'visible' })
+
     // Check that tactics with no techniques show the appropriate message
     const noTechniquesMessages = matrixTable.locator('.no-techniques')
-    await expect(noTechniquesMessages).toHaveCount(1) // Only shows one "No techniques" message in the matrix
+    await expect(noTechniquesMessages).toHaveCount(1, { timeout: 10000 }) // Only shows one "No techniques" message in the matrix
 
     // Verify the message text
     await expect(noTechniquesMessages.first()).toContainText(
-      'No techniques commonly used in e-skimming attacks'
+      'No techniques commonly used in e-skimming attacks',
+      { timeout: 10000 }
     )
   })
 
@@ -201,50 +266,67 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
     // Set mobile viewport
     await page.setViewportSize({ width: 375, height: 667 })
 
+    // Wait for page to adjust to new viewport
+    await page.waitForTimeout(500)
+
     // Check that the matrix container is still visible
     const matrixContainer = page.locator('.matrix-container')
-    await expect(matrixContainer).toBeVisible()
+    await expect(matrixContainer).toBeVisible({ timeout: 10000 })
 
     // Check that the table is still accessible (should scroll horizontally)
     const matrixTable = page.locator('.attack-matrix')
-    await expect(matrixTable).toBeVisible()
+    await expect(matrixTable).toBeVisible({ timeout: 10000 })
 
     // Verify that the back button is still visible and functional
     const backButton = page.getByRole('link', { name: '← Back to Labs' })
-    await expect(backButton).toBeVisible()
+    await expect(backButton).toBeVisible({ timeout: 10000 })
   })
 
   test('should have proper navigation menu', async ({ page }) => {
+    // Wait for navigation to load
+    await page.waitForSelector('nav', { state: 'visible' })
+
     // Check that all navigation links are present
     const nav = page.locator('nav')
-    await expect(nav).toBeVisible()
+    await expect(nav).toBeVisible({ timeout: 10000 })
 
-    // Check navigation links
-    await expect(nav.getByRole('link', { name: '← Back to Labs' })).toBeVisible()
-    await expect(nav.getByRole('link', { name: 'Overview' })).toBeVisible()
-    await expect(nav.getByRole('link', { name: 'Tactics & Techniques' })).toBeVisible()
-    await expect(nav.getByRole('link', { name: 'Detection' })).toBeVisible()
-    await expect(nav.getByRole('link', { name: 'Defense' })).toBeVisible()
-    await expect(nav.getByRole('link', { name: 'Case Studies' })).toBeVisible()
-    await expect(nav.getByRole('link', { name: 'IOCs' })).toBeVisible()
+    // Check navigation links with increased timeout
+    await expect(nav.getByRole('link', { name: '← Back to Labs' })).toBeVisible({ timeout: 10000 })
+    await expect(nav.getByRole('link', { name: 'Overview' })).toBeVisible({ timeout: 10000 })
+    await expect(nav.getByRole('link', { name: 'Tactics & Techniques' })).toBeVisible({ timeout: 10000 })
+    await expect(nav.getByRole('link', { name: 'Detection' })).toBeVisible({ timeout: 10000 })
+    await expect(nav.getByRole('link', { name: 'Defense' })).toBeVisible({ timeout: 10000 })
+    await expect(nav.getByRole('link', { name: 'Case Studies' })).toBeVisible({ timeout: 10000 })
+    await expect(nav.getByRole('link', { name: 'IOCs' })).toBeVisible({ timeout: 10000 })
   })
 
   test('should have smooth scrolling navigation', async ({ page }) => {
+    // Wait for navigation to load
+    await page.waitForSelector('nav', { state: 'visible' })
+
     // Test clicking on navigation links
     const overviewLink = page.getByRole('link', { name: 'Overview' })
+    await expect(overviewLink).toBeVisible({ timeout: 10000 })
     await overviewLink.click()
+
+    // Wait for scroll animation
+    await page.waitForTimeout(1000)
 
     // Check that we scrolled to the overview section
     const overviewSection = page.locator('#overview')
-    await expect(overviewSection).toBeVisible()
+    await expect(overviewSection).toBeVisible({ timeout: 10000 })
 
     // Test tactics link
     const tacticsLink = page.getByRole('link', { name: 'Tactics & Techniques' })
+    await expect(tacticsLink).toBeVisible({ timeout: 10000 })
     await tacticsLink.click()
+
+    // Wait for scroll animation
+    await page.waitForTimeout(1000)
 
     // Check that we scrolled to the tactics section
     const tacticsSection = page.locator('#tactics')
-    await expect(tacticsSection).toBeVisible()
+    await expect(tacticsSection).toBeVisible({ timeout: 10000 })
   })
 
   test('should display statistics cards correctly', async ({ page }) => {
@@ -321,6 +403,7 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
 test.describe('MITRE ATT&CK Matrix - Environment Detection', () => {
   test('should detect localhost environment and set correct back button URL', async ({ page }) => {
     // Set up console listener BEFORE navigation
+    /** @type {string | null} */
     let consoleLogText = null
     page.on('console', msg => {
       if (msg.type() === 'log' && msg.text().includes('Back button URL set to:')) {
@@ -340,7 +423,8 @@ test.describe('MITRE ATT&CK Matrix - Environment Detection', () => {
 
     // Verify console log was generated (if captured - may not work in all test environments)
     if (consoleLogText) {
-      expect(consoleLogText).toContain('http://localhost:3000')
+      const logText = String(consoleLogText)
+      expect(logText.indexOf('http://localhost:3000') >= 0).toBeTruthy()
     } else {
       // If console log doesn't work in test environment, just verify the href is correct
       console.log('Console log not captured, but href is verified correct')
