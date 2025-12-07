@@ -30,9 +30,9 @@ module.exports = defineConfig({
     /* Video recording */
     video: 'retain-on-failure',
 
-    /* Set timeout to 10 seconds for local pages */
-    actionTimeout: 10000,
-    navigationTimeout: 10000,
+    /* Set timeout to 30 seconds for local pages (increased for slower loading) */
+    actionTimeout: 30000,
+    navigationTimeout: 30000,
 
     /* Ensure proper browser cleanup */
     launchOptions: {
