@@ -2,6 +2,10 @@
 node_modules/
 package-lock.json
 
+# npm cache files
+**/_update-notifier-last-checked
+**/clean/
+
 # Stolen data
 **/stolen-data/*
 !*/stolen-data/.gitkeep
@@ -53,3 +57,4 @@ deploy/*.json
 !go.sum
 !tsconfig.json
 
+test/MITRE_ATTACK_FIX_REPORT.md
