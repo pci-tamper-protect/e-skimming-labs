@@ -175,19 +175,6 @@ The tests verify specific content:
 - **Statistics**: 380K victims, £20M fine, 11K+ sites, 13+ groups
 - **URLs**: Environment-specific back button URLs
 
-## Recent Updates
-
-### MITRE ATT&CK Matrix Fixes (December 2024)
-
-The MITRE ATT&CK Matrix page has been updated to support local development and all tests are now passing. Key improvements include:
-
-- **Multi-path file serving**: The service now supports both container and local development paths
-- **Static asset routing**: Added route for `private-data-loader.js` and other static files
-- **Timeout improvements**: Increased timeouts to 30s to accommodate dynamic content
-- **Selector precision**: Fixed strict mode violations using precise CSS selectors
-
-For detailed information about the fixes, see [MITRE_ATTACK_FIX_REPORT.md](./MITRE_ATTACK_FIX_REPORT.md).
-
 ## Contributing
 
 When adding new tests:
