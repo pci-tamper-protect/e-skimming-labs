@@ -1,6 +1,49 @@
 // @ts-check
 const { test, expect } = require('@playwright/test')
 
+/**
+ * Waits for smooth scroll animation to complete
+ * @param {import('@playwright/test').Page} page - Playwright page object
+ * @param {string | null} targetSectionId - Optional: ID of target section to wait for
+ * @param {number} timeout - Maximum time to wait (default: 2000ms)
+ */
+async function waitForScrollComplete(page, targetSectionId = null, timeout = 2000) {
+  const checks = []
+
+  // Always check if scroll position is stable
+  checks.push(
+    page.waitForFunction(
+      () => {
+        return new Promise(resolve => {
+          const initialScroll = window.pageYOffset
+          setTimeout(() => {
+            resolve(window.pageYOffset === initialScroll)
+          }, 100)
+        })
+      },
+      { timeout }
+    )
+  )
+
+  // If target section provided, also wait for it to be in viewport
+  if (targetSectionId) {
+    checks.push(
+      page.waitForFunction(
+        sectionId => {
+          const element = document.getElementById(sectionId)
+          if (!element) return false
+          const rect = element.getBoundingClientRect()
+          return rect.top >= 0 && rect.top < window.innerHeight * 0.8
+        },
+        targetSectionId,
+        { timeout }
+      )
+    )
+  }
+
+  await Promise.all(checks)
+}
+
 test.describe('MITRE ATT&CK Matrix Page', () => {
   test.beforeEach(async ({ page }) => {
     // Check if server is running by trying to access health endpoint first
@@ -267,7 +310,7 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
     await page.setViewportSize({ width: 375, height: 667 })
 
     // Wait for page to adjust to new viewport
-    await page.waitForTimeout(500)
+    await waitForScrollComplete(page)
 
     // Check that the matrix container is still visible
     const matrixContainer = page.locator('.matrix-container')
@@ -310,7 +353,7 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
     await overviewLink.click()
 
     // Wait for scroll animation
-    await page.waitForTimeout(1000)
+    await waitForScrollComplete(page, 'overview')
 
     // Check that we scrolled to the overview section
     const overviewSection = page.locator('#overview')
@@ -322,7 +365,7 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
     await tacticsLink.click()
 
     // Wait for scroll animation
-    await page.waitForTimeout(1000)
+    await waitForScrollComplete(page, 'tactics')
 
     // Check that we scrolled to the tactics section
     const tacticsSection = page.locator('#tactics')
@@ -392,7 +435,7 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
     await scrollTopButton.click()
 
     // Wait for scroll animation to complete
-    await page.waitForTimeout(500)
+    await waitForScrollComplete(page)
 
     // Check that we scrolled back near the top (allow some margin due to smooth scroll)
     const scrollPosition = await page.evaluate(() => window.pageYOffset)
