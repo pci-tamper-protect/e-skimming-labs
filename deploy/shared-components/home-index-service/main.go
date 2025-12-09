@@ -231,6 +231,11 @@ func main() {
 		serveMITREPage(w, r)
 	})
 
+	// Serve static assets from docs directory (for mitre-attack-visual.html)
+	http.HandleFunc("/mitre-attack/private-data-loader.js", func(w http.ResponseWriter, r *http.Request) {
+		serveDocsFile(w, r, "private-data-loader.js")
+	})
+
 	http.HandleFunc("/threat-model", func(w http.ResponseWriter, r *http.Request) {
 		serveThreatModelPage(w, r)
 	})
@@ -757,9 +762,27 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
 }
 
 func serveMITREPage(w http.ResponseWriter, r *http.Request) {
-	// Read the MITRE ATT&CK HTML file
-	mitreHTML, err := os.ReadFile("/app/docs/mitre-attack-visual.html")
+	// Try multiple paths for local development and container environments
+	paths := []string{
+		"/app/docs/mitre-attack-visual.html",        // Container path
+		"../../docs/mitre-attack-visual.html",        // Local dev from service directory
+		"docs/mitre-attack-visual.html",              // Local dev from root
+		"../docs/mitre-attack-visual.html",           // Alternative local path
+	}
+
+	var mitreHTML []byte
+	var err error
+
+	for _, path := range paths {
+		mitreHTML, err = os.ReadFile(path)
+		if err == nil {
+			log.Printf("Served MITRE ATT&CK page from: %s", path)
+			break
+		}
+	}
+
 	if err != nil {
+		log.Printf("Failed to read MITRE ATT&CK page from all paths: %v", err)
 		http.Error(w, "MITRE ATT&CK page not found", http.StatusNotFound)
 		return
 	}
@@ -778,6 +801,47 @@ func serveThreatModelPage(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write(threatModelHTML)
+}
+
+// serveDocsFile serves static files from the docs directory
+func serveDocsFile(w http.ResponseWriter, r *http.Request, filename string) {
+	// Try multiple paths for local development and container environments
+	paths := []string{
+		fmt.Sprintf("/app/docs/%s", filename),        // Container path
+		fmt.Sprintf("../../docs/%s", filename),        // Local dev from service directory
+		fmt.Sprintf("docs/%s", filename),              // Local dev from root
+		fmt.Sprintf("../docs/%s", filename),           // Alternative local path
+	}
+
+	var fileContent []byte
+	var err error
+
+	for _, path := range paths {
+		fileContent, err = os.ReadFile(path)
+		if err == nil {
+			log.Printf("Served %s from: %s", filename, path)
+			break
+		}
+	}
+
+	if err != nil {
+		log.Printf("Failed to read %s from all paths: %v", filename, err)
+		http.Error(w, fmt.Sprintf("File not found: %s", filename), http.StatusNotFound)
+		return
+	}
+
+	// Set appropriate Content-Type based on file extension
+	contentType := "application/octet-stream"
+	if strings.HasSuffix(filename, ".js") {
+		contentType = "application/javascript"
+	} else if strings.HasSuffix(filename, ".css") {
+		contentType = "text/css"
+	} else if strings.HasSuffix(filename, ".json") {
+		contentType = "application/json"
+	}
+
+	w.Header().Set("Content-Type", contentType)
+	w.Write(fileContent)
 }
 
 func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, labURL string, homeData HomePageData) {

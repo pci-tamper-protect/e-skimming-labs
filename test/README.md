@@ -128,7 +128,7 @@ Tests run on:
 
 - **Base URL**: `http://localhost:3000`
 - **Target Page**: `/mitre-attack`
-- **Timeout**: 10 seconds for actions and navigation
+- **Timeout**: 30 seconds for actions and navigation (increased from 10s for dynamic content)
 - **Screenshots**: Captured on failure
 - **Videos**: Recorded on failure
 - **Traces**: Collected on retry
