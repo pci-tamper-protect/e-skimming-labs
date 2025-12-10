@@ -14,7 +14,7 @@ console.log(`🧪 Test environment: ${TEST_ENV}`)
 console.log(`📍 Lab 2 Vulnerable URL: ${lab2VulnerableUrl}`)
 console.log(`📍 Lab 2 C2 URL: ${lab2C2Url}`)
 
-test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
+test.describe('Lab 2: DOM-Based Skimming - Real-Time Field Monitor', () => {
   test.beforeEach(async ({ page }) => {
     // Enable console logging to capture attack logs
     page.on('console', msg => {
@@ -94,14 +94,14 @@ test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
     console.log('🔍 Verifying data exfiltration to C2 server...')
     const c2Response = await page.request.get(`${lab2C2Url}/stats`)
     expect(c2Response.ok()).toBeTruthy()
-    
+
     const stats = await c2Response.json()
     console.log('📊 C2 Server Stats:', stats)
-    
+
     // Verify attack was recorded
     expect(stats.totalAttacks).toBeGreaterThan(0)
     console.log('✅ DOM monitoring attack recorded in C2 server')
-    
+
     console.log('🔍 DOM mutation monitoring test completed')
   })
 
@@ -159,10 +159,10 @@ test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
     console.log('🔍 Verifying data exfiltration to C2 server...')
     const c2Response = await page.request.get(`${lab2C2Url}/stats`)
     expect(c2Response.ok()).toBeTruthy()
-    
+
     const stats = await c2Response.json()
     console.log('📊 C2 Server Stats:', stats)
-    
+
     // Verify attack was recorded
     expect(stats.totalAttacks).toBeGreaterThan(0)
     console.log('✅ Keystroke monitoring attack recorded in C2 server')
@@ -390,10 +390,10 @@ test.describe('DOM-Based Skimming Lab - Real-Time Field Monitor', () => {
     // Generate some activity
     await page.locator('[data-section="transfer"]').click({ timeout: 3000 })
     await page.waitForTimeout(500)
-    
+
     // Wait for transfer form to be visible
     await expect(page.locator('#transfer-form')).toBeVisible()
-    
+
     await page.selectOption('#from-account', 'checking')
     await page.fill('#to-account', '555666777')
     await page.fill('#transfer-memo', 'unloadtest')
