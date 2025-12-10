@@ -1,7 +1,7 @@
 // @ts-check
 const { test, expect } = require('@playwright/test')
 
-test.describe('E-Skimming Lab - Obfuscated Base64 Variant', () => {
+test.describe('Lab 1: Basic Magecart - Obfuscated Base64 Variant', () => {
   test.beforeEach(async ({ page }) => {
     // Enable console logging to capture skimmer logs
     page.on('console', msg => {

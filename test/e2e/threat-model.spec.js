@@ -1,5 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test')
+const { currentEnv, TEST_ENV } = require('../config/test-env')
 
 test.describe('Threat Model Page', () => {
   test.beforeEach(async ({ page }) => {
@@ -34,7 +35,7 @@ test.describe('Threat Model Page', () => {
     // Check that the back button is visible and has correct href
     // (expect will automatically wait and retry until condition is met)
     await expect(backButton).toBeVisible()
-    await expect(backButton).toHaveAttribute('href', 'http://localhost:3000')
+    await expect(backButton).toHaveAttribute('href', currentEnv.homeIndex)
 
     // Debug: Log the actual href value
     const hrefValue = await backButton.getAttribute('href')
@@ -47,7 +48,7 @@ test.describe('Threat Model Page', () => {
     await page.waitForLoadState('networkidle')
 
     // Verify we're on the home page
-    await expect(page).toHaveURL('http://localhost:3000/')
+    await expect(page).toHaveURL(currentEnv.homeIndex + '/')
     await expect(page).toHaveTitle('E-Skimming Labs - Interactive Training Platform')
 
     // Verify we can see the main labs content
@@ -156,12 +157,12 @@ test.describe('Threat Model Page', () => {
 
     // Go back to home
     await backButton.click()
-    await expect(page).toHaveURL('http://localhost:3000/')
+    await expect(page).toHaveURL(currentEnv.homeIndex + '/')
 
     // Navigate back to threat model (use .first() for duplicate links)
     const threatModelLink = page.getByRole('link', { name: 'Threat Model' }).first()
     await threatModelLink.click()
-    await expect(page).toHaveURL('http://localhost:3000/threat-model')
+    await expect(page).toHaveURL(currentEnv.homeIndex + '/threat-model')
 
     // Verify we're back on threat model page
     await expect(
@@ -188,11 +189,11 @@ test.describe('Threat Model Page - Environment Detection', () => {
 
     // Find the back button and check its href
     const backButton = page.getByRole('link', { name: '← Back to Labs' })
-    await expect(backButton).toHaveAttribute('href', 'http://localhost:3000')
+    await expect(backButton).toHaveAttribute('href', currentEnv.homeIndex)
 
     // Verify console log was generated (if captured - may not work in all test environments)
     if (consoleLogText) {
-      expect(consoleLogText).toContain('http://localhost:3000')
+      expect(consoleLogText).toContain(currentEnv.homeIndex)
     } else {
       // If console log doesn't work in test environment, just verify the href is correct
       console.log('Console log not captured, but href is correct')

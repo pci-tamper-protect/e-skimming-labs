@@ -1,5 +1,9 @@
 // @ts-check
 const { defineConfig, devices } = require('@playwright/test')
+const { currentEnv, TEST_ENV } = require('./config/test-env')
+
+console.log(`🧪 E2E Test Environment: ${TEST_ENV}`)
+console.log(`🔗 Base URL: ${currentEnv.homeIndex}`)
 
 /**
  * @see https://playwright.dev/docs/test-configuration
@@ -19,7 +23,7 @@ module.exports = defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:3000',
+    baseURL: currentEnv.homeIndex,
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -30,9 +34,9 @@ module.exports = defineConfig({
     /* Video recording */
     video: 'retain-on-failure',
 
-    /* Set timeout to 30 seconds for local pages (increased for slower loading) */
-    actionTimeout: 30000,
-    navigationTimeout: 30000,
+    /* Set timeout - longer for production due to network latency */
+    actionTimeout: TEST_ENV === 'prd' ? 30000 : 30000,
+    navigationTimeout: TEST_ENV === 'prd' ? 30000 : 30000,
 
     /* Ensure proper browser cleanup */
     launchOptions: {
@@ -76,11 +80,13 @@ module.exports = defineConfig({
     }
   ],
 
-  /* Run your local dev server before starting the tests */
-  webServer: {
-    command: 'cd .. && ./docker-labs.sh start home-index',
-    url: 'http://localhost:3000', // Changed from 8080 to 3000
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000
-  }
+  /* Run your local dev server before starting the tests (local only) */
+  webServer: TEST_ENV === 'local'
+    ? {
+        command: 'cd .. && ./docker-labs.sh start home-index',
+        url: currentEnv.homeIndex,
+        reuseExistingServer: !process.env.CI,
+        timeout: 120 * 1000
+      }
+    : undefined
 })
