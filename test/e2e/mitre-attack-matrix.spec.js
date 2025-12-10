@@ -1,5 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test')
+const { currentEnv, TEST_ENV } = require('../config/test-env')
 
 /**
  * Waits for smooth scroll animation to complete
@@ -48,7 +49,7 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
   test.beforeEach(async ({ page }) => {
     // Check if server is running by trying to access health endpoint first
     try {
-      const response = await page.goto('http://localhost:3000/health', {
+      const response = await page.goto(currentEnv.homeIndex + '/health', {
         waitUntil: 'networkidle',
         timeout: 5000
       }).catch(() => null)
@@ -57,7 +58,7 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
         console.warn('⚠️  Server health check failed. Make sure the server is running on port 3000.')
       }
     } catch (error) {
-      console.warn('⚠️  Could not reach server. Make sure to start it with: ENVIRONMENT=local DOMAIN=localhost:3000 PORT=3000 go run deploy/shared-components/home-index-service/main.go')
+      console.warn(`⚠️  Could not reach server at ${currentEnv.homeIndex}. Make sure the server is running.`)
     }
 
     // Navigate to the MITRE ATT&CK page with increased timeout
@@ -119,13 +120,13 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
     await expect(backButton).toBeVisible()
 
     // Check that the back button has the correct href for localhost (port 3000)
-    await expect(backButton).toHaveAttribute('href', 'http://localhost:3000')
+    await expect(backButton).toHaveAttribute('href', currentEnv.homeIndex)
 
     // Test clicking the back button
     await backButton.click()
 
     // Verify we're on the home page
-    await expect(page).toHaveURL('http://localhost:3000/')
+    await expect(page).toHaveURL(currentEnv.homeIndex + '/')
     await expect(page).toHaveTitle('E-Skimming Labs - Interactive Training Platform')
 
     // Verify we can see the main labs content
@@ -462,17 +463,15 @@ test.describe('MITRE ATT&CK Matrix - Environment Detection', () => {
 
     // Find the back button and check its href
     const backButton = page.getByRole('link', { name: '← Back to Labs' })
-    await expect(backButton).toHaveAttribute('href', 'http://localhost:3000')
+    await expect(backButton).toHaveAttribute('href', currentEnv.homeIndex)
 
     // Verify console log was generated (if captured - may not work in all test environments)
     if (consoleLogText) {
       const logText = String(consoleLogText)
-      expect(logText.indexOf('http://localhost:3000') >= 0).toBeTruthy()
+      expect(logText.indexOf(currentEnv.homeIndex) >= 0).toBeTruthy()
     } else {
       // If console log doesn't work in test environment, just verify the href is correct
       console.log('Console log not captured, but href is verified correct')
     }
   })
 })
-
-

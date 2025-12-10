@@ -1,7 +1,7 @@
 // @ts-check
 const { test, expect } = require('@playwright/test')
 
-test.describe('E-Skimming Lab - Event Listener Variant', () => {
+test.describe('Lab 1: Basic Magecart - Event Listener Variant', () => {
   test.beforeEach(async ({ page }) => {
     // Enable console logging to capture skimmer logs
     page.on('console', msg => {

@@ -14,7 +14,7 @@ console.log(`🧪 Test environment: ${TEST_ENV}`)
 console.log(`📍 Lab 2 Vulnerable URL: ${lab2VulnerableUrl}`)
 console.log(`📍 Lab 2 C2 URL: ${lab2C2Url}`)
 
-test.describe('DOM-Based Skimming Lab - Form Overlay Injection', () => {
+test.describe('Lab 2: DOM-Based Skimming - Form Overlay Injection', () => {
   test.beforeEach(async ({ page }) => {
     // Enable console logging to capture attack logs
     page.on('console', msg => {
