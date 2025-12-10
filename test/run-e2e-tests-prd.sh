@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Run Playwright e2e tests against production environment (labs.pcioasis.com)
 
 set -e
