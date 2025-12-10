@@ -14,7 +14,7 @@ console.log(`🧪 Test environment: ${TEST_ENV}`)
 console.log(`📍 C2 API URL: ${c2ApiUrl}`)
 console.log(`📍 C2 Collect URL: ${c2CollectUrl}`)
 
-test.describe('E-Skimming Lab - Checkout Flow', () => {
+test.describe('Lab 1: Basic Magecart - Checkout Flow', () => {
   test.beforeEach(async ({ page }) => {
     // Enable console logging to capture skimmer logs
     page.on('console', msg => {

@@ -14,7 +14,7 @@ console.log(`🧪 Test environment: ${TEST_ENV}`)
 console.log(`📍 Lab 2 Vulnerable URL: ${lab2VulnerableUrl}`)
 console.log(`📍 Lab 2 C2 URL: ${lab2C2Url}`)
 
-test.describe('DOM-Based Skimming Lab - Shadow DOM Stealth Attack', () => {
+test.describe('Lab 2: DOM-Based Skimming - Shadow DOM Stealth Attack', () => {
   test.beforeEach(async ({ page }) => {
     // Enable console logging to capture attack logs
     page.on('console', msg => {
@@ -118,7 +118,7 @@ test.describe('DOM-Based Skimming Lab - Shadow DOM Stealth Attack', () => {
 
     // Navigate to transfer section
     await page.click('[data-section="transfer"]')
-    
+
     // Wait for transfer form to be visible
     await expect(page.locator('#transfer-form')).toBeVisible()
     await expect(page.locator('#from-account')).toBeVisible()
@@ -584,11 +584,11 @@ test.describe('DOM-Based Skimming Lab - Shadow DOM Stealth Attack', () => {
 
     // Generate some shadow activity
     await page.click('[data-section="transfer"]')
-    
+
     // Wait for transfer form to be visible
     await expect(page.locator('#transfer-form')).toBeVisible()
     await expect(page.locator('#transfer-memo')).toBeVisible()
-    
+
     await page.fill('#transfer-memo', 'unloadtest')
     await page.waitForTimeout(1000)
 
