@@ -577,6 +577,9 @@
       </div>
     </div>
 
+    <!-- Private Data Loader Plugin - Must load before main script -->
+    <script src="private-data-loader.js"></script>
+
     <script>
       // Threat Model Data
       const threatData = {
@@ -1514,8 +1517,9 @@
           setTimeout(() => (status.style.display = 'none'), 2000)
         }
         window.onerror = (m, s, l, c, e) => {
-          status.textContent = `Error: ${m}`
-          status.style.display = 'block'
+          // Log errors to console only (not on page)
+          console.error('Error:', m, '\nSource:', s, '\nLine:', l, '\nColumn:', c, '\nError object:', e)
+          return false // Let browser handle normally (shows in console)
         }
       })()
 
@@ -1951,8 +1955,5 @@
         console.log('[Threat Model] Running in public-only mode (private-data-loader.js not found)')
       }
     </script>
-
-    <!-- Private Data Loader Plugin -->
-    <script src="private-data-loader.js"></script>
   </body>
 </html>
