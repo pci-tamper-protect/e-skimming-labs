@@ -1,9 +1,11 @@
-#!/bin/bash
-# Run Playwright tests against production environment (labs.pcioasis.com)
+#!/usr/bin/env bash
+# Run lab-specific Playwright tests against production environment (labs.pcioasis.com)
+# Tests individual lab functionality: checkout flows, skimmer detection, C2 exfiltration
 
 set -e
 
-echo "🧪 Running tests against PRODUCTION environment (labs.pcioasis.com)"
+echo "🧪 Running LAB-SPECIFIC tests against PRODUCTION environment (labs.pcioasis.com)"
+echo "📋 Tests: Individual lab functionality (checkout, skimmer detection, C2 exfiltration)"
 echo "⚠️  Note: This requires the production services to be running"
 echo ""
 

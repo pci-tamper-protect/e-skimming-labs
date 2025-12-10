@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# Run Playwright e2e tests against production environment (labs.pcioasis.com)
+# Run site-wide Playwright e2e tests against production environment (labs.pcioasis.com)
+# Tests overall site functionality: navigation, threat model, MITRE ATT&CK page
 
 set -e
 
-echo "🧪 Running E2E tests against PRODUCTION environment (labs.pcioasis.com)"
+echo "🧪 Running SITE-WIDE E2E tests against PRODUCTION environment (labs.pcioasis.com)"
+echo "📋 Tests: Global navigation, threat model, MITRE ATT&CK page"
 echo "⚠️  Note: This requires the production services to be running"
 echo ""
 
