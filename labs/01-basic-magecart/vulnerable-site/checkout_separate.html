@@ -200,6 +200,7 @@
 
       <form id="payment-form">
         <!-- Payment Information -->
+         <!--arialabel added-->
         <h3 style="margin-bottom: 1rem; color: #2c3e50">Payment Information</h3>
 
         <div class="form-group">
@@ -212,10 +213,12 @@
             placeholder="4532 1234 5678 9010"
             maxlength="19"
             required
+            aria-label="Enter Card Number"
           />
         </div>
 
         <div class="card-row">
+          <!--arialabel added-->
           <div class="form-group">
             <label for="expiry">Expiry Date</label>
             <input
@@ -226,16 +229,17 @@
               placeholder="MM/YY"
               maxlength="5"
               required
+              aria-label="Enter expiry date"
             />
           </div>
 
           <div class="form-group">
             <label for="cvv">CVV</label>
-            <input type="text" id="cvv" name="cvv" autocomplete="cc-csc" placeholder="123" maxlength="4" required />
+            <input type="text" id="cvv" name="cvv" autocomplete="cc-csc" placeholder="123" maxlength="4" required aria-label="Enter cvv code"/>
           </div>
         </div>
 
-        <button type="submit" class="submit-btn">Complete Purchase - $299.99</button>
+        <button type="submit" class="submit-btn" aria-label="Submit button to complete purchase">Complete Purchase - $299.99</button>
 
         <div class="security-badge">🔒 Your payment is secure and encrypted</div>
       </form>

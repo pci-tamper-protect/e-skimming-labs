@@ -175,6 +175,8 @@
         <div style="float: right; margin-top: 5px">
           <a
             href="http://localhost:3000"
+            aria-label="Go back to labs homepage"
+            class="back-button"
             style="
               color: white;
               text-decoration: none;
@@ -183,7 +185,7 @@
               border-radius: 4px;
               margin-right: 10px;
             "
-            class="back-button"
+            
             >← Back to Labs</a
           >
           <a
@@ -198,6 +200,7 @@
               margin-right: 10px;
             "
             class="c2-button"
+            aria-label="view stolen data tab"
             >🕵️ View Stolen Data</a
           >
           <a
@@ -211,10 +214,12 @@
               border-radius: 4px;
             "
             class="writeup-button"
+            aria-label="Go to writeup section"
             >📖 Writeup</a
           >
           <a
             href="index.html"
+            aria-label="Go back to store page"
             style="
               color: white;
               text-decoration: none;
@@ -297,6 +302,7 @@
             placeholder="4532 1234 5678 9012"
             maxlength="19"
             required
+            aria-label="input card number"
           />
         </div>
 
@@ -311,16 +317,17 @@
               placeholder="MM/YY"
               maxlength="5"
               required
+              aria-label="input card expiry date"
             />
           </div>
 
           <div class="form-group">
             <label for="cvv">CVV</label>
-            <input type="text" id="cvv" name="cvv" autocomplete="cc-csc" placeholder="123" maxlength="4" required />
+            <input type="text" id="cvv" name="cvv" autocomplete="cc-csc" placeholder="123" maxlength="4" required aria-label="input cvv code"/>
           </div>
         </div>
 
-        <button type="submit" class="submit-btn">Complete Purchase - $299.99</button>
+        <button type="submit" class="submit-btn" aria-label="Completes pruchase through submit button">Complete Purchase - $299.99</button>
 
         <div class="security-badge">🔒 Your payment is secure and encrypted</div>
       </form>
