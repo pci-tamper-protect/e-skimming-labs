@@ -10,39 +10,39 @@ resource "google_cloud_run_v2_service" "home_seo_service" {
 
   template {
     service_account = google_service_account.home_seo.email
-    
+
     containers {
       image = "${var.region}-docker.pkg.dev/${var.project_id}/e-skimming-labs-home/seo:latest"
-      
+
       ports {
         container_port = 8080
       }
-      
+
       env {
         name  = "PROJECT_ID"
         value = var.project_id
       }
-      
+
       env {
         name  = "ENVIRONMENT"
         value = var.environment
       }
-      
+
       env {
         name  = "MAIN_DOMAIN"
         value = var.main_domain
       }
-      
+
       env {
         name  = "LABS_DOMAIN"
         value = var.labs_domain
       }
-      
+
       env {
         name  = "LABS_PROJECT_ID"
-        value = "labs-prd"
+        value = var.labs_project_id
       }
-      
+
       resources {
         limits = {
           cpu    = "1"
@@ -50,7 +50,7 @@ resource "google_cloud_run_v2_service" "home_seo_service" {
         }
       }
     }
-    
+
     scaling {
       min_instance_count = var.min_instances
       max_instance_count = var.max_instances
@@ -72,49 +72,49 @@ resource "google_cloud_run_v2_service" "home_index_service" {
 
   template {
     service_account = google_service_account.home_runtime.email
-    
+
     containers {
       image = "${var.region}-docker.pkg.dev/${var.project_id}/e-skimming-labs-home/index:latest"
-      
+
       ports {
         container_port = 8080
       }
-      
+
       env {
         name  = "PROJECT_ID"
         value = var.project_id
       }
-      
+
       env {
         name  = "ENVIRONMENT"
         value = var.environment
       }
-      
+
       env {
         name  = "DOMAIN"
         value = var.domain
       }
-      
+
       env {
         name  = "LABS_DOMAIN"
         value = var.labs_domain
       }
-      
+
       env {
         name  = "MAIN_DOMAIN"
         value = var.main_domain
       }
-      
+
       env {
         name  = "LABS_PROJECT_ID"
-        value = "labs-prd"
+        value = var.labs_project_id
       }
-      
+
       env {
         name  = "SEO_SERVICE_URL"
         value = var.deploy_services ? google_cloud_run_v2_service.home_seo_service[0].uri : ""
       }
-      
+
       resources {
         limits = {
           cpu    = "1"
@@ -122,7 +122,7 @@ resource "google_cloud_run_v2_service" "home_index_service" {
         }
       }
     }
-    
+
     scaling {
       min_instance_count = var.min_instances
       max_instance_count = var.max_instances

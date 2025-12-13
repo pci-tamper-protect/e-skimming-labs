@@ -68,7 +68,7 @@ output "labs_seo_service_account" {
 # GitHub Secrets (to be added manually)
 output "github_secrets_instructions_labs" {
   description = "Instructions for setting up GitHub secrets for labs"
-  value = <<-EOT
+  value       = <<-EOT
     Add the following secrets to your GitHub repository for LABS deployment:
     
     1. GCP_LABS_PROJECT_ID: ${var.project_id}

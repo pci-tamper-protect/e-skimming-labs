@@ -27,11 +27,12 @@ resource "google_service_account" "labs_seo" {
 resource "google_project_iam_member" "labs_runtime_roles" {
   for_each = toset([
     "roles/run.invoker",
-    "roles/firestore.user",
+    "roles/datastore.user",  # Firestore access (roles/firestore.user is not valid at project level)
     "roles/storage.objectViewer",
     "roles/storage.objectCreator",
     "roles/logging.logWriter",
-    "roles/monitoring.metricWriter"
+    "roles/monitoring.metricWriter",
+    "roles/artifactregistry.reader"
   ])
 
   project = var.project_id
@@ -40,13 +41,14 @@ resource "google_project_iam_member" "labs_runtime_roles" {
 }
 
 # IAM Roles for Deploy Service Account
+# Following principle of least privilege - only permissions needed for deployment
 resource "google_project_iam_member" "labs_deploy_roles" {
   for_each = toset([
-    "roles/run.admin",
-    "roles/artifactregistry.admin",
-    "roles/iam.serviceAccountUser",
-    "roles/storage.admin",
-    "roles/firestore.admin"
+    "roles/run.developer",           # Deploy and manage Cloud Run services (not full admin)
+    "roles/artifactregistry.writer", # Push container images
+    "roles/iam.serviceAccountUser",  # Use service accounts for Cloud Run
+    "roles/storage.objectViewer",    # Read storage objects during deployment
+    "roles/storage.objectCreator"    # Upload deployment artifacts
   ])
 
   project = var.project_id
@@ -57,7 +59,7 @@ resource "google_project_iam_member" "labs_deploy_roles" {
 # IAM Roles for Analytics Service Account
 resource "google_project_iam_member" "labs_analytics_roles" {
   for_each = toset([
-    "roles/firestore.user",
+    "roles/datastore.user",  # Firestore access (roles/firestore.user is not valid at project level)
     "roles/storage.objectViewer",
     "roles/storage.objectCreator",
     "roles/logging.logWriter",
@@ -72,7 +74,7 @@ resource "google_project_iam_member" "labs_analytics_roles" {
 # IAM Roles for SEO Service Account
 resource "google_project_iam_member" "labs_seo_roles" {
   for_each = toset([
-    "roles/firestore.user",
+    "roles/datastore.user",  # Firestore access (roles/firestore.user is not valid at project level)
     "roles/storage.objectViewer",
     "roles/logging.logWriter"
   ])
