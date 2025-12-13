@@ -6,6 +6,15 @@ terraform {
       version = "~> 5.0"
     }
   }
+
+  # Remote state backend - prevents local state files with sensitive data
+  # State bucket must be created manually before running terraform init
+  # Bucket name is environment-specific - use backend config files:
+  #   terraform init -backend-config=backend-stg.conf (for staging)
+  #   terraform init -backend-config=backend-prd.conf (for production)
+  backend "gcs" {
+    # bucket and prefix are set via backend config files
+  }
 }
 
 provider "google" {
@@ -28,7 +37,7 @@ resource "google_project_service" "required_apis" {
     "vpcaccess.googleapis.com"
   ])
 
-  service = each.value
+  service            = each.value
   disable_on_destroy = false
 }
 

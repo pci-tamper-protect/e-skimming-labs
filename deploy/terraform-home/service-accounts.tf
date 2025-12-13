@@ -26,7 +26,8 @@ resource "google_project_iam_member" "home_runtime_roles" {
     "roles/storage.objectViewer",
     "roles/storage.objectCreator",
     "roles/logging.logWriter",
-    "roles/monitoring.metricWriter"
+    "roles/monitoring.metricWriter",
+    "roles/artifactregistry.reader"
   ])
 
   project = var.project_id
@@ -35,13 +36,14 @@ resource "google_project_iam_member" "home_runtime_roles" {
 }
 
 # IAM Roles for Home Deploy Service Account
+# Following principle of least privilege - only permissions needed for deployment
 resource "google_project_iam_member" "home_deploy_roles" {
   for_each = toset([
-    "roles/run.admin",
-    "roles/artifactregistry.admin",
-    "roles/iam.serviceAccountUser",
-    "roles/storage.admin",
-    "roles/datastore.owner"
+    "roles/run.developer",           # Deploy and manage Cloud Run services (not full admin)
+    "roles/artifactregistry.writer", # Push container images
+    "roles/iam.serviceAccountUser",  # Use service accounts for Cloud Run
+    "roles/storage.objectViewer",    # Read storage objects during deployment
+    "roles/storage.objectCreator"    # Upload deployment artifacts
   ])
 
   project = var.project_id

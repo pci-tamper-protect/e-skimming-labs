@@ -35,15 +35,8 @@ output "analytics_service_url" {
   value       = google_cloud_run_v2_service.analytics_service.uri
 }
 
-output "seo_service_url" {
-  description = "The SEO service URL"
-  value       = google_cloud_run_v2_service.seo_service.uri
-}
-
-output "index_service_url" {
-  description = "The Index service URL"
-  value       = google_cloud_run_v2_service.index_service.uri
-}
+# Note: SEO and Index services are deployed in labs-home-stg/labs-home-prd project
+# See terraform-home/outputs.tf for their URLs
 
 output "labs_runtime_service_account" {
   description = "The runtime service account email"
@@ -68,7 +61,7 @@ output "labs_seo_service_account" {
 # GitHub Secrets (to be added manually)
 output "github_secrets_instructions" {
   description = "Instructions for setting up GitHub secrets"
-  value = <<-EOT
+  value       = <<-EOT
     Add the following secrets to your GitHub repository:
     
     1. GCP_PROJECT_ID: ${var.project_id}
