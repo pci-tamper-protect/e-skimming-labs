@@ -1,6 +1,18 @@
 # Dependabot configuration
 # Ensures all dependency updates target 'stg' branch first
 # Flow: Dependabot PR → stg → main (via auto-pr-prd.yml workflow)
+#
+# Versioning Policy:
+# - Stay at latest - 1 version unless latest-1 has EOL < 1 year
+# - See .github/VERSIONING_POLICY.md for full policy details
+# - Dependabot PRs must be reviewed against this policy before merging
+#
+# Review Checklist:
+# 1. Does PR upgrade to latest - 1? → Approve
+# 2. Does PR upgrade to latest? → Check EOL status
+#    - If latest-1 has EOL < 1 year → Approve
+#    - If latest-1 has no EOL or EOL > 1 year → Reject (comment with policy)
+# 3. Does PR include critical security fixes? → Approve (even if latest)
 
 version: 2
 updates:
