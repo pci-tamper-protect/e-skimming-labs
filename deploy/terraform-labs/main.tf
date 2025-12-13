@@ -49,6 +49,13 @@ resource "google_firestore_database" "labs_db" {
   location_id = var.firestore_location
   type        = "FIRESTORE_NATIVE"
 
+  # Protect staging from accidental deletion
+  # Note: Firestore databases cannot be deleted via Terraform once created
+  # Additional protection: use IAM to restrict deletion permissions
+  lifecycle {
+    prevent_destroy = var.environment == "stg"
+  }
+
   depends_on = [google_project_service.required_apis]
 }
 
@@ -56,7 +63,7 @@ resource "google_firestore_database" "labs_db" {
 resource "google_storage_bucket" "labs_data" {
   name          = "${var.project_id}-labs-data"
   location      = var.region
-  force_destroy = true
+  force_destroy = var.environment == "stg" ? false : true  # Protect staging from deletion
 
   uniform_bucket_level_access = true
 

@@ -8,6 +8,9 @@ resource "google_cloud_run_v2_service" "analytics_service" {
   location = var.region
   project  = var.project_id
 
+  # Protect staging from accidental deletion
+  deletion_protection = var.environment == "stg" ? true : false
+
   template {
     service_account = google_service_account.labs_analytics.email
     
