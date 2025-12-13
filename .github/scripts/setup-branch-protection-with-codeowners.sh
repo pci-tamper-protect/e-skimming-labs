@@ -73,7 +73,8 @@ MAIN_RULESET_ID=$(gh api repos/$REPO_OWNER/$REPO_NAME/rulesets 2>&1 | jq -r '.[]
 if [ -n "$MAIN_RULESET_ID" ] && [ "$MAIN_RULESET_ID" != "null" ]; then
   echo "Updating existing ruleset ID: $MAIN_RULESET_ID"
   CURRENT_RULESET=$(gh api repos/$REPO_OWNER/$REPO_NAME/rulesets/$MAIN_RULESET_ID)
-  echo "$CURRENT_RULESET" | jq ".bypass_actors = [{\"actor_type\": \"Team\", \"actor_id\": $TEAM_ID}]" > /tmp/updated-ruleset.json
+  UPDATED_RULESET=$(echo "$CURRENT_RULESET" | jq ".bypass_actors = [{\"actor_type\": \"Team\", \"actor_id\": $TEAM_ID}]")
+  echo "$UPDATED_RULESET" > /tmp/updated-ruleset.json
   gh api repos/$REPO_OWNER/$REPO_NAME/rulesets/$MAIN_RULESET_ID \
     --method PUT \
     --input /tmp/updated-ruleset.json > /dev/null
@@ -105,9 +106,7 @@ else
         "dismiss_stale_reviews_on_push": false,
         "require_code_owner_review": false,
         "require_last_push_approval": false,
-        "required_review_thread_resolution": false,
-        "automatic_copilot_code_review_enabled": true,
-        "allowed_merge_methods": ["merge", "squash", "rebase"]
+        "required_review_thread_resolution": false
       }
     }
   ],
