@@ -28,14 +28,20 @@ print_info() {
     echo -e "${BLUE}$1${NC}"
 }
 
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source environment configuration
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    source "$SCRIPT_DIR/.env"
+else
+    print_error ".env file not found. Please create a symlink to .env.stg or .env.prd"
+    print_info "Example: cd $SCRIPT_DIR && ln -s .env.prd .env"
+    exit 1
+fi
+
 # Configuration
-REPO="pci-tamper-protect/e-skimming-labs"
-HOME_PROJECT_ID="labs-home-prd"
-LABS_PROJECT_ID="labs-prd"
-HOME_REGION="us-central1"
-LABS_REGION="us-central1"
-HOME_REPO="home-images"
-LABS_REPO="lab-images"
+REPO="$GITHUB_REPO"
 
 print_header "Adding GitHub Secrets to $REPO"
 
@@ -54,28 +60,28 @@ fi
 print_status "Authenticated to GitHub ✓"
 
 # Add Project ID secrets
-print_header "Adding Project ID Secrets"
+print_header "Adding Project ID Secrets for $ENVIRONMENT environment"
 gh secret set GCP_HOME_PROJECT_ID --body "$HOME_PROJECT_ID" --repo $REPO
-print_status "GCP_HOME_PROJECT_ID added ✓"
+print_status "GCP_HOME_PROJECT_ID added ($HOME_PROJECT_ID) ✓"
 
 gh secret set GCP_LABS_PROJECT_ID --body "$LABS_PROJECT_ID" --repo $REPO
-print_status "GCP_LABS_PROJECT_ID added ✓"
+print_status "GCP_LABS_PROJECT_ID added ($LABS_PROJECT_ID) ✓"
 
 # Add Artifact Registry location secrets
 print_header "Adding Artifact Registry Location Secrets"
 gh secret set GAR_HOME_LOCATION --body "$HOME_REGION" --repo $REPO
-print_status "GAR_HOME_LOCATION added ✓"
+print_status "GAR_HOME_LOCATION added ($HOME_REGION) ✓"
 
 gh secret set GAR_LABS_LOCATION --body "$LABS_REGION" --repo $REPO
-print_status "GAR_LABS_LOCATION added ✓"
+print_status "GAR_LABS_LOCATION added ($LABS_REGION) ✓"
 
 # Add Repository name secrets
 print_header "Adding Repository Name Secrets"
 gh secret set REPOSITORY_HOME --body "$HOME_REPO" --repo $REPO
-print_status "REPOSITORY_HOME added ✓"
+print_status "REPOSITORY_HOME added ($HOME_REPO) ✓"
 
 gh secret set REPOSITORY_LABS --body "$LABS_REPO" --repo $REPO
-print_status "REPOSITORY_LABS added ✓"
+print_status "REPOSITORY_LABS added ($LABS_REPO) ✓"
 
 print_header "Verifying Secrets"
 

@@ -1,0 +1,133 @@
+#!/bin/bash
+# Build and push Docker images for shared components
+# This script builds the analytics, seo, and home-index services
+
+set -e
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source environment configuration
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    if [ -L "$SCRIPT_DIR/.env" ]; then
+        TARGET=$(readlink "$SCRIPT_DIR/.env")
+        echo "📋 Using .env -> $TARGET"
+    else
+        echo "📋 Using .env"
+    fi
+    source "$SCRIPT_DIR/.env"
+elif [ -f "$SCRIPT_DIR/.env.prd" ]; then
+    echo "📋 Using .env.prd"
+    source "$SCRIPT_DIR/.env.prd"
+elif [ -f "$SCRIPT_DIR/.env.stg" ]; then
+    echo "📋 Using .env.stg"
+    source "$SCRIPT_DIR/.env.stg"
+else
+    echo "❌ .env file not found in $SCRIPT_DIR"
+    exit 1
+fi
+
+LABS_PROJECT_ID="${LABS_PROJECT_ID:-}"
+HOME_PROJECT_ID="${HOME_PROJECT_ID:-}"
+REGION="${LABS_REGION:-${HOME_REGION:-us-central1}}"
+
+# Determine environment from project ID
+if [[ "$LABS_PROJECT_ID" == *"-stg" ]] || [[ "$HOME_PROJECT_ID" == *"-stg" ]]; then
+    ENVIRONMENT="stg"
+elif [[ "$LABS_PROJECT_ID" == *"-prd" ]] || [[ "$HOME_PROJECT_ID" == *"-prd" ]]; then
+    ENVIRONMENT="prd"
+else
+    ENVIRONMENT="${ENVIRONMENT:-prd}"
+fi
+
+echo "🏗️  Building and pushing Docker images"
+echo "======================================"
+echo "Labs Project ID: ${LABS_PROJECT_ID:-not set}"
+echo "Home Project ID: ${HOME_PROJECT_ID:-not set}"
+echo "Region: $REGION"
+echo "Environment: $ENVIRONMENT"
+echo ""
+
+# Check if gcloud is installed and authenticated
+if ! command -v gcloud &> /dev/null; then
+    echo "❌ gcloud CLI is not installed. Please install it first."
+    exit 1
+fi
+
+# Check if user is authenticated with gcloud
+if ! gcloud auth list --filter=status:ACTIVE --format="value(account)" &>/dev/null; then
+    echo "❌ No active gcloud authentication found."
+    echo "   Please run: gcloud auth login"
+    exit 1
+fi
+
+# Configure Docker to use gcloud as a credential helper
+echo "🔐 Configuring Docker authentication..."
+# Authenticate with both the target project and the base image project
+gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+# Also authenticate with pcioasis-operations for base images (if not already done)
+gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet || true
+
+# Build and push analytics service (to labs project)
+if [ -n "$LABS_PROJECT_ID" ]; then
+    echo ""
+    echo "📦 Building analytics service for labs project..."
+    gcloud config set project "$LABS_PROJECT_ID"
+    cd "$SCRIPT_DIR/shared-components/analytics-service"
+    REPOSITORY="e-skimming-labs"
+    IMAGE_NAME="${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${REPOSITORY}/analytics:latest"
+    docker build -t "$IMAGE_NAME" .
+    docker push "$IMAGE_NAME"
+    echo "✅ Analytics service image pushed: $IMAGE_NAME"
+fi
+
+# Build and push SEO and home-index services (to home project)
+if [ -n "$HOME_PROJECT_ID" ]; then
+    echo ""
+    echo "📦 Building SEO and home-index services for home project..."
+    gcloud config set project "$HOME_PROJECT_ID"
+    REPOSITORY="e-skimming-labs-home"
+    
+    # Check if repository exists, create if it doesn't
+    if ! gcloud artifacts repositories describe "$REPOSITORY" --location="$REGION" --project="$HOME_PROJECT_ID" &>/dev/null; then
+        echo "  Creating Artifact Registry repository $REPOSITORY..."
+        gcloud artifacts repositories create "$REPOSITORY" \
+            --repository-format=docker \
+            --location="$REGION" \
+            --project="$HOME_PROJECT_ID" \
+            --description="E-Skimming Labs Home Page container images" || {
+            echo "⚠️  Failed to create repository. It may already exist or you may need to deploy terraform-home first."
+        }
+    fi
+    
+    # Build SEO service
+    echo "  Building SEO service..."
+    cd "$SCRIPT_DIR/shared-components/seo-service"
+    SEO_IMAGE="${REGION}-docker.pkg.dev/${HOME_PROJECT_ID}/${REPOSITORY}/seo:latest"
+    docker build -t "$SEO_IMAGE" .
+    docker push "$SEO_IMAGE"
+    echo "✅ SEO service image pushed: $SEO_IMAGE"
+    
+    # Build home-index service (must be built from repo root due to COPY paths)
+    echo "  Building home-index service..."
+    # Get the repo root (one level up from deploy/)
+    REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+    cd "$REPO_ROOT"
+    INDEX_IMAGE="${REGION}-docker.pkg.dev/${HOME_PROJECT_ID}/${REPOSITORY}/index:latest"
+    docker build -f "$SCRIPT_DIR/shared-components/home-index-service/Dockerfile" -t "$INDEX_IMAGE" .
+    docker push "$INDEX_IMAGE"
+    echo "✅ Home-index service image pushed: $INDEX_IMAGE"
+fi
+
+echo ""
+echo "✅ All images built and pushed successfully!"
+echo ""
+echo "Images built:"
+if [ -n "$LABS_PROJECT_ID" ]; then
+    echo "  - Analytics: ${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/e-skimming-labs/analytics:latest"
+fi
+if [ -n "$HOME_PROJECT_ID" ]; then
+    echo "  - SEO: ${REGION}-docker.pkg.dev/${HOME_PROJECT_ID}/e-skimming-labs-home/seo:latest"
+    echo "  - Home-Index: ${REGION}-docker.pkg.dev/${HOME_PROJECT_ID}/e-skimming-labs-home/index:latest"
+fi
+

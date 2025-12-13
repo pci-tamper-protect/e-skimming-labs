@@ -1,4 +1,8 @@
-FROM us-central1-docker.pkg.dev/pcioasis-operations/containers/nginx-base:latest
+# Use public nginx image directly (nginx-base may not be built yet)
+FROM nginx:1.25-alpine
+
+# Install wget for health checks (if needed)
+RUN apk add --no-cache wget
 
 # Copy index page files
 COPY docs/ /usr/share/nginx/html/

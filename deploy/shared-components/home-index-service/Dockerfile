@@ -1,25 +1,35 @@
-# Build stage
-FROM us-central1-docker.pkg.dev/pcioasis-operations/containers/go-base:latest AS builder
+# Optimized Dockerfile using golden base image
+# Uses pcioasis-operations/containers/go-base for better caching
+# Note: This service is built from the repo root, not from the service directory
+
+# Declare build arguments at the top
+ARG BASE_IMAGE=us-central1-docker.pkg.dev/pcioasis-operations/containers/go-base:latest
+ARG ALPINE_BASE=us-central1-docker.pkg.dev/pcioasis-operations/containers/alpine-base:latest
+
+FROM ${BASE_IMAGE} AS builder
 
 # Set working directory
 WORKDIR /app
 
 # Copy go.mod and go.sum from the home-index-service directory
 COPY deploy/shared-components/home-index-service/go.mod ./
-COPY deploy/shared-components/home-index-service/go.sum ./
+# Copy go.sum if it exists (wildcard won't fail if file doesn't exist)
+COPY deploy/shared-components/home-index-service/go.sum* ./
 
-# Download dependencies
+# Download dependencies (will use cached modules from base image)
 RUN go mod download
 
 # Copy source code from the home-index-service directory
 COPY deploy/shared-components/home-index-service/ .
 
-# Generate go.sum and build the application
+# Update go.mod if needed
 RUN go mod tidy
+
+# Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 
-# Final stage
-FROM us-central1-docker.pkg.dev/pcioasis-operations/containers/alpine-base:latest
+# Final stage using alpine-base
+FROM ${ALPINE_BASE} AS runtime
 
 # Create app directory
 WORKDIR /app
@@ -30,13 +40,10 @@ COPY --from=builder /app/main .
 # Copy the docs directory for MITRE ATT&CK and threat model pages
 COPY docs ./docs
 
-# Copy lab README files from their original locations (keep docs close to code, no duplication)
-# Uses wildcard pattern to automatically include all lab README files
-# .dockerignore allows labs/*/README.md, so we copy labs structure temporarily to extract READMEs
+# Copy lab README files from their original locations
 COPY labs/ ./labs-temp/
-# Extract README files and organize them into docs/labs/{lab-id}/ structure
 RUN mkdir -p ./docs/labs && \
-    find ./labs-temp -name "README.md" -type f | while read readme; do \
+    find ./labs-temp -name "README.md" -type f 2>/dev/null | while read readme; do \
       lab_name=$(basename $(dirname "$readme")); \
       mkdir -p "./docs/labs/$lab_name" && \
       cp "$readme" "./docs/labs/$lab_name/README.md"; \
@@ -46,15 +53,17 @@ RUN mkdir -p ./docs/labs && \
 # Copy catalog info for service metadata
 COPY catalog-info.yaml ./catalog-info.yaml
 
-# Switch to non-root user
+# Set ownership (alpine-base already has appuser)
+RUN chown -R appuser:appuser /app
 USER appuser
 
 # Expose port
 EXPOSE 8080
 
-# Health check
+# Health check (alpine-base has wget pre-installed)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
 # Run the application
 CMD ["./main"]
+

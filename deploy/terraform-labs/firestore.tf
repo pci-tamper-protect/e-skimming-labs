@@ -3,8 +3,8 @@
 
 # Firestore indexes for better query performance
 resource "google_firestore_index" "user_progress_index" {
-  project = var.project_id
-  database = "(default)"
+  project    = var.project_id
+  database   = "(default)"
   collection = "user_progress"
 
   fields {
@@ -24,8 +24,8 @@ resource "google_firestore_index" "user_progress_index" {
 }
 
 resource "google_firestore_index" "analytics_index" {
-  project = var.project_id
-  database = "(default)"
+  project    = var.project_id
+  database   = "(default)"
   collection = "analytics"
 
   fields {
@@ -45,8 +45,8 @@ resource "google_firestore_index" "analytics_index" {
 }
 
 resource "google_firestore_index" "seo_data_index" {
-  project = var.project_id
-  database = "(default)"
+  project    = var.project_id
+  database   = "(default)"
   collection = "seo_data"
 
   fields {
