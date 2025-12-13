@@ -61,9 +61,8 @@ resource "google_firestore_database" "labs_db" {
   # Protect staging from accidental deletion
   # Note: Firestore databases cannot be deleted via Terraform once created
   # Additional protection: use IAM to restrict deletion permissions
-  lifecycle {
-    prevent_destroy = var.environment == "stg"
-  }
+  # Note: prevent_destroy in lifecycle blocks requires literal boolean values,
+  # so we rely on IAM permissions and the fact that Firestore cannot be deleted via Terraform
 
   depends_on = [google_project_service.required_apis]
 }
@@ -72,7 +71,7 @@ resource "google_firestore_database" "labs_db" {
 resource "google_storage_bucket" "labs_data" {
   name          = "${var.project_id}-labs-data"
   location      = var.region
-  force_destroy = var.environment == "stg" ? false : true  # Protect staging from deletion
+  force_destroy = var.environment == "stg" ? false : true # Protect staging from deletion
 
   uniform_bucket_level_access = true
 

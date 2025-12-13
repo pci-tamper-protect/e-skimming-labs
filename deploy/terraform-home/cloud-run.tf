@@ -135,9 +135,12 @@ resource "google_cloud_run_v2_service" "home_index_service" {
   ]
 }
 
-# Allow unauthenticated access to all services
+# IAM access control - environment-specific
+# Production: Public access (allUsers)
+# Staging: Restricted to developer groups (configured in iap.tf)
+
 resource "google_cloud_run_v2_service_iam_member" "home_seo_public" {
-  count    = var.deploy_services ? 1 : 0
+  count    = var.deploy_services && var.environment == "prd" ? 1 : 0
   location = google_cloud_run_v2_service.home_seo_service[0].location
   project  = google_cloud_run_v2_service.home_seo_service[0].project
   name     = google_cloud_run_v2_service.home_seo_service[0].name
@@ -146,10 +149,13 @@ resource "google_cloud_run_v2_service_iam_member" "home_seo_public" {
 }
 
 resource "google_cloud_run_v2_service_iam_member" "home_index_public" {
-  count    = var.deploy_services ? 1 : 0
+  count    = var.deploy_services && var.environment == "prd" ? 1 : 0
   location = google_cloud_run_v2_service.home_index_service[0].location
   project  = google_cloud_run_v2_service.home_index_service[0].project
   name     = google_cloud_run_v2_service.home_index_service[0].name
   role     = "roles/run.invoker"
   member   = "allUsers"
 }
+
+# Note: For staging (stg), access is restricted via IAM group bindings in iap.tf
+# Groups: 2025-interns@pcioasis.com, core-eng@pcioasis.com

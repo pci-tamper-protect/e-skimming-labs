@@ -27,7 +27,7 @@ resource "google_service_account" "labs_seo" {
 resource "google_project_iam_member" "labs_runtime_roles" {
   for_each = toset([
     "roles/run.invoker",
-    "roles/datastore.user",  # Firestore access (roles/firestore.user is not valid at project level)
+    "roles/datastore.user", # Firestore access (roles/firestore.user is not valid at project level)
     "roles/storage.objectViewer",
     "roles/storage.objectCreator",
     "roles/logging.logWriter",
@@ -59,7 +59,7 @@ resource "google_project_iam_member" "labs_deploy_roles" {
 # IAM Roles for Analytics Service Account
 resource "google_project_iam_member" "labs_analytics_roles" {
   for_each = toset([
-    "roles/datastore.user",  # Firestore access (roles/firestore.user is not valid at project level)
+    "roles/datastore.user", # Firestore access (roles/firestore.user is not valid at project level)
     "roles/storage.objectViewer",
     "roles/storage.objectCreator",
     "roles/logging.logWriter",
@@ -74,7 +74,7 @@ resource "google_project_iam_member" "labs_analytics_roles" {
 # IAM Roles for SEO Service Account
 resource "google_project_iam_member" "labs_seo_roles" {
   for_each = toset([
-    "roles/datastore.user",  # Firestore access (roles/firestore.user is not valid at project level)
+    "roles/datastore.user", # Firestore access (roles/firestore.user is not valid at project level)
     "roles/storage.objectViewer",
     "roles/logging.logWriter"
   ])
