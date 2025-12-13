@@ -127,8 +127,11 @@ func main() {
 	if mainDomain == "" {
 		mainDomain = "pcioasis.com"
 	}
+	// Default to empty - should be set via environment variable
+	// This allows staging to use labs-stg and production to use labs-prd
 	if labsProjectID == "" {
-		labsProjectID = "labs-prd"
+		// Log warning but don't set default - let the service fail if not configured
+		log.Printf("WARNING: LABS_PROJECT_ID not set. This must be configured via environment variable.")
 	}
 
 	// Choose http for local/dev, https otherwise
