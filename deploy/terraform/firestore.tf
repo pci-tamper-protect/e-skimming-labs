@@ -1,21 +1,14 @@
 # Firestore Collections and Security Rules
-
-# Firestore security rules
-resource "google_firestore_database" "labs_db_rules" {
-  project     = var.project_id
-  name        = "(default)"
-  location_id = var.firestore_location
-  type        = "FIRESTORE_NATIVE"
-
-  # Security rules for the database
-  depends_on = [google_firestore_database.labs_db]
-}
+# Note: The main Firestore database is defined in main.tf
 
 # Firestore indexes for better query performance
+# These depend on the database existing first
 resource "google_firestore_index" "user_progress_index" {
-  project = var.project_id
-  database = "(default)"
+  project    = var.project_id
+  database   = "(default)"
   collection = "user_progress"
+
+  depends_on = [google_firestore_database.labs_db]
 
   fields {
     field_path = "user_id"
@@ -34,9 +27,11 @@ resource "google_firestore_index" "user_progress_index" {
 }
 
 resource "google_firestore_index" "analytics_index" {
-  project = var.project_id
-  database = "(default)"
+  project    = var.project_id
+  database   = "(default)"
   collection = "analytics"
+
+  depends_on = [google_firestore_database.labs_db]
 
   fields {
     field_path = "event_type"
@@ -55,9 +50,11 @@ resource "google_firestore_index" "analytics_index" {
 }
 
 resource "google_firestore_index" "seo_data_index" {
-  project = var.project_id
-  database = "(default)"
+  project    = var.project_id
+  database   = "(default)"
   collection = "seo_data"
+
+  depends_on = [google_firestore_database.labs_db]
 
   fields {
     field_path = "lab_id"

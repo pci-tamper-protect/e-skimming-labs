@@ -53,7 +53,7 @@ output "home_seo_service_account" {
 # GitHub Secrets (to be added manually)
 output "github_secrets_instructions_home" {
   description = "Instructions for setting up GitHub secrets for home page"
-  value = <<-EOT
+  value       = <<-EOT
     Add the following secrets to your GitHub repository for HOME PAGE deployment:
     
     1. GCP_HOME_PROJECT_ID: ${var.project_id}

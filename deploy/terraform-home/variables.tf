@@ -69,3 +69,9 @@ variable "memory_limit" {
   type        = string
   default     = "512Mi"
 }
+
+variable "labs_project_id" {
+  description = "The GCP project ID for labs (used by home-index service to reference labs)"
+  type        = string
+  default     = "labs-prd"
+}

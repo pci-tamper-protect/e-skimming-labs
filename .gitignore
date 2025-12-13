@@ -38,6 +38,8 @@ npm-debug.log*
 # Environment
 .env
 .env.local
+# Note: .env.stg and .env.prd in deploy/ are tracked
+# deploy/.env should be a symlink to one of them
 
 # Terraform
 **/.terraform/**

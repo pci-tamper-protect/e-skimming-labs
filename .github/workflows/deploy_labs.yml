@@ -137,6 +137,7 @@ jobs:
             --region=${{ env.HOME_GAR_LOCATION }} \
             --platform=managed \
             --allow-unauthenticated \
+            --service-account=home-runtime-sa@${{ env.HOME_PROJECT_ID }}.iam.gserviceaccount.com \
             --port=8080 \
             --memory=512Mi \
             --cpu=1 \
@@ -152,6 +153,7 @@ jobs:
             --region=${{ env.HOME_GAR_LOCATION }} \
             --platform=managed \
             --allow-unauthenticated \
+            --service-account=home-runtime-sa@${{ env.HOME_PROJECT_ID }}.iam.gserviceaccount.com \
             --port=8080 \
             --memory=512Mi \
             --cpu=1 \
@@ -212,6 +214,7 @@ jobs:
             --region=${{ env.LABS_GAR_LOCATION }} \
             --platform=managed \
             --allow-unauthenticated \
+            --service-account=labs-runtime-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
             --port=8080 \
             --memory=512Mi \
             --cpu=1 \
@@ -278,6 +281,7 @@ jobs:
             --region=${{ env.LABS_GAR_LOCATION }} \
             --platform=managed \
             --allow-unauthenticated \
+            --service-account=labs-runtime-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
             --port=8080 \
             --memory=512Mi \
             --cpu=1 \
@@ -355,6 +359,7 @@ jobs:
             --region=${{ env.LABS_GAR_LOCATION }} \
             --platform=managed \
             --allow-unauthenticated \
+            --service-account=labs-runtime-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
             --port=8080 \
             --memory=512Mi \
             --cpu=1 \

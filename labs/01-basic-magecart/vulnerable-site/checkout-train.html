@@ -143,6 +143,7 @@
         <div style="float: right; margin-top: 5px">
           <a
             href="http://localhost:3000"
+            aria-label="Go back to labs"
             style="
               color: white;
               text-decoration: none;
@@ -156,6 +157,7 @@
           <a
             href="http://localhost:9002/stolen"
             target="_blank"
+            aria-label="View Stolen Data"
             style="
               color: white;
               text-decoration: none;
@@ -167,6 +169,7 @@
           >
           <a
             href="index.html"
+            aria-label="Go back to store"
             style="
               color: white;
               text-decoration: none;
@@ -201,6 +204,7 @@
             placeholder="4532 1234 5678 9012"
             maxlength="19"
             required
+            aria-label="Enter Card Number"
           />
         </div>
 
@@ -215,16 +219,17 @@
               placeholder="MM/YY"
               maxlength="5"
               required
+              aria-label="Enter Expiry date"
             />
           </div>
 
           <div class="form-group">
             <label for="cvv">CVV</label>
-            <input type="text" id="cvv" name="cvv" autocomplete="cc-csc" placeholder="123" maxlength="4" required />
+            <input type="text" id="cvv" name="cvv" autocomplete="cc-csc" placeholder="123" maxlength="4" required aria-label="Enter Cvv" />
           </div>
         </div>
 
-        <button type="submit" class="submit-btn">Complete Purchase - $299.99</button>
+        <button type="submit" class="submit-btn" aria-label="submit button to complete purchase">Complete Purchase - $299.99</button>
 
         <div class="security-badge">🔒 Your payment is secure and encrypted</div>
       </form>
@@ -243,6 +248,7 @@
         if (isLocal) {
           const clearCacheBtn = document.createElement('button')
           clearCacheBtn.textContent = '🗑️ Clear Cache'
+          clearCacheBtn.setAttribute('aria-label', 'Clear browser cache') //aria-label added
           clearCacheBtn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9999;padding:10px 20px;background:#dc2626;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;box-shadow:0 4px 6px rgba(0,0,0,0.3);'
           clearCacheBtn.onclick = function() {
             if ('caches' in window) {
