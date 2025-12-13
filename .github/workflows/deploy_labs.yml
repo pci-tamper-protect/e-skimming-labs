@@ -91,7 +91,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build SEO Service
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: deploy/shared-components/seo-service
           file: deploy/shared-components/seo-service/Dockerfile
@@ -106,7 +106,7 @@ jobs:
           load: true
 
       - name: Build Index Service
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: deploy/shared-components/home-index-service/Dockerfile
@@ -188,7 +188,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build Analytics Service
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: deploy/shared-components/analytics-service
           file: deploy/shared-components/analytics-service/Dockerfile
@@ -253,7 +253,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build lab container image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: labs/${{ matrix.lab }}
           file: labs/${{ matrix.lab }}/Dockerfile
@@ -332,7 +332,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build index page container
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: deploy/Dockerfile.index
