@@ -50,7 +50,17 @@ if [[ "$PROJECT_ID" == *"-stg" ]]; then
 elif [[ "$PROJECT_ID" == *"-prd" ]]; then
     ENVIRONMENT="prd"
 else
-    ENVIRONMENT="${ENVIRONMENT:-prd}"
+    echo "❌ Cannot determine environment from project ID: $PROJECT_ID"
+    echo "   Project ID must end with -stg or -prd"
+    echo "   Or set ENVIRONMENT environment variable explicitly (stg or prd)"
+    exit 1
+fi
+
+# Verify environment is explicitly set
+if [ -z "$ENVIRONMENT" ]; then
+    echo "❌ ENVIRONMENT must be explicitly set (stg or prd)"
+    echo "   Set it in .env file or as environment variable"
+    exit 1
 fi
 
 echo "🚀 Deploying E-Skimming Labs Infrastructure"
@@ -167,8 +177,6 @@ fi
 echo "📋 Planning Terraform deployment..."
 # Try to plan, and if we get a lock error, attempt to unlock stale locks
 terraform plan \
-    -var="project_id=$PROJECT_ID" \
-    -var="region=$REGION" \
     -var="environment=$ENVIRONMENT" \
     -out=tfplan 2>&1 | tee /tmp/terraform-plan.log || {
     PLAN_OUTPUT=$(cat /tmp/terraform-plan.log)
@@ -183,7 +191,6 @@ terraform plan \
             echo ""
             echo "   Retrying terraform plan..."
             terraform plan \
-                -var="project_id=$PROJECT_ID" \
                 -var="region=$REGION" \
                 -var="environment=$ENVIRONMENT" \
                 -out=tfplan

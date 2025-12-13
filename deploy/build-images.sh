@@ -37,7 +37,19 @@ if [[ "$LABS_PROJECT_ID" == *"-stg" ]] || [[ "$HOME_PROJECT_ID" == *"-stg" ]]; t
 elif [[ "$LABS_PROJECT_ID" == *"-prd" ]] || [[ "$HOME_PROJECT_ID" == *"-prd" ]]; then
     ENVIRONMENT="prd"
 else
-    ENVIRONMENT="${ENVIRONMENT:-prd}"
+    echo "❌ Cannot determine environment from project IDs:"
+    echo "   LABS_PROJECT_ID: ${LABS_PROJECT_ID:-not set}"
+    echo "   HOME_PROJECT_ID: ${HOME_PROJECT_ID:-not set}"
+    echo "   Project IDs must end with -stg or -prd"
+    echo "   Or set ENVIRONMENT environment variable explicitly (stg or prd)"
+    exit 1
+fi
+
+# Verify environment is explicitly set
+if [ -z "$ENVIRONMENT" ]; then
+    echo "❌ ENVIRONMENT must be explicitly set (stg or prd)"
+    echo "   Set it in .env file or as environment variable"
+    exit 1
 fi
 
 echo "🏗️  Building and pushing Docker images"

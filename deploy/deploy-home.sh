@@ -50,7 +50,17 @@ if [[ "$PROJECT_ID" == *"-stg" ]]; then
 elif [[ "$PROJECT_ID" == *"-prd" ]]; then
     ENVIRONMENT="prd"
 else
-    ENVIRONMENT="${ENVIRONMENT:-prd}"
+    echo "❌ Cannot determine environment from project ID: $PROJECT_ID"
+    echo "   Project ID must end with -stg or -prd"
+    echo "   Or set ENVIRONMENT environment variable explicitly (stg or prd)"
+    exit 1
+fi
+
+# Verify environment is explicitly set
+if [ -z "$ENVIRONMENT" ]; then
+    echo "❌ ENVIRONMENT must be explicitly set (stg or prd)"
+    echo "   Set it in .env file or as environment variable"
+    exit 1
 fi
 
 # Determine labs project ID (for home-index service)
@@ -160,10 +170,8 @@ fi
 # Plan the deployment
 echo "📋 Planning Terraform deployment..."
 terraform plan \
-    -var="project_id=$PROJECT_ID" \
     -var="region=$REGION" \
     -var="environment=$ENVIRONMENT" \
-    -var="labs_project_id=$LABS_PROJECT_ID" \
     -var="deploy_services=true" \
     -out=tfplan
 

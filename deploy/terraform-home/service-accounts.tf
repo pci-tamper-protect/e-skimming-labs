@@ -30,7 +30,7 @@ resource "google_project_iam_member" "home_runtime_roles" {
     "roles/artifactregistry.reader"
   ])
 
-  project = var.project_id
+  project = local.project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.home_runtime.email}"
 }
@@ -46,7 +46,7 @@ resource "google_project_iam_member" "home_deploy_roles" {
     "roles/storage.objectCreator"    # Upload deployment artifacts
   ])
 
-  project = var.project_id
+  project = local.project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.home_deploy.email}"
 }
@@ -59,7 +59,7 @@ resource "google_project_iam_member" "home_seo_roles" {
     "roles/logging.logWriter"
   ])
 
-  project = var.project_id
+  project = local.project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.home_seo.email}"
 }

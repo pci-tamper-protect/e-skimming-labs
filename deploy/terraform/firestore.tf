@@ -4,7 +4,7 @@
 # Firestore indexes for better query performance
 # These depend on the database existing first
 resource "google_firestore_index" "user_progress_index" {
-  project    = var.project_id
+  project    = local.project_id
   database   = "(default)"
   collection = "user_progress"
 
@@ -24,10 +24,15 @@ resource "google_firestore_index" "user_progress_index" {
     field_path = "completed_at"
     order      = "DESCENDING"
   }
+
+  fields {
+    field_path = "__name__"
+    order      = "DESCENDING"
+  }
 }
 
 resource "google_firestore_index" "analytics_index" {
-  project    = var.project_id
+  project    = local.project_id
   database   = "(default)"
   collection = "analytics"
 
@@ -47,10 +52,15 @@ resource "google_firestore_index" "analytics_index" {
     field_path = "lab_id"
     order      = "ASCENDING"
   }
+
+  fields {
+    field_path = "__name__"
+    order      = "ASCENDING"
+  }
 }
 
 resource "google_firestore_index" "seo_data_index" {
-  project    = var.project_id
+  project    = local.project_id
   database   = "(default)"
   collection = "seo_data"
 
@@ -63,6 +73,11 @@ resource "google_firestore_index" "seo_data_index" {
 
   fields {
     field_path = "last_updated"
+    order      = "DESCENDING"
+  }
+
+  fields {
+    field_path = "__name__"
     order      = "DESCENDING"
   }
 }

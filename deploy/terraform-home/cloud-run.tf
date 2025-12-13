@@ -6,13 +6,13 @@ resource "google_cloud_run_v2_service" "home_seo_service" {
   count    = var.deploy_services ? 1 : 0
   name     = "home-seo-${var.environment}"
   location = var.region
-  project  = var.project_id
+  project  = local.project_id
 
   template {
     service_account = google_service_account.home_seo.email
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/e-skimming-labs-home/seo:latest"
+      image = "${var.region}-docker.pkg.dev/${local.project_id}/e-skimming-labs-home/seo:latest"
 
       ports {
         container_port = 8080
@@ -20,7 +20,7 @@ resource "google_cloud_run_v2_service" "home_seo_service" {
 
       env {
         name  = "PROJECT_ID"
-        value = var.project_id
+        value = local.project_id
       }
 
       env {
@@ -40,7 +40,7 @@ resource "google_cloud_run_v2_service" "home_seo_service" {
 
       env {
         name  = "LABS_PROJECT_ID"
-        value = var.labs_project_id
+        value = local.labs_project_id
       }
 
       resources {
@@ -68,13 +68,13 @@ resource "google_cloud_run_v2_service" "home_index_service" {
   count    = var.deploy_services ? 1 : 0
   name     = "home-index-${var.environment}"
   location = var.region
-  project  = var.project_id
+  project  = local.project_id
 
   template {
     service_account = google_service_account.home_runtime.email
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/e-skimming-labs-home/index:latest"
+      image = "${var.region}-docker.pkg.dev/${local.project_id}/e-skimming-labs-home/index:latest"
 
       ports {
         container_port = 8080
@@ -82,7 +82,7 @@ resource "google_cloud_run_v2_service" "home_index_service" {
 
       env {
         name  = "PROJECT_ID"
-        value = var.project_id
+        value = local.project_id
       }
 
       env {
@@ -107,7 +107,7 @@ resource "google_cloud_run_v2_service" "home_index_service" {
 
       env {
         name  = "LABS_PROJECT_ID"
-        value = var.labs_project_id
+        value = local.labs_project_id
       }
 
       env {

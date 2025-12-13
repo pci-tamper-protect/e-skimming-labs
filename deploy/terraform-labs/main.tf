@@ -17,8 +17,13 @@ terraform {
   }
 }
 
+# Calculate project ID from environment
+locals {
+  project_id = "labs-${var.environment}"
+}
+
 provider "google" {
-  project = var.project_id
+  project = local.project_id
   region  = var.region
 }
 
@@ -37,6 +42,7 @@ resource "google_project_service" "required_apis" {
     "vpcaccess.googleapis.com"
   ])
 
+  project            = local.project_id
   service            = each.value
   disable_on_destroy = false
 }
@@ -53,7 +59,7 @@ resource "google_artifact_registry_repository" "labs_repo" {
 
 # Create Firestore database
 resource "google_firestore_database" "labs_db" {
-  project     = var.project_id
+  project     = local.project_id
   name        = "(default)"
   location_id = var.firestore_location
   type        = "FIRESTORE_NATIVE"
@@ -69,7 +75,7 @@ resource "google_firestore_database" "labs_db" {
 
 # Create Cloud Storage buckets
 resource "google_storage_bucket" "labs_data" {
-  name          = "${var.project_id}-labs-data"
+  name          = "${local.project_id}-labs-data"
   location      = var.region
   force_destroy = var.environment == "stg" ? false : true # Protect staging from deletion
 
@@ -88,7 +94,7 @@ resource "google_storage_bucket" "labs_data" {
 }
 
 resource "google_storage_bucket" "labs_logs" {
-  name          = "${var.project_id}-labs-logs"
+  name          = "${local.project_id}-labs-logs"
   location      = var.region
   force_destroy = true
 
