@@ -1,166 +1,72 @@
+# Dependabot configuration
+# Ensures all dependency updates target 'stg' branch first
+# Flow: Dependabot PR → stg → main (via auto-pr-prd.yml workflow)
+
 version: 2
 updates:
-  # GitHub Actions dependencies
+  # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "github-actions"
-    reviewers:
-      - "AyaMehjez"
-      - "tmarshiqe14"
-      - "Chinmai10"
+    # Target stg branch (default branch)
+    target-branch: "stg"
+    pull-request-branch-name:
+      separator: "-"
+    open-pull-requests-limit: 10
 
-  # Go dependencies for analytics service
-  - package-ecosystem: "gomod"
-    directory: "/deploy/shared-components/analytics-service"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "go"
-    reviewers:
-      - "AyaMehjez"
-      - "tmarshiqe14"
-      - "Chinmai10"
-
-  # Go dependencies for SEO service
-  - package-ecosystem: "gomod"
-    directory: "/deploy/shared-components/seo-service"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "go"
-    reviewers:
-      - "AyaMehjez"
-      - "tmarshiqe14"
-      - "Chinmai10"
-
-  # Go dependencies for home index service
-  - package-ecosystem: "gomod"
-    directory: "/deploy/shared-components/home-index-service"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "go"
-    reviewers:
-      - "AyaMehjez"
-      - "tmarshiqe14"
-      - "Chinmai10"
-
-  # NPM dependencies (if any JavaScript projects)
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "javascript"
-    reviewers:
-      - "AyaMehjez"
-      - "tmarshiqe14"
-      - "Chinmai10"
-    ignore:
-      # Ignore patch updates for dev dependencies
-      - dependency-name: "*"
-        update-types: ["version-update:semver-patch"]
-
-  # Docker base images
+  # Docker (container images)
   - package-ecosystem: "docker"
     directory: "/deploy/shared-components/analytics-service"
     schedule:
       interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 3
-    labels:
-      - "dependencies"
-      - "docker"
-    reviewers:
-      - "AyaMehjez"
-      - "tmarshiqe14"
-      - "Chinmai10"
+    target-branch: "stg"
+    pull-request-branch-name:
+      separator: "-"
+    open-pull-requests-limit: 5
 
   - package-ecosystem: "docker"
     directory: "/deploy/shared-components/seo-service"
     schedule:
       interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 3
-    labels:
-      - "dependencies"
-      - "docker"
-    reviewers:
-      - "AyaMehjez"
-      - "tmarshiqe14"
-      - "Chinmai10"
+    target-branch: "stg"
+    pull-request-branch-name:
+      separator: "-"
+    open-pull-requests-limit: 5
 
   - package-ecosystem: "docker"
     directory: "/deploy/shared-components/home-index-service"
     schedule:
       interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 3
-    labels:
-      - "dependencies"
-      - "docker"
-    reviewers:
-      - "AyaMehjez"
-      - "tmarshiqe14"
-      - "Chinmai10"
+    target-branch: "stg"
+    pull-request-branch-name:
+      separator: "-"
+    open-pull-requests-limit: 5
 
-  # Terraform
+  # Terraform providers
   - package-ecosystem: "terraform"
     directory: "/deploy/terraform"
     schedule:
       interval: "weekly"
-      day: "monday"
+    target-branch: "stg"
+    pull-request-branch-name:
+      separator: "-"
     open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "terraform"
-    reviewers:
-      - "AyaMehjez"
-      - "tmarshiqe14"
-      - "Chinmai10"
-
-  - package-ecosystem: "terraform"
-    directory: "/deploy/terraform-labs"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "terraform"
-    reviewers:
-      - "AyaMehjez"
-      - "tmarshiqe14"
-      - "Chinmai10"
 
   - package-ecosystem: "terraform"
     directory: "/deploy/terraform-home"
     schedule:
       interval: "weekly"
-      day: "monday"
+    target-branch: "stg"
+    pull-request-branch-name:
+      separator: "-"
     open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "terraform"
-    reviewers:
-      - "AyaMehjez"
-      - "tmarshiqe14"
-      - "Chinmai10"
+
+  - package-ecosystem: "terraform"
+    directory: "/deploy/terraform-labs"
+    schedule:
+      interval: "weekly"
+    target-branch: "stg"
+    pull-request-branch-name:
+      separator: "-"
+    open-pull-requests-limit: 5
