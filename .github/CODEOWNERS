@@ -1,23 +1,8 @@
-# CODEOWNERS for E-Skimming Labs
-# These owners will be requested for review when someone opens a pull request.
-# The last matching pattern takes precedence.
+# CODEOWNERS file
+# This file defines code owners who must approve PRs to the 'stg' branch
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
-# Default owners for everything in the repo
-* @AyaMehjez @tmarshiqe14 @Chinmai10
-
-# Infrastructure and deployment configuration
-/deploy/** @AyaMehjez @tmarshiqe14 @Chinmai10
-/.github/workflows/** @AyaMehjez @tmarshiqe14 @Chinmai10
-
-# Environment configuration files
-/deploy/.env.stg @AyaMehjez @tmarshiqe14 @Chinmai10
-/deploy/.env.prd @AyaMehjez @tmarshiqe14 @Chinmai10
-
-# Terraform infrastructure
-/deploy/terraform/** @AyaMehjez @tmarshiqe14 @Chinmai10
-/deploy/terraform-home/** @AyaMehjez @tmarshiqe14 @Chinmai10
-/deploy/terraform-labs/** @AyaMehjez @tmarshiqe14 @Chinmai10
-
-# Security-critical files
-/branch-protection.json @AyaMehjez @tmarshiqe14 @Chinmai10
-/.github/CODEOWNERS @AyaMehjez @tmarshiqe14 @Chinmai10
+# All files require CODEOWNERS approval for PRs to stg
+# Note: This only applies to PRs targeting the 'stg' branch
+# Approvers: engineering-core team + 3 specific gmail users
+* @pci-tamper-protect/engineering-core @srichinmai2004 @tmarshiqe @ayaaslam83
