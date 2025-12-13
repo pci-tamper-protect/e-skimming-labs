@@ -83,7 +83,7 @@ jobs:
 
       - name: Set up Cloud SDK
         if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
 
       - name: Configure Docker to use gcloud as credential helper
         if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null
@@ -189,7 +189,7 @@ jobs:
 
       - name: Set up Cloud SDK
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
 
       - name: Configure Docker to use gcloud as credential helper
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
@@ -261,7 +261,7 @@ jobs:
 
       - name: Set up Cloud SDK
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
 
       - name: Configure Docker to use gcloud as credential helper
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
@@ -348,7 +348,7 @@ jobs:
 
       - name: Set up Cloud SDK
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
 
       - name: Configure Docker to use gcloud as credential helper
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
