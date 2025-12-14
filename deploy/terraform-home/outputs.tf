@@ -2,7 +2,7 @@
 
 output "project_id" {
   description = "The GCP project ID for home page"
-  value       = var.project_id
+  value       = local.project_id
 }
 
 output "region" {
@@ -56,7 +56,7 @@ output "github_secrets_instructions_home" {
   value       = <<-EOT
     Add the following secrets to your GitHub repository for HOME PAGE deployment:
     
-    1. GCP_HOME_PROJECT_ID: ${var.project_id}
+    1. GCP_HOME_PROJECT_ID: ${local.project_id}
     2. GCP_HOME_SA_KEY: [Use the service account key from terraform output]
     3. GAR_HOME_LOCATION: ${var.region}
     4. REPOSITORY_HOME: e-skimming-labs-home

@@ -27,7 +27,7 @@ resource "google_service_account" "labs_seo" {
 resource "google_project_iam_member" "labs_runtime_roles" {
   for_each = toset([
     "roles/run.invoker",
-    "roles/datastore.user",  # Firestore access (roles/firestore.user is not valid at project level)
+    "roles/datastore.user", # Firestore access (roles/firestore.user is not valid at project level)
     "roles/storage.objectViewer",
     "roles/storage.objectCreator",
     "roles/logging.logWriter",
@@ -35,7 +35,7 @@ resource "google_project_iam_member" "labs_runtime_roles" {
     "roles/artifactregistry.reader"
   ])
 
-  project = var.project_id
+  project = local.project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.labs_runtime.email}"
 }
@@ -51,7 +51,7 @@ resource "google_project_iam_member" "labs_deploy_roles" {
     "roles/storage.objectCreator"    # Upload deployment artifacts
   ])
 
-  project = var.project_id
+  project = local.project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.labs_deploy.email}"
 }
@@ -59,14 +59,14 @@ resource "google_project_iam_member" "labs_deploy_roles" {
 # IAM Roles for Analytics Service Account
 resource "google_project_iam_member" "labs_analytics_roles" {
   for_each = toset([
-    "roles/datastore.user",  # Firestore access (roles/firestore.user is not valid at project level)
+    "roles/datastore.user", # Firestore access (roles/firestore.user is not valid at project level)
     "roles/storage.objectViewer",
     "roles/storage.objectCreator",
     "roles/logging.logWriter",
     "roles/monitoring.metricWriter"
   ])
 
-  project = var.project_id
+  project = local.project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.labs_analytics.email}"
 }
@@ -74,12 +74,12 @@ resource "google_project_iam_member" "labs_analytics_roles" {
 # IAM Roles for SEO Service Account
 resource "google_project_iam_member" "labs_seo_roles" {
   for_each = toset([
-    "roles/datastore.user",  # Firestore access (roles/firestore.user is not valid at project level)
+    "roles/datastore.user", # Firestore access (roles/firestore.user is not valid at project level)
     "roles/storage.objectViewer",
     "roles/logging.logWriter"
   ])
 
-  project = var.project_id
+  project = local.project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.labs_seo.email}"
 }

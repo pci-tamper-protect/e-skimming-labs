@@ -35,7 +35,7 @@ resource "google_project_iam_member" "labs_runtime_roles" {
     "roles/artifactregistry.reader"
   ])
 
-  project = var.project_id
+  project = local.project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.labs_runtime.email}"
 }
@@ -51,7 +51,7 @@ resource "google_project_iam_member" "labs_deploy_roles" {
     "roles/storage.objectCreator"    # Upload deployment artifacts
   ])
 
-  project = var.project_id
+  project = local.project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.labs_deploy.email}"
 }
@@ -66,7 +66,7 @@ resource "google_project_iam_member" "labs_analytics_roles" {
     "roles/monitoring.metricWriter"
   ])
 
-  project = var.project_id
+  project = local.project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.labs_analytics.email}"
 }
@@ -79,7 +79,7 @@ resource "google_project_iam_member" "labs_seo_roles" {
     "roles/logging.logWriter"
   ])
 
-  project = var.project_id
+  project = local.project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.labs_seo.email}"
 }
