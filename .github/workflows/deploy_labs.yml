@@ -12,17 +12,8 @@ on:
       # Labs components
       - 'deploy/shared-components/analytics-service/**'
       - 'labs/**'
-      - 'deploy/Dockerfile.index'
       # Common files that affect all
       - '.github/workflows/deploy_labs.yml'
-    paths-ignore:
-      - 'test/**'
-      - '**/*.spec.js'
-      - '**/playwright.config.js'
-      - '**/test/**'
-      - 'labs/**/test/**'
-      - 'labs/**/README.md'
-      - 'labs/**/*.md'
   push:
     branches:
       - 'stg'
