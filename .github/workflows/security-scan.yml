@@ -139,13 +139,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Install tfsec
+        run: |
+          curl -L https://github.com/aquasecurity/tfsec/releases/latest/download/tfsec-linux-amd64 -o /tmp/tfsec
+          chmod +x /tmp/tfsec
+          sudo mv /tmp/tfsec /usr/local/bin/tfsec
+
       - name: Run tfsec
-        working-directory: deploy
-        uses: aquasecurity/tfsec-action@v1.0.3
-        with:
-          soft_fail: true  # Don't fail workflow on findings
-          format: sarif
-          sarif_file: ../tfsec-results.sarif  # Output to repo root
+        run: |
+          cd deploy
+          tfsec --format sarif --out ../tfsec-results.sarif . || true
+        continue-on-error: true
 
       - name: Check if tfsec results exist
         id: check-tfsec
