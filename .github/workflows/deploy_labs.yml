@@ -24,6 +24,9 @@ on:
       - 'labs/**/README.md'
       - 'labs/**/*.md'
   push:
+    branches:
+      - 'stg'
+      - 'main'
     tags:
       - 'force-all'
       - 'force-home'
@@ -121,15 +124,30 @@ jobs:
             # Push to branch: detect changes
             echo "🔍 Detecting changes in push..."
             
-            # Compare with previous commit
-            if git diff --name-only HEAD~1 HEAD | grep -q "^deploy/shared-components/seo-service/\|^deploy/shared-components/home-index-service/\|^deploy/Dockerfile.index"; then
+            # Check if this commit has a force tag (for feature branches)
+            # Tags are checked separately, but we can also check commit message
+            COMMIT_MSG=$(git log -1 --pretty=%B)
+            if echo "$COMMIT_MSG" | grep -qi "force-all\|\[force-all\]"; then
               DEPLOY_HOME="true"
-              echo "✅ Home components changed"
-            fi
-            
-            if git diff --name-only HEAD~1 HEAD | grep -q "^deploy/shared-components/analytics-service/\|^labs/\|^deploy/Dockerfile.index"; then
               DEPLOY_LABS="true"
-              echo "✅ Labs components changed"
+              echo "✅ Force deploy detected in commit message (force-all)"
+            elif echo "$COMMIT_MSG" | grep -qi "force-home\|\[force-home\]"; then
+              DEPLOY_HOME="true"
+              echo "✅ Force deploy detected in commit message (force-home)"
+            elif echo "$COMMIT_MSG" | grep -qi "force-labs\|\[force-labs\]"; then
+              DEPLOY_LABS="true"
+              echo "✅ Force deploy detected in commit message (force-labs)"
+            else
+              # Compare with previous commit
+              if git diff --name-only HEAD~1 HEAD | grep -q "^deploy/shared-components/seo-service/\|^deploy/shared-components/home-index-service/\|^deploy/Dockerfile.index"; then
+                DEPLOY_HOME="true"
+                echo "✅ Home components changed"
+              fi
+              
+              if git diff --name-only HEAD~1 HEAD | grep -q "^deploy/shared-components/analytics-service/\|^labs/\|^deploy/Dockerfile.index"; then
+                DEPLOY_LABS="true"
+                echo "✅ Labs components changed"
+              fi
             fi
           fi
           

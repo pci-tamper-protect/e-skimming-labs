@@ -38,6 +38,11 @@ The following paths are ignored and will NOT trigger deployments:
 
 When you need to force a deployment regardless of code changes, use these git tags:
 
+**⚠️ Important**: Tag triggers only work if the workflow file exists in the default branch (`stg` or `main`). If you're on a feature branch, either:
+1. Merge the PR first, then push the tag
+2. Use `workflow_dispatch` (manual trigger) instead
+3. Add `[force-all]`, `[force-home]`, or `[force-labs]` to your commit message
+
 ### `force-all`
 Deploys all components (home and labs):
 ```bash
@@ -57,6 +62,24 @@ Deploys only labs components (Analytics, individual labs, and labs index):
 ```bash
 git tag force-labs
 git push origin force-labs
+```
+
+### Alternative: Commit Message Triggers (for feature branches)
+
+If the workflow file isn't merged yet, you can trigger deployments by including force keywords in your commit message:
+
+```bash
+# Force all
+git commit -m "Update config [force-all]"
+git push origin feature/branch
+
+# Force home only
+git commit -m "Fix SEO service [force-home]"
+git push origin feature/branch
+
+# Force labs only
+git commit -m "Update labs [force-labs]"
+git push origin feature/branch
 ```
 
 ## How It Works
