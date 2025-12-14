@@ -191,7 +191,6 @@ terraform plan \
             echo ""
             echo "   Retrying terraform plan..."
             terraform plan \
-                -var="region=$REGION" \
                 -var="environment=$ENVIRONMENT" \
                 -out=tfplan
         else

@@ -67,8 +67,7 @@ resource "google_firestore_database" "labs_db" {
   # Protect staging from accidental deletion
   # Note: Firestore databases cannot be deleted via Terraform once created
   # Additional protection: use IAM to restrict deletion permissions
-  # Note: prevent_destroy in lifecycle blocks requires literal boolean values,
-  # so we rely on IAM permissions and the fact that Firestore cannot be deleted via Terraform
+  # We rely on IAM permissions and the fact that Firestore cannot be deleted via Terraform
 
   depends_on = [google_project_service.required_apis]
 }

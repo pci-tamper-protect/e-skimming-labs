@@ -24,11 +24,6 @@ resource "google_firestore_index" "user_progress_index" {
     field_path = "completed_at"
     order      = "DESCENDING"
   }
-
-  fields {
-    field_path = "__name__"
-    order      = "DESCENDING"
-  }
 }
 
 resource "google_firestore_index" "analytics_index" {
@@ -52,11 +47,6 @@ resource "google_firestore_index" "analytics_index" {
     field_path = "lab_id"
     order      = "ASCENDING"
   }
-
-  fields {
-    field_path = "__name__"
-    order      = "ASCENDING"
-  }
 }
 
 resource "google_firestore_index" "seo_data_index" {
@@ -73,11 +63,6 @@ resource "google_firestore_index" "seo_data_index" {
 
   fields {
     field_path = "last_updated"
-    order      = "DESCENDING"
-  }
-
-  fields {
-    field_path = "__name__"
     order      = "DESCENDING"
   }
 }

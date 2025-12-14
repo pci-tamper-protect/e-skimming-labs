@@ -588,6 +588,4 @@ jobs:
             echo "deploy-labs-components result: ${{ needs.deploy-labs-components.result }}"
             exit 1
           fi
-
-# Import all at once (for PRD)
-        
+         
