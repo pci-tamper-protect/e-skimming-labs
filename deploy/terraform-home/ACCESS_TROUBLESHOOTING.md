@@ -2,13 +2,52 @@
 
 ## Problem: "Forbidden" Error When Accessing Staging Services
 
-If you're getting a "Forbidden" error when trying to access `https://home-index-stg-327539540168.us-central1.run.app/`, it's likely because:
+If you're getting a "Forbidden" error when trying to access `https://home-index-stg-327539540168.us-central1.run.app/`, there are a few possible causes:
 
-1. **You're not in the required Google Groups**: The staging services restrict access to:
+### Important: Cloud Run IAM vs IAP
+
+**Cloud Run's built-in IAM authentication does NOT redirect to Google sign-in like IAP does.** If you access the URL directly in a browser without authentication, you'll get a 403 Forbidden error without being prompted to sign in.
+
+### Possible Causes
+
+1. **Not authenticated**: You need to access the service with authentication (see methods below)
+2. **You're not in the required Google Groups**: The staging services restrict access to:
    - `group:core-eng@pcioasis.com`
    - `group:2025-interns@pcioasis.com`
+3. **IAM bindings haven't been applied**: Terraform may not have created the IAM bindings yet.
 
-2. **IAM bindings haven't been applied**: Terraform may not have created the IAM bindings yet.
+## How to Access Staging Services
+
+### Method 1: Use gcloud proxy (Recommended)
+
+This is the easiest way - it handles authentication automatically:
+
+```bash
+gcloud run services proxy home-index-stg \
+  --region=us-central1 \
+  --project=labs-home-stg \
+  --port=8099
+```
+
+Then open `http://localhost:8099` in your browser.
+
+### Method 2: Use curl with identity token
+
+```bash
+# Get an identity token
+TOKEN=$(gcloud auth print-identity-token)
+
+# Access the service
+curl -H "Authorization: Bearer $TOKEN" \
+  https://home-index-stg-327539540168.us-central1.run.app/
+```
+
+### Method 3: Use the helper script
+
+```bash
+cd deploy/terraform-home
+./get-authenticated-url.sh home-index-stg
+```
 
 ## Quick Fix: Add Your User Directly
 

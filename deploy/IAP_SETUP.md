@@ -121,8 +121,42 @@ You should see bindings for:
 
 ### 3. Test Access
 
-1. **As a group member**: Should be able to access staging URLs
+**Important**: Cloud Run IAM authentication works differently than IAP. It does **not** automatically redirect to Google sign-in in the browser. You need to access the service with authentication.
+
+#### Method 1: Use gcloud to proxy (Recommended)
+
+```bash
+# This opens a local proxy that handles authentication
+gcloud run services proxy home-index-stg \
+  --region=us-central1 \
+  --project=labs-home-stg \
+  --port=8099
+```
+
+Then open `http://localhost:8099` in your browser. The proxy handles authentication automatically.
+
+#### Method 2: Use curl with identity token
+
+```bash
+# Get an identity token
+TOKEN=$(gcloud auth print-identity-token)
+
+# Access the service
+curl -H "Authorization: Bearer $TOKEN" \
+  https://home-index-stg-327539540168.us-central1.run.app/
+```
+
+#### Method 3: Access via authenticated browser session
+
+If you're already logged into Google Cloud Console in your browser, you can try accessing the URL directly. However, this doesn't always work reliably.
+
+**Note**: Unlike IAP (Identity-Aware Proxy), Cloud Run's built-in IAM does **not** automatically redirect unauthenticated users to a sign-in page. If you access the URL directly without authentication, you'll get a 403 Forbidden error without being prompted to sign in.
+
+#### Expected Behavior
+
+1. **As a group member with authentication**: Should be able to access staging URLs
 2. **As a non-member**: Should receive 403 Forbidden
+3. **Without authentication**: Will receive 403 Forbidden (no redirect to sign-in)
 
 ## Adding New Groups
 
