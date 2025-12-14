@@ -2,11 +2,23 @@
 # Note: These services will be deployed after Docker images are built and pushed
 
 # SEO Service - Integration with main pcioasis.com
+# Note: Service is deployed by GitHub Actions workflow, Terraform only manages IAM
 resource "google_cloud_run_v2_service" "home_seo_service" {
   count    = var.deploy_services ? 1 : 0
   name     = "home-seo-${var.environment}"
   location = var.region
   project  = local.home_project_id
+
+  # Let GitHub Actions workflow manage the service configuration
+  # Terraform only needs the service to exist for IAM bindings
+  lifecycle {
+    ignore_changes = [
+      template[0].containers[0].image,
+      template[0].containers[0].env,
+      template[0].scaling,
+      template[0].service_account,
+    ]
+  }
 
   template {
     service_account = google_service_account.home_seo.email
@@ -64,11 +76,23 @@ resource "google_cloud_run_v2_service" "home_seo_service" {
 }
 
 # Index Service - Main landing page
+# Note: Service is deployed by GitHub Actions workflow, Terraform only manages IAM
 resource "google_cloud_run_v2_service" "home_index_service" {
   count    = var.deploy_services ? 1 : 0
   name     = "home-index-${var.environment}"
   location = var.region
   project  = local.home_project_id
+
+  # Let GitHub Actions workflow manage the service configuration
+  # Terraform only needs the service to exist for IAM bindings
+  lifecycle {
+    ignore_changes = [
+      template[0].containers[0].image,
+      template[0].containers[0].env,
+      template[0].scaling,
+      template[0].service_account,
+    ]
+  }
 
   template {
     service_account = google_service_account.home_runtime.email
