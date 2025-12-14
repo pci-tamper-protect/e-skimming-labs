@@ -716,6 +716,38 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v3
 
+      - name: Verify authenticated service account
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        run: |
+          echo "🔍 Verifying authenticated service account..."
+          SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
+          EXPECTED_SA="labs-deploy-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com"
+          echo "Authenticated as: $SA_EMAIL"
+          echo "Expected service account: $EXPECTED_SA"
+          echo "Environment: ${{ needs.setup.outputs.environment }}"
+          echo "Project: ${{ env.LABS_PROJECT_ID }}"
+          
+          if [[ "$SA_EMAIL" != *"labs-deploy-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com" ]]; then
+            echo "❌ ERROR: Service account mismatch!"
+            echo "   Authenticated: $SA_EMAIL"
+            echo "   Expected: $EXPECTED_SA"
+            echo ""
+            echo "📋 This indicates the GitHub secret contains the wrong service account key."
+            echo "   See verification step output above for fix instructions."
+            exit 1
+          else
+            echo "✅ Service account matches expected value"
+          fi
+          
+          # Also check project
+          CURRENT_PROJECT=$(gcloud config get-value project 2>/dev/null || echo "unknown")
+          echo "Current GCP project: $CURRENT_PROJECT"
+          echo "Expected project: ${{ env.LABS_PROJECT_ID }}"
+          if [[ "$CURRENT_PROJECT" != "${{ env.LABS_PROJECT_ID }}" ]]; then
+            echo "⚠️  WARNING: Project mismatch! Setting correct project..."
+            gcloud config set project ${{ env.LABS_PROJECT_ID }}
+          fi
+
       - name: Configure Docker to use gcloud as credential helper
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
         run: |
@@ -853,6 +885,8 @@ jobs:
     env:
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
+      # Use environment-specific secrets if available, fallback to generic secret
+      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG != '' && secrets.GCP_LABS_SA_KEY_STG != null && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD != '' && secrets.GCP_LABS_SA_KEY_PRD != null && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
 
     steps:
       - name: Checkout code
@@ -871,13 +905,20 @@ jobs:
         run: |
           echo "🔍 Verifying authenticated service account..."
           SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
+          EXPECTED_SA="labs-deploy-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com"
           echo "Authenticated as: $SA_EMAIL"
-          echo "Expected service account: labs-deploy-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com"
+          echo "Expected service account: $EXPECTED_SA"
+          echo "Environment: ${{ needs.setup.outputs.environment }}"
+          echo "Project: ${{ env.LABS_PROJECT_ID }}"
+          
           if [[ "$SA_EMAIL" != *"labs-deploy-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com" ]]; then
-            echo "⚠️  WARNING: Service account mismatch!"
+            echo "❌ ERROR: Service account mismatch!"
             echo "   Authenticated: $SA_EMAIL"
-            echo "   Expected: labs-deploy-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com"
-            echo "   This may cause permission errors."
+            echo "   Expected: $EXPECTED_SA"
+            echo ""
+            echo "📋 This indicates the GitHub secret contains the wrong service account key."
+            echo "   See verification step output above for fix instructions."
+            exit 1
           else
             echo "✅ Service account matches expected value"
           fi
