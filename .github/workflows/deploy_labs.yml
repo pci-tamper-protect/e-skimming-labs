@@ -532,21 +532,13 @@ jobs:
         run: |
           echo "🔍 Verifying authenticated service account..."
           echo ""
-          echo "📋 Secret selection debug:"
+          echo "📋 Secret selection info:"
           if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
-            if [[ -n "${{ secrets.GCP_LABS_SA_KEY_STG }}" ]]; then
-              echo "   ✅ Using environment-specific secret: GCP_LABS_SA_KEY_STG"
-            else
-              echo "   ⚠️  WARNING: GCP_LABS_SA_KEY_STG secret is NOT set or empty!"
-              echo "   ⚠️  Falling back to generic GCP_LABS_SA_KEY secret (may be wrong environment)"
-            fi
+            echo "   Expected secret: GCP_LABS_SA_KEY_STG"
+            echo "   Fallback secret: GCP_LABS_SA_KEY (if STG not set)"
           else
-            if [[ -n "${{ secrets.GCP_LABS_SA_KEY_PRD }}" ]]; then
-              echo "   ✅ Using environment-specific secret: GCP_LABS_SA_KEY_PRD"
-            else
-              echo "   ⚠️  WARNING: GCP_LABS_SA_KEY_PRD secret is NOT set or empty!"
-              echo "   ⚠️  Falling back to generic GCP_LABS_SA_KEY secret (may be wrong environment)"
-            fi
+            echo "   Expected secret: GCP_LABS_SA_KEY_PRD"
+            echo "   Fallback secret: GCP_LABS_SA_KEY (if PRD not set)"
           fi
           echo ""
           
