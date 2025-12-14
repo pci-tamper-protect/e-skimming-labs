@@ -433,12 +433,12 @@ jobs:
             gcloud run services add-iam-policy-binding home-seo-${{ needs.setup.outputs.environment }} \
               --region=${{ env.HOME_GAR_LOCATION }} \
               --member="group:2025-interns@pcioasis.com" \
-              --role="roles/run.invoker" || echo "Warning: Failed to add 2025-interns group access"
+              --role="roles/run.invoker"
             
             gcloud run services add-iam-policy-binding home-seo-${{ needs.setup.outputs.environment }} \
               --region=${{ env.HOME_GAR_LOCATION }} \
               --member="group:core-eng@pcioasis.com" \
-              --role="roles/run.invoker" || echo "Warning: Failed to add core-eng group access"
+              --role="roles/run.invoker"
           else
             gcloud run deploy home-seo-${{ needs.setup.outputs.environment }} \
               --image=${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:${{ github.sha }} \
@@ -480,12 +480,12 @@ jobs:
             gcloud run services add-iam-policy-binding home-index-${{ needs.setup.outputs.environment }} \
               --region=${{ env.HOME_GAR_LOCATION }} \
               --member="group:2025-interns@pcioasis.com" \
-              --role="roles/run.invoker" || echo "Warning: Failed to add 2025-interns group access"
+              --role="roles/run.invoker"
             
             gcloud run services add-iam-policy-binding home-index-${{ needs.setup.outputs.environment }} \
               --region=${{ env.HOME_GAR_LOCATION }} \
               --member="group:core-eng@pcioasis.com" \
-              --role="roles/run.invoker" || echo "Warning: Failed to add core-eng group access"
+              --role="roles/run.invoker"
           else
             gcloud run deploy home-index-${{ needs.setup.outputs.environment }} \
               --image=${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:${{ github.sha }} \
@@ -511,8 +511,9 @@ jobs:
     env:
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
-      # Use environment-specific secrets if available, fallback to generic secret
-      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG != '' && secrets.GCP_LABS_SA_KEY_STG != null && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD != '' && secrets.GCP_LABS_SA_KEY_PRD != null && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
+      # Use environment-specific secrets - fallback to generic secret
+      # Note: GitHub Actions treats missing secrets as empty strings, so we check for non-empty
+      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
 
     steps:
       - name: Checkout code
@@ -530,12 +531,32 @@ jobs:
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
         run: |
           echo "🔍 Verifying authenticated service account..."
+          echo ""
+          echo "📋 Secret selection debug:"
+          if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
+            if [[ -n "${{ secrets.GCP_LABS_SA_KEY_STG }}" ]]; then
+              echo "   ✅ Using environment-specific secret: GCP_LABS_SA_KEY_STG"
+            else
+              echo "   ⚠️  WARNING: GCP_LABS_SA_KEY_STG secret is NOT set or empty!"
+              echo "   ⚠️  Falling back to generic GCP_LABS_SA_KEY secret (may be wrong environment)"
+            fi
+          else
+            if [[ -n "${{ secrets.GCP_LABS_SA_KEY_PRD }}" ]]; then
+              echo "   ✅ Using environment-specific secret: GCP_LABS_SA_KEY_PRD"
+            else
+              echo "   ⚠️  WARNING: GCP_LABS_SA_KEY_PRD secret is NOT set or empty!"
+              echo "   ⚠️  Falling back to generic GCP_LABS_SA_KEY secret (may be wrong environment)"
+            fi
+          fi
+          echo ""
+          
           SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
           EXPECTED_SA="labs-deploy-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com"
           echo "Authenticated as: $SA_EMAIL"
           echo "Expected service account: $EXPECTED_SA"
           echo "Environment: ${{ needs.setup.outputs.environment }}"
           echo "Project: ${{ env.LABS_PROJECT_ID }}"
+          echo ""
           
           if [[ "$SA_EMAIL" != *"labs-deploy-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com" ]]; then
             echo "❌ ERROR: Service account mismatch!"
@@ -561,15 +582,11 @@ jobs:
               echo "        --repo pci-tamper-protect/e-skimming-labs"
             fi
             echo ""
-            echo "   3. Or use the generic secret (less secure):"
-            echo "      gh secret set GCP_LABS_SA_KEY --body \"\$(cat /tmp/labs-deploy-key.json)\" \\"
-            echo "        --repo pci-tamper-protect/e-skimming-labs"
-            echo ""
-            echo "   4. Clean up: rm /tmp/labs-deploy-key.json"
+            echo "   3. Clean up: rm /tmp/labs-deploy-key.json"
             echo ""
             exit 1
           else
-            echo "✅ Service account matches expected value"
+            echo "✅ Service account verification passed!"
           fi
           
           # Also check project
@@ -727,12 +744,12 @@ jobs:
             gcloud run services add-iam-policy-binding labs-analytics-${{ needs.setup.outputs.environment }} \
               --region=${{ env.LABS_GAR_LOCATION }} \
               --member="group:2025-interns@pcioasis.com" \
-              --role="roles/run.invoker" || echo "Warning: Failed to add 2025-interns group access"
+              --role="roles/run.invoker"
             
             gcloud run services add-iam-policy-binding labs-analytics-${{ needs.setup.outputs.environment }} \
               --region=${{ env.LABS_GAR_LOCATION }} \
               --member="group:core-eng@pcioasis.com" \
-              --role="roles/run.invoker" || echo "Warning: Failed to add core-eng group access"
+              --role="roles/run.invoker"
           else
             gcloud run deploy labs-analytics-${{ needs.setup.outputs.environment }} \
               --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ github.sha }} \
@@ -758,8 +775,9 @@ jobs:
     env:
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
-      # Use environment-specific secrets if available, fallback to generic secret
-      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG != '' && secrets.GCP_LABS_SA_KEY_STG != null && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD != '' && secrets.GCP_LABS_SA_KEY_PRD != null && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
+      # Use environment-specific secrets - fallback to generic secret
+      # Note: GitHub Actions treats missing secrets as empty strings, so we check for non-empty
+      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
     strategy:
       matrix:
         lab: ${{ fromJson(needs.setup.outputs.labs) }}
@@ -908,12 +926,12 @@ jobs:
             gcloud run services add-iam-policy-binding lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
               --region=${{ env.LABS_GAR_LOCATION }} \
               --member="group:2025-interns@pcioasis.com" \
-              --role="roles/run.invoker" || echo "Warning: Failed to add 2025-interns group access"
+              --role="roles/run.invoker"
             
             gcloud run services add-iam-policy-binding lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
               --region=${{ env.LABS_GAR_LOCATION }} \
               --member="group:core-eng@pcioasis.com" \
-              --role="roles/run.invoker" || echo "Warning: Failed to add core-eng group access"
+              --role="roles/run.invoker"
           else
             gcloud run deploy lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
               --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }} \
@@ -956,8 +974,9 @@ jobs:
     env:
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
-      # Use environment-specific secrets if available, fallback to generic secret
-      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG != '' && secrets.GCP_LABS_SA_KEY_STG != null && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD != '' && secrets.GCP_LABS_SA_KEY_PRD != null && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
+      # Use environment-specific secrets - fallback to generic secret
+      # Note: GitHub Actions treats missing secrets as empty strings, so we check for non-empty
+      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
 
     steps:
       - name: Checkout code
@@ -1100,12 +1119,12 @@ jobs:
             gcloud run services add-iam-policy-binding labs-index-${{ needs.setup.outputs.environment }} \
               --region=${{ env.LABS_GAR_LOCATION }} \
               --member="group:2025-interns@pcioasis.com" \
-              --role="roles/run.invoker" || echo "Warning: Failed to add 2025-interns group access"
+              --role="roles/run.invoker"
             
             gcloud run services add-iam-policy-binding labs-index-${{ needs.setup.outputs.environment }} \
               --region=${{ env.LABS_GAR_LOCATION }} \
               --member="group:core-eng@pcioasis.com" \
-              --role="roles/run.invoker" || echo "Warning: Failed to add core-eng group access"
+              --role="roles/run.invoker"
           else
             gcloud run deploy labs-index-${{ needs.setup.outputs.environment }} \
               --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:${{ github.sha }} \
