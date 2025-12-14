@@ -6,7 +6,7 @@ resource "google_cloud_run_v2_service" "analytics_service" {
   count    = var.deploy_services ? 1 : 0
   name     = "labs-analytics-${var.environment}"
   location = var.region
-  project  = local.project_id
+  project  = local.labs_project_id
 
   # Protect staging from accidental deletion
   deletion_protection = var.environment == "stg" ? true : false
@@ -15,15 +15,15 @@ resource "google_cloud_run_v2_service" "analytics_service" {
     service_account = google_service_account.labs_analytics.email
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${local.project_id}/e-skimming-labs/analytics:latest"
+      image = "${var.region}-docker.pkg.dev/${local.labs_project_id}/e-skimming-labs/analytics:latest"
 
       ports {
         container_port = 8080
       }
 
       env {
-        name  = "PROJECT_ID"
-        value = local.project_id
+        name  = "LABS_PROJECT_ID"
+        value = local.labs_project_id
       }
 
       env {

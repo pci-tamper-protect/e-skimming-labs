@@ -35,7 +35,7 @@ resource "google_project_iam_member" "labs_runtime_roles" {
     "roles/artifactregistry.reader"
   ])
 
-  project = local.project_id
+  project = local.labs_project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.labs_runtime.email}"
 }
@@ -51,9 +51,24 @@ resource "google_project_iam_member" "labs_deploy_roles" {
     "roles/storage.objectCreator"    # Upload deployment artifacts
   ])
 
-  project = local.project_id
+  project = local.labs_project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.labs_deploy.email}"
+}
+
+# Repository-level IAM binding for Artifact Registry (explicit permissions)
+# This ensures the service account can upload artifacts to the repository
+resource "google_artifact_registry_repository_iam_member" "labs_deploy_artifact_registry_writer" {
+  location   = var.region
+  repository = google_artifact_registry_repository.labs_repo.repository_id
+  project    = local.labs_project_id
+  role       = "roles/artifactregistry.writer"
+  member     = "serviceAccount:${google_service_account.labs_deploy.email}"
+
+  depends_on = [
+    google_artifact_registry_repository.labs_repo,
+    google_service_account.labs_deploy
+  ]
 }
 
 # IAM Roles for Analytics Service Account
@@ -66,7 +81,7 @@ resource "google_project_iam_member" "labs_analytics_roles" {
     "roles/monitoring.metricWriter"
   ])
 
-  project = local.project_id
+  project = local.labs_project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.labs_analytics.email}"
 }
@@ -79,7 +94,7 @@ resource "google_project_iam_member" "labs_seo_roles" {
     "roles/logging.logWriter"
   ])
 
-  project = local.project_id
+  project = local.labs_project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.labs_seo.email}"
 }

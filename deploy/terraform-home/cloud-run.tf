@@ -6,21 +6,21 @@ resource "google_cloud_run_v2_service" "home_seo_service" {
   count    = var.deploy_services ? 1 : 0
   name     = "home-seo-${var.environment}"
   location = var.region
-  project  = local.project_id
+  project  = local.home_project_id
 
   template {
     service_account = google_service_account.home_seo.email
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${local.project_id}/e-skimming-labs-home/seo:latest"
+      image = "${var.region}-docker.pkg.dev/${local.home_project_id}/e-skimming-labs-home/seo:latest"
 
       ports {
         container_port = 8080
       }
 
       env {
-        name  = "PROJECT_ID"
-        value = local.project_id
+        name  = "HOME_PROJECT_ID"
+        value = local.home_project_id
       }
 
       env {
@@ -68,21 +68,21 @@ resource "google_cloud_run_v2_service" "home_index_service" {
   count    = var.deploy_services ? 1 : 0
   name     = "home-index-${var.environment}"
   location = var.region
-  project  = local.project_id
+  project  = local.home_project_id
 
   template {
     service_account = google_service_account.home_runtime.email
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${local.project_id}/e-skimming-labs-home/index:latest"
+      image = "${var.region}-docker.pkg.dev/${local.home_project_id}/e-skimming-labs-home/index:latest"
 
       ports {
         container_port = 8080
       }
 
       env {
-        name  = "PROJECT_ID"
-        value = local.project_id
+        name  = "HOME_PROJECT_ID"
+        value = local.home_project_id
       }
 
       env {

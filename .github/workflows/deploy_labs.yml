@@ -291,7 +291,7 @@ jobs:
               --cpu=1 \
               --min-instances=0 \
               --max-instances=5 \
-              --set-env-vars="PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }}" \
+              --set-env-vars="HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }}" \
               --labels="environment=${{ needs.setup.outputs.environment }},component=seo,project=e-skimming-labs-home"
             
             # Grant access to developer groups for staging (Terraform will also manage this)
@@ -317,7 +317,7 @@ jobs:
               --cpu=1 \
               --min-instances=0 \
               --max-instances=5 \
-              --set-env-vars="PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }}" \
+              --set-env-vars="HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }}" \
               --labels="environment=${{ needs.setup.outputs.environment }},component=seo,project=e-skimming-labs-home"
           fi
 
@@ -338,7 +338,7 @@ jobs:
               --cpu=1 \
               --min-instances=0 \
               --max-instances=5 \
-              --set-env-vars="PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app" \
+              --set-env-vars="HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app" \
               --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs-home"
             
             # Grant access to developer groups for staging (Terraform will also manage this)
@@ -364,7 +364,7 @@ jobs:
               --cpu=1 \
               --min-instances=0 \
               --max-instances=5 \
-              --set-env-vars="PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app" \
+              --set-env-vars="HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app" \
               --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs-home"
           fi
 
@@ -400,21 +400,43 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Calculate Analytics content hash
+        id: analytics-hash
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        run: |
+          cd deploy/shared-components/analytics-service
+          # Calculate hash of all files that affect the build
+          CONTENT_HASH=$(find . -type f \( -name "*.go" -o -name "*.mod" -o -name "*.sum" -o -name "Dockerfile*" -o -name "go.*" \) -exec sha256sum {} \; 2>/dev/null | sort | sha256sum | cut -d' ' -f1)
+          echo "hash=$CONTENT_HASH" >> $GITHUB_OUTPUT
+          echo "Content hash: $CONTENT_HASH"
+          echo "Files included:"
+          find . -type f \( -name "*.go" -o -name "*.mod" -o -name "*.sum" -o -name "Dockerfile*" -o -name "go.*" \) | head -10
+
       - name: Check if Analytics image exists
         id: check-analytics-image
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
         run: |
-          IMAGE="${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ github.sha }}"
-          if gcloud artifacts docker images describe "$IMAGE" --project="${{ env.LABS_PROJECT_ID }}" --location="${{ env.LABS_GAR_LOCATION }}" &>/dev/null; then
+          # Check both SHA tag and content hash tag
+          IMAGE_SHA="${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ github.sha }}"
+          IMAGE_HASH="${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ steps.analytics-hash.outputs.hash }}"
+          
+          # Check if image with content hash exists (most reliable)
+          if gcloud artifacts docker images describe "$IMAGE_HASH" --project="${{ env.LABS_PROJECT_ID }}" --location="${{ env.LABS_GAR_LOCATION }}" &>/dev/null; then
             echo "exists=true" >> $GITHUB_OUTPUT
-            echo "✅ Image already exists: $IMAGE"
+            echo "✅ Image with content hash already exists: $IMAGE_HASH"
+            echo "ℹ️  Source files haven't changed, skipping build"
+          # Fallback: check if image with SHA exists (for re-runs)
+          elif gcloud artifacts docker images describe "$IMAGE_SHA" --project="${{ env.LABS_PROJECT_ID }}" --location="${{ env.LABS_GAR_LOCATION }}" &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Image with SHA already exists: $IMAGE_SHA"
+            echo "ℹ️  Skipping build (re-run of same commit)"
           else
             echo "exists=false" >> $GITHUB_OUTPUT
-            echo "ℹ️  Image not found, will build: $IMAGE"
+            echo "ℹ️  Image not found, will build: $IMAGE_SHA"
           fi
 
       - name: Build Analytics Service
-        if: steps.check-analytics-image.outputs.exists != 'true'
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null && steps.check-analytics-image.outputs.exists != 'true'
         uses: docker/build-push-action@v6
         with:
           context: deploy/shared-components/analytics-service
@@ -422,17 +444,20 @@ jobs:
           push: false
           tags: |
             ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ github.sha }}
+            ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ steps.analytics-hash.outputs.hash }}
             ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:latest
           build-args: |
             ENVIRONMENT=${{ needs.setup.outputs.environment }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=analytics
+          cache-to: type=gha,mode=max,scope=analytics
           load: true
 
       - name: Push Analytics Service to Artifact Registry
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null && steps.check-analytics-image.outputs.exists != 'true'
         run: |
+          echo "📤 Pushing analytics image with tags:"
           docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ github.sha }}
+          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ steps.analytics-hash.outputs.hash }}
           docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:latest
 
       - name: Deploy Analytics Service to Cloud Run
@@ -454,7 +479,7 @@ jobs:
               --cpu=1 \
               --min-instances=0 \
               --max-instances=5 \
-              --set-env-vars="PROJECT_ID=${{ env.LABS_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},FIRESTORE_DATABASE=(default)" \
+              --set-env-vars="LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},FIRESTORE_DATABASE=(default)" \
               --labels="environment=${{ needs.setup.outputs.environment }},component=analytics,project=e-skimming-labs"
             
             # Grant access to developer groups for staging (Terraform will also manage this)
@@ -480,7 +505,7 @@ jobs:
               --cpu=1 \
               --min-instances=0 \
               --max-instances=5 \
-              --set-env-vars="PROJECT_ID=${{ env.LABS_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},FIRESTORE_DATABASE=(default)" \
+              --set-env-vars="LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},FIRESTORE_DATABASE=(default)" \
               --labels="environment=${{ needs.setup.outputs.environment }},component=analytics,project=e-skimming-labs"
           fi
 

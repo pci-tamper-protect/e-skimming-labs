@@ -19,12 +19,12 @@ terraform {
 
 # Calculate project IDs from environment
 locals {
-  project_id     = "labs-home-${var.environment}"
+  home_project_id = "labs-home-${var.environment}"
   labs_project_id = "labs-${var.environment}"
 }
 
 provider "google" {
-  project = local.project_id
+  project = local.home_project_id
   region  = var.region
 }
 
@@ -58,7 +58,7 @@ resource "google_artifact_registry_repository" "home_repo" {
 
 # Create Firestore database for home page analytics
 resource "google_firestore_database" "home_db" {
-  project     = local.project_id
+  project     = local.home_project_id
   name        = "(default)"
   location_id = var.firestore_location
   type        = "FIRESTORE_NATIVE"
@@ -68,7 +68,7 @@ resource "google_firestore_database" "home_db" {
 
 # Create Cloud Storage bucket for home page assets
 resource "google_storage_bucket" "home_assets" {
-  name          = "${local.project_id}-home-assets"
+  name          = "${local.home_project_id}-home-assets"
   location      = var.region
   force_destroy = true
 
