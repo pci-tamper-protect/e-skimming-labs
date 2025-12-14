@@ -1,8 +1,8 @@
-# Deployment Triggers and Force Tags
+# Deployment Triggers and Force Keywords
 
 ## Overview
 
-The `deploy_labs.yml` workflow is configured to only deploy containers when their specific code changes, reducing unnecessary builds and deployments. Force tags are available to override this behavior.
+The `deploy_labs.yml` workflow is configured to only deploy containers when their specific code changes, reducing unnecessary builds and deployments. Force keywords in commit messages allow you to override this behavior.
 
 ## Automatic Deployment Triggers
 
@@ -34,62 +34,46 @@ The following paths are ignored and will NOT trigger deployments:
 - `labs/**/README.md`
 - `labs/**/*.md`
 
-## Force Deployment Tags
+## Force Deployment Keywords
 
-When you need to force a deployment regardless of code changes, use these git tags:
+When you need to force a deployment regardless of code changes, include these keywords in your commit message:
 
-**⚠️ Important**: Tag triggers only work if the workflow file exists in the default branch (`stg` or `main`). If you're on a feature branch, either:
-1. Merge the PR first, then push the tag
-2. Use `workflow_dispatch` (manual trigger) instead
-3. Add `[force-all]`, `[force-home]`, or `[force-labs]` to your commit message
-
-### `force-all`
+### `[force-all]` or `force-all`
 Deploys all components (home and labs):
 ```bash
-git tag force-all
-git push origin force-all
-```
-
-### `force-home`
-Deploys only home components (SEO and Index services):
-```bash
-git tag force-home
-git push origin force-home
-```
-
-### `force-labs`
-Deploys only labs components (Analytics, individual labs, and labs index):
-```bash
-git tag force-labs
-git push origin force-labs
-```
-
-### Alternative: Commit Message Triggers (for feature branches)
-
-If the workflow file isn't merged yet, you can trigger deployments by including force keywords in your commit message:
-
-```bash
-# Force all
 git commit -m "Update config [force-all]"
 git push origin feature/branch
+```
 
-# Force home only
+### `[force-home]` or `force-home`
+Deploys only home components (SEO and Index services):
+```bash
 git commit -m "Fix SEO service [force-home]"
 git push origin feature/branch
+```
 
-# Force labs only
+### `[force-labs]` or `force-labs`
+Deploys only labs components (Analytics, individual labs, and labs index):
+```bash
 git commit -m "Update labs [force-labs]"
 git push origin feature/branch
 ```
 
+**Advantages of commit message keywords:**
+- ✅ Works on any branch (feature branches, stg, main)
+- ✅ Can be reused multiple times
+- ✅ No tag management needed
+- ✅ Works immediately (no need to merge workflow first)
+- ✅ Case-insensitive matching
+
 ## How It Works
 
 1. **Change Detection**: The workflow compares changed files against the base branch (for PRs) or previous commit (for pushes)
-2. **Component Mapping**: Changes are mapped to specific components:
+2. **Keyword Detection**: Checks commit message for `[force-all]`, `[force-home]`, or `[force-labs]` keywords
+3. **Component Mapping**: Changes/keywords are mapped to specific components:
    - Home components → `deploy_home=true`
    - Labs components → `deploy_labs=true`
-3. **Job Conditions**: Each deployment job only runs if its corresponding flag is `true`
-4. **Force Tags**: Tags override change detection and force deployment of specified components
+4. **Job Conditions**: Each deployment job only runs if its corresponding flag is `true`
 
 ## Examples
 
@@ -114,8 +98,8 @@ git push origin feature/update-lab1
 ### Example 3: Force All Deployments
 ```bash
 # Force deploy everything (e.g., after infrastructure changes)
-git tag force-all
-git push origin force-all
+git commit -m "Infrastructure update [force-all]"
+git push origin feature/infra-update
 
 # All components deploy regardless of code changes
 ```
@@ -123,8 +107,8 @@ git push origin force-all
 ### Example 4: Force Labs Only
 ```bash
 # Force redeploy labs (e.g., after fixing deployment issue)
-git tag force-labs
-git push origin force-labs
+git commit -m "Fix deployment [force-labs]"
+git push origin feature/fix-deploy
 
 # Only labs components deploy
 ```
@@ -136,7 +120,6 @@ The workflow automatically determines the target environment:
 - **PRs against `main`** → Deploy to `labs-prd` and `labs-home-prd`
 - **Push to `stg` branch** → Deploy to `labs-stg` and `labs-home-stg`
 - **Push to `main` branch** → Deploy to `labs-prd` and `labs-home-prd`
-- **Tags** → Use the branch they were created from (stg → stg, main → prd)
 
 ## Manual Trigger
 
@@ -150,7 +133,7 @@ You can also manually trigger the workflow via GitHub Actions UI:
 
 The workflow checks if Docker images already exist before building:
 - If an image with the current SHA tag exists, the build step is skipped
-- This saves time and resources when force-tagging without code changes
+- This saves time and resources when force-keywording without code changes
 - Images are still pushed to ensure the latest tag is updated
 
 ## Troubleshooting
@@ -159,11 +142,10 @@ The workflow checks if Docker images already exist before building:
 
 1. **Check if paths match**: Ensure your changes are in the monitored paths
 2. **Check job conditions**: Look at the workflow run to see if jobs were skipped
-3. **Use force tags**: If you need to deploy, use `force-all`, `force-home`, or `force-labs`
+3. **Use force keywords**: If you need to deploy, add `[force-all]`, `[force-home]`, or `[force-labs]` to your commit message
 
-### Force Tag Not Working
+### Force Keyword Not Working
 
-1. **Check tag name**: Must be exactly `force-all`, `force-home`, or `force-labs`
-2. **Check push**: Tag must be pushed to the remote repository
-3. **Check workflow logs**: Look at the "Detect changes and force tags" step output
-
+1. **Check keyword spelling**: Must be `[force-all]`, `[force-home]`, or `[force-labs]` (case-insensitive)
+2. **Check commit message**: Keyword must be in the commit message, not just the PR title
+3. **Check workflow logs**: Look at the "Detect changes and force keywords" step output
