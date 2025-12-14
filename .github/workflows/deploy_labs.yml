@@ -4,11 +4,30 @@ on:
   pull_request:
     branches: [main, stg]
     types: [opened, synchronize, reopened]
+    paths:
+      # Home components
+      - 'deploy/shared-components/seo-service/**'
+      - 'deploy/shared-components/home-index-service/**'
+      - 'deploy/Dockerfile.index'
+      # Labs components
+      - 'deploy/shared-components/analytics-service/**'
+      - 'labs/**'
+      - 'deploy/Dockerfile.index'
+      # Common files that affect all
+      - '.github/workflows/deploy_labs.yml'
     paths-ignore:
       - 'test/**'
       - '**/*.spec.js'
       - '**/playwright.config.js'
       - '**/test/**'
+      - 'labs/**/test/**'
+      - 'labs/**/README.md'
+      - 'labs/**/*.md'
+  push:
+    tags:
+      - 'force-all'
+      - 'force-home'
+      - 'force-labs'
   workflow_dispatch:
     inputs:
       environment:
@@ -39,9 +58,88 @@ jobs:
       domain_prefix: ${{ steps.set-env.outputs.domain_prefix }}
       home_project_id: ${{ steps.set-env.outputs.home_project_id }}
       labs_project_id: ${{ steps.set-env.outputs.labs_project_id }}
+      deploy_home: ${{ steps.detect-changes.outputs.deploy_home }}
+      deploy_labs: ${{ steps.detect-changes.outputs.deploy_labs }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # Need full history for change detection
+
+      - name: Detect changes and force tags
+        id: detect-changes
+        run: |
+          # Default: deploy based on what changed
+          DEPLOY_HOME="false"
+          DEPLOY_LABS="false"
+          
+          # Check for force tags
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG_NAME="${GITHUB_REF#refs/tags/}"
+            echo "🔖 Detected tag: $TAG_NAME"
+            
+            if [[ "$TAG_NAME" == "force-all" ]]; then
+              DEPLOY_HOME="true"
+              DEPLOY_LABS="true"
+              echo "✅ Force deploying all components (force-all)"
+            elif [[ "$TAG_NAME" == "force-home" ]]; then
+              DEPLOY_HOME="true"
+              echo "✅ Force deploying home components (force-home)"
+            elif [[ "$TAG_NAME" == "force-labs" ]]; then
+              DEPLOY_LABS="true"
+              echo "✅ Force deploying labs components (force-labs)"
+            fi
+          fi
+          
+          # For PRs and workflow_dispatch, detect changed paths
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "🔍 Detecting changes in PR..."
+            
+            # Get changed files
+            if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q "^deploy/shared-components/seo-service/\|^deploy/shared-components/home-index-service/\|^deploy/Dockerfile.index"; then
+              DEPLOY_HOME="true"
+              echo "✅ Home components changed"
+            fi
+            
+            if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q "^deploy/shared-components/analytics-service/\|^labs/\|^deploy/Dockerfile.index"; then
+              DEPLOY_LABS="true"
+              echo "✅ Labs components changed"
+            fi
+            
+            # If workflow file changed, deploy all (safety)
+            if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q "^\.github/workflows/deploy_labs\.yml"; then
+              DEPLOY_HOME="true"
+              DEPLOY_LABS="true"
+              echo "✅ Workflow changed, deploying all"
+            fi
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Manual trigger: deploy all
+            DEPLOY_HOME="true"
+            DEPLOY_LABS="true"
+            echo "✅ Manual trigger, deploying all"
+          elif [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" != refs/tags/* ]]; then
+            # Push to branch: detect changes
+            echo "🔍 Detecting changes in push..."
+            
+            # Compare with previous commit
+            if git diff --name-only HEAD~1 HEAD | grep -q "^deploy/shared-components/seo-service/\|^deploy/shared-components/home-index-service/\|^deploy/Dockerfile.index"; then
+              DEPLOY_HOME="true"
+              echo "✅ Home components changed"
+            fi
+            
+            if git diff --name-only HEAD~1 HEAD | grep -q "^deploy/shared-components/analytics-service/\|^labs/\|^deploy/Dockerfile.index"; then
+              DEPLOY_LABS="true"
+              echo "✅ Labs components changed"
+            fi
+          fi
+          
+          echo "deploy_home=$DEPLOY_HOME" >> $GITHUB_OUTPUT
+          echo "deploy_labs=$DEPLOY_LABS" >> $GITHUB_OUTPUT
+          
+          echo ""
+          echo "📋 Deployment plan:"
+          echo "  Home components: $DEPLOY_HOME"
+          echo "  Labs components: $DEPLOY_LABS"
 
       - name: Set environment variables
         id: set-env
@@ -49,12 +147,20 @@ jobs:
           # Determine environment:
           # - For workflow_dispatch: use the input parameter
           # - For pull_request: use the base branch (stg -> stg, main -> prd)
+          # - For push/tags: use the target branch (stg -> stg, main -> prd)
           # - Default to prd for safety
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             ENV_INPUT="${{ github.event.inputs.environment }}"
           elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
             # PRs against stg branch deploy to STG, PRs against main deploy to PRD
             if [[ "${{ github.base_ref }}" == "stg" ]]; then
+              ENV_INPUT="stg"
+            else
+              ENV_INPUT="prd"
+            fi
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            # Push to stg branch deploys to STG, push to main deploys to PRD
+            if [[ "${{ github.ref }}" == "refs/heads/stg" ]]; then
               ENV_INPUT="stg"
             else
               ENV_INPUT="prd"
@@ -75,7 +181,7 @@ jobs:
             echo "labs_project_id=labs-prd" >> $GITHUB_OUTPUT
           fi
           
-          echo "Determined environment: $ENV_INPUT (from ${{ github.event_name }}, base_ref: ${{ github.base_ref }})"
+          echo "Determined environment: $ENV_INPUT (from ${{ github.event_name }}, ref: ${{ github.ref }}, base_ref: ${{ github.base_ref }})"
 
       - name: Discover lab directories
         id: discover-labs
@@ -89,7 +195,8 @@ jobs:
     needs: setup
     runs-on: ubuntu-latest
     # Skip deployment for Dependabot PRs (secrets not available)
-    if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
+    # Only deploy if home components changed or force tag
+    if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && needs.setup.outputs.deploy_home == 'true'
     env:
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
@@ -145,7 +252,21 @@ jobs:
           cache-to: type=gha,mode=max
           load: true
 
+      - name: Check if Index image exists
+        id: check-index-image
+        if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null
+        run: |
+          IMAGE="${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:${{ github.sha }}"
+          if gcloud artifacts docker images describe "$IMAGE" --project="${{ env.HOME_PROJECT_ID }}" --location="${{ env.HOME_GAR_LOCATION }}" &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Image already exists: $IMAGE"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  Image not found, will build: $IMAGE"
+          fi
+
       - name: Build Index Service
+        if: steps.check-index-image.outputs.exists != 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -270,7 +391,8 @@ jobs:
     needs: setup
     runs-on: ubuntu-latest
     # Skip deployment for Dependabot PRs (secrets not available)
-    if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
+    # Only deploy if labs components changed or force tag
+    if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && needs.setup.outputs.deploy_labs == 'true'
     env:
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
@@ -297,7 +419,21 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Check if Analytics image exists
+        id: check-analytics-image
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        run: |
+          IMAGE="${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ github.sha }}"
+          if gcloud artifacts docker images describe "$IMAGE" --project="${{ env.LABS_PROJECT_ID }}" --location="${{ env.LABS_GAR_LOCATION }}" &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Image already exists: $IMAGE"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  Image not found, will build: $IMAGE"
+          fi
+
       - name: Build Analytics Service
+        if: steps.check-analytics-image.outputs.exists != 'true'
         uses: docker/build-push-action@v6
         with:
           context: deploy/shared-components/analytics-service
@@ -371,7 +507,8 @@ jobs:
     needs: [setup, deploy-labs-components]
     runs-on: ubuntu-latest
     # Skip deployment for Dependabot PRs (secrets not available)
-    if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
+    # Only deploy if labs components changed or force tag
+    if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && needs.setup.outputs.deploy_labs == 'true'
     env:
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
@@ -402,7 +539,21 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Check if lab image exists
+        id: check-lab-image
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        run: |
+          IMAGE="${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }}"
+          if gcloud artifacts docker images describe "$IMAGE" --project="${{ env.LABS_PROJECT_ID }}" --location="${{ env.LABS_GAR_LOCATION }}" &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Image already exists: $IMAGE"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  Image not found, will build: $IMAGE"
+          fi
+
       - name: Build lab container image
+        if: steps.check-lab-image.outputs.exists != 'true'
         uses: docker/build-push-action@v6
         with:
           context: labs/${{ matrix.lab }}
@@ -493,7 +644,8 @@ jobs:
     needs: [setup, deploy-labs, deploy-home-components]
     runs-on: ubuntu-latest
     # Skip deployment for Dependabot PRs (secrets not available)
-    if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
+    # Only deploy if labs components changed or force tag (index is part of labs)
+    if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && needs.setup.outputs.deploy_labs == 'true'
     env:
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
@@ -520,7 +672,21 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Check if labs index image exists
+        id: check-labs-index-image
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        run: |
+          IMAGE="${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:${{ github.sha }}"
+          if gcloud artifacts docker images describe "$IMAGE" --project="${{ env.LABS_PROJECT_ID }}" --location="${{ env.LABS_GAR_LOCATION }}" &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Image already exists: $IMAGE"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  Image not found, will build: $IMAGE"
+          fi
+
       - name: Build index page container
+        if: steps.check-labs-index-image.outputs.exists != 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
