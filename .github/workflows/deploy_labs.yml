@@ -35,9 +35,7 @@ env:
   HOME_REPOSITORY: "e-skimming-labs-home"
   LABS_GAR_LOCATION: "us-central1"
   LABS_REPOSITORY: "e-skimming-labs"
-  # Secrets (only service account keys)
-  HOME_GCP_SA_KEY: ${{ secrets.GCP_HOME_SA_KEY }}
-  LABS_GCP_SA_KEY: ${{ secrets.GCP_LABS_SA_KEY }}
+  # Note: Service account keys are set per-job based on environment
 
 jobs:
   setup:
@@ -181,6 +179,8 @@ jobs:
     env:
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
+      # Use environment-specific secrets if available, fallback to generic secret
+      HOME_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_HOME_SA_KEY_STG != '' && secrets.GCP_HOME_SA_KEY_STG != null && secrets.GCP_HOME_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_HOME_SA_KEY_PRD != '' && secrets.GCP_HOME_SA_KEY_PRD != null && secrets.GCP_HOME_SA_KEY_PRD) || secrets.GCP_HOME_SA_KEY }}
 
     steps:
       - name: Checkout code
@@ -199,13 +199,43 @@ jobs:
         run: |
           echo "🔍 Verifying authenticated service account..."
           SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
+          EXPECTED_SA="home-deploy-sa@${{ env.HOME_PROJECT_ID }}.iam.gserviceaccount.com"
           echo "Authenticated as: $SA_EMAIL"
-          echo "Expected service account: home-deploy-sa@${{ env.HOME_PROJECT_ID }}.iam.gserviceaccount.com"
+          echo "Expected service account: $EXPECTED_SA"
+          echo "Environment: ${{ needs.setup.outputs.environment }}"
+          echo "Project: ${{ env.HOME_PROJECT_ID }}"
+          
           if [[ "$SA_EMAIL" != *"home-deploy-sa@${{ env.HOME_PROJECT_ID }}.iam.gserviceaccount.com" ]]; then
-            echo "⚠️  WARNING: Service account mismatch!"
+            echo "❌ ERROR: Service account mismatch!"
             echo "   Authenticated: $SA_EMAIL"
-            echo "   Expected: home-deploy-sa@${{ env.HOME_PROJECT_ID }}.iam.gserviceaccount.com"
-            echo "   This may cause permission errors."
+            echo "   Expected: $EXPECTED_SA"
+            echo ""
+            echo "📋 This indicates the GitHub secret GCP_HOME_SA_KEY contains the wrong service account key."
+            echo "   For ${{ needs.setup.outputs.environment }} environment, you need:"
+            echo "   - Service account: $EXPECTED_SA"
+            echo ""
+            echo "   To fix:"
+            echo "   1. Create a key for the correct service account:"
+            echo "      gcloud iam service-accounts keys create /tmp/home-deploy-key.json \\"
+            echo "        --iam-account=$EXPECTED_SA \\"
+            echo "        --project=${{ env.HOME_PROJECT_ID }}"
+            echo ""
+            echo "   2. Update the GitHub secret:"
+            if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
+              echo "      gh secret set GCP_HOME_SA_KEY_STG --body \"\$(cat /tmp/home-deploy-key.json)\" \\"
+              echo "        --repo pci-tamper-protect/e-skimming-labs"
+            else
+              echo "      gh secret set GCP_HOME_SA_KEY_PRD --body \"\$(cat /tmp/home-deploy-key.json)\" \\"
+              echo "        --repo pci-tamper-protect/e-skimming-labs"
+            fi
+            echo ""
+            echo "   3. Or use the generic secret (less secure):"
+            echo "      gh secret set GCP_HOME_SA_KEY --body \"\$(cat /tmp/home-deploy-key.json)\" \\"
+            echo "        --repo pci-tamper-protect/e-skimming-labs"
+            echo ""
+            echo "   4. Clean up: rm /tmp/home-deploy-key.json"
+            echo ""
+            exit 1
           else
             echo "✅ Service account matches expected value"
           fi
@@ -301,6 +331,17 @@ jobs:
             --location=${{ env.HOME_GAR_LOCATION }} \
             --project=${{ env.HOME_PROJECT_ID }} &>/dev/null; then
             echo "❌ Repository ${{ env.HOME_REPOSITORY }} does not exist in project ${{ env.HOME_PROJECT_ID }}"
+            echo ""
+            echo "📋 To create the repository, run:"
+            echo "   cd deploy/terraform-home"
+            echo "   terraform init -backend-config=backend-${{ needs.setup.outputs.environment }}.conf"
+            echo "   terraform apply -var=\"environment=${{ needs.setup.outputs.environment }}\""
+            echo ""
+            echo "   Or create it manually:"
+            echo "   gcloud artifacts repositories create ${{ env.HOME_REPOSITORY }} \\"
+            echo "     --repository-format=docker \\"
+            echo "     --location=${{ env.HOME_GAR_LOCATION }} \\"
+            echo "     --project=${{ env.HOME_PROJECT_ID }}"
             exit 1
           fi
           
@@ -451,6 +492,8 @@ jobs:
     env:
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
+      # Use environment-specific secrets if available, fallback to generic secret
+      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG != '' && secrets.GCP_LABS_SA_KEY_STG != null && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD != '' && secrets.GCP_LABS_SA_KEY_PRD != null && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
 
     steps:
       - name: Checkout code
@@ -654,6 +697,8 @@ jobs:
     env:
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
+      # Use environment-specific secrets if available, fallback to generic secret
+      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG != '' && secrets.GCP_LABS_SA_KEY_STG != null && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD != '' && secrets.GCP_LABS_SA_KEY_PRD != null && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
     strategy:
       matrix:
         lab: ${{ fromJson(needs.setup.outputs.labs) }}
