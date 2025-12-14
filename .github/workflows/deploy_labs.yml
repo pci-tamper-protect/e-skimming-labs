@@ -736,7 +736,7 @@ jobs:
               --cpu=1 \
               --min-instances=0 \
               --max-instances=5 \
-              --set-env-vars="LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},FIRESTORE_DATABASE=(default)" \
+              --set-env-vars="PROJECT_ID=${{ env.LABS_PROJECT_ID }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},FIRESTORE_DATABASE=(default)" \
               --labels="environment=${{ needs.setup.outputs.environment }},component=analytics,project=e-skimming-labs"
             
             # Grant access to developer groups for staging (Terraform will also manage this)
@@ -762,7 +762,7 @@ jobs:
               --cpu=1 \
               --min-instances=0 \
               --max-instances=5 \
-              --set-env-vars="LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},FIRESTORE_DATABASE=(default)" \
+              --set-env-vars="PROJECT_ID=${{ env.LABS_PROJECT_ID }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},FIRESTORE_DATABASE=(default)" \
               --labels="environment=${{ needs.setup.outputs.environment }},component=analytics,project=e-skimming-labs"
           fi
 
