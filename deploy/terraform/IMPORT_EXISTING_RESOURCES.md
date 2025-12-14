@@ -1,5 +1,13 @@
 # Importing Existing Resources
 
+## Prerequisites
+
+Before running any Terraform commands, authenticate with Google Cloud:
+
+```bash
+gcloud auth application-default login
+```
+
 **Note**: This guide is primarily for production deployments. Staging projects (`labs-stg`, `labs-home-stg`) should be empty and Terraform will create all resources fresh.
 
 If you're deploying to production projects that already have some resources, you may need to import them into Terraform state.

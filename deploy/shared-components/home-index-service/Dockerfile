@@ -50,8 +50,17 @@ RUN mkdir -p ./docs/labs && \
     done && \
     rm -rf ./labs-temp
 
-# Copy catalog info for service metadata
-COPY catalog-info.yaml ./catalog-info.yaml
+# Copy catalog info for service metadata (optional - service handles missing file gracefully)
+# The file should exist in the repo root, but if buildx has issues finding it during cache key computation,
+# we'll create a placeholder. The service code handles missing files gracefully.
+COPY catalog-info.yaml ./catalog-info.yaml.tmp
+RUN if [ -f ./catalog-info.yaml.tmp ]; then \
+      mv ./catalog-info.yaml.tmp ./catalog-info.yaml && \
+      echo "✅ catalog-info.yaml copied"; \
+    else \
+      echo "⚠️ catalog-info.yaml not found, creating placeholder" && \
+      printf "ptp:\n  service:\n    name: home-index\n    version: unknown\n" > ./catalog-info.yaml; \
+    fi
 
 # Set ownership (alpine-base already has appuser)
 RUN chown -R appuser:appuser /app

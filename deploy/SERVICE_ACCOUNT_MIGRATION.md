@@ -153,6 +153,9 @@ ln -s .env.prd .env  # or create .env with LABS_PROJECT_ID=labs-prd
 **Option B: Using Terraform directly**
 
 ```bash
+# First, authenticate with Google Cloud
+gcloud auth application-default login
+
 # For staging - Labs
 cd deploy/terraform-labs
 terraform init -backend-config=backend-stg.conf

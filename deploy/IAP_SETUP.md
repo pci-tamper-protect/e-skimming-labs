@@ -84,7 +84,13 @@ The `deploy_labs.yml` workflow has been updated to:
 
 ## Deployment Steps
 
-### 1. Apply Terraform Changes
+### 1. Authenticate with Google Cloud
+
+```bash
+gcloud auth application-default login
+```
+
+### 2. Apply Terraform Changes
 
 ```bash
 cd deploy/terraform-labs

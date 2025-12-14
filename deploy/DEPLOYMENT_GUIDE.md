@@ -1,5 +1,15 @@
 # E-Skimming Labs Deployment Guide
 
+## Prerequisites
+
+Before running any deployment scripts or Terraform commands, authenticate with Google Cloud:
+
+```bash
+gcloud auth application-default login
+```
+
+This will open a browser for you to authenticate with your Google account. After authentication, Terraform and other tools will use these credentials.
+
 ## Overview
 
 The e-skimming-labs infrastructure is split across three separate Terraform modules:
