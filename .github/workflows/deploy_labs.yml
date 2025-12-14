@@ -21,18 +21,13 @@ on:
           - stg
 
 env:
-  # Home page project (labs-home-prd) - Configuration (from config.yml)
-  HOME_PROJECT_ID: "labs-home-prd"
+  # Artifact Registry configuration (same for both environments)
   HOME_GAR_LOCATION: "us-central1"
-  HOME_REPOSITORY: "home"
+  HOME_REPOSITORY: "e-skimming-labs-home"
+  LABS_GAR_LOCATION: "us-central1"
+  LABS_REPOSITORY: "e-skimming-labs"
   # Secrets (only service account keys)
   HOME_GCP_SA_KEY: ${{ secrets.GCP_HOME_SA_KEY }}
-
-  # Individual labs project (labs-prd) - Configuration (from config.yml)
-  LABS_PROJECT_ID: "labs-prd"
-  LABS_GAR_LOCATION: "us-central1"
-  LABS_REPOSITORY: "labs"
-  # Secrets (only service account keys)
   LABS_GCP_SA_KEY: ${{ secrets.GCP_LABS_SA_KEY }}
 
 jobs:
@@ -42,6 +37,8 @@ jobs:
       labs: ${{ steps.discover-labs.outputs.labs }}
       environment: ${{ steps.set-env.outputs.environment }}
       domain_prefix: ${{ steps.set-env.outputs.domain_prefix }}
+      home_project_id: ${{ steps.set-env.outputs.home_project_id }}
+      labs_project_id: ${{ steps.set-env.outputs.labs_project_id }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -52,9 +49,13 @@ jobs:
           if [[ "${{ github.event.inputs.environment }}" == "stg" ]]; then
             echo "environment=stg" >> $GITHUB_OUTPUT
             echo "domain_prefix=labs.stg.pcioasis.com" >> $GITHUB_OUTPUT
+            echo "home_project_id=labs-home-stg" >> $GITHUB_OUTPUT
+            echo "labs_project_id=labs-stg" >> $GITHUB_OUTPUT
           else
             echo "environment=prd" >> $GITHUB_OUTPUT
             echo "domain_prefix=labs.pcioasis.com" >> $GITHUB_OUTPUT
+            echo "home_project_id=labs-home-prd" >> $GITHUB_OUTPUT
+            echo "labs_project_id=labs-prd" >> $GITHUB_OUTPUT
           fi
 
       - name: Discover lab directories
@@ -70,6 +71,9 @@ jobs:
     runs-on: ubuntu-latest
     # Skip deployment for Dependabot PRs (secrets not available)
     if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
+    env:
+      HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
+      LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
 
     steps:
       - name: Checkout code
@@ -138,42 +142,105 @@ jobs:
       - name: Deploy SEO Service to Cloud Run
         if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null
         run: |
-          gcloud run deploy home-seo-${{ needs.setup.outputs.environment }} \
-            --image=${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:${{ github.sha }} \
-            --region=${{ env.HOME_GAR_LOCATION }} \
-            --platform=managed \
-            --allow-unauthenticated \
-            --service-account=home-runtime-sa@${{ env.HOME_PROJECT_ID }}.iam.gserviceaccount.com \
-            --port=8080 \
-            --memory=512Mi \
-            --cpu=1 \
-            --min-instances=0 \
-            --max-instances=5 \
-            --set-env-vars="PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }}" \
-            --labels="environment=${{ needs.setup.outputs.environment }},component=seo,project=e-skimming-labs-home"
+          # For staging: Use --no-allow-unauthenticated (IAM groups will be added via Terraform)
+          # For production: Use --allow-unauthenticated (public access)
+          if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
+            gcloud run deploy home-seo-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:${{ github.sha }} \
+              --region=${{ env.HOME_GAR_LOCATION }} \
+              --platform=managed \
+              --no-allow-unauthenticated \
+              --service-account=home-runtime-sa@${{ env.HOME_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=8080 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=0 \
+              --max-instances=5 \
+              --set-env-vars="PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }}" \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=seo,project=e-skimming-labs-home"
+            
+            # Grant access to developer groups for staging (Terraform will also manage this)
+            echo "Granting access to developer groups for staging SEO service..."
+            gcloud run services add-iam-policy-binding home-seo-${{ needs.setup.outputs.environment }} \
+              --region=${{ env.HOME_GAR_LOCATION }} \
+              --member="group:2025-interns@pcioasis.com" \
+              --role="roles/run.invoker" || echo "Warning: Failed to add 2025-interns group access"
+            
+            gcloud run services add-iam-policy-binding home-seo-${{ needs.setup.outputs.environment }} \
+              --region=${{ env.HOME_GAR_LOCATION }} \
+              --member="group:core-eng@pcioasis.com" \
+              --role="roles/run.invoker" || echo "Warning: Failed to add core-eng group access"
+          else
+            gcloud run deploy home-seo-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:${{ github.sha }} \
+              --region=${{ env.HOME_GAR_LOCATION }} \
+              --platform=managed \
+              --allow-unauthenticated \
+              --service-account=home-runtime-sa@${{ env.HOME_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=8080 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=0 \
+              --max-instances=5 \
+              --set-env-vars="PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }}" \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=seo,project=e-skimming-labs-home"
+          fi
 
       - name: Deploy Index Service to Cloud Run
         if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null
         run: |
-          gcloud run deploy home-index-${{ needs.setup.outputs.environment }} \
-            --image=${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:${{ github.sha }} \
-            --region=${{ env.HOME_GAR_LOCATION }} \
-            --platform=managed \
-            --allow-unauthenticated \
-            --service-account=home-runtime-sa@${{ env.HOME_PROJECT_ID }}.iam.gserviceaccount.com \
-            --port=8080 \
-            --memory=512Mi \
-            --cpu=1 \
-            --min-instances=0 \
-            --max-instances=5 \
-            --set-env-vars="PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app" \
-            --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs-home"
+          # For staging: Use --no-allow-unauthenticated (IAM groups will be added via Terraform)
+          # For production: Use --allow-unauthenticated (public access)
+          if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
+            gcloud run deploy home-index-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:${{ github.sha }} \
+              --region=${{ env.HOME_GAR_LOCATION }} \
+              --platform=managed \
+              --no-allow-unauthenticated \
+              --service-account=home-runtime-sa@${{ env.HOME_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=8080 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=0 \
+              --max-instances=5 \
+              --set-env-vars="PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app" \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs-home"
+            
+            # Grant access to developer groups for staging (Terraform will also manage this)
+            echo "Granting access to developer groups for staging Index service..."
+            gcloud run services add-iam-policy-binding home-index-${{ needs.setup.outputs.environment }} \
+              --region=${{ env.HOME_GAR_LOCATION }} \
+              --member="group:2025-interns@pcioasis.com" \
+              --role="roles/run.invoker" || echo "Warning: Failed to add 2025-interns group access"
+            
+            gcloud run services add-iam-policy-binding home-index-${{ needs.setup.outputs.environment }} \
+              --region=${{ env.HOME_GAR_LOCATION }} \
+              --member="group:core-eng@pcioasis.com" \
+              --role="roles/run.invoker" || echo "Warning: Failed to add core-eng group access"
+          else
+            gcloud run deploy home-index-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:${{ github.sha }} \
+              --region=${{ env.HOME_GAR_LOCATION }} \
+              --platform=managed \
+              --allow-unauthenticated \
+              --service-account=home-runtime-sa@${{ env.HOME_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=8080 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=0 \
+              --max-instances=5 \
+              --set-env-vars="PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app" \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs-home"
+          fi
 
   deploy-labs-components:
     needs: setup
     runs-on: ubuntu-latest
     # Skip deployment for Dependabot PRs (secrets not available)
     if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
+    env:
+      HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
+      LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
 
     steps:
       - name: Checkout code
@@ -221,25 +288,60 @@ jobs:
       - name: Deploy Analytics Service to Cloud Run
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
         run: |
-          gcloud run deploy labs-analytics-${{ needs.setup.outputs.environment }} \
-            --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ github.sha }} \
-            --region=${{ env.LABS_GAR_LOCATION }} \
-            --platform=managed \
-            --allow-unauthenticated \
-            --service-account=labs-runtime-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
-            --port=8080 \
-            --memory=512Mi \
-            --cpu=1 \
-            --min-instances=0 \
-            --max-instances=5 \
-            --set-env-vars="PROJECT_ID=${{ env.LABS_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},FIRESTORE_DATABASE=(default)" \
-            --labels="environment=${{ needs.setup.outputs.environment }},component=analytics,project=e-skimming-labs"
+          # Analytics service is backend-only (called by lab services)
+          # For staging: Use --no-allow-unauthenticated (IAM groups will be added via Terraform)
+          # For production: Keep --allow-unauthenticated for service-to-service calls
+          # Note: Analytics is typically only called by lab services, not directly by users
+          if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
+            gcloud run deploy labs-analytics-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ github.sha }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --platform=managed \
+              --no-allow-unauthenticated \
+              --service-account=labs-runtime-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=8080 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=0 \
+              --max-instances=5 \
+              --set-env-vars="PROJECT_ID=${{ env.LABS_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},FIRESTORE_DATABASE=(default)" \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=analytics,project=e-skimming-labs"
+            
+            # Grant access to developer groups for staging (Terraform will also manage this)
+            echo "Granting access to developer groups for staging Analytics service..."
+            gcloud run services add-iam-policy-binding labs-analytics-${{ needs.setup.outputs.environment }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --member="group:2025-interns@pcioasis.com" \
+              --role="roles/run.invoker" || echo "Warning: Failed to add 2025-interns group access"
+            
+            gcloud run services add-iam-policy-binding labs-analytics-${{ needs.setup.outputs.environment }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --member="group:core-eng@pcioasis.com" \
+              --role="roles/run.invoker" || echo "Warning: Failed to add core-eng group access"
+          else
+            gcloud run deploy labs-analytics-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ github.sha }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --platform=managed \
+              --allow-unauthenticated \
+              --service-account=labs-runtime-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=8080 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=0 \
+              --max-instances=5 \
+              --set-env-vars="PROJECT_ID=${{ env.LABS_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},FIRESTORE_DATABASE=(default)" \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=analytics,project=e-skimming-labs"
+          fi
 
   deploy-labs:
     needs: [setup, deploy-labs-components]
     runs-on: ubuntu-latest
     # Skip deployment for Dependabot PRs (secrets not available)
     if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
+    env:
+      HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
+      LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
     strategy:
       matrix:
         lab: ${{ fromJson(needs.setup.outputs.labs) }}
@@ -293,19 +395,49 @@ jobs:
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
         run: |
           # Deploy lab as separate Cloud Run service
-          gcloud run deploy lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
-            --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }} \
-            --region=${{ env.LABS_GAR_LOCATION }} \
-            --platform=managed \
-            --allow-unauthenticated \
-            --service-account=labs-runtime-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
-            --port=8080 \
-            --memory=512Mi \
-            --cpu=1 \
-            --min-instances=0 \
-            --max-instances=10 \
-            --set-env-vars="LAB_NAME=${{ matrix.lab }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},HOME_URL=https://${{ needs.setup.outputs.domain_prefix }},C2_URL=https://lab-${{ matrix.lab }}-c2-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app" \
-            --labels="environment=${{ needs.setup.outputs.environment }},lab=${{ matrix.lab }},project=e-skimming-labs"
+          # For staging: Use --no-allow-unauthenticated to restrict access (IAM groups will be added via Terraform)
+          # For production: Use --allow-unauthenticated for public access
+          if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
+            gcloud run deploy lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --platform=managed \
+              --no-allow-unauthenticated \
+              --service-account=labs-runtime-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=8080 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=0 \
+              --max-instances=10 \
+              --set-env-vars="LAB_NAME=${{ matrix.lab }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},HOME_URL=https://${{ needs.setup.outputs.domain_prefix }},C2_URL=https://lab-${{ matrix.lab }}-c2-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app" \
+              --labels="environment=${{ needs.setup.outputs.environment }},lab=${{ matrix.lab }},project=e-skimming-labs"
+            
+            # Grant access to developer groups for staging
+            echo "Granting access to developer groups for staging lab..."
+            gcloud run services add-iam-policy-binding lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --member="group:2025-interns@pcioasis.com" \
+              --role="roles/run.invoker" || echo "Warning: Failed to add 2025-interns group access"
+            
+            gcloud run services add-iam-policy-binding lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --member="group:core-eng@pcioasis.com" \
+              --role="roles/run.invoker" || echo "Warning: Failed to add core-eng group access"
+          else
+            gcloud run deploy lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --platform=managed \
+              --allow-unauthenticated \
+              --service-account=labs-runtime-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=8080 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=0 \
+              --max-instances=10 \
+              --set-env-vars="LAB_NAME=${{ matrix.lab }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},HOME_URL=https://${{ needs.setup.outputs.domain_prefix }},C2_URL=https://lab-${{ matrix.lab }}-c2-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app" \
+              --labels="environment=${{ needs.setup.outputs.environment }},lab=${{ matrix.lab }},project=e-skimming-labs"
+          fi
 
       - name: Configure custom domain mapping
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
@@ -329,6 +461,9 @@ jobs:
     runs-on: ubuntu-latest
     # Skip deployment for Dependabot PRs (secrets not available)
     if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
+    env:
+      HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
+      LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
 
     steps:
       - name: Checkout code
@@ -377,19 +512,49 @@ jobs:
       - name: Deploy index page to Cloud Run
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
         run: |
-          gcloud run deploy labs-index-${{ needs.setup.outputs.environment }} \
-            --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:${{ github.sha }} \
-            --region=${{ env.LABS_GAR_LOCATION }} \
-            --platform=managed \
-            --allow-unauthenticated \
-            --service-account=labs-runtime-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
-            --port=8080 \
-            --memory=512Mi \
-            --cpu=1 \
-            --min-instances=0 \
-            --max-instances=5 \
-            --set-env-vars="ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},ANALYTICS_SERVICE_URL=https://labs-analytics-${{ needs.setup.outputs.environment }}-hash.a.run.app,SEO_SERVICE_URL=https://labs-seo-${{ needs.setup.outputs.environment }}-hash.a.run.app" \
-            --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs"
+          # For staging: Use --no-allow-unauthenticated (IAM groups will be added via Terraform)
+          # For production: Use --allow-unauthenticated (public access)
+          if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
+            gcloud run deploy labs-index-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:${{ github.sha }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --platform=managed \
+              --no-allow-unauthenticated \
+              --service-account=labs-runtime-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=8080 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=0 \
+              --max-instances=5 \
+              --set-env-vars="ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},ANALYTICS_SERVICE_URL=https://labs-analytics-${{ needs.setup.outputs.environment }}-hash.a.run.app,SEO_SERVICE_URL=https://labs-seo-${{ needs.setup.outputs.environment }}-hash.a.run.app" \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs"
+            
+            # Grant access to developer groups for staging
+            echo "Granting access to developer groups for staging Index service..."
+            gcloud run services add-iam-policy-binding labs-index-${{ needs.setup.outputs.environment }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --member="group:2025-interns@pcioasis.com" \
+              --role="roles/run.invoker" || echo "Warning: Failed to add 2025-interns group access"
+            
+            gcloud run services add-iam-policy-binding labs-index-${{ needs.setup.outputs.environment }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --member="group:core-eng@pcioasis.com" \
+              --role="roles/run.invoker" || echo "Warning: Failed to add core-eng group access"
+          else
+            gcloud run deploy labs-index-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:${{ github.sha }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --platform=managed \
+              --allow-unauthenticated \
+              --service-account=labs-runtime-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=8080 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=0 \
+              --max-instances=5 \
+              --set-env-vars="ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},ANALYTICS_SERVICE_URL=https://labs-analytics-${{ needs.setup.outputs.environment }}-hash.a.run.app,SEO_SERVICE_URL=https://labs-seo-${{ needs.setup.outputs.environment }}-hash.a.run.app" \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs"
+          fi
 
       - name: Configure index domain mapping
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
@@ -423,3 +588,6 @@ jobs:
             echo "deploy-labs-components result: ${{ needs.deploy-labs-components.result }}"
             exit 1
           fi
+
+# Import all at once (for PRD)
+        
