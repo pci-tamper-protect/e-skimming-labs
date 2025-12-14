@@ -194,6 +194,31 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v3
 
+      - name: Verify authenticated service account
+        if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null
+        run: |
+          echo "🔍 Verifying authenticated service account..."
+          SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
+          echo "Authenticated as: $SA_EMAIL"
+          echo "Expected service account: home-deploy-sa@${{ env.HOME_PROJECT_ID }}.iam.gserviceaccount.com"
+          if [[ "$SA_EMAIL" != *"home-deploy-sa@${{ env.HOME_PROJECT_ID }}.iam.gserviceaccount.com" ]]; then
+            echo "⚠️  WARNING: Service account mismatch!"
+            echo "   Authenticated: $SA_EMAIL"
+            echo "   Expected: home-deploy-sa@${{ env.HOME_PROJECT_ID }}.iam.gserviceaccount.com"
+            echo "   This may cause permission errors."
+          else
+            echo "✅ Service account matches expected value"
+          fi
+          
+          # Also check project
+          CURRENT_PROJECT=$(gcloud config get-value project 2>/dev/null || echo "unknown")
+          echo "Current GCP project: $CURRENT_PROJECT"
+          echo "Expected project: ${{ env.HOME_PROJECT_ID }}"
+          if [[ "$CURRENT_PROJECT" != "${{ env.HOME_PROJECT_ID }}" ]]; then
+            echo "⚠️  WARNING: Project mismatch! Setting correct project..."
+            gcloud config set project ${{ env.HOME_PROJECT_ID }}
+          fi
+
       - name: Configure Docker to use gcloud as credential helper
         if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null
         run: |
@@ -265,14 +290,63 @@ jobs:
       - name: Push SEO Service to Artifact Registry
         if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null
         run: |
-          docker push ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:${{ github.sha }}
-          docker push ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:latest
+          echo "📤 Pushing SEO service images to Artifact Registry..."
+          echo "Repository: ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}"
+          SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
+          echo "Using service account: $SA_EMAIL"
+          
+          # Verify repository exists and check permissions
+          echo "🔍 Verifying repository access..."
+          if ! gcloud artifacts repositories describe ${{ env.HOME_REPOSITORY }} \
+            --location=${{ env.HOME_GAR_LOCATION }} \
+            --project=${{ env.HOME_PROJECT_ID }} &>/dev/null; then
+            echo "❌ Repository ${{ env.HOME_REPOSITORY }} does not exist in project ${{ env.HOME_PROJECT_ID }}"
+            exit 1
+          fi
+          
+          # Check IAM permissions
+          echo "🔍 Checking IAM permissions for $SA_EMAIL..."
+          gcloud artifacts repositories get-iam-policy ${{ env.HOME_REPOSITORY }} \
+            --location=${{ env.HOME_GAR_LOCATION }} \
+            --project=${{ env.HOME_PROJECT_ID }} \
+            --flatten="bindings[].members" \
+            --filter="bindings.members:serviceAccount:$SA_EMAIL" \
+            --format="table(bindings.role)" || echo "⚠️  Could not check repository IAM policy"
+          
+          # Push images
+          docker push ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:${{ github.sha }} || {
+            echo "❌ Failed to push image with SHA tag"
+            echo "Service account used: $SA_EMAIL"
+            echo "Repository: ${{ env.HOME_REPOSITORY }}"
+            echo "Project: ${{ env.HOME_PROJECT_ID }}"
+            echo "Location: ${{ env.HOME_GAR_LOCATION }}"
+            exit 1
+          }
+          docker push ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:latest || {
+            echo "❌ Failed to push image with latest tag"
+            echo "Service account used: $SA_EMAIL"
+            exit 1
+          }
 
       - name: Push Index Service to Artifact Registry
         if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null && steps.check-index-image.outputs.exists != 'true'
         run: |
-          docker push ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:${{ github.sha }}
-          docker push ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:latest
+          echo "📤 Pushing Index service images to Artifact Registry..."
+          SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
+          echo "Using service account: $SA_EMAIL"
+          
+          docker push ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:${{ github.sha }} || {
+            echo "❌ Failed to push index image with SHA tag"
+            echo "Service account used: $SA_EMAIL"
+            echo "Repository: ${{ env.HOME_REPOSITORY }}"
+            echo "Project: ${{ env.HOME_PROJECT_ID }}"
+            exit 1
+          }
+          docker push ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:latest || {
+            echo "❌ Failed to push index image with latest tag"
+            echo "Service account used: $SA_EMAIL"
+            exit 1
+          }
 
       - name: Deploy SEO Service to Cloud Run
         if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null
@@ -390,6 +464,31 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v3
 
+      - name: Verify authenticated service account
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        run: |
+          echo "🔍 Verifying authenticated service account..."
+          SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
+          echo "Authenticated as: $SA_EMAIL"
+          echo "Expected service account: labs-deploy-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com"
+          if [[ "$SA_EMAIL" != *"labs-deploy-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com" ]]; then
+            echo "⚠️  WARNING: Service account mismatch!"
+            echo "   Authenticated: $SA_EMAIL"
+            echo "   Expected: labs-deploy-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com"
+            echo "   This may cause permission errors."
+          else
+            echo "✅ Service account matches expected value"
+          fi
+          
+          # Also check project
+          CURRENT_PROJECT=$(gcloud config get-value project 2>/dev/null || echo "unknown")
+          echo "Current GCP project: $CURRENT_PROJECT"
+          echo "Expected project: ${{ env.LABS_PROJECT_ID }}"
+          if [[ "$CURRENT_PROJECT" != "${{ env.LABS_PROJECT_ID }}" ]]; then
+            echo "⚠️  WARNING: Project mismatch! Setting correct project..."
+            gcloud config set project ${{ env.LABS_PROJECT_ID }}
+          fi
+
       - name: Configure Docker to use gcloud as credential helper
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
         run: |
@@ -456,9 +555,46 @@ jobs:
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null && steps.check-analytics-image.outputs.exists != 'true'
         run: |
           echo "📤 Pushing analytics image with tags:"
-          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ github.sha }}
-          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ steps.analytics-hash.outputs.hash }}
-          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:latest
+          SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
+          echo "Using service account: $SA_EMAIL"
+          echo "Repository: ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}"
+          
+          # Verify repository exists and check permissions
+          echo "🔍 Verifying repository access..."
+          if ! gcloud artifacts repositories describe ${{ env.LABS_REPOSITORY }} \
+            --location=${{ env.LABS_GAR_LOCATION }} \
+            --project=${{ env.LABS_PROJECT_ID }} &>/dev/null; then
+            echo "❌ Repository ${{ env.LABS_REPOSITORY }} does not exist in project ${{ env.LABS_PROJECT_ID }}"
+            exit 1
+          fi
+          
+          # Check IAM permissions
+          echo "🔍 Checking IAM permissions for $SA_EMAIL..."
+          gcloud artifacts repositories get-iam-policy ${{ env.LABS_REPOSITORY }} \
+            --location=${{ env.LABS_GAR_LOCATION }} \
+            --project=${{ env.LABS_PROJECT_ID }} \
+            --flatten="bindings[].members" \
+            --filter="bindings.members:serviceAccount:$SA_EMAIL" \
+            --format="table(bindings.role)" || echo "⚠️  Could not check repository IAM policy"
+          
+          # Push images
+          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ github.sha }} || {
+            echo "❌ Failed to push analytics image with SHA tag"
+            echo "Service account used: $SA_EMAIL"
+            echo "Repository: ${{ env.LABS_REPOSITORY }}"
+            echo "Project: ${{ env.LABS_PROJECT_ID }}"
+            exit 1
+          }
+          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ steps.analytics-hash.outputs.hash }} || {
+            echo "❌ Failed to push analytics image with hash tag"
+            echo "Service account used: $SA_EMAIL"
+            exit 1
+          }
+          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:latest || {
+            echo "❌ Failed to push analytics image with latest tag"
+            echo "Service account used: $SA_EMAIL"
+            exit 1
+          }
 
       - name: Deploy Analytics Service to Cloud Run
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
@@ -578,8 +714,25 @@ jobs:
       - name: Push container image to Artifact Registry
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null && steps.check-lab-image.outputs.exists != 'true'
         run: |
-          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }}
-          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:latest
+          SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
+          echo "📤 Pushing lab container image: ${{ matrix.lab }}"
+          echo "Using service account: $SA_EMAIL"
+          echo "Repository: ${{ env.LABS_REPOSITORY }}"
+          echo "Project: ${{ env.LABS_PROJECT_ID }}"
+          
+          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }} || {
+            echo "❌ Failed to push lab image with SHA tag"
+            echo "Service account used: $SA_EMAIL"
+            echo "Lab: ${{ matrix.lab }}"
+            echo "Repository: ${{ env.LABS_REPOSITORY }}"
+            echo "Project: ${{ env.LABS_PROJECT_ID }}"
+            exit 1
+          }
+          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:latest || {
+            echo "❌ Failed to push lab image with latest tag"
+            echo "Service account used: $SA_EMAIL"
+            exit 1
+          }
 
       - name: Deploy to Cloud Run
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
@@ -668,6 +821,31 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v3
 
+      - name: Verify authenticated service account
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        run: |
+          echo "🔍 Verifying authenticated service account..."
+          SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
+          echo "Authenticated as: $SA_EMAIL"
+          echo "Expected service account: labs-deploy-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com"
+          if [[ "$SA_EMAIL" != *"labs-deploy-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com" ]]; then
+            echo "⚠️  WARNING: Service account mismatch!"
+            echo "   Authenticated: $SA_EMAIL"
+            echo "   Expected: labs-deploy-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com"
+            echo "   This may cause permission errors."
+          else
+            echo "✅ Service account matches expected value"
+          fi
+          
+          # Also check project
+          CURRENT_PROJECT=$(gcloud config get-value project 2>/dev/null || echo "unknown")
+          echo "Current GCP project: $CURRENT_PROJECT"
+          echo "Expected project: ${{ env.LABS_PROJECT_ID }}"
+          if [[ "$CURRENT_PROJECT" != "${{ env.LABS_PROJECT_ID }}" ]]; then
+            echo "⚠️  WARNING: Project mismatch! Setting correct project..."
+            gcloud config set project ${{ env.LABS_PROJECT_ID }}
+          fi
+
       - name: Configure Docker to use gcloud as credential helper
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
         run: |
@@ -711,8 +889,24 @@ jobs:
       - name: Push index container to Artifact Registry
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null && steps.check-labs-index-image.outputs.exists != 'true'
         run: |
-          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:${{ github.sha }}
-          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:latest
+          SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
+          echo "📤 Pushing labs index container image"
+          echo "Using service account: $SA_EMAIL"
+          echo "Repository: ${{ env.LABS_REPOSITORY }}"
+          echo "Project: ${{ env.LABS_PROJECT_ID }}"
+          
+          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:${{ github.sha }} || {
+            echo "❌ Failed to push labs index image with SHA tag"
+            echo "Service account used: $SA_EMAIL"
+            echo "Repository: ${{ env.LABS_REPOSITORY }}"
+            echo "Project: ${{ env.LABS_PROJECT_ID }}"
+            exit 1
+          }
+          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:latest || {
+            echo "❌ Failed to push labs index image with latest tag"
+            echo "Service account used: $SA_EMAIL"
+            exit 1
+          }
 
       - name: Deploy index page to Cloud Run
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
