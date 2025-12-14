@@ -66,6 +66,31 @@ resource "google_artifact_registry_repository_iam_member" "home_deploy_artifact_
   ]
 }
 
+# Grant Artifact Registry admin access to core-eng and 2025-interns groups (staging only)
+resource "google_artifact_registry_repository_iam_member" "core_eng_artifact_registry_admin" {
+  count = var.environment == "stg" ? 1 : 0
+
+  location   = var.region
+  repository = google_artifact_registry_repository.home_repo.repository_id
+  project    = local.home_project_id
+  role       = "roles/artifactregistry.admin"
+  member     = "group:core-eng@pcioasis.com"
+
+  depends_on = [google_artifact_registry_repository.home_repo]
+}
+
+resource "google_artifact_registry_repository_iam_member" "interns_artifact_registry_admin" {
+  count = var.environment == "stg" ? 1 : 0
+
+  location   = var.region
+  repository = google_artifact_registry_repository.home_repo.repository_id
+  project    = local.home_project_id
+  role       = "roles/artifactregistry.admin"
+  member     = "group:2025-interns@pcioasis.com"
+
+  depends_on = [google_artifact_registry_repository.home_repo]
+}
+
 # IAM Roles for Home SEO Service Account
 resource "google_project_iam_member" "home_seo_roles" {
   for_each = toset([

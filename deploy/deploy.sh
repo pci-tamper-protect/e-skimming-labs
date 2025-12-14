@@ -139,9 +139,16 @@ echo "📋 Setting GCP project..."
 gcloud config set project $PROJECT_ID
 
 # Build and push Docker images before deploying services
+# Use optimized version that checks for content changes
 if [ "${BUILD_IMAGES:-true}" != "false" ]; then
-    echo "🏗️  Building Docker images..."
-    "$SCRIPT_DIR/build-images.sh"
+    echo "🏗️  Building Docker images (with content hash checking)..."
+    if [ -f "$SCRIPT_DIR/build-images-optimized.sh" ]; then
+        "$SCRIPT_DIR/build-images-optimized.sh"
+    else
+        # Fallback to regular build script if optimized version doesn't exist
+        echo "⚠️  Optimized build script not found, using regular build (will build all images)"
+        "$SCRIPT_DIR/build-images.sh"
+    fi
     echo ""
 fi
 

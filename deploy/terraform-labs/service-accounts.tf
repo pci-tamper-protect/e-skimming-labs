@@ -71,6 +71,31 @@ resource "google_artifact_registry_repository_iam_member" "labs_deploy_artifact_
   ]
 }
 
+# Grant Artifact Registry admin access to core-eng and 2025-interns groups (staging only)
+resource "google_artifact_registry_repository_iam_member" "core_eng_artifact_registry_admin" {
+  count = var.environment == "stg" ? 1 : 0
+
+  location   = var.region
+  repository = google_artifact_registry_repository.labs_repo.repository_id
+  project    = local.labs_project_id
+  role       = "roles/artifactregistry.admin"
+  member     = "group:core-eng@pcioasis.com"
+
+  depends_on = [google_artifact_registry_repository.labs_repo]
+}
+
+resource "google_artifact_registry_repository_iam_member" "interns_artifact_registry_admin" {
+  count = var.environment == "stg" ? 1 : 0
+
+  location   = var.region
+  repository = google_artifact_registry_repository.labs_repo.repository_id
+  project    = local.labs_project_id
+  role       = "roles/artifactregistry.admin"
+  member     = "group:2025-interns@pcioasis.com"
+
+  depends_on = [google_artifact_registry_repository.labs_repo]
+}
+
 # IAM Roles for Analytics Service Account
 resource "google_project_iam_member" "labs_analytics_roles" {
   for_each = toset([

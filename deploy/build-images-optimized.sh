@@ -122,30 +122,36 @@ build_and_push_if_needed() {
     local content_hash=$(calculate_content_hash "$build_dir" "$dockerfile")
     echo "   Content hash: $content_hash"
     
-    # Check if image already exists
+    # Check if image with content hash tag exists (most reliable)
+    local hash_image_tag="${image_tag%:latest}:${content_hash}"
+    if image_exists "$hash_image_tag" "$project_id" "$REGION"; then
+        echo "   ✅ Image with content hash already exists: $hash_image_tag"
+        echo "   ℹ️  Source files haven't changed, skipping build"
+        echo "   📤 Tagging existing image as latest..."
+        # Tag the existing image as latest without rebuilding
+        docker pull "$hash_image_tag" 2>/dev/null || true
+        docker tag "$hash_image_tag" "$image_tag" 2>/dev/null || true
+        docker push "$image_tag" 2>/dev/null || true
+        return 0
+    fi
+    
+    # Fallback: Check if latest tag exists (for backwards compatibility)
     if image_exists "$image_tag" "$project_id" "$REGION"; then
-        # Get the existing image's metadata to check if we can skip
-        local existing_digest=$(gcloud artifacts docker images describe "$image_tag" \
-            --project="$project_id" \
-            --location="$REGION" \
-            --format="value(image_summary.fully_qualified_digest)" 2>/dev/null || echo "")
-        
-        if [ -n "$existing_digest" ]; then
-            echo "   ✅ Image already exists: $image_tag"
-            echo "   ℹ️  Skipping build (image already in registry)"
-            return 0
-        fi
+        echo "   ℹ️  Image with 'latest' tag exists: $image_tag"
+        echo "   ⚠️  Content may have changed, rebuilding to be safe..."
     fi
     
     # Build the image
     echo "   🔨 Building image (content changed or image not found)..."
     cd "$build_dir"
-    docker build -f "$dockerfile" -t "$image_tag" .
+    # Build with both content hash tag and latest tag
+    docker build -f "$dockerfile" -t "$image_tag" -t "$hash_image_tag" .
     
-    # Push the image
-    echo "   📤 Pushing image..."
+    # Push both tags
+    echo "   📤 Pushing image with tags..."
+    docker push "$hash_image_tag"
     docker push "$image_tag"
-    echo "   ✅ $service_name image pushed: $image_tag"
+    echo "   ✅ $service_name image pushed: $image_tag (hash: $content_hash)"
 }
 
 # Build and push analytics service (to labs project)
