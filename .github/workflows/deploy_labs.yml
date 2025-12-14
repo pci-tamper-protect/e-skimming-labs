@@ -61,16 +61,19 @@ jobs:
           DEPLOY_HOME="false"
           DEPLOY_LABS="false"
           
-          # Check commit message for force keywords (preferred method)
+          # Fetch commit message once and reuse throughout this step
           COMMIT_MSG=$(git log -1 --pretty=%B)
-          if echo "$COMMIT_MSG" | grep -qiE "\[force-all\]|force-all"; then
+          
+          # Check commit message for force keywords (preferred method)
+          # Use word boundaries to prevent partial matches (e.g., "unforce-all")
+          if echo "$COMMIT_MSG" | grep -qiE "\[force-all\]|\bforce-all\b"; then
             DEPLOY_HOME="true"
             DEPLOY_LABS="true"
             echo "✅ Force deploy detected in commit message: [force-all]"
-          elif echo "$COMMIT_MSG" | grep -qiE "\[force-home\]|force-home"; then
+          elif echo "$COMMIT_MSG" | grep -qiE "\[force-home\]|\bforce-home\b"; then
             DEPLOY_HOME="true"
             echo "✅ Force deploy detected in commit message: [force-home]"
-          elif echo "$COMMIT_MSG" | grep -qiE "\[force-labs\]|force-labs"; then
+          elif echo "$COMMIT_MSG" | grep -qiE "\[force-labs\]|\bforce-labs\b"; then
             DEPLOY_LABS="true"
             echo "✅ Force deploy detected in commit message: [force-labs]"
           elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
