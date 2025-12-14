@@ -65,6 +65,68 @@ gh api repos/$REPO_OWNER/$REPO_NAME/branches/main/protection \
 
 echo "✅ main branch protection configured (team approval, no CODEOWNERS)"
 
+# Create ruleset for stg to block direct pushes
+echo ""
+echo "📋 Configuring stg branch ruleset to block direct pushes..."
+STG_RULESET_ID=$(gh api repos/$REPO_OWNER/$REPO_NAME/rulesets 2>&1 | jq -r '.[] | select(.conditions.ref_name.include[]? == "refs/heads/stg") | .id' | head -1)
+
+if [ -n "$STG_RULESET_ID" ] && [ "$STG_RULESET_ID" != "null" ]; then
+  echo "Updating existing stg ruleset ID: $STG_RULESET_ID"
+  CURRENT_RULESET=$(gh api repos/$REPO_OWNER/$REPO_NAME/rulesets/$STG_RULESET_ID)
+  # Add update rule if not present
+  HAS_UPDATE=$(echo "$CURRENT_RULESET" | jq '.rules[] | select(.type == "update")')
+  if [ -z "$HAS_UPDATE" ]; then
+    UPDATED_RULESET=$(echo "$CURRENT_RULESET" | jq '.rules += [{"type": "update"}]')
+    echo "$UPDATED_RULESET" > /tmp/updated-stg-ruleset.json
+    gh api repos/$REPO_OWNER/$REPO_NAME/rulesets/$STG_RULESET_ID \
+      --method PUT \
+      --input /tmp/updated-stg-ruleset.json > /dev/null
+    echo "✅ Added update rule to stg ruleset (blocks direct pushes)"
+  else
+    echo "✅ stg ruleset already has update rule"
+  fi
+else
+  echo "Creating new ruleset for stg branch..."
+  cat > /tmp/stg-ruleset.json << EOF
+{
+  "name": "stg-require-pr",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": ["refs/heads/stg"],
+      "exclude": []
+    }
+  },
+  "rules": [
+    {
+      "type": "deletion"
+    },
+    {
+      "type": "non_fast_forward"
+    },
+    {
+      "type": "update"
+    },
+    {
+      "type": "pull_request",
+      "parameters": {
+        "required_approving_review_count": 1,
+        "dismiss_stale_reviews_on_push": false,
+        "require_code_owner_review": true,
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": false
+      }
+    }
+  ]
+}
+EOF
+  gh api repos/$REPO_OWNER/$REPO_NAME/rulesets \
+    --method POST \
+    --input /tmp/stg-ruleset.json > /dev/null
+  echo "✅ Created new stg ruleset (blocks direct pushes, requires CODEOWNERS)"
+fi
+
 # Update or create ruleset for main with bypass_actors
 echo ""
 echo "📋 Configuring main branch ruleset with bypass for $TEAM_SLUG..."
@@ -73,6 +135,19 @@ MAIN_RULESET_ID=$(gh api repos/$REPO_OWNER/$REPO_NAME/rulesets 2>&1 | jq -r '.[]
 if [ -n "$MAIN_RULESET_ID" ] && [ "$MAIN_RULESET_ID" != "null" ]; then
   echo "Updating existing ruleset ID: $MAIN_RULESET_ID"
   CURRENT_RULESET=$(gh api repos/$REPO_OWNER/$REPO_NAME/rulesets/$MAIN_RULESET_ID)
+  # Add update rule if not present
+  HAS_UPDATE=$(echo "$CURRENT_RULESET" | jq '.rules[] | select(.type == "update")')
+  if [ -z "$HAS_UPDATE" ]; then
+    UPDATED_RULESET=$(echo "$CURRENT_RULESET" | jq '.rules += [{"type": "update"}]')
+    echo "$UPDATED_RULESET" > /tmp/updated-ruleset.json
+    gh api repos/$REPO_OWNER/$REPO_NAME/rulesets/$MAIN_RULESET_ID \
+      --method PUT \
+      --input /tmp/updated-ruleset.json > /dev/null
+    echo "✅ Added update rule to main ruleset (blocks direct pushes)"
+  else
+    echo "✅ main ruleset already has update rule"
+  fi
+  # Update bypass actors
   UPDATED_RULESET=$(echo "$CURRENT_RULESET" | jq ".bypass_actors = [{\"actor_type\": \"Team\", \"actor_id\": $TEAM_ID}]")
   echo "$UPDATED_RULESET" > /tmp/updated-ruleset.json
   gh api repos/$REPO_OWNER/$REPO_NAME/rulesets/$MAIN_RULESET_ID \
@@ -100,6 +175,9 @@ else
       "type": "non_fast_forward"
     },
     {
+      "type": "update"
+    },
+    {
       "type": "pull_request",
       "parameters": {
         "required_approving_review_count": 1,
@@ -121,7 +199,7 @@ EOF
   gh api repos/$REPO_OWNER/$REPO_NAME/rulesets \
     --method POST \
     --input /tmp/main-ruleset.json > /dev/null
-  echo "✅ Created new ruleset with bypass for $TEAM_SLUG"
+  echo "✅ Created new ruleset with bypass for $TEAM_SLUG (blocks direct pushes)"
 fi
 
 echo ""

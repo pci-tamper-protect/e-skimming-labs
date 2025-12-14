@@ -27,10 +27,6 @@ on:
     branches:
       - 'stg'
       - 'main'
-    tags:
-      - 'force-all'
-      - 'force-home'
-      - 'force-labs'
   workflow_dispatch:
     inputs:
       environment:
@@ -69,36 +65,29 @@ jobs:
         with:
           fetch-depth: 0  # Need full history for change detection
 
-      - name: Detect changes and force tags
+      - name: Detect changes and force keywords
         id: detect-changes
         run: |
           # Default: deploy based on what changed
           DEPLOY_HOME="false"
           DEPLOY_LABS="false"
           
-          # Check for force tags
-          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/* ]]; then
-            TAG_NAME="${GITHUB_REF#refs/tags/}"
-            echo "🔖 Detected tag: $TAG_NAME"
-            
-            if [[ "$TAG_NAME" == "force-all" ]]; then
-              DEPLOY_HOME="true"
-              DEPLOY_LABS="true"
-              echo "✅ Force deploying all components (force-all)"
-            elif [[ "$TAG_NAME" == "force-home" ]]; then
-              DEPLOY_HOME="true"
-              echo "✅ Force deploying home components (force-home)"
-            elif [[ "$TAG_NAME" == "force-labs" ]]; then
-              DEPLOY_LABS="true"
-              echo "✅ Force deploying labs components (force-labs)"
-            fi
-          fi
-          
-          # For PRs and workflow_dispatch, detect changed paths
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          # Check commit message for force keywords (preferred method)
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          if echo "$COMMIT_MSG" | grep -qiE "\[force-all\]|force-all"; then
+            DEPLOY_HOME="true"
+            DEPLOY_LABS="true"
+            echo "✅ Force deploy detected in commit message: [force-all]"
+          elif echo "$COMMIT_MSG" | grep -qiE "\[force-home\]|force-home"; then
+            DEPLOY_HOME="true"
+            echo "✅ Force deploy detected in commit message: [force-home]"
+          elif echo "$COMMIT_MSG" | grep -qiE "\[force-labs\]|force-labs"; then
+            DEPLOY_LABS="true"
+            echo "✅ Force deploy detected in commit message: [force-labs]"
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # For PRs, detect changed paths
             echo "🔍 Detecting changes in PR..."
             
-            # Get changed files
             if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q "^deploy/shared-components/seo-service/\|^deploy/shared-components/home-index-service/\|^deploy/Dockerfile.index"; then
               DEPLOY_HOME="true"
               echo "✅ Home components changed"
@@ -115,40 +104,24 @@ jobs:
               DEPLOY_LABS="true"
               echo "✅ Workflow changed, deploying all"
             fi
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            # For pushes, detect changes from previous commit
+            echo "🔍 Detecting changes in push..."
+            
+            if git diff --name-only HEAD~1 HEAD | grep -q "^deploy/shared-components/seo-service/\|^deploy/shared-components/home-index-service/\|^deploy/Dockerfile.index"; then
+              DEPLOY_HOME="true"
+              echo "✅ Home components changed"
+            fi
+            
+            if git diff --name-only HEAD~1 HEAD | grep -q "^deploy/shared-components/analytics-service/\|^labs/\|^deploy/Dockerfile.index"; then
+              DEPLOY_LABS="true"
+              echo "✅ Labs components changed"
+            fi
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             # Manual trigger: deploy all
             DEPLOY_HOME="true"
             DEPLOY_LABS="true"
             echo "✅ Manual trigger, deploying all"
-          elif [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" != refs/tags/* ]]; then
-            # Push to branch: detect changes
-            echo "🔍 Detecting changes in push..."
-            
-            # Check if this commit has a force tag (for feature branches)
-            # Tags are checked separately, but we can also check commit message
-            COMMIT_MSG=$(git log -1 --pretty=%B)
-            if echo "$COMMIT_MSG" | grep -qi "force-all\|\[force-all\]"; then
-              DEPLOY_HOME="true"
-              DEPLOY_LABS="true"
-              echo "✅ Force deploy detected in commit message (force-all)"
-            elif echo "$COMMIT_MSG" | grep -qi "force-home\|\[force-home\]"; then
-              DEPLOY_HOME="true"
-              echo "✅ Force deploy detected in commit message (force-home)"
-            elif echo "$COMMIT_MSG" | grep -qi "force-labs\|\[force-labs\]"; then
-              DEPLOY_LABS="true"
-              echo "✅ Force deploy detected in commit message (force-labs)"
-            else
-              # Compare with previous commit
-              if git diff --name-only HEAD~1 HEAD | grep -q "^deploy/shared-components/seo-service/\|^deploy/shared-components/home-index-service/\|^deploy/Dockerfile.index"; then
-                DEPLOY_HOME="true"
-                echo "✅ Home components changed"
-              fi
-              
-              if git diff --name-only HEAD~1 HEAD | grep -q "^deploy/shared-components/analytics-service/\|^labs/\|^deploy/Dockerfile.index"; then
-                DEPLOY_LABS="true"
-                echo "✅ Labs components changed"
-              fi
-            fi
           fi
           
           echo "deploy_home=$DEPLOY_HOME" >> $GITHUB_OUTPUT
@@ -165,8 +138,7 @@ jobs:
           # Determine environment:
           # - For workflow_dispatch: use the input parameter
           # - For pull_request: use the base branch (stg -> stg, main -> prd)
-          # - For push/tags: use the target branch (stg -> stg, main -> prd)
-          # - Default to prd for safety
+          # - For push: use the target branch (stg -> stg, main -> prd)
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             ENV_INPUT="${{ github.event.inputs.environment }}"
           elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
@@ -213,7 +185,7 @@ jobs:
     needs: setup
     runs-on: ubuntu-latest
     # Skip deployment for Dependabot PRs (secrets not available)
-    # Only deploy if home components changed or force tag
+    # Only deploy if home components changed or force keyword detected
     if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && needs.setup.outputs.deploy_home == 'true'
     env:
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
@@ -409,7 +381,7 @@ jobs:
     needs: setup
     runs-on: ubuntu-latest
     # Skip deployment for Dependabot PRs (secrets not available)
-    # Only deploy if labs components changed or force tag
+    # Only deploy if labs components changed or force keyword detected
     if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && needs.setup.outputs.deploy_labs == 'true'
     env:
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
@@ -525,7 +497,7 @@ jobs:
     needs: [setup, deploy-labs-components]
     runs-on: ubuntu-latest
     # Skip deployment for Dependabot PRs (secrets not available)
-    # Only deploy if labs components changed or force tag
+    # Only deploy if labs components changed or force keyword detected
     if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && needs.setup.outputs.deploy_labs == 'true'
     env:
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
@@ -662,7 +634,7 @@ jobs:
     needs: [setup, deploy-labs, deploy-home-components]
     runs-on: ubuntu-latest
     # Skip deployment for Dependabot PRs (secrets not available)
-    # Only deploy if labs components changed or force tag (index is part of labs)
+    # Only deploy if labs components changed or force keyword detected (index is part of labs)
     if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && needs.setup.outputs.deploy_labs == 'true'
     env:
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
