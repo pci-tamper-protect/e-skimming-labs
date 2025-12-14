@@ -2,7 +2,7 @@ name: Deploy CloudRun
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, stg]
     types: [opened, synchronize, reopened]
     paths-ignore:
       - 'test/**'
@@ -46,7 +46,24 @@ jobs:
       - name: Set environment variables
         id: set-env
         run: |
-          if [[ "${{ github.event.inputs.environment }}" == "stg" ]]; then
+          # Determine environment:
+          # - For workflow_dispatch: use the input parameter
+          # - For pull_request: use the base branch (stg -> stg, main -> prd)
+          # - Default to prd for safety
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            ENV_INPUT="${{ github.event.inputs.environment }}"
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # PRs against stg branch deploy to STG, PRs against main deploy to PRD
+            if [[ "${{ github.base_ref }}" == "stg" ]]; then
+              ENV_INPUT="stg"
+            else
+              ENV_INPUT="prd"
+            fi
+          else
+            ENV_INPUT="prd"
+          fi
+          
+          if [[ "$ENV_INPUT" == "stg" ]]; then
             echo "environment=stg" >> $GITHUB_OUTPUT
             echo "domain_prefix=labs.stg.pcioasis.com" >> $GITHUB_OUTPUT
             echo "home_project_id=labs-home-stg" >> $GITHUB_OUTPUT
@@ -57,6 +74,8 @@ jobs:
             echo "home_project_id=labs-home-prd" >> $GITHUB_OUTPUT
             echo "labs_project_id=labs-prd" >> $GITHUB_OUTPUT
           fi
+          
+          echo "Determined environment: $ENV_INPUT (from ${{ github.event_name }}, base_ref: ${{ github.base_ref }})"
 
       - name: Discover lab directories
         id: discover-labs
@@ -97,7 +116,21 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Check if SEO image exists
+        id: check-seo-image
+        if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null
+        run: |
+          IMAGE="${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:${{ github.sha }}"
+          if gcloud artifacts docker images describe "$IMAGE" --project="${{ env.HOME_PROJECT_ID }}" --location="${{ env.HOME_GAR_LOCATION }}" &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Image already exists: $IMAGE"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  Image not found, will build: $IMAGE"
+          fi
+
       - name: Build SEO Service
+        if: steps.check-seo-image.outputs.exists != 'true'
         uses: docker/build-push-action@v6
         with:
           context: deploy/shared-components/seo-service
@@ -134,7 +167,7 @@ jobs:
           docker push ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:latest
 
       - name: Push Index Service to Artifact Registry
-        if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null
+        if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null && steps.check-index-image.outputs.exists != 'true'
         run: |
           docker push ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:${{ github.sha }}
           docker push ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:latest
@@ -280,7 +313,7 @@ jobs:
           load: true
 
       - name: Push Analytics Service to Artifact Registry
-        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null && steps.check-analytics-image.outputs.exists != 'true'
         run: |
           docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ github.sha }}
           docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:latest
@@ -386,7 +419,7 @@ jobs:
           load: true
 
       - name: Push container image to Artifact Registry
-        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null && steps.check-lab-image.outputs.exists != 'true'
         run: |
           docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }}
           docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:latest
@@ -504,7 +537,7 @@ jobs:
           load: true
 
       - name: Push index container to Artifact Registry
-        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null && steps.check-labs-index-image.outputs.exists != 'true'
         run: |
           docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:${{ github.sha }}
           docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:latest

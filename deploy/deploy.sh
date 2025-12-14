@@ -160,11 +160,14 @@ gcloud services enable \
 
 # Navigate to terraform directory (relative to script location)
 cd "$SCRIPT_DIR/$TERRAFORM_DIR"
+TERRAFORM_DIR_ABS=$(pwd)
 
 # Initialize Terraform with environment-specific backend config
 echo "🏗️  Initializing Terraform..."
+echo "   Directory: $TERRAFORM_DIR_ABS"
 BACKEND_CONFIG="backend-${ENVIRONMENT}.conf"
 if [ -f "$BACKEND_CONFIG" ]; then
+    echo "   Running: terraform init -backend-config=\"$BACKEND_CONFIG\""
     terraform init -backend-config="$BACKEND_CONFIG"
 else
     echo "❌ Backend config file not found: $BACKEND_CONFIG"
@@ -175,7 +178,10 @@ fi
 
 # Plan the deployment
 echo "📋 Planning Terraform deployment..."
+echo "   Directory: $TERRAFORM_DIR_ABS"
 # Try to plan, and if we get a lock error, attempt to unlock stale locks
+PLAN_CMD="terraform plan -var=\"environment=$ENVIRONMENT\" -out=tfplan"
+echo "   Running: $PLAN_CMD"
 terraform plan \
     -var="environment=$ENVIRONMENT" \
     -out=tfplan 2>&1 | tee /tmp/terraform-plan.log || {
@@ -187,9 +193,11 @@ terraform plan \
         if [ -n "$LOCK_ID" ]; then
             echo "   Found lock ID: $LOCK_ID"
             echo "   Unlocking state..."
+            echo "   Running: terraform force-unlock $LOCK_ID"
             echo "yes" | terraform force-unlock "$LOCK_ID" 2>&1 | grep -v "Enter a value" || true
             echo ""
             echo "   Retrying terraform plan..."
+            echo "   Running: $PLAN_CMD"
             terraform plan \
                 -var="environment=$ENVIRONMENT" \
                 -out=tfplan
@@ -220,6 +228,8 @@ echo ""
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     # Apply the plan
     echo "🚀 Applying Terraform plan..."
+    echo "   Directory: $TERRAFORM_DIR_ABS"
+    echo "   Running: terraform apply tfplan"
     terraform apply tfplan
     
     echo ""
