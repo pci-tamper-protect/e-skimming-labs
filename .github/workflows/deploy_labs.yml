@@ -327,10 +327,14 @@ jobs:
           
           # Verify repository exists and check permissions
           echo "🔍 Verifying repository access..."
-          if ! gcloud artifacts repositories describe ${{ env.HOME_REPOSITORY }} \
-            --location=${{ env.HOME_GAR_LOCATION }} \
-            --project=${{ env.HOME_PROJECT_ID }} &>/dev/null; then
-            echo "❌ Repository ${{ env.HOME_REPOSITORY }} does not exist in project ${{ env.HOME_PROJECT_ID }}"
+          REPO_NAME="${{ env.HOME_REPOSITORY }}"
+          REPO_LOCATION="${{ env.HOME_GAR_LOCATION }}"
+          REPO_PROJECT="${{ env.HOME_PROJECT_ID }}"
+          
+          if ! gcloud artifacts repositories describe "$REPO_NAME" \
+            --location="$REPO_LOCATION" \
+            --project="$REPO_PROJECT" &>/dev/null; then
+            echo "❌ Repository $REPO_NAME does not exist in project $REPO_PROJECT"
             echo ""
             echo "📋 To create the repository, run:"
             echo "   cd deploy/terraform-home"
@@ -338,34 +342,40 @@ jobs:
             echo "   terraform apply -var=\"environment=${{ needs.setup.outputs.environment }}\""
             echo ""
             echo "   Or create it manually:"
-            echo "   gcloud artifacts repositories create ${{ env.HOME_REPOSITORY }} \\"
+            echo "   gcloud artifacts repositories create $REPO_NAME \\"
             echo "     --repository-format=docker \\"
-            echo "     --location=${{ env.HOME_GAR_LOCATION }} \\"
-            echo "     --project=${{ env.HOME_PROJECT_ID }}"
+            echo "     --location=$REPO_LOCATION \\"
+            echo "     --project=$REPO_PROJECT"
             exit 1
           fi
           
           # Check IAM permissions
           echo "🔍 Checking IAM permissions for $SA_EMAIL..."
-          gcloud artifacts repositories get-iam-policy ${{ env.HOME_REPOSITORY }} \
-            --location=${{ env.HOME_GAR_LOCATION }} \
-            --project=${{ env.HOME_PROJECT_ID }} \
+          gcloud artifacts repositories get-iam-policy "$REPO_NAME" \
+            --location="$REPO_LOCATION" \
+            --project="$REPO_PROJECT" \
             --flatten="bindings[].members" \
             --filter="bindings.members:serviceAccount:$SA_EMAIL" \
             --format="table(bindings.role)" || echo "⚠️  Could not check repository IAM policy"
           
           # Push images
-          docker push ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:${{ github.sha }} || {
+          IMAGE_BASE="${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo"
+          IMAGE_SHA="${IMAGE_BASE}:${{ github.sha }}"
+          IMAGE_LATEST="${IMAGE_BASE}:latest"
+          
+          docker push "$IMAGE_SHA" || {
             echo "❌ Failed to push image with SHA tag"
             echo "Service account used: $SA_EMAIL"
-            echo "Repository: ${{ env.HOME_REPOSITORY }}"
-            echo "Project: ${{ env.HOME_PROJECT_ID }}"
-            echo "Location: ${{ env.HOME_GAR_LOCATION }}"
+            echo "Repository: $REPO_NAME"
+            echo "Project: $REPO_PROJECT"
+            echo "Location: $REPO_LOCATION"
+            echo "Image: $IMAGE_SHA"
             exit 1
           }
-          docker push ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:latest || {
+          docker push "$IMAGE_LATEST" || {
             echo "❌ Failed to push image with latest tag"
             echo "Service account used: $SA_EMAIL"
+            echo "Image: $IMAGE_LATEST"
             exit 1
           }
 
@@ -376,16 +386,22 @@ jobs:
           SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
           echo "Using service account: $SA_EMAIL"
           
-          docker push ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:${{ github.sha }} || {
+          IMAGE_BASE="${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index"
+          IMAGE_SHA="${IMAGE_BASE}:${{ github.sha }}"
+          IMAGE_LATEST="${IMAGE_BASE}:latest"
+          
+          docker push "$IMAGE_SHA" || {
             echo "❌ Failed to push index image with SHA tag"
             echo "Service account used: $SA_EMAIL"
-            echo "Repository: ${{ env.HOME_REPOSITORY }}"
-            echo "Project: ${{ env.HOME_PROJECT_ID }}"
+            echo "Repository: $REPO_NAME"
+            echo "Project: $REPO_PROJECT"
+            echo "Image: $IMAGE_SHA"
             exit 1
           }
-          docker push ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:latest || {
+          docker push "$IMAGE_LATEST" || {
             echo "❌ Failed to push index image with latest tag"
             echo "Service account used: $SA_EMAIL"
+            echo "Image: $IMAGE_LATEST"
             exit 1
           }
 
@@ -406,7 +422,7 @@ jobs:
               --cpu=1 \
               --min-instances=0 \
               --max-instances=5 \
-              --set-env-vars="HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }}" \
+              --set-env-vars="PROJECT_ID=${{ env.HOME_PROJECT_ID }},HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }}" \
               --labels="environment=${{ needs.setup.outputs.environment }},component=seo,project=e-skimming-labs-home"
             
             # Grant access to developer groups for staging (Terraform will also manage this)
@@ -432,7 +448,7 @@ jobs:
               --cpu=1 \
               --min-instances=0 \
               --max-instances=5 \
-              --set-env-vars="HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }}" \
+              --set-env-vars="PROJECT_ID=${{ env.HOME_PROJECT_ID }},HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }}" \
               --labels="environment=${{ needs.setup.outputs.environment }},component=seo,project=e-skimming-labs-home"
           fi
 
@@ -512,13 +528,43 @@ jobs:
         run: |
           echo "🔍 Verifying authenticated service account..."
           SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
+          EXPECTED_SA="labs-deploy-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com"
           echo "Authenticated as: $SA_EMAIL"
-          echo "Expected service account: labs-deploy-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com"
+          echo "Expected service account: $EXPECTED_SA"
+          echo "Environment: ${{ needs.setup.outputs.environment }}"
+          echo "Project: ${{ env.LABS_PROJECT_ID }}"
+          
           if [[ "$SA_EMAIL" != *"labs-deploy-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com" ]]; then
-            echo "⚠️  WARNING: Service account mismatch!"
+            echo "❌ ERROR: Service account mismatch!"
             echo "   Authenticated: $SA_EMAIL"
-            echo "   Expected: labs-deploy-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com"
-            echo "   This may cause permission errors."
+            echo "   Expected: $EXPECTED_SA"
+            echo ""
+            echo "📋 This indicates the GitHub secret contains the wrong service account key."
+            echo "   For ${{ needs.setup.outputs.environment }} environment, you need:"
+            echo "   - Service account: $EXPECTED_SA"
+            echo ""
+            echo "   To fix:"
+            echo "   1. Create a key for the correct service account:"
+            echo "      gcloud iam service-accounts keys create /tmp/labs-deploy-key.json \\"
+            echo "        --iam-account=$EXPECTED_SA \\"
+            echo "        --project=${{ env.LABS_PROJECT_ID }}"
+            echo ""
+            echo "   2. Update the GitHub secret:"
+            if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
+              echo "      gh secret set GCP_LABS_SA_KEY_STG --body \"\$(cat /tmp/labs-deploy-key.json)\" \\"
+              echo "        --repo pci-tamper-protect/e-skimming-labs"
+            else
+              echo "      gh secret set GCP_LABS_SA_KEY_PRD --body \"\$(cat /tmp/labs-deploy-key.json)\" \\"
+              echo "        --repo pci-tamper-protect/e-skimming-labs"
+            fi
+            echo ""
+            echo "   3. Or use the generic secret (less secure):"
+            echo "      gh secret set GCP_LABS_SA_KEY --body \"\$(cat /tmp/labs-deploy-key.json)\" \\"
+            echo "        --repo pci-tamper-protect/e-skimming-labs"
+            echo ""
+            echo "   4. Clean up: rm /tmp/labs-deploy-key.json"
+            echo ""
+            exit 1
           else
             echo "✅ Service account matches expected value"
           fi
@@ -604,38 +650,50 @@ jobs:
           
           # Verify repository exists and check permissions
           echo "🔍 Verifying repository access..."
-          if ! gcloud artifacts repositories describe ${{ env.LABS_REPOSITORY }} \
-            --location=${{ env.LABS_GAR_LOCATION }} \
-            --project=${{ env.LABS_PROJECT_ID }} &>/dev/null; then
-            echo "❌ Repository ${{ env.LABS_REPOSITORY }} does not exist in project ${{ env.LABS_PROJECT_ID }}"
+          REPO_NAME="${{ env.LABS_REPOSITORY }}"
+          REPO_LOCATION="${{ env.LABS_GAR_LOCATION }}"
+          REPO_PROJECT="${{ env.LABS_PROJECT_ID }}"
+          
+          if ! gcloud artifacts repositories describe "$REPO_NAME" \
+            --location="$REPO_LOCATION" \
+            --project="$REPO_PROJECT" &>/dev/null; then
+            echo "❌ Repository $REPO_NAME does not exist in project $REPO_PROJECT"
             exit 1
           fi
           
           # Check IAM permissions
           echo "🔍 Checking IAM permissions for $SA_EMAIL..."
-          gcloud artifacts repositories get-iam-policy ${{ env.LABS_REPOSITORY }} \
-            --location=${{ env.LABS_GAR_LOCATION }} \
-            --project=${{ env.LABS_PROJECT_ID }} \
+          gcloud artifacts repositories get-iam-policy "$REPO_NAME" \
+            --location="$REPO_LOCATION" \
+            --project="$REPO_PROJECT" \
             --flatten="bindings[].members" \
             --filter="bindings.members:serviceAccount:$SA_EMAIL" \
             --format="table(bindings.role)" || echo "⚠️  Could not check repository IAM policy"
           
           # Push images
-          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ github.sha }} || {
+          IMAGE_BASE="${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics"
+          IMAGE_SHA="${IMAGE_BASE}:${{ github.sha }}"
+          IMAGE_HASH="${IMAGE_BASE}:${{ steps.analytics-hash.outputs.hash }}"
+          IMAGE_LATEST="${IMAGE_BASE}:latest"
+          
+          docker push "$IMAGE_SHA" || {
             echo "❌ Failed to push analytics image with SHA tag"
             echo "Service account used: $SA_EMAIL"
-            echo "Repository: ${{ env.LABS_REPOSITORY }}"
-            echo "Project: ${{ env.LABS_PROJECT_ID }}"
+            echo "Repository: $REPO_NAME"
+            echo "Project: $REPO_PROJECT"
+            echo "Image: $IMAGE_SHA"
             exit 1
           }
-          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ steps.analytics-hash.outputs.hash }} || {
+          docker push "$IMAGE_HASH" || {
             echo "❌ Failed to push analytics image with hash tag"
             echo "Service account used: $SA_EMAIL"
+            echo "Image: $IMAGE_HASH"
             exit 1
           }
-          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:latest || {
+          docker push "$IMAGE_LATEST" || {
             echo "❌ Failed to push analytics image with latest tag"
             echo "Service account used: $SA_EMAIL"
+            echo "Image: $IMAGE_LATEST"
             exit 1
           }
 
@@ -792,22 +850,32 @@ jobs:
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null && steps.check-lab-image.outputs.exists != 'true'
         run: |
           SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
+          REPO_NAME="${{ env.LABS_REPOSITORY }}"
+          REPO_LOCATION="${{ env.LABS_GAR_LOCATION }}"
+          REPO_PROJECT="${{ env.LABS_PROJECT_ID }}"
+          
           echo "📤 Pushing lab container image: ${{ matrix.lab }}"
           echo "Using service account: $SA_EMAIL"
-          echo "Repository: ${{ env.LABS_REPOSITORY }}"
-          echo "Project: ${{ env.LABS_PROJECT_ID }}"
+          echo "Repository: $REPO_NAME"
+          echo "Project: $REPO_PROJECT"
           
-          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }} || {
+          IMAGE_BASE="${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}"
+          IMAGE_SHA="${IMAGE_BASE}:${{ github.sha }}"
+          IMAGE_LATEST="${IMAGE_BASE}:latest"
+          
+          docker push "$IMAGE_SHA" || {
             echo "❌ Failed to push lab image with SHA tag"
             echo "Service account used: $SA_EMAIL"
             echo "Lab: ${{ matrix.lab }}"
-            echo "Repository: ${{ env.LABS_REPOSITORY }}"
-            echo "Project: ${{ env.LABS_PROJECT_ID }}"
+            echo "Repository: $REPO_NAME"
+            echo "Project: $REPO_PROJECT"
+            echo "Image: $IMAGE_SHA"
             exit 1
           }
-          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:latest || {
+          docker push "$IMAGE_LATEST" || {
             echo "❌ Failed to push lab image with latest tag"
             echo "Service account used: $SA_EMAIL"
+            echo "Image: $IMAGE_LATEST"
             exit 1
           }
 
@@ -976,21 +1044,31 @@ jobs:
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null && steps.check-labs-index-image.outputs.exists != 'true'
         run: |
           SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
+          REPO_NAME="${{ env.LABS_REPOSITORY }}"
+          REPO_LOCATION="${{ env.LABS_GAR_LOCATION }}"
+          REPO_PROJECT="${{ env.LABS_PROJECT_ID }}"
+          
           echo "📤 Pushing labs index container image"
           echo "Using service account: $SA_EMAIL"
-          echo "Repository: ${{ env.LABS_REPOSITORY }}"
-          echo "Project: ${{ env.LABS_PROJECT_ID }}"
+          echo "Repository: $REPO_NAME"
+          echo "Project: $REPO_PROJECT"
           
-          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:${{ github.sha }} || {
+          IMAGE_BASE="${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index"
+          IMAGE_SHA="${IMAGE_BASE}:${{ github.sha }}"
+          IMAGE_LATEST="${IMAGE_BASE}:latest"
+          
+          docker push "$IMAGE_SHA" || {
             echo "❌ Failed to push labs index image with SHA tag"
             echo "Service account used: $SA_EMAIL"
-            echo "Repository: ${{ env.LABS_REPOSITORY }}"
-            echo "Project: ${{ env.LABS_PROJECT_ID }}"
+            echo "Repository: $REPO_NAME"
+            echo "Project: $REPO_PROJECT"
+            echo "Image: $IMAGE_SHA"
             exit 1
           }
-          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:latest || {
+          docker push "$IMAGE_LATEST" || {
             echo "❌ Failed to push labs index image with latest tag"
             echo "Service account used: $SA_EMAIL"
+            echo "Image: $IMAGE_LATEST"
             exit 1
           }
 
