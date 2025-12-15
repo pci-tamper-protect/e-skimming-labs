@@ -18,6 +18,16 @@ on:
     branches:
       - 'stg'
       - 'main'
+    paths:
+      # Home components
+      - 'deploy/shared-components/seo-service/**'
+      - 'deploy/shared-components/home-index-service/**'
+      - 'deploy/Dockerfile.index'
+      # Labs components
+      - 'deploy/shared-components/analytics-service/**'
+      - 'labs/**'
+      # Common files that affect all
+      - '.github/workflows/deploy_labs.yml'
   workflow_dispatch:
     inputs:
       environment:
