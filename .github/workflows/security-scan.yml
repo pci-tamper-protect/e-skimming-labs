@@ -146,6 +146,23 @@ jobs:
         run: |
           gcloud auth configure-docker ${{ matrix.registry_location }}-docker.pkg.dev
 
+      - name: Generate catalog-info.yaml (for home-index-service)
+        if: matrix.image_name == 'index' && steps.check-changes.outputs.changed == 'true'
+        run: |
+          echo "🔄 Generating catalog-info.yaml for home-index-service..."
+          if [ ! -f scripts/generate-catalog-info.sh ]; then
+            echo "❌ ERROR: scripts/generate-catalog-info.sh not found"
+            echo "The catalog-info.yaml file must be generated before building"
+            exit 1
+          fi
+          chmod +x scripts/generate-catalog-info.sh
+          ./scripts/generate-catalog-info.sh
+          if [ ! -f catalog-info.yaml ]; then
+            echo "❌ ERROR: catalog-info.yaml was not generated"
+            exit 1
+          fi
+          echo "✅ catalog-info.yaml generated successfully"
+
       - name: Pull image from Artifact Registry
         if: steps.check-changes.outputs.changed == 'true'
         id: pull-image
@@ -166,7 +183,7 @@ jobs:
         if: steps.check-changes.outputs.changed == 'true' && steps.pull-image.outputs.pulled != 'true'
         uses: docker/build-push-action@v6
         with:
-          context: ${{ matrix.image_path == 'deploy/shared-components/home-index-service' && '.' || matrix.image_path }}
+          context: ${{ matrix.image_name == 'index' && '.' || matrix.image_path }}
           file: ${{ matrix.image_path }}/Dockerfile
           push: false
           load: true
