@@ -65,4 +65,10 @@ variable "memory_limit" {
   default     = "512Mi"
 }
 
+variable "additional_allowed_users" {
+  description = "Additional user emails to grant access to staging services (beyond groups)"
+  type        = list(string)
+  default     = []
+}
+
 # labs_project_id is calculated from environment - no need to pass it
