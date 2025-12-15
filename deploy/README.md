@@ -2,6 +2,16 @@
 
 This directory contains scripts for setting up the deployment infrastructure for e-skimming-labs.
 
+## Prerequisites
+
+Before running any deployment scripts or Terraform commands, authenticate with Google Cloud:
+
+```bash
+gcloud auth application-default login
+```
+
+This will open a browser for you to authenticate with your Google account. After authentication, Terraform and other tools will use these credentials.
+
 ## Setup Sequence
 
 Run these scripts in order for initial infrastructure setup:

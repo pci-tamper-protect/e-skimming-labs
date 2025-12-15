@@ -5,7 +5,7 @@
 
 # Alert policy for high error rates
 resource "google_monitoring_alert_policy" "labs_error_rate" {
-  project      = local.project_id
+  project      = local.labs_project_id
   display_name = "E-Skimming Labs High Error Rate"
   combiner     = "OR"
 
@@ -38,7 +38,7 @@ resource "google_monitoring_alert_policy" "labs_error_rate" {
 
 # Dashboard for lab monitoring
 resource "google_monitoring_dashboard" "labs_dashboard" {
-  project       = local.project_id
+  project       = local.labs_project_id
   dashboard_json = jsonencode({
     displayName = "E-Skimming Labs Dashboard"
     mosaicLayout = {

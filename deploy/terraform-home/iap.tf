@@ -42,3 +42,32 @@ resource "google_cloud_run_v2_service_iam_member" "index_stg_group_access" {
   ]
 }
 
+# Additional user access for staging services (beyond groups)
+resource "google_cloud_run_v2_service_iam_member" "index_stg_user_access" {
+  for_each = var.deploy_services && var.environment == "stg" ? toset(var.additional_allowed_users) : toset([])
+
+  location = google_cloud_run_v2_service.home_index_service[0].location
+  project  = google_cloud_run_v2_service.home_index_service[0].project
+  name     = google_cloud_run_v2_service.home_index_service[0].name
+  role     = "roles/run.invoker"
+  member   = "user:${each.value}"
+
+  depends_on = [
+    google_cloud_run_v2_service.home_index_service
+  ]
+}
+
+resource "google_cloud_run_v2_service_iam_member" "seo_stg_user_access" {
+  for_each = var.deploy_services && var.environment == "stg" ? toset(var.additional_allowed_users) : toset([])
+
+  location = google_cloud_run_v2_service.home_seo_service[0].location
+  project  = google_cloud_run_v2_service.home_seo_service[0].project
+  name     = google_cloud_run_v2_service.home_seo_service[0].name
+  role     = "roles/run.invoker"
+  member   = "user:${each.value}"
+
+  depends_on = [
+    google_cloud_run_v2_service.home_seo_service
+  ]
+}
+

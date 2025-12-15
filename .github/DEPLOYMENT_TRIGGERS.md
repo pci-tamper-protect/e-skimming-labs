@@ -133,7 +133,7 @@ You can also manually trigger the workflow via GitHub Actions UI:
 
 The workflow checks if Docker images already exist before building:
 - If an image with the current SHA tag exists, the build step is skipped
-- This saves time and resources when force-keywording without code changes
+- This saves time and resources when using force keywords without code changes
 - Images are still pushed to ensure the latest tag is updated
 
 ## Troubleshooting
