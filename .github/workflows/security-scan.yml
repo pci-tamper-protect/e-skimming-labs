@@ -204,7 +204,7 @@ jobs:
 
       - name: Check if Trivy results exist
         if: steps.check-changes.outputs.changed == 'true'
-        id: check-trivy
+        id: check-trivy-results
         run: |
           if [ -f "trivy-results-${{ matrix.image_name }}.sarif" ]; then
             echo "exists=true" >> $GITHUB_OUTPUT
@@ -214,28 +214,11 @@ jobs:
           fi
 
       - name: Upload Trivy results to GitHub Security
-        if: steps.check-changes.outputs.changed == 'true' && steps.check-trivy.outputs.exists == 'true'
+        if: steps.check-changes.outputs.changed == 'true' && steps.check-trivy-results.outputs.exists == 'true'
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: 'trivy-results-${{ matrix.image_name }}.sarif'
           category: "container-${{ matrix.image_name }}"
-
-      - name: Check if Trivy results exist
-        id: check-trivy
-        run: |
-          if [ -f "trivy-results.sarif" ]; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-            echo "⚠️  No trivy-results.sarif file generated"
-          fi
-
-      - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v4
-        if: steps.check-trivy.outputs.exists == 'true'
-        with:
-          sarif_file: 'trivy-results.sarif'
-          category: "container-${{ matrix.image }}"
 
   terraform-security:
     name: Terraform Security Scan
