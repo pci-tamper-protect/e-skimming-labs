@@ -304,6 +304,23 @@ jobs:
             echo "ℹ️  Image not found, will build: $IMAGE"
           fi
 
+      - name: Generate catalog-info.yaml
+        if: steps.check-index-image.outputs.exists != 'true'
+        run: |
+          echo "🔄 Generating catalog-info.yaml..."
+          if [ ! -f scripts/generate-catalog-info.sh ]; then
+            echo "❌ ERROR: scripts/generate-catalog-info.sh not found"
+            echo "The catalog-info.yaml file must be generated before building"
+            exit 1
+          fi
+          chmod +x scripts/generate-catalog-info.sh
+          ./scripts/generate-catalog-info.sh
+          if [ ! -f catalog-info.yaml ]; then
+            echo "❌ ERROR: catalog-info.yaml was not generated"
+            exit 1
+          fi
+          echo "✅ catalog-info.yaml generated successfully"
+
       - name: Build Index Service
         if: steps.check-index-image.outputs.exists != 'true'
         uses: docker/build-push-action@v6
