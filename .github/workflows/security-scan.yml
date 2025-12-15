@@ -141,6 +141,10 @@ jobs:
         if: steps.check-changes.outputs.changed == 'true'
         uses: google-github-actions/setup-gcloud@v2
 
+      - name: Set up Docker Buildx
+        if: steps.check-changes.outputs.changed == 'true'
+        uses: docker/setup-buildx-action@v3
+
       - name: Configure Docker for Artifact Registry
         if: steps.check-changes.outputs.changed == 'true'
         run: |
