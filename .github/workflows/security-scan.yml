@@ -81,23 +81,93 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image:
-          - deploy/shared-components/analytics-service
-          - deploy/shared-components/seo-service
-          - deploy/shared-components/home-index-service
+        include:
+          - image_path: deploy/shared-components/analytics-service
+            image_name: analytics
+            registry_location: us-central1
+            project_id: labs-stg
+            repository: e-skimming-labs
+            sa_key_secret: GCP_LABS_SA_KEY_STG
+          - image_path: deploy/shared-components/seo-service
+            image_name: seo
+            registry_location: us-central1
+            project_id: labs-home-stg
+            repository: e-skimming-labs-home
+            sa_key_secret: GCP_HOME_SA_KEY_STG
+          - image_path: deploy/shared-components/home-index-service
+            image_name: index
+            registry_location: us-central1
+            project_id: labs-home-stg
+            repository: e-skimming-labs-home
+            sa_key_secret: GCP_HOME_SA_KEY_STG
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # Full history for change detection
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Check if container files changed
+        id: check-changes
+        run: |
+          # Check if Dockerfile or related files changed
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            # For push events, compare with previous commit
+            BASE_SHA="${{ github.event.before }}"
+            HEAD_SHA="${{ github.sha }}"
+          fi
+          
+          # Check if Dockerfile, go.mod, go.sum, source files, or catalog-info.yaml changed
+          CHANGED_FILES=$(git diff --name-only "${BASE_SHA}" "${HEAD_SHA}" 2>/dev/null || echo "")
+          
+          if echo "${CHANGED_FILES}" | grep -qE "^${{ matrix.image_path }}/|^catalog-info.yaml$|^deploy/shared-components/"; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "✅ Container files changed, will scan"
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  No changes to container files, skipping scan"
+          fi
 
-      - name: Build image for scanning
+      - name: Authenticate to Google Cloud
+        if: steps.check-changes.outputs.changed == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets[matrix.sa_key_secret] }}
+
+      - name: Set up Cloud SDK
+        if: steps.check-changes.outputs.changed == 'true'
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        if: steps.check-changes.outputs.changed == 'true'
+        run: |
+          gcloud auth configure-docker ${{ matrix.registry_location }}-docker.pkg.dev
+
+      - name: Pull image from Artifact Registry
+        if: steps.check-changes.outputs.changed == 'true'
+        id: pull-image
+        run: |
+          IMAGE="${{ matrix.registry_location }}-docker.pkg.dev/${{ matrix.project_id }}/${{ matrix.repository }}/${{ matrix.image_name }}:${{ github.sha }}"
+          
+          # Try to pull the image that was just built in deploy_labs.yml
+          if docker pull "$IMAGE" 2>/dev/null; then
+            docker tag "$IMAGE" scan-target:latest
+            echo "✅ Pulled image from Artifact Registry: $IMAGE"
+            echo "pulled=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️  Image not found in Artifact Registry, will build locally"
+            echo "pulled=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build image for scanning (fallback)
+        if: steps.check-changes.outputs.changed == 'true' && steps.pull-image.outputs.pulled != 'true'
         uses: docker/build-push-action@v6
         with:
-          context: ${{ matrix.image }}
-          file: ${{ matrix.image }}/Dockerfile
+          context: ${{ matrix.image_path == 'deploy/shared-components/home-index-service' && '.' || matrix.image_path }}
+          file: ${{ matrix.image_path }}/Dockerfile
           push: false
           load: true
           tags: scan-target:latest
@@ -105,14 +175,33 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Run Trivy vulnerability scanner
+        if: steps.check-changes.outputs.changed == 'true'
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: scan-target:latest
           format: 'sarif'
-          output: 'trivy-results.sarif'
+          output: 'trivy-results-${{ matrix.image_name }}.sarif'
           severity: 'CRITICAL,HIGH'
           exit-code: '0'  # Don't fail workflow, just report findings
           ignore-unfixed: true  # Only report fixed vulnerabilities
+
+      - name: Check if Trivy results exist
+        if: steps.check-changes.outputs.changed == 'true'
+        id: check-trivy
+        run: |
+          if [ -f "trivy-results-${{ matrix.image_name }}.sarif" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️  No trivy-results-${{ matrix.image_name }}.sarif file generated"
+          fi
+
+      - name: Upload Trivy results to GitHub Security
+        if: steps.check-changes.outputs.changed == 'true' && steps.check-trivy.outputs.exists == 'true'
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: 'trivy-results-${{ matrix.image_name }}.sarif'
+          category: "container-${{ matrix.image_name }}"
 
       - name: Check if Trivy results exist
         id: check-trivy
