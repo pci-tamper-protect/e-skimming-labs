@@ -24,18 +24,18 @@ ptp:
     domain: payment-security
     environment: production
     deployment:
-      timestamp: 2025-12-15T12:40:21.3NZ
+      timestamp: 2025-12-15T13:36:38.3NZ
       hostname: unknown
       user: kestenbroughton
       pipeline: github-actions
       build-number: unknown
       image-tag: latest
   git:
-    commit_sha: dca3cc934354c7e8eedf15803a16248c6e744b6d
-    commit_sha_short: dca3cc9
-    commit_message: WIP local proxy.  Home works but not others
+    commit_sha: b8402d1ff56e1686f80a23e288c3e9093eddb416
+    commit_sha_short: b8402d1
+    commit_message: Add catalog-info and generating script with pre-commit hook
     commit_author: kbroughton
-    commit_date: '2025-12-14 15:04:30 -0600'
+    commit_date: '2025-12-15 06:41:48 -0600'
     branch: feature/commit-triggers
     is_dirty: false
     source: live_git
@@ -68,9 +68,9 @@ ptp:
     vulnerability-scan: true
     dependency-check: true
     secrets-scan: true
-    last-scan: 2025-12-15T12:40:21.3NZ
+    last-scan: 2025-12-15T13:36:38.3NZ
   compliance:
     pci-dss: true
     soc2: true
     gdpr: true
-    last-audit: 2025-12-15T12:40:21.3NZ
+    last-audit: 2025-12-15T13:36:38.3NZ
