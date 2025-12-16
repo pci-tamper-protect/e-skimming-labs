@@ -263,6 +263,7 @@
                   placeholder="1234 5678 9012 3456"
                   autocomplete="cc-number"
                   maxlength="19"
+                  aria-label="Enter Card Number"
                   required
                 />
               </div>
@@ -275,6 +276,7 @@
                   name="cardHolderName"
                   placeholder="JOHN DOE"
                   autocomplete="cc-name"
+                  aria-label="Enter Card Holder Name"
                   required
                 />
               </div>
@@ -290,6 +292,7 @@
                     placeholder="MM/YY"
                     autocomplete="cc-exp"
                     maxlength="5"
+                    aria-label="Enter Card Expiry Date"
                     required
                   />
                 </div>
@@ -304,6 +307,7 @@
                     placeholder="123"
                     autocomplete="cc-csc"
                     maxlength="4"
+                    aria-label="Enter Card CVV Code"
                     required
                   />
                 </div>
@@ -318,11 +322,12 @@
                   placeholder="12345"
                   autocomplete="postal-code"
                   maxlength="10"
+                  aria-label="Enter Card Billing Zip Code"
                   required
                 />
               </div>
 
-              <button type="submit" class="submit-btn">Add Card</button>
+              <button type="submit" class="submit-btn" aria-label="Submit Button">Add Card</button>
             </form>
           </div>
 
@@ -343,9 +348,9 @@
               <button class="action-btn" onclick="showPasswordPrompt('activate')">
                 Activate New Card
               </button>
-              <button class="action-btn" onclick="showPasswordPrompt('freeze')">Freeze Card</button>
-              <button class="action-btn" onclick="showPasswordPrompt('limit')">Change Limit</button>
-              <button class="action-btn" onclick="showPasswordPrompt('pin')">Change PIN</button>
+              <button class="action-btn" onclick="showPasswordPrompt('freeze')" aria-label="Freeze Card">Freeze Card</button>
+              <button class="action-btn" onclick="showPasswordPrompt('limit')" aria-label="Change Limit">Change Limit</button>
+              <button class="action-btn" onclick="showPasswordPrompt('pin')" aria-label="Change PIN">Change PIN</button>
             </div>
           </div>
 
@@ -363,12 +368,13 @@
                     maxlength="4"
                     placeholder="CVV"
                     autocomplete="cc-csc"
+                    aria-label="Enter Card CVV code"
                     required
                   />
                 </div>
                 <div class="modal-actions">
-                  <button type="submit" class="submit-btn">Verify</button>
-                  <button type="button" class="cancel-btn" onclick="closePasswordModal()">
+                  <button type="submit" class="submit-btn" aria-label="Verify Button">Verify</button>
+                  <button type="button" class="cancel-btn" onclick="closePasswordModal()" aria-label="Cancel Button">
                     Cancel
                   </button>
                 </div>
@@ -383,12 +389,12 @@
     <!-- Success/Error Messages -->
     <div id="success-message" class="message success" style="display: none">
       <span class="message-text">Operation completed successfully!</span>
-      <button class="close-message" onclick="closeMessage('success')">&times;</button>
+      <button class="close-message" onclick="closeMessage('success')" aria-label="Close Message">&times;</button>
     </div>
 
     <div id="error-message" class="message error" style="display: none">
       <span class="message-text">An error occurred. Please try again.</span>
-      <button class="close-message" onclick="closeMessage('error')">&times;</button>
+      <button class="close-message" onclick="closeMessage('error')" aria-label="Close Message">&times;</button>
     </div>
 
     <!-- Development: Clear Cache Button (only shows in localhost) -->
