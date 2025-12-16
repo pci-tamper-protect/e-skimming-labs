@@ -1,6 +1,6 @@
 // @ts-check
-import { test, expect } from '@playwright/test'
-import { currentEnv } from '../config/test-env.js'
+const { test, expect } = require('@playwright/test')
+const { currentEnv, TEST_ENV } = require('../config/test-env')
 
 /**
  * Waits for smooth scroll animation to complete
