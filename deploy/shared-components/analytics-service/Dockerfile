@@ -22,36 +22,12 @@ ENV GOPROXY=https://proxy.golang.org,direct \
 
 # Copy go.mod and go.sum first for better caching
 COPY go.mod go.sum ./
-
-# Download dependencies with retry logic to handle transient network errors
-# Retry up to 5 times with exponential backoff (2s, 4s, 6s, 8s, 10s delays)
-RUN for i in 1 2 3 4 5; do \
-        echo "Attempt $i/5: Downloading Go modules..."; \
-        if go mod download 2>&1; then \
-            echo "✓ Successfully downloaded modules on attempt $i"; \
-            exit 0; \
-        else \
-            exit_code=$?; \
-            if [ $i -eq 5 ]; then \
-                echo "✗ All 5 attempts failed (exit code: $exit_code). Check network connectivity and Go proxy settings."; \
-                exit 1; \
-            else \
-                wait_time=$((i * 2)); \
-                echo "✗ Attempt $i failed (exit code: $exit_code). Waiting ${wait_time}s before retry..."; \
-                sleep $wait_time; \
-            fi; \
-        fi; \
-    done
+# Download dependencies (will use cached modules from base image)
+# This layer is cached unless go.mod/go.sum change
+RUN go mod download
 
 # Copy source code (this layer changes most frequently)
 COPY . .
-
-# Verify go.mod is valid and update if needed (non-fatal if tidy makes changes)
-RUN go mod verify && go mod tidy || true
-
-# Build the application
-# Use '.' to build the current package (not 'main.go' which Go interprets as a package path)
-RUN go build -o analytics-service .
 
 # Final stage using alpine-base
 FROM ${ALPINE_BASE} AS runtime
@@ -67,4 +43,3 @@ USER appuser
 
 EXPOSE 8080
 CMD ["./analytics-service"]
-

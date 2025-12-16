@@ -35,7 +35,7 @@ resource "google_project_iam_member" "labs_runtime_roles" {
     "roles/artifactregistry.reader"
   ])
 
-  project = var.project_id
+  project = local.labs_project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.labs_runtime.email}"
 }
@@ -44,16 +44,56 @@ resource "google_project_iam_member" "labs_runtime_roles" {
 # Following principle of least privilege - only permissions needed for deployment
 resource "google_project_iam_member" "labs_deploy_roles" {
   for_each = toset([
-    "roles/run.developer",           # Deploy and manage Cloud Run services (not full admin)
+    "roles/run.admin",               # Deploy, manage Cloud Run services, and set IAM policies
     "roles/artifactregistry.writer", # Push container images
     "roles/iam.serviceAccountUser",  # Use service accounts for Cloud Run
     "roles/storage.objectViewer",    # Read storage objects during deployment
     "roles/storage.objectCreator"    # Upload deployment artifacts
   ])
 
-  project = var.project_id
+  project = local.labs_project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.labs_deploy.email}"
+}
+
+# Repository-level IAM binding for Artifact Registry (explicit permissions)
+# This ensures the service account can upload artifacts to the repository
+resource "google_artifact_registry_repository_iam_member" "labs_deploy_artifact_registry_writer" {
+  location   = var.region
+  repository = google_artifact_registry_repository.labs_repo.repository_id
+  project    = local.labs_project_id
+  role       = "roles/artifactregistry.writer"
+  member     = "serviceAccount:${google_service_account.labs_deploy.email}"
+
+  depends_on = [
+    google_artifact_registry_repository.labs_repo,
+    google_service_account.labs_deploy
+  ]
+}
+
+# Grant Artifact Registry admin access to core-eng and 2025-interns groups (staging only)
+resource "google_artifact_registry_repository_iam_member" "core_eng_artifact_registry_admin" {
+  count = var.environment == "stg" ? 1 : 0
+
+  location   = var.region
+  repository = google_artifact_registry_repository.labs_repo.repository_id
+  project    = local.labs_project_id
+  role       = "roles/artifactregistry.admin"
+  member     = "group:core-eng@pcioasis.com"
+
+  depends_on = [google_artifact_registry_repository.labs_repo]
+}
+
+resource "google_artifact_registry_repository_iam_member" "interns_artifact_registry_admin" {
+  count = var.environment == "stg" ? 1 : 0
+
+  location   = var.region
+  repository = google_artifact_registry_repository.labs_repo.repository_id
+  project    = local.labs_project_id
+  role       = "roles/artifactregistry.admin"
+  member     = "group:2025-interns@pcioasis.com"
+
+  depends_on = [google_artifact_registry_repository.labs_repo]
 }
 
 # IAM Roles for Analytics Service Account
@@ -66,7 +106,7 @@ resource "google_project_iam_member" "labs_analytics_roles" {
     "roles/monitoring.metricWriter"
   ])
 
-  project = var.project_id
+  project = local.labs_project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.labs_analytics.email}"
 }
@@ -79,7 +119,7 @@ resource "google_project_iam_member" "labs_seo_roles" {
     "roles/logging.logWriter"
   ])
 
-  project = var.project_id
+  project = local.labs_project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.labs_seo.email}"
 }

@@ -2,7 +2,7 @@
 
 output "project_id" {
   description = "The GCP project ID"
-  value       = var.project_id
+  value       = local.project_id
 }
 
 output "region" {
@@ -64,7 +64,7 @@ output "github_secrets_instructions" {
   value       = <<-EOT
     Add the following secrets to your GitHub repository:
     
-    1. GCP_PROJECT_ID: ${var.project_id}
+    1. GCP_PROJECT_ID: ${local.project_id}
     2. GCP_SA_KEY: [Use the service account key from terraform output]
     3. GAR_LOCATION: ${var.region}
     4. REPOSITORY: e-skimming-labs
