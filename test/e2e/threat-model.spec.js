@@ -1,6 +1,6 @@
 // @ts-check
 import { test, expect } from '@playwright/test'
-import { currentEnv, TEST_ENV } from '../config/test-env.js'
+import { currentEnv } from '../config/test-env.js'
 
 test.describe('Threat Model Page', () => {
   test.beforeEach(async ({ page }) => {
