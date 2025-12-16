@@ -1,7 +1,7 @@
 // Simple test to verify threat model back button works
 // This will be run using MCP Playwright tools
 
-async function testThreatModelBackButton() {
+export async function testThreatModelBackButton() {
   // Navigate to threat model page
   await page.goto('http://localhost:8080/threat-model')
 
@@ -33,6 +33,4 @@ async function testThreatModelBackButton() {
 }
 
 // Export for MCP use
-module.exports = { testThreatModelBackButton }
-
 

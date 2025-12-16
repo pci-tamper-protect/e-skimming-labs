@@ -10,9 +10,9 @@
  *   Defaults to 'local' if not set
  */
 
-const TEST_ENV = process.env.TEST_ENV || 'local'
+export const TEST_ENV = process.env.TEST_ENV || 'local'
 
-const environments = {
+export const environments = {
   local: {
     homeIndex: 'http://localhost:3000',
     lab1: {
@@ -54,14 +54,14 @@ const environments = {
   },
 }
 
-const currentEnv = environments[TEST_ENV]
+export const currentEnv = environments[TEST_ENV]
 
 if (!currentEnv) {
   throw new Error(`Invalid TEST_ENV: ${TEST_ENV}. Must be one of: ${Object.keys(environments).join(', ')}`)
 }
 
 // Helper to get C2 API endpoint (adjusts port for local, path for prd)
-function getC2ApiEndpoint(labNumber) {
+export function getC2ApiEndpoint(labNumber) {
   const labKey = `lab${labNumber}`
   const c2Url = currentEnv[labKey]?.c2
 
@@ -73,7 +73,7 @@ function getC2ApiEndpoint(labNumber) {
 }
 
 // Helper to get C2 collect endpoint
-function getC2CollectEndpoint(labNumber) {
+export function getC2CollectEndpoint(labNumber) {
   const labKey = `lab${labNumber}`
   const c2Url = currentEnv[labKey]?.c2
 
@@ -88,11 +88,3 @@ console.log(`🧪 Test Environment: ${TEST_ENV}`)
 console.log(`📍 Home Index: ${currentEnv.homeIndex}`)
 console.log(`📍 Lab 1 Vulnerable: ${currentEnv.lab1.vulnerable}`)
 console.log(`📍 Lab 1 C2: ${currentEnv.lab1.c2}`)
-
-module.exports = {
-  TEST_ENV,
-  environments,
-  currentEnv,
-  getC2ApiEndpoint,
-  getC2CollectEndpoint,
-}

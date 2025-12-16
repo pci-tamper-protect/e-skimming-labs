@@ -9,7 +9,7 @@
  * @param {import('@playwright/test').Page} page - Playwright page object
  * @returns {Promise<boolean>} - Returns true if warning was handled, false if not present or not production
  */
-async function handleDangerousWarning(page) {
+export async function handleDangerousWarning(page) {
   try {
     // Only handle dangerous warnings in production, not on localhost
     const url = page.url()
@@ -56,6 +56,4 @@ async function handleDangerousWarning(page) {
     return false
   }
 }
-
-module.exports = { handleDangerousWarning }
 

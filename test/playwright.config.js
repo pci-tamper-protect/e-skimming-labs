@@ -1,6 +1,6 @@
 // @ts-check
-const { defineConfig, devices } = require('@playwright/test')
-const { currentEnv, TEST_ENV } = require('./config/test-env')
+import { defineConfig, devices } from '@playwright/test'
+import { currentEnv, TEST_ENV } from './config/test-env.js'
 
 console.log(`🧪 E2E Test Environment: ${TEST_ENV}`)
 console.log(`🔗 Base URL: ${currentEnv.homeIndex}`)
@@ -8,7 +8,7 @@ console.log(`🔗 Base URL: ${currentEnv.homeIndex}`)
 /**
  * @see https://playwright.dev/docs/test-configuration
  */
-module.exports = defineConfig({
+export default defineConfig({
   testDir: './e2e',
   /* Run tests in files in parallel */
   fullyParallel: true,

@@ -9,9 +9,9 @@
  * @param {object} options - Options to pass to page.goto()
  * @returns {Promise<import('@playwright/test').Response>} - Response from page.goto()
  */
-const { handleDangerousWarning } = require('./handle-dangerous-warning')
+import { handleDangerousWarning } from './handle-dangerous-warning.js'
 
-async function gotoWithWarningHandler(page, url, options = {}) {
+export async function gotoWithWarningHandler(page, url, options = {}) {
   // Navigate to the page
   const response = await page.goto(url, options)
   
@@ -20,6 +20,4 @@ async function gotoWithWarningHandler(page, url, options = {}) {
   
   return response
 }
-
-module.exports = { gotoWithWarningHandler }
 

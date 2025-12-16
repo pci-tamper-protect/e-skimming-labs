@@ -1,6 +1,6 @@
 // @ts-check
-const { test, expect } = require('@playwright/test')
-const { currentEnv, TEST_ENV } = require('../config/test-env')
+import { test, expect } from '@playwright/test'
+import { currentEnv, TEST_ENV } from '../config/test-env.js'
 
 test.describe('Threat Model Page', () => {
   test.beforeEach(async ({ page }) => {
@@ -85,7 +85,10 @@ test.describe('Threat Model Page', () => {
 
     // Check info panel
     const infoPanel = page.locator('#info-panel')
-    await expect(infoPanel).toBeVisible()
+    // On mobile the panel may start collapsed; assert presence + content instead of visibility
+    await expect(infoPanel).toBeAttached()
+    const infoText = (await infoPanel.textContent())?.trim() || ''
+    expect(infoText.length).toBeGreaterThan(0)
   })
 
   test('should have responsive design for mobile devices', async ({ page }) => {

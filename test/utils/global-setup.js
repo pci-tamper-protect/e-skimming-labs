@@ -6,7 +6,7 @@
  * it's better to use the handleDangerousWarning utility in beforeEach hooks.
  */
 
-module.exports = async () => {
+export default async function globalSetup() {
   // Global setup code can go here if needed
   // For dangerous warning handling, use handleDangerousWarning in beforeEach hooks
 }

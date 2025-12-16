@@ -1,13 +1,7 @@
 // @ts-check
-const { test, expect } = require('@playwright/test')
-const path = require('path')
-
-// Load environment configuration
-const testEnvPath = path.resolve(__dirname, '../config/test-env.js')
-const { currentEnv, TEST_ENV } = require(testEnvPath)
-
-// Load dangerous warning handler
-const { handleDangerousWarning } = require('../utils/handle-dangerous-warning')
+import { test, expect } from '@playwright/test'
+import { currentEnv, TEST_ENV } from '../config/test-env.js'
+import { handleDangerousWarning } from '../utils/handle-dangerous-warning.js'
 
 console.log(`🧪 Global Navigation Test - Environment: ${TEST_ENV}`)
 
