@@ -82,6 +82,9 @@ func main() {
 	r.HandleFunc("/api/meta/lab/{lab_id}", service.handleLabMeta).Methods("GET")
 	r.HandleFunc("/api/meta/variant/{lab_id}/{variant}", service.handleVariantMeta).Methods("GET")
 
+	// Structured data endpoints - BreadcrumbList
+	r.HandleFunc("/api/structured-data/breadcrumb/{lab_id}", service.handleBreadcrumbStructuredData).Methods("GET")
+
 	// Integration endpoints
 	r.HandleFunc("/api/integration/pcioasis", service.handlePcioasisIntegration).Methods("GET")
 	r.HandleFunc("/api/integration/sync", service.handleSync).Methods("POST")
@@ -109,37 +112,51 @@ func (s *SEOService) handleHealth(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *SEOService) handleSitemap(w http.ResponseWriter, r *http.Request) {
+	now := time.Now().Format("2006-01-02")
 	sitemap := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://%s/</loc>
     <lastmod>%s</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://%s/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://%s/?lang=es"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://%s/"/>
   </url>
   <url>
     <loc>https://%s/lab1-basic-magecart</loc>
     <lastmod>%s</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://%s/lab1-basic-magecart"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://%s/lab1-basic-magecart?lang=es"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://%s/lab1-basic-magecart"/>
   </url>
   <url>
     <loc>https://%s/lab2-dom-skimming</loc>
     <lastmod>%s</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://%s/lab2-dom-skimming"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://%s/lab2-dom-skimming?lang=es"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://%s/lab2-dom-skimming"/>
   </url>
   <url>
     <loc>https://%s/lab3-extension-hijacking</loc>
     <lastmod>%s</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://%s/lab3-extension-hijacking"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://%s/lab3-extension-hijacking?lang=es"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://%s/lab3-extension-hijacking"/>
   </url>
 </urlset>`,
-		s.labsDomain, time.Now().Format("2006-01-02T15:04:05Z"),
-		s.labsDomain, time.Now().Format("2006-01-02T15:04:05Z"),
-		s.labsDomain, time.Now().Format("2006-01-02T15:04:05Z"),
-		s.labsDomain, time.Now().Format("2006-01-02T15:04:05Z"))
+		s.labsDomain, now, s.labsDomain, s.labsDomain, s.labsDomain,
+		s.labsDomain, now, s.labsDomain, s.labsDomain, s.labsDomain,
+		s.labsDomain, now, s.labsDomain, s.labsDomain, s.labsDomain,
+		s.labsDomain, now, s.labsDomain, s.labsDomain, s.labsDomain)
 
 	w.Header().Set("Content-Type", "application/xml")
 	w.Write([]byte(sitemap))
@@ -147,30 +164,41 @@ func (s *SEOService) handleSitemap(w http.ResponseWriter, r *http.Request) {
 
 func (s *SEOService) handleLabsSitemap(w http.ResponseWriter, r *http.Request) {
 	// Generate labs-specific sitemap
+	now := time.Now().Format("2006-01-02")
 	sitemap := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://%s/lab1-basic-magecart</loc>
     <lastmod>%s</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://%s/lab1-basic-magecart"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://%s/lab1-basic-magecart?lang=es"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://%s/lab1-basic-magecart"/>
   </url>
   <url>
     <loc>https://%s/lab2-dom-skimming</loc>
     <lastmod>%s</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://%s/lab2-dom-skimming"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://%s/lab2-dom-skimming?lang=es"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://%s/lab2-dom-skimming"/>
   </url>
   <url>
     <loc>https://%s/lab3-extension-hijacking</loc>
     <lastmod>%s</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://%s/lab3-extension-hijacking"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://%s/lab3-extension-hijacking?lang=es"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://%s/lab3-extension-hijacking"/>
   </url>
 </urlset>`,
-		s.labsDomain, time.Now().Format("2006-01-02T15:04:05Z"),
-		s.labsDomain, time.Now().Format("2006-01-02T15:04:05Z"),
-		s.labsDomain, time.Now().Format("2006-01-02T15:04:05Z"))
+		s.labsDomain, now, s.labsDomain, s.labsDomain, s.labsDomain,
+		s.labsDomain, now, s.labsDomain, s.labsDomain, s.labsDomain,
+		s.labsDomain, now, s.labsDomain, s.labsDomain, s.labsDomain)
 
 	w.Header().Set("Content-Type", "application/xml")
 	w.Write([]byte(sitemap))
@@ -178,37 +206,51 @@ func (s *SEOService) handleLabsSitemap(w http.ResponseWriter, r *http.Request) {
 
 func (s *SEOService) handleVariantsSitemap(w http.ResponseWriter, r *http.Request) {
 	// Generate variants-specific sitemap
+	now := time.Now().Format("2006-01-02")
 	sitemap := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://%s/lab1-basic-magecart/variant/base</loc>
     <lastmod>%s</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://%s/lab1-basic-magecart/variant/base"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://%s/lab1-basic-magecart/variant/base?lang=es"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://%s/lab1-basic-magecart/variant/base"/>
   </url>
   <url>
     <loc>https://%s/lab1-basic-magecart/variant/obfuscated-base64</loc>
     <lastmod>%s</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://%s/lab1-basic-magecart/variant/obfuscated-base64"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://%s/lab1-basic-magecart/variant/obfuscated-base64?lang=es"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://%s/lab1-basic-magecart/variant/obfuscated-base64"/>
   </url>
   <url>
     <loc>https://%s/lab1-basic-magecart/variant/event-listener</loc>
     <lastmod>%s</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://%s/lab1-basic-magecart/variant/event-listener"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://%s/lab1-basic-magecart/variant/event-listener?lang=es"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://%s/lab1-basic-magecart/variant/event-listener"/>
   </url>
   <url>
     <loc>https://%s/lab1-basic-magecart/variant/websocket</loc>
     <lastmod>%s</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://%s/lab1-basic-magecart/variant/websocket"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://%s/lab1-basic-magecart/variant/websocket?lang=es"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://%s/lab1-basic-magecart/variant/websocket"/>
   </url>
 </urlset>`,
-		s.labsDomain, time.Now().Format("2006-01-02T15:04:05Z"),
-		s.labsDomain, time.Now().Format("2006-01-02T15:04:05Z"),
-		s.labsDomain, time.Now().Format("2006-01-02T15:04:05Z"),
-		s.labsDomain, time.Now().Format("2006-01-02T15:04:05Z"))
+		s.labsDomain, now, s.labsDomain, s.labsDomain, s.labsDomain,
+		s.labsDomain, now, s.labsDomain, s.labsDomain, s.labsDomain,
+		s.labsDomain, now, s.labsDomain, s.labsDomain, s.labsDomain,
+		s.labsDomain, now, s.labsDomain, s.labsDomain, s.labsDomain)
 
 	w.Header().Set("Content-Type", "application/xml")
 	w.Write([]byte(sitemap))
@@ -218,6 +260,12 @@ func (s *SEOService) handleLabStructuredData(w http.ResponseWriter, r *http.Requ
 	vars := mux.Vars(r)
 	labID := vars["lab_id"]
 
+	// Use canonical www.pcioasis.com format for consistency
+	mainDomain := "www.pcioasis.com"
+	if s.mainDomain != "" && s.mainDomain != "pcioasis.com" {
+		mainDomain = s.mainDomain
+	}
+
 	structuredData := StructuredData{
 		Context:     "https://schema.org",
 		Type:        "EducationalOccupationalProgram",
@@ -226,7 +274,7 @@ func (s *SEOService) handleLabStructuredData(w http.ResponseWriter, r *http.Requ
 		Provider: map[string]interface{}{
 			"@type": "Organization",
 			"name":  "PCI Oasis",
-			"url":   fmt.Sprintf("https://%s", s.mainDomain),
+			"url":   fmt.Sprintf("https://%s", mainDomain),
 		},
 		CourseMode:       "online",
 		EducationalLevel: "intermediate",
@@ -238,6 +286,12 @@ func (s *SEOService) handleLabStructuredData(w http.ResponseWriter, r *http.Requ
 }
 
 func (s *SEOService) handleCollectionStructuredData(w http.ResponseWriter, r *http.Request) {
+	// Use canonical www.pcioasis.com format for consistency
+	mainDomain := "www.pcioasis.com"
+	if s.mainDomain != "" && s.mainDomain != "pcioasis.com" {
+		mainDomain = s.mainDomain
+	}
+
 	structuredData := StructuredData{
 		Context:     "https://schema.org",
 		Type:        "EducationalOccupationalProgram",
@@ -246,7 +300,7 @@ func (s *SEOService) handleCollectionStructuredData(w http.ResponseWriter, r *ht
 		Provider: map[string]interface{}{
 			"@type": "Organization",
 			"name":  "PCI Oasis",
-			"url":   fmt.Sprintf("https://%s", s.mainDomain),
+			"url":   fmt.Sprintf("https://%s", mainDomain),
 		},
 		CourseMode:       "online",
 		EducationalLevel: "intermediate",
@@ -258,14 +312,24 @@ func (s *SEOService) handleCollectionStructuredData(w http.ResponseWriter, r *ht
 }
 
 func (s *SEOService) handleOrganizationStructuredData(w http.ResponseWriter, r *http.Request) {
+	// Use canonical www.pcioasis.com format for consistency with e-skimming-app
+	mainDomain := "www.pcioasis.com"
+	if s.mainDomain != "" && s.mainDomain != "pcioasis.com" {
+		// If mainDomain is set and not the old format, use it
+		mainDomain = s.mainDomain
+	}
+	
 	structuredData := map[string]interface{}{
 		"@context":    "https://schema.org",
 		"@type":       "Organization",
 		"name":        "PCI Oasis",
-		"url":         fmt.Sprintf("https://%s", s.mainDomain),
+		"url":         fmt.Sprintf("https://%s", mainDomain),
+		"logo":        "https://www.pcioasis.com/assets/pcioasis_logo-BhP2UveR.png",
 		"description": "Cybersecurity education and training platform",
 		"sameAs": []string{
-			fmt.Sprintf("https://%s", s.mainDomain),
+			"https://www.linkedin.com/company/pci-oasis/about/",
+			"https://www.youtube.com/watch?v=BHACKCNDMW8&list=PLmdo8DlOJqx7Dw_YHo5TxMLUTnQ6qiAyD&index=1",
+			fmt.Sprintf("https://%s", mainDomain),
 			fmt.Sprintf("https://%s", s.labsDomain),
 		},
 		"offers": map[string]interface{}{
@@ -325,9 +389,15 @@ func (s *SEOService) handleVariantMeta(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *SEOService) handlePcioasisIntegration(w http.ResponseWriter, r *http.Request) {
+	// Use canonical www.pcioasis.com format for consistency
+	mainDomain := "www.pcioasis.com"
+	if s.mainDomain != "" && s.mainDomain != "pcioasis.com" {
+		mainDomain = s.mainDomain
+	}
+
 	integration := map[string]interface{}{
 		"labs_domain": s.labsDomain,
-		"main_domain": s.mainDomain,
+		"main_domain": mainDomain,
 		"labs": []map[string]interface{}{
 			{
 				"id":          "lab1-basic-magecart",
@@ -374,6 +444,45 @@ func (s *SEOService) handleSync(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+func (s *SEOService) handleBreadcrumbStructuredData(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	labID := vars["lab_id"]
+
+	// Use canonical www.pcioasis.com format for consistency
+	mainDomain := "www.pcioasis.com"
+	if s.mainDomain != "" && s.mainDomain != "pcioasis.com" {
+		mainDomain = s.mainDomain
+	}
+
+	breadcrumb := map[string]interface{}{
+		"@context": "https://schema.org/",
+		"@type":    "BreadcrumbList",
+		"itemListElement": []map[string]interface{}{
+			{
+				"@type":    "ListItem",
+				"position": 1,
+				"name":     "Home",
+				"item":     fmt.Sprintf("https://%s", mainDomain),
+			},
+			{
+				"@type":    "ListItem",
+				"position": 2,
+				"name":     "Labs",
+				"item":     fmt.Sprintf("https://%s", s.labsDomain),
+			},
+			{
+				"@type":    "ListItem",
+				"position": 3,
+				"name":     labID,
+				"item":     fmt.Sprintf("https://%s/%s", s.labsDomain, labID),
+			},
+		},
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(breadcrumb)
 }
 
 func (s *SEOService) handleStatus(w http.ResponseWriter, r *http.Request) {
