@@ -25,6 +25,7 @@ pcioasis.com website.
 - `GET /api/structured-data/lab/{lab_id}` - Get lab structured data
 - `GET /api/structured-data/collection` - Get collection structured data
 - `GET /api/structured-data/organization` - Get organization structured data
+- `GET /api/structured-data/breadcrumb/{lab_id}` - Get BreadcrumbList schema for lab page
 
 ### Meta Tags
 
@@ -73,6 +74,24 @@ pcioasis.com website.
 
 ### Structured Data (JSON-LD)
 
+**Organization Schema:**
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "PCI Oasis",
+  "url": "https://www.pcioasis.com",
+  "logo": "https://www.pcioasis.com/assets/pcioasis_logo-BhP2UveR.png",
+  "sameAs": [
+    "https://www.linkedin.com/company/pci-oasis/about/",
+    "https://www.youtube.com/watch?v=BHACKCNDMW8&list=PLmdo8DlOJqx7Dw_YHo5TxMLUTnQ6qiAyD&index=1",
+    "https://www.pcioasis.com",
+    "https://labs.pcioasis.com"
+  ]
+}
+```
+
+**Educational Program Schema:**
 ```json
 {
   "@context": "https://schema.org",
@@ -82,7 +101,7 @@ pcioasis.com website.
   "provider": {
     "@type": "Organization",
     "name": "PCI Oasis",
-    "url": "https://pcioasis.com"
+    "url": "https://www.pcioasis.com"
   },
   "courseMode": "online",
   "educationalLevel": "intermediate",
@@ -90,13 +109,43 @@ pcioasis.com website.
 }
 ```
 
+**BreadcrumbList Schema:**
+```json
+{
+  "@context": "https://schema.org/",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://www.pcioasis.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Labs",
+      "item": "https://labs.pcioasis.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Lab Name",
+      "item": "https://labs.pcioasis.com/lab-name"
+    }
+  ]
+}
+```
+
 ## Environment Variables
 
 - `PROJECT_ID`: GCP project ID
 - `ENVIRONMENT`: Environment (prd, stg)
-- `MAIN_DOMAIN`: Main pcioasis.com domain
+- `MAIN_DOMAIN`: Main pcioasis.com domain (should be `www.pcioasis.com` for consistency)
 - `LABS_DOMAIN`: Labs domain (labs.pcioasis.com)
 - `FIRESTORE_DATABASE`: Firestore database name
+
+**Note:** The canonical URL format for the main domain is `https://www.pcioasis.com` (with www) to match e-skimming-app implementation.
 
 ## Integration with pcioasis.com
 
@@ -113,3 +162,14 @@ pcioasis.com website.
 - Better user experience with cross-site navigation
 - Unified analytics and tracking
 - Enhanced content discovery
+
+## Consistency with e-skimming-app
+
+This service should maintain consistency with the main e-skimming-app SEO implementation:
+
+- **URL Format**: Use `https://www.pcioasis.com` (with www) as canonical format
+- **Organization Schema**: Include logo and social media links (LinkedIn, YouTube)
+- **BreadcrumbList**: Implement BreadcrumbList schema for lab pages
+- **Sitemap**: Include hreflang tags for internationalization support
+
+See `CONSISTENCY-RECOMMENDATIONS.md` for detailed implementation recommendations.
