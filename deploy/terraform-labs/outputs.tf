@@ -32,7 +32,7 @@ output "storage_bucket_logs" {
 
 output "analytics_service_url" {
   description = "The Analytics service URL"
-  value       = var.deploy_services ? google_cloud_run_v2_service.analytics_service[0].uri : "Service not deployed yet"
+  value       = google_cloud_run_v2_service.analytics_service[0].uri
 }
 
 output "seo_service_url" {
