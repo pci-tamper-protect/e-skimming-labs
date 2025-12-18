@@ -2,8 +2,10 @@
 # Note: Domain mappings take 2-10 hours to provision, so we use lifecycle ignore_changes
 # to allow manual creation while still tracking it in Terraform
 
+# Domain mapping for staging - keep in state to prevent destruction
+# Note: Domain mappings are managed separately, Terraform just tracks them
 resource "google_cloud_run_domain_mapping" "home_index_stg" {
-  count = var.deploy_services && var.environment == "stg" ? 1 : 0
+  count = var.environment == "stg" ? 1 : 0
   
   name     = "labs.stg.pcioasis.com"
   location = var.region
@@ -29,9 +31,10 @@ resource "google_cloud_run_domain_mapping" "home_index_stg" {
   ]
 }
 
-# Production domain mapping (if needed)
+# Production domain mapping - keep in state to prevent destruction
+# Note: Domain mappings are managed separately, Terraform just tracks them
 resource "google_cloud_run_domain_mapping" "home_index_prd" {
-  count = var.deploy_services && var.environment == "prd" ? 1 : 0
+  count = var.environment == "prd" ? 1 : 0
   
   name     = "labs.pcioasis.com"
   location = var.region
