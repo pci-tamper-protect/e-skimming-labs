@@ -6,68 +6,77 @@
 # For staging: Only allow 2025-interns and core-eng groups
 # For production: Keep public access (allUsers) - configured in cloud-run.tf
 
-# SEO Service - Staging access restricted to groups
-resource "google_cloud_run_v2_service_iam_member" "seo_stg_group_access" {
-  for_each = var.deploy_services && var.environment == "stg" ? toset([
+# Local variable for staging developer groups (used across multiple IAM bindings)
+locals {
+  staging_developer_groups = [
     "group:2025-interns@pcioasis.com",
     "group:core-eng@pcioasis.com"
-  ]) : toset([])
+  ]
+}
 
-  location = google_cloud_run_v2_service.home_seo_service[0].location
-  project  = google_cloud_run_v2_service.home_seo_service[0].project
-  name     = google_cloud_run_v2_service.home_seo_service[0].name
+# Data sources to look up services that may be deployed by GitHub Actions
+# This allows IAM bindings to work even when deploy_services=false
+# Available for both staging and production environments
+data "google_cloud_run_v2_service" "home_seo_service" {
+  count    = 1
+  name     = "home-seo-${var.environment}"
+  location = var.region
+  project  = local.home_project_id
+}
+
+data "google_cloud_run_v2_service" "home_index_service" {
+  count    = 1
+  name     = "home-index-${var.environment}"
+  location = var.region
+  project  = local.home_project_id
+}
+
+# SEO Service - Staging access restricted to groups
+# Note: IAM bindings are managed independently of deploy_services to ensure they persist
+# Uses data source to reference services that may be deployed by GitHub Actions
+resource "google_cloud_run_v2_service_iam_member" "seo_stg_group_access" {
+  for_each = var.environment == "stg" ? toset(local.staging_developer_groups) : toset([])
+
+  location = data.google_cloud_run_v2_service.home_seo_service[0].location
+  project  = data.google_cloud_run_v2_service.home_seo_service[0].project
+  name     = data.google_cloud_run_v2_service.home_seo_service[0].name
   role     = "roles/run.invoker"
   member   = each.value
-
-  depends_on = [
-    google_cloud_run_v2_service.home_seo_service
-  ]
 }
 
 # Index Service - Staging access restricted to groups
+# Note: IAM bindings are managed independently of deploy_services to ensure they persist
+# Uses data source to reference services that may be deployed by GitHub Actions
 resource "google_cloud_run_v2_service_iam_member" "index_stg_group_access" {
-  for_each = var.deploy_services && var.environment == "stg" ? toset([
-    "group:2025-interns@pcioasis.com",
-    "group:core-eng@pcioasis.com"
-  ]) : toset([])
+  for_each = var.environment == "stg" ? toset(local.staging_developer_groups) : toset([])
 
-  location = google_cloud_run_v2_service.home_index_service[0].location
-  project  = google_cloud_run_v2_service.home_index_service[0].project
-  name     = google_cloud_run_v2_service.home_index_service[0].name
+  location = data.google_cloud_run_v2_service.home_index_service[0].location
+  project  = data.google_cloud_run_v2_service.home_index_service[0].project
+  name     = data.google_cloud_run_v2_service.home_index_service[0].name
   role     = "roles/run.invoker"
   member   = each.value
-
-  depends_on = [
-    google_cloud_run_v2_service.home_index_service
-  ]
 }
 
 # Additional user access for staging services (beyond groups)
+# Note: IAM bindings are managed independently of deploy_services to ensure they persist
+# Uses data source to reference services that may be deployed by GitHub Actions
 resource "google_cloud_run_v2_service_iam_member" "index_stg_user_access" {
-  for_each = var.deploy_services && var.environment == "stg" ? toset(var.additional_allowed_users) : toset([])
+  for_each = var.environment == "stg" ? toset(var.additional_allowed_users) : toset([])
 
-  location = google_cloud_run_v2_service.home_index_service[0].location
-  project  = google_cloud_run_v2_service.home_index_service[0].project
-  name     = google_cloud_run_v2_service.home_index_service[0].name
+  location = data.google_cloud_run_v2_service.home_index_service[0].location
+  project  = data.google_cloud_run_v2_service.home_index_service[0].project
+  name     = data.google_cloud_run_v2_service.home_index_service[0].name
   role     = "roles/run.invoker"
   member   = "user:${each.value}"
-
-  depends_on = [
-    google_cloud_run_v2_service.home_index_service
-  ]
 }
 
 resource "google_cloud_run_v2_service_iam_member" "seo_stg_user_access" {
-  for_each = var.deploy_services && var.environment == "stg" ? toset(var.additional_allowed_users) : toset([])
+  for_each = var.environment == "stg" ? toset(var.additional_allowed_users) : toset([])
 
-  location = google_cloud_run_v2_service.home_seo_service[0].location
-  project  = google_cloud_run_v2_service.home_seo_service[0].project
-  name     = google_cloud_run_v2_service.home_seo_service[0].name
+  location = data.google_cloud_run_v2_service.home_seo_service[0].location
+  project  = data.google_cloud_run_v2_service.home_seo_service[0].project
+  name     = data.google_cloud_run_v2_service.home_seo_service[0].name
   role     = "roles/run.invoker"
   member   = "user:${each.value}"
-
-  depends_on = [
-    google_cloud_run_v2_service.home_seo_service
-  ]
 }
 

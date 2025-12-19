@@ -7,8 +7,10 @@
 # For production: Keep public access (allUsers) - configured in cloud-run.tf
 
 # Analytics Service - Staging access restricted to groups
+# Note: IAM bindings are managed independently of deploy_services to ensure they persist
+# Service is always in state (count = 1) so we can reference it directly
 resource "google_cloud_run_v2_service_iam_member" "analytics_stg_group_access" {
-  for_each = var.deploy_services && var.environment == "stg" ? toset([
+  for_each = var.environment == "stg" ? toset([
     "group:2025-interns@pcioasis.com",
     "group:core-eng@pcioasis.com"
   ]) : toset([])
@@ -18,10 +20,6 @@ resource "google_cloud_run_v2_service_iam_member" "analytics_stg_group_access" {
   name     = google_cloud_run_v2_service.analytics_service[0].name
   role     = "roles/run.invoker"
   member   = each.value
-
-  depends_on = [
-    google_cloud_run_v2_service.analytics_service
-  ]
 }
 
 # Note: Individual lab services are deployed via GitHub Actions workflow
