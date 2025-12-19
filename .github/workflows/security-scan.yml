@@ -149,20 +149,41 @@ jobs:
       - name: Check if code files changed
         id: check-changes
         run: |
-          # Skip change detection for scheduled runs and workflow_dispatch
+          # Determine base and head commits based on event type
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          elif [ "${{ github.event_name }}" == "schedule" ] || [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # For scheduled/manual runs, scan against the default branch
+            BASE_SHA="${{ github.event.repository.default_branch }}"
+            HEAD_SHA="HEAD"
+          else
+            # For push events, use the previous commit as base
+            BASE_SHA="${{ github.event.before }}"
+            HEAD_SHA="${{ github.sha }}"
+          fi
+          
+          # Validate that BASE and HEAD are different
+          if [ -z "${BASE_SHA}" ] || [ "${BASE_SHA}" == "null" ]; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  BASE commit is invalid, skipping scan"
+            exit 0
+          fi
+          
+          # For scheduled/manual runs, always scan (no change detection needed)
           if [ "${{ github.event_name }}" == "schedule" ] || [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "changed=true" >> $GITHUB_OUTPUT
+            echo "base_sha=${BASE_SHA}" >> $GITHUB_OUTPUT
+            echo "head_sha=${HEAD_SHA}" >> $GITHUB_OUTPUT
             echo "✅ Running scan (scheduled/manual trigger)"
             exit 0
           fi
           
-          # Determine base and head commits
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            BASE_SHA="${{ github.event.pull_request.base.sha }}"
-            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
-          else
-            BASE_SHA="${{ github.event.before }}"
-            HEAD_SHA="${{ github.sha }}"
+          # For PRs and pushes, check if BASE and HEAD are different
+          if [ "${BASE_SHA}" == "${HEAD_SHA}" ]; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  BASE and HEAD commits are the same, skipping scan"
+            exit 0
           fi
           
           # Check for code/config files (exclude binary files, images, etc.)
@@ -172,6 +193,8 @@ jobs:
           # Use positive match for common code/config file extensions
           if echo "${CHANGED_FILES}" | grep -qE "\.(js|jsx|ts|tsx|mjs|cjs|go|py|rb|java|php|sh|bash|yaml|yml|json|toml|ini|conf|config|env|tf|tfvars|md|txt|sql|xml|html|css|scss|sass|less|vue|svelte)$"; then
             echo "changed=true" >> $GITHUB_OUTPUT
+            echo "base_sha=${BASE_SHA}" >> $GITHUB_OUTPUT
+            echo "head_sha=${HEAD_SHA}" >> $GITHUB_OUTPUT
             echo "✅ Code/config files changed, will scan"
           else
             echo "changed=false" >> $GITHUB_OUTPUT
@@ -183,8 +206,8 @@ jobs:
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
+          base: ${{ steps.check-changes.outputs.base_sha }}
+          head: ${{ steps.check-changes.outputs.head_sha }}
           extra_args: --only-verified
 
   container-scan:
