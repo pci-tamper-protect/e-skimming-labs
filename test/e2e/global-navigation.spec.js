@@ -158,12 +158,6 @@ test.describe('Global Navigation', () => {
     await lab2Link.click()
     await page.waitForLoadState('networkidle')
 
-    // In production, the root path currently serves a 404 – navigate directly to the banking app
-    if (TEST_ENV === 'prd') {
-      await page.goto(`${currentEnv.lab2.vulnerable}/banking.html`)
-      await page.waitForLoadState('networkidle')
-    }
-
     // Verify we're on Lab 2 page
     console.log('✅ Verifying Lab 2 page')
     await expect(page).toHaveTitle(/SecureBank|Banking/)
