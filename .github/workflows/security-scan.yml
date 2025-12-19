@@ -168,8 +168,9 @@ jobs:
           # Check for code/config files (exclude binary files, images, etc.)
           CHANGED_FILES=$(git diff --name-only "${BASE_SHA}" "${HEAD_SHA}" 2>/dev/null || echo "")
           
-          # Filter out binary/image files - only scan text-based files where secrets might be
-          if echo "${CHANGED_FILES}" | grep -qvE "\.(png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|mp4|mov|avi|pdf|zip|tar|gz)$|\.lock$"; then
+          # Check if there are any text-based files where secrets might be
+          # Use positive match for common code/config file extensions
+          if echo "${CHANGED_FILES}" | grep -qE "\.(js|jsx|ts|tsx|mjs|cjs|go|py|rb|java|php|sh|bash|yaml|yml|json|toml|ini|conf|config|env|tf|tfvars|md|txt|sql|xml|html|css|scss|sass|less|vue|svelte)$"; then
             echo "changed=true" >> $GITHUB_OUTPUT
             echo "✅ Code/config files changed, will scan"
           else
@@ -237,7 +238,7 @@ jobs:
           # Check for changes specific to this container's path
           if echo "${CHANGED_FILES}" | grep -qE "^${{ matrix.image_path }}/"; then
             # Further filter: only trigger on Dockerfile, Go files, or config files
-            if echo "${CHANGED_FILES}" | grep -qE "^${{ matrix.image_path }}/(Dockerfile|\.go|go\.mod|go\.sum|.*\.yaml|.*\.yml|.*\.json)$|^catalog-info\.yaml$"; then
+            if echo "${CHANGED_FILES}" | grep -qE "^${{ matrix.image_path }}/(Dockerfile|.*\.go|go\.mod|go\.sum|.*\.yaml|.*\.yml|.*\.json)$|^catalog-info\.yaml$"; then
               echo "changed=true" >> $GITHUB_OUTPUT
               echo "✅ Container files changed, will scan"
             else
@@ -408,7 +409,8 @@ jobs:
           fi
 
       - name: Upload tfsec results to GitHub Security
-        if: steps.check-changes.outputs.changed == 'true' && steps.check-tfsec.outputs.exists == 'true'
+        # check-tfsec already has the change check, so we only need to verify results exist
+        if: steps.check-tfsec.outputs.exists == 'true'
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: 'tfsec-results.sarif'
