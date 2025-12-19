@@ -27,17 +27,64 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check if relevant files changed
+        id: check-changes
+        run: |
+          # Skip change detection for scheduled runs and workflow_dispatch
+          if [ "${{ github.event_name }}" == "schedule" ] || [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "✅ Running scan (scheduled/manual trigger)"
+            exit 0
+          fi
+          
+          # Determine base and head commits
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE_SHA="${{ github.event.before }}"
+            HEAD_SHA="${{ github.sha }}"
+          fi
+          
+          # Check for language-specific files
+          CHANGED_FILES=$(git diff --name-only "${BASE_SHA}" "${HEAD_SHA}" 2>/dev/null || echo "")
+          
+          if [ "${{ matrix.language }}" == "javascript" ]; then
+            # JavaScript/TypeScript files
+            if echo "${CHANGED_FILES}" | grep -qE "\.(js|jsx|ts|tsx|mjs|cjs)$|package\.json|package-lock\.json|yarn\.lock|pnpm-lock\.yaml"; then
+              echo "changed=true" >> $GITHUB_OUTPUT
+              echo "✅ JavaScript/TypeScript files changed, will scan"
+            else
+              echo "changed=false" >> $GITHUB_OUTPUT
+              echo "ℹ️  No JavaScript/TypeScript files changed, skipping scan"
+            fi
+          elif [ "${{ matrix.language }}" == "go" ]; then
+            # Go files
+            if echo "${CHANGED_FILES}" | grep -qE "\.go$|go\.mod|go\.sum"; then
+              echo "changed=true" >> $GITHUB_OUTPUT
+              echo "✅ Go files changed, will scan"
+            else
+              echo "changed=false" >> $GITHUB_OUTPUT
+              echo "ℹ️  No Go files changed, skipping scan"
+            fi
+          fi
 
       - name: Initialize CodeQL
+        if: steps.check-changes.outputs.changed == 'true'
         uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           queries: security-extended,security-and-quality
 
       - name: Autobuild
+        if: steps.check-changes.outputs.changed == 'true'
         uses: github/codeql-action/autobuild@v4
 
       - name: Perform CodeQL Analysis
+        if: steps.check-changes.outputs.changed == 'true'
         uses: github/codeql-action/analyze@v4
         with:
           category: "/language:${{ matrix.language }}"
@@ -49,10 +96,42 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check if dependency files changed
+        id: check-changes
+        run: |
+          # Skip change detection for scheduled runs and workflow_dispatch
+          if [ "${{ github.event_name }}" == "schedule" ] || [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "✅ Running scan (scheduled/manual trigger)"
+            exit 0
+          fi
+          
+          # Determine base and head commits
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE_SHA="${{ github.event.before }}"
+            HEAD_SHA="${{ github.sha }}"
+          fi
+          
+          # Check for dependency files
+          CHANGED_FILES=$(git diff --name-only "${BASE_SHA}" "${HEAD_SHA}" 2>/dev/null || echo "")
+          
+          if echo "${CHANGED_FILES}" | grep -qE "package\.json|package-lock\.json|yarn\.lock|pnpm-lock\.yaml|go\.mod|go\.sum"; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "✅ Dependency files changed, will scan"
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  No dependency files changed, skipping scan"
+          fi
 
       - name: Run dependency review
+        if: steps.check-changes.outputs.changed == 'true' && github.event_name == 'pull_request'
         uses: actions/dependency-review-action@v4
-        if: github.event_name == 'pull_request'
         with:
           fail-on-severity: high
           deny-licenses: GPL-3.0, AGPL-3.0
@@ -67,7 +146,39 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Check if code files changed
+        id: check-changes
+        run: |
+          # Skip change detection for scheduled runs and workflow_dispatch
+          if [ "${{ github.event_name }}" == "schedule" ] || [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "✅ Running scan (scheduled/manual trigger)"
+            exit 0
+          fi
+          
+          # Determine base and head commits
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE_SHA="${{ github.event.before }}"
+            HEAD_SHA="${{ github.sha }}"
+          fi
+          
+          # Check for code/config files (exclude binary files, images, etc.)
+          CHANGED_FILES=$(git diff --name-only "${BASE_SHA}" "${HEAD_SHA}" 2>/dev/null || echo "")
+          
+          # Filter out binary/image files - only scan text-based files where secrets might be
+          if echo "${CHANGED_FILES}" | grep -qvE "\.(png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|mp4|mov|avi|pdf|zip|tar|gz)$|\.lock$"; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "✅ Code/config files changed, will scan"
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  Only binary/image files changed, skipping scan"
+          fi
+
       - name: Run TruffleHog Secret Scan
+        if: steps.check-changes.outputs.changed == 'true'
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
@@ -120,12 +231,19 @@ jobs:
             HEAD_SHA="${{ github.sha }}"
           fi
           
-          # Check if Dockerfile, go.mod, go.sum, source files, or catalog-info.yaml changed
+          # Check if Dockerfile, Go source files, go.mod, go.sum, or catalog-info.yaml changed
           CHANGED_FILES=$(git diff --name-only "${BASE_SHA}" "${HEAD_SHA}" 2>/dev/null || echo "")
           
-          if echo "${CHANGED_FILES}" | grep -qE "^${{ matrix.image_path }}/|^catalog-info.yaml$|^deploy/shared-components/"; then
-            echo "changed=true" >> $GITHUB_OUTPUT
-            echo "✅ Container files changed, will scan"
+          # Check for changes specific to this container's path
+          if echo "${CHANGED_FILES}" | grep -qE "^${{ matrix.image_path }}/"; then
+            # Further filter: only trigger on Dockerfile, Go files, or config files
+            if echo "${CHANGED_FILES}" | grep -qE "^${{ matrix.image_path }}/(Dockerfile|\.go|go\.mod|go\.sum|.*\.yaml|.*\.yml|.*\.json)$|^catalog-info\.yaml$"; then
+              echo "changed=true" >> $GITHUB_OUTPUT
+              echo "✅ Container files changed, will scan"
+            else
+              echo "changed=false" >> $GITHUB_OUTPUT
+              echo "ℹ️  Only non-code files changed in container path, skipping scan"
+            fi
           else
             echo "changed=false" >> $GITHUB_OUTPUT
             echo "ℹ️  No changes to container files, skipping scan"
@@ -231,20 +349,55 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check if Terraform files changed
+        id: check-changes
+        run: |
+          # Skip change detection for scheduled runs and workflow_dispatch
+          if [ "${{ github.event_name }}" == "schedule" ] || [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "✅ Running scan (scheduled/manual trigger)"
+            exit 0
+          fi
+          
+          # Determine base and head commits
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE_SHA="${{ github.event.before }}"
+            HEAD_SHA="${{ github.sha }}"
+          fi
+          
+          # Check for Terraform files
+          CHANGED_FILES=$(git diff --name-only "${BASE_SHA}" "${HEAD_SHA}" 2>/dev/null || echo "")
+          
+          if echo "${CHANGED_FILES}" | grep -qE "^deploy/.*\.(tf|tfvars)$"; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "✅ Terraform files changed, will scan"
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  No Terraform files changed, skipping scan"
+          fi
 
       - name: Install tfsec
+        if: steps.check-changes.outputs.changed == 'true'
         run: |
           curl -L https://github.com/aquasecurity/tfsec/releases/latest/download/tfsec-linux-amd64 -o /tmp/tfsec
           chmod +x /tmp/tfsec
           sudo mv /tmp/tfsec /usr/local/bin/tfsec
 
       - name: Run tfsec
+        if: steps.check-changes.outputs.changed == 'true'
         run: |
           cd deploy
           tfsec --format sarif --out ../tfsec-results.sarif . || true
         continue-on-error: true
 
       - name: Check if tfsec results exist
+        if: steps.check-changes.outputs.changed == 'true'
         id: check-tfsec
         run: |
           if [ -f "tfsec-results.sarif" ]; then
@@ -255,40 +408,71 @@ jobs:
           fi
 
       - name: Upload tfsec results to GitHub Security
+        if: steps.check-changes.outputs.changed == 'true' && steps.check-tfsec.outputs.exists == 'true'
         uses: github/codeql-action/upload-sarif@v4
-        if: steps.check-tfsec.outputs.exists == 'true'
         with:
           sarif_file: 'tfsec-results.sarif'
           category: 'terraform'
 
   security-summary:
-    name: Security Scan Summary
+    name: Security Scans
     needs: [codeql-analysis, dependency-scan, secret-scan, container-scan, terraform-security]
     runs-on: ubuntu-latest
     if: always()
 
     steps:
-      - name: Report status
+      - name: Consolidate security scan results
         run: |
-          echo "## Security Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "## 🔒 Security Scan Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Scan Type | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| CodeQL Analysis | ${{ needs.codeql-analysis.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Dependency Scan | ${{ needs.dependency-scan.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Secret Scan | ${{ needs.secret-scan.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Container Scan | ${{ needs.container-scan.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Terraform Security | ${{ needs.terraform-security.result }} |" >> $GITHUB_STEP_SUMMARY
-
-          if [[ "${{ needs.codeql-analysis.result }}" == "failure" || \
-                "${{ needs.dependency-scan.result }}" == "failure" || \
-                "${{ needs.secret-scan.result }}" == "failure" || \
-                "${{ needs.container-scan.result }}" == "failure" || \
-                "${{ needs.terraform-security.result }}" == "failure" ]]; then
+          
+          # Track overall status
+          OVERALL_STATUS="success"
+          FAILED_SCANS=()
+          SKIPPED_SCANS=()
+          
+          # Check each scan result
+          check_scan() {
+            local scan_name=$1
+            local result=$2
+            
+            if [ "$result" == "failure" ]; then
+              OVERALL_STATUS="failure"
+              FAILED_SCANS+=("$scan_name")
+              echo "❌ **$scan_name**: Failed" >> $GITHUB_STEP_SUMMARY
+            elif [ "$result" == "skipped" ]; then
+              SKIPPED_SCANS+=("$scan_name")
+              echo "⏭️  **$scan_name**: Skipped (no relevant files changed)" >> $GITHUB_STEP_SUMMARY
+            elif [ "$result" == "success" ]; then
+              echo "✅ **$scan_name**: Passed" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⚠️  **$scan_name**: $result" >> $GITHUB_STEP_SUMMARY
+            fi
+          }
+          
+          check_scan "CodeQL Analysis" "${{ needs.codeql-analysis.result }}"
+          check_scan "Dependency Scan" "${{ needs.dependency-scan.result }}"
+          check_scan "Secret Scan" "${{ needs.secret-scan.result }}"
+          check_scan "Container Scan" "${{ needs.container-scan.result }}"
+          check_scan "Terraform Security" "${{ needs.terraform-security.result }}"
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Summary
+          if [ "$OVERALL_STATUS" == "failure" ]; then
+            echo "### ❌ Security Scans Failed" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "❌ Security scan failed. Please review the findings above." >> $GITHUB_STEP_SUMMARY
+            echo "The following scans failed:" >> $GITHUB_STEP_SUMMARY
+            for scan in "${FAILED_SCANS[@]}"; do
+              echo "- $scan" >> $GITHUB_STEP_SUMMARY
+            done
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Please review the individual scan results above for details." >> $GITHUB_STEP_SUMMARY
             exit 1
           else
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "✅ All security scans passed!" >> $GITHUB_STEP_SUMMARY
+            echo "### ✅ All Security Scans Passed" >> $GITHUB_STEP_SUMMARY
+            if [ ${#SKIPPED_SCANS[@]} -gt 0 ]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "**Note**: Some scans were skipped because no relevant files changed." >> $GITHUB_STEP_SUMMARY
+            fi
           fi
