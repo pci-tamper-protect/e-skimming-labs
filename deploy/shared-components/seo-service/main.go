@@ -318,7 +318,6 @@ func (s *SEOService) handleOrganizationStructuredData(w http.ResponseWriter, r *
 		// If mainDomain is set and not the old format, use it
 		mainDomain = s.mainDomain
 	}
-	
 	structuredData := map[string]interface{}{
 		"@context":    "https://schema.org",
 		"@type":       "Organization",
