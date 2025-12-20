@@ -1183,8 +1183,13 @@ jobs:
     steps:
       - name: Report deployment status
         run: |
-          if [[ "${{ needs.deploy-labs.result }}" == "success" && "${{ needs.deploy-home-components.result }}" == "success" && "${{ needs.deploy-labs-components.result }}" == "success" ]]; then
-            echo "✅ All labs deployed successfully to ${{ needs.setup.outputs.domain_prefix }}"
+          # Check if all required deployments succeeded (or were skipped appropriately)
+          DEPLOY_LABS_SUCCESS=$([[ "${{ needs.deploy-labs.result }}" == "success" ]] && echo "true" || echo "false")
+          DEPLOY_HOME_SUCCESS=$([[ "${{ needs.deploy-home-components.result }}" == "success" || "${{ needs.deploy-home-components.result }}" == "skipped" ]] && echo "true" || echo "false")
+          DEPLOY_LABS_COMPONENTS_SUCCESS=$([[ "${{ needs.deploy-labs-components.result }}" == "success" ]] && echo "true" || echo "false")
+
+          if [[ "$DEPLOY_LABS_SUCCESS" == "true" && "$DEPLOY_HOME_SUCCESS" == "true" && "$DEPLOY_LABS_COMPONENTS_SUCCESS" == "true" ]]; then
+            echo "✅ All required deployments completed successfully to ${{ needs.setup.outputs.domain_prefix }}"
             echo "Labs available at:"
             echo "  - Index: https://${{ needs.setup.outputs.domain_prefix }}"
 
@@ -1194,7 +1199,7 @@ jobs:
               echo "  - $lab: https://${{ needs.setup.outputs.domain_prefix }}/$lab"
             done
           else
-            echo "❌ Deployment failed"
+            echo "❌ Deployment failed or incomplete"
             echo "deploy-labs result: ${{ needs.deploy-labs.result }}"
             echo "deploy-home-components result: ${{ needs.deploy-home-components.result }}"
             echo "deploy-labs-components result: ${{ needs.deploy-labs-components.result }}"
