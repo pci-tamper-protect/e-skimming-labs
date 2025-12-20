@@ -4,11 +4,7 @@ variable "deploy_services" {
   default     = false
 }
 
-variable "project_id" {
-  description = "The GCP project ID for home page"
-  type        = string
-  default     = "labs-home-prd"
-}
+# project_id is calculated from environment - no need to pass it
 
 variable "region" {
   description = "The GCP region"
@@ -41,9 +37,8 @@ variable "main_domain" {
 }
 
 variable "environment" {
-  description = "Environment (prd, stg)"
+  description = "Environment (prd, stg) - REQUIRED, no default"
   type        = string
-  default     = "prd"
 }
 
 variable "min_instances" {
@@ -70,8 +65,10 @@ variable "memory_limit" {
   default     = "512Mi"
 }
 
-variable "labs_project_id" {
-  description = "The GCP project ID for labs (used by home-index service to reference labs)"
-  type        = string
-  default     = "labs-prd"
+variable "additional_allowed_users" {
+  description = "Additional user emails to grant access to staging services (beyond groups)"
+  type        = list(string)
+  default     = []
 }
+
+# labs_project_id is calculated from environment - no need to pass it

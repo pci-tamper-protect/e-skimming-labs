@@ -4,13 +4,13 @@
 resource "google_cloud_run_v2_service" "analytics_service" {
   name     = "labs-analytics-${var.environment}"
   location = var.region
-  project  = var.project_id
+  project  = local.project_id
 
   template {
     service_account = google_service_account.labs_analytics.email
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/e-skimming-labs/analytics:latest"
+      image = "${var.region}-docker.pkg.dev/${local.project_id}/e-skimming-labs/analytics:latest"
 
       ports {
         container_port = 8080
@@ -18,7 +18,7 @@ resource "google_cloud_run_v2_service" "analytics_service" {
 
       env {
         name  = "PROJECT_ID"
-        value = var.project_id
+        value = local.project_id
       }
 
       env {

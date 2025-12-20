@@ -33,14 +33,25 @@ if [[ "$PROJECT_ID" == *"-stg" ]]; then
 elif [[ "$PROJECT_ID" == *"-prd" ]]; then
     ENVIRONMENT="prd"
 else
-    ENVIRONMENT="${ENVIRONMENT:-prd}"
+    echo "❌ Cannot determine environment from project ID: $PROJECT_ID"
+    echo "   Project ID must end with -stg or -prd"
+    echo "   Or set ENVIRONMENT environment variable explicitly (stg or prd)"
+    exit 1
+fi
+
+# Verify environment is explicitly set
+if [ -z "$ENVIRONMENT" ]; then
+    echo "❌ ENVIRONMENT must be explicitly set (stg or prd)"
+    exit 1
 fi
 
 BUCKET_NAME="e-skimming-labs-terraform-state-${ENVIRONMENT}"
 
-# Service accounts for GitHub Actions
-LABS_SA="github-actions@${PROJECT_ID}.iam.gserviceaccount.com"
-HOME_SA="github-actions@${HOME_PROJECT_ID}.iam.gserviceaccount.com"
+# Service accounts for GitHub Actions (old and new)
+LABS_SA_OLD="github-actions@${PROJECT_ID}.iam.gserviceaccount.com"
+HOME_SA_OLD="github-actions@${HOME_PROJECT_ID}.iam.gserviceaccount.com"
+LABS_SA_NEW="labs-deploy-sa@${PROJECT_ID}.iam.gserviceaccount.com"
+HOME_SA_NEW="home-deploy-sa@${HOME_PROJECT_ID}.iam.gserviceaccount.com"
 
 echo "🔐 Fixing Terraform State Bucket Permissions"
 echo "============================================="
@@ -76,16 +87,24 @@ fi
 echo "🔐 Granting storage.objectAdmin role to $CURRENT_USER..."
 gsutil iam ch "user:$CURRENT_USER:roles/storage.objectAdmin" "gs://$BUCKET_NAME"
 
-# Grant Storage Object Admin role to GitHub Actions service accounts
+# Grant Storage Object Admin role to GitHub Actions service accounts (old and new)
 echo ""
 echo "🔐 Granting storage.objectAdmin role to GitHub Actions service accounts..."
-echo "  - $LABS_SA"
-gsutil iam ch "serviceAccount:$LABS_SA:roles/storage.objectAdmin" "gs://$BUCKET_NAME" 2>/dev/null || \
+echo "  - Old: $LABS_SA_OLD"
+gsutil iam ch "serviceAccount:$LABS_SA_OLD:roles/storage.objectAdmin" "gs://$BUCKET_NAME" 2>/dev/null || \
     echo "    ⚠️  Service account may not exist yet (run create-service-accounts.sh first)"
 
-echo "  - $HOME_SA"
-gsutil iam ch "serviceAccount:$HOME_SA:roles/storage.objectAdmin" "gs://$BUCKET_NAME" 2>/dev/null || \
+echo "  - Old: $HOME_SA_OLD"
+gsutil iam ch "serviceAccount:$HOME_SA_OLD:roles/storage.objectAdmin" "gs://$BUCKET_NAME" 2>/dev/null || \
     echo "    ⚠️  Service account may not exist yet (run create-service-accounts.sh first)"
+
+echo "  - New: $LABS_SA_NEW"
+gsutil iam ch "serviceAccount:$LABS_SA_NEW:roles/storage.objectAdmin" "gs://$BUCKET_NAME" 2>/dev/null || \
+    echo "    ⚠️  Service account may not exist yet (run terraform apply first)"
+
+echo "  - New: $HOME_SA_NEW"
+gsutil iam ch "serviceAccount:$HOME_SA_NEW:roles/storage.objectAdmin" "gs://$BUCKET_NAME" 2>/dev/null || \
+    echo "    ⚠️  Service account may not exist yet (run terraform apply first)"
 
 # Also grant Storage Admin at project level (for bucket management)
 echo ""
@@ -96,13 +115,36 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
     --condition=None 2>/dev/null || \
     echo "    ⚠️  Role may already be granted"
 
+# Also grant repository-level Artifact Registry permissions to new service accounts
+echo ""
+echo "🔐 Granting Artifact Registry repository permissions to new service accounts..."
+echo "  - $LABS_SA_NEW on e-skimming-labs repository"
+gcloud artifacts repositories add-iam-policy-binding e-skimming-labs \
+    --location=us-central1 \
+    --project="$PROJECT_ID" \
+    --member="serviceAccount:$LABS_SA_NEW" \
+    --role="roles/artifactregistry.writer" 2>/dev/null || \
+    echo "    ⚠️  Repository or service account may not exist yet"
+
+echo "  - $HOME_SA_NEW on e-skimming-labs-home repository"
+gcloud artifacts repositories add-iam-policy-binding e-skimming-labs-home \
+    --location=us-central1 \
+    --project="$HOME_PROJECT_ID" \
+    --member="serviceAccount:$HOME_SA_NEW" \
+    --role="roles/artifactregistry.writer" 2>/dev/null || \
+    echo "    ⚠️  Repository or service account may not exist yet"
+
 echo ""
 echo "✅ Permissions granted successfully!"
 echo ""
 echo "Granted permissions:"
 echo "  ✅ User: $CURRENT_USER → storage.objectAdmin on bucket"
-echo "  ✅ Service Account: $LABS_SA → storage.objectAdmin on bucket"
-echo "  ✅ Service Account: $HOME_SA → storage.objectAdmin on bucket"
+echo "  ✅ Old Service Account: $LABS_SA_OLD → storage.objectAdmin on bucket"
+echo "  ✅ Old Service Account: $HOME_SA_OLD → storage.objectAdmin on bucket"
+echo "  ✅ New Service Account: $LABS_SA_NEW → storage.objectAdmin on bucket"
+echo "  ✅ New Service Account: $HOME_SA_NEW → storage.objectAdmin on bucket"
+echo "  ✅ New Service Account: $LABS_SA_NEW → artifactregistry.writer on e-skimming-labs"
+echo "  ✅ New Service Account: $HOME_SA_NEW → artifactregistry.writer on e-skimming-labs-home"
 echo ""
 echo "You should now be able to:"
 echo "  - Read existing state files"
