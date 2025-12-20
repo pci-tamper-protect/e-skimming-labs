@@ -50,7 +50,17 @@ if [[ "$PROJECT_ID" == *"-stg" ]]; then
 elif [[ "$PROJECT_ID" == *"-prd" ]]; then
     ENVIRONMENT="prd"
 else
-    ENVIRONMENT="${ENVIRONMENT:-prd}"
+    echo "❌ Cannot determine environment from project ID: $PROJECT_ID"
+    echo "   Project ID must end with -stg or -prd"
+    echo "   Or set ENVIRONMENT environment variable explicitly (stg or prd)"
+    exit 1
+fi
+
+# Verify environment is explicitly set
+if [ -z "$ENVIRONMENT" ]; then
+    echo "❌ ENVIRONMENT must be explicitly set (stg or prd)"
+    echo "   Set it in .env file or as environment variable"
+    exit 1
 fi
 
 echo "🚀 Deploying E-Skimming Labs Infrastructure"
@@ -129,9 +139,16 @@ echo "📋 Setting GCP project..."
 gcloud config set project $PROJECT_ID
 
 # Build and push Docker images before deploying services
+# Use optimized version that checks for content changes
 if [ "${BUILD_IMAGES:-true}" != "false" ]; then
-    echo "🏗️  Building Docker images..."
-    "$SCRIPT_DIR/build-images.sh"
+    echo "🏗️  Building Docker images (with content hash checking)..."
+    if [ -f "$SCRIPT_DIR/build-images-optimized.sh" ]; then
+        "$SCRIPT_DIR/build-images-optimized.sh"
+    else
+        # Fallback to regular build script if optimized version doesn't exist
+        echo "⚠️  Optimized build script not found, using regular build (will build all images)"
+        "$SCRIPT_DIR/build-images.sh"
+    fi
     echo ""
 fi
 
@@ -150,11 +167,14 @@ gcloud services enable \
 
 # Navigate to terraform directory (relative to script location)
 cd "$SCRIPT_DIR/$TERRAFORM_DIR"
+TERRAFORM_DIR_ABS=$(pwd)
 
 # Initialize Terraform with environment-specific backend config
 echo "🏗️  Initializing Terraform..."
+echo "   Directory: $TERRAFORM_DIR_ABS"
 BACKEND_CONFIG="backend-${ENVIRONMENT}.conf"
 if [ -f "$BACKEND_CONFIG" ]; then
+    echo "   Running: terraform init -backend-config=\"$BACKEND_CONFIG\""
     terraform init -backend-config="$BACKEND_CONFIG"
 else
     echo "❌ Backend config file not found: $BACKEND_CONFIG"
@@ -165,10 +185,11 @@ fi
 
 # Plan the deployment
 echo "📋 Planning Terraform deployment..."
+echo "   Directory: $TERRAFORM_DIR_ABS"
 # Try to plan, and if we get a lock error, attempt to unlock stale locks
+PLAN_CMD="terraform plan -var=\"environment=$ENVIRONMENT\" -out=tfplan"
+echo "   Running: $PLAN_CMD"
 terraform plan \
-    -var="project_id=$PROJECT_ID" \
-    -var="region=$REGION" \
     -var="environment=$ENVIRONMENT" \
     -out=tfplan 2>&1 | tee /tmp/terraform-plan.log || {
     PLAN_OUTPUT=$(cat /tmp/terraform-plan.log)
@@ -179,12 +200,12 @@ terraform plan \
         if [ -n "$LOCK_ID" ]; then
             echo "   Found lock ID: $LOCK_ID"
             echo "   Unlocking state..."
+            echo "   Running: terraform force-unlock $LOCK_ID"
             echo "yes" | terraform force-unlock "$LOCK_ID" 2>&1 | grep -v "Enter a value" || true
             echo ""
             echo "   Retrying terraform plan..."
+            echo "   Running: $PLAN_CMD"
             terraform plan \
-                -var="project_id=$PROJECT_ID" \
-                -var="region=$REGION" \
                 -var="environment=$ENVIRONMENT" \
                 -out=tfplan
         else
@@ -214,6 +235,8 @@ echo ""
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     # Apply the plan
     echo "🚀 Applying Terraform plan..."
+    echo "   Directory: $TERRAFORM_DIR_ABS"
+    echo "   Running: terraform apply tfplan"
     terraform apply tfplan
     
     echo ""

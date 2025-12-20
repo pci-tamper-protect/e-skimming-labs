@@ -37,7 +37,19 @@ if [[ "$LABS_PROJECT_ID" == *"-stg" ]] || [[ "$HOME_PROJECT_ID" == *"-stg" ]]; t
 elif [[ "$LABS_PROJECT_ID" == *"-prd" ]] || [[ "$HOME_PROJECT_ID" == *"-prd" ]]; then
     ENVIRONMENT="prd"
 else
-    ENVIRONMENT="${ENVIRONMENT:-prd}"
+    echo "❌ Cannot determine environment from project IDs:"
+    echo "   LABS_PROJECT_ID: ${LABS_PROJECT_ID:-not set}"
+    echo "   HOME_PROJECT_ID: ${HOME_PROJECT_ID:-not set}"
+    echo "   Project IDs must end with -stg or -prd"
+    echo "   Or set ENVIRONMENT environment variable explicitly (stg or prd)"
+    exit 1
+fi
+
+# Verify environment is explicitly set
+if [ -z "$ENVIRONMENT" ]; then
+    echo "❌ ENVIRONMENT must be explicitly set (stg or prd)"
+    echo "   Set it in .env file or as environment variable"
+    exit 1
 fi
 
 echo "🏗️  Building and pushing Docker images"
@@ -68,6 +80,18 @@ gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
 # Also authenticate with pcioasis-operations for base images (if not already done)
 gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet || true
 
+# Function to check if image exists in Artifact Registry
+image_exists() {
+    local image="$1"
+    local project="$2"
+    local location="$3"
+    
+    gcloud artifacts docker images describe "$image" \
+        --project="$project" \
+        --location="$location" \
+        --format="value(name)" &>/dev/null
+}
+
 # Build and push analytics service (to labs project)
 if [ -n "$LABS_PROJECT_ID" ]; then
     echo ""
@@ -76,7 +100,16 @@ if [ -n "$LABS_PROJECT_ID" ]; then
     cd "$SCRIPT_DIR/shared-components/analytics-service"
     REPOSITORY="e-skimming-labs"
     IMAGE_NAME="${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${REPOSITORY}/analytics:latest"
+    
+    # Check if image already exists
+    if image_exists "$IMAGE_NAME" "$LABS_PROJECT_ID" "$REGION"; then
+        echo "   ℹ️  Image already exists: $IMAGE_NAME"
+        echo "   ⚠️  Rebuilding anyway (use build-images-optimized.sh to skip if unchanged)"
+    fi
+    
+    echo "   🔨 Building image..."
     docker build -t "$IMAGE_NAME" .
+    echo "   📤 Pushing image..."
     docker push "$IMAGE_NAME"
     echo "✅ Analytics service image pushed: $IMAGE_NAME"
 fi
@@ -104,7 +137,16 @@ if [ -n "$HOME_PROJECT_ID" ]; then
     echo "  Building SEO service..."
     cd "$SCRIPT_DIR/shared-components/seo-service"
     SEO_IMAGE="${REGION}-docker.pkg.dev/${HOME_PROJECT_ID}/${REPOSITORY}/seo:latest"
+    
+    # Check if image already exists
+    if image_exists "$SEO_IMAGE" "$HOME_PROJECT_ID" "$REGION"; then
+        echo "     ℹ️  Image already exists: $SEO_IMAGE"
+        echo "     ⚠️  Rebuilding anyway (use build-images-optimized.sh to skip if unchanged)"
+    fi
+    
+    echo "     🔨 Building image..."
     docker build -t "$SEO_IMAGE" .
+    echo "     📤 Pushing image..."
     docker push "$SEO_IMAGE"
     echo "✅ SEO service image pushed: $SEO_IMAGE"
     
@@ -114,7 +156,16 @@ if [ -n "$HOME_PROJECT_ID" ]; then
     REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
     cd "$REPO_ROOT"
     INDEX_IMAGE="${REGION}-docker.pkg.dev/${HOME_PROJECT_ID}/${REPOSITORY}/index:latest"
+    
+    # Check if image already exists
+    if image_exists "$INDEX_IMAGE" "$HOME_PROJECT_ID" "$REGION"; then
+        echo "     ℹ️  Image already exists: $INDEX_IMAGE"
+        echo "     ⚠️  Rebuilding anyway (use build-images-optimized.sh to skip if unchanged)"
+    fi
+    
+    echo "     🔨 Building image..."
     docker build -f "$SCRIPT_DIR/shared-components/home-index-service/Dockerfile" -t "$INDEX_IMAGE" .
+    echo "     📤 Pushing image..."
     docker push "$INDEX_IMAGE"
     echo "✅ Home-index service image pushed: $INDEX_IMAGE"
 fi

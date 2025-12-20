@@ -2,25 +2,34 @@
 # Note: These services will be deployed after Docker images are built and pushed
 
 # SEO Service - Integration with main pcioasis.com
+# Note: Service is deployed by GitHub Actions workflow, Terraform only manages IAM
+# Keep in state to prevent destruction, but ignore all changes (managed by GitHub Actions)
 resource "google_cloud_run_v2_service" "home_seo_service" {
-  count    = var.deploy_services ? 1 : 0
+  count    = 1  # Always keep in state to prevent destruction
   name     = "home-seo-${var.environment}"
   location = var.region
-  project  = var.project_id
+  project  = local.home_project_id
+
+  # Let GitHub Actions workflow manage the service configuration
+  # Terraform only needs the service to exist for IAM bindings
+  # Ignore all changes since GitHub Actions manages the actual deployment
+  lifecycle {
+    ignore_changes = all  # Ignore all changes - service is fully managed by GitHub Actions
+  }
 
   template {
     service_account = google_service_account.home_seo.email
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/e-skimming-labs-home/seo:latest"
+      image = "${var.region}-docker.pkg.dev/${local.home_project_id}/e-skimming-labs-home/seo:latest"
 
       ports {
         container_port = 8080
       }
 
       env {
-        name  = "PROJECT_ID"
-        value = var.project_id
+        name  = "HOME_PROJECT_ID"
+        value = local.home_project_id
       }
 
       env {
@@ -40,7 +49,7 @@ resource "google_cloud_run_v2_service" "home_seo_service" {
 
       env {
         name  = "LABS_PROJECT_ID"
-        value = var.labs_project_id
+        value = local.labs_project_id
       }
 
       resources {
@@ -64,25 +73,34 @@ resource "google_cloud_run_v2_service" "home_seo_service" {
 }
 
 # Index Service - Main landing page
+# Note: Service is deployed by GitHub Actions workflow, Terraform only manages IAM
+# Keep in state to prevent destruction, but ignore all changes (managed by GitHub Actions)
 resource "google_cloud_run_v2_service" "home_index_service" {
-  count    = var.deploy_services ? 1 : 0
+  count    = 1  # Always keep in state to prevent destruction
   name     = "home-index-${var.environment}"
   location = var.region
-  project  = var.project_id
+  project  = local.home_project_id
+
+  # Let GitHub Actions workflow manage the service configuration
+  # Terraform only needs the service to exist for IAM bindings
+  # Ignore all changes since GitHub Actions manages the actual deployment
+  lifecycle {
+    ignore_changes = all  # Ignore all changes - service is fully managed by GitHub Actions
+  }
 
   template {
     service_account = google_service_account.home_runtime.email
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/e-skimming-labs-home/index:latest"
+      image = "${var.region}-docker.pkg.dev/${local.home_project_id}/e-skimming-labs-home/index:latest"
 
       ports {
         container_port = 8080
       }
 
       env {
-        name  = "PROJECT_ID"
-        value = var.project_id
+        name  = "HOME_PROJECT_ID"
+        value = local.home_project_id
       }
 
       env {
@@ -107,12 +125,12 @@ resource "google_cloud_run_v2_service" "home_index_service" {
 
       env {
         name  = "LABS_PROJECT_ID"
-        value = var.labs_project_id
+        value = local.labs_project_id
       }
 
       env {
         name  = "SEO_SERVICE_URL"
-        value = var.deploy_services ? google_cloud_run_v2_service.home_seo_service[0].uri : ""
+        value = google_cloud_run_v2_service.home_seo_service[0].uri
       }
 
       resources {
@@ -135,9 +153,12 @@ resource "google_cloud_run_v2_service" "home_index_service" {
   ]
 }
 
-# Allow unauthenticated access to all services
+# IAM access control - environment-specific
+# Production: Public access (allUsers)
+# Staging: Restricted to developer groups (configured in iap.tf)
+
 resource "google_cloud_run_v2_service_iam_member" "home_seo_public" {
-  count    = var.deploy_services ? 1 : 0
+  count    = var.environment == "prd" ? 1 : 0
   location = google_cloud_run_v2_service.home_seo_service[0].location
   project  = google_cloud_run_v2_service.home_seo_service[0].project
   name     = google_cloud_run_v2_service.home_seo_service[0].name
@@ -146,10 +167,13 @@ resource "google_cloud_run_v2_service_iam_member" "home_seo_public" {
 }
 
 resource "google_cloud_run_v2_service_iam_member" "home_index_public" {
-  count    = var.deploy_services ? 1 : 0
+  count    = var.environment == "prd" ? 1 : 0
   location = google_cloud_run_v2_service.home_index_service[0].location
   project  = google_cloud_run_v2_service.home_index_service[0].project
   name     = google_cloud_run_v2_service.home_index_service[0].name
   role     = "roles/run.invoker"
   member   = "allUsers"
 }
+
+# Note: For staging (stg), access is restricted via IAM group bindings in iap.tf
+# Groups: 2025-interns@pcioasis.com, core-eng@pcioasis.com

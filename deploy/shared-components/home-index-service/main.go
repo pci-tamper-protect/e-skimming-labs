@@ -157,20 +157,26 @@ func main() {
 	if lab2URL == "" {
 		if isLocal && lab2Domain != "" {
 			// Local development: use direct port-based URL
-			lab2URL = fmt.Sprintf("%s://%s/", scheme, lab2Domain)
+			lab2URL = fmt.Sprintf("%s://%s/banking.html", scheme, lab2Domain)
 		} else {
 			// Production: link directly to banking.html page
 			lab2URL = "https://lab-02-dom-skimming-prd-mmwwcfi5za-uc.a.run.app/banking.html"
 		}
 	}
+	if lab2URL != "" && !strings.HasSuffix(lab2URL, "/banking.html") {
+		lab2URL += "/banking.html"
+	}
 	if lab3URL == "" {
 		if isLocal && lab3Domain != "" {
 			// Local development: use direct port-based URL
-			lab3URL = fmt.Sprintf("%s://%s/", scheme, lab3Domain)
+			lab3URL = fmt.Sprintf("%s://%s/index.html", scheme, lab3Domain)
 		} else {
 			// Production: link directly to index.html page
 			lab3URL = "https://lab-03-extension-hijacking-prd-mmwwcfi5za-uc.a.run.app/index.html"
 		}
+	}
+	if lab3URL != "" && !strings.HasSuffix(lab3URL, "/index.html") {
+		lab3URL += "/index.html"
 	}
 
 	labs := []Lab{
