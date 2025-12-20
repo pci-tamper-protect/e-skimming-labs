@@ -43,8 +43,8 @@ dist/
 # Labs (only build when needed)
 # Exclude labs but allow README files for home-index service
 # Pattern: exclude all labs, but allow README.md files in any lab subdirectory
-labs/
-!labs/*/README.md
+# labs/
+# !labs/*/README.md
 
 # Test results
 test-results/
