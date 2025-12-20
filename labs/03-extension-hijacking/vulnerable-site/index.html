@@ -394,23 +394,23 @@
           c2Url = 'https://labs.stg.pcioasis.com/03-extension-hijacking-c2'
           writeupUrl = 'https://labs.stg.pcioasis.com/lab-03-writeup'
         } else if (hostname.includes('labs.pcioasis.com')) {
-          homeUrl = 'https://labs.pcioasis.com'
-          c2Url = 'https://labs.pcioasis.com/03-extension-hijacking-c2'
-          writeupUrl = 'https://labs.pcioasis.com/lab-03-writeup'
+          homeUrl = 'https://home-index-prd-mmwwcfi5za-uc.a.run.app'
+          c2Url = 'https://home-index-prd-mmwwcfi5za-uc.a.run.app/03-extension-hijacking-c2'
+          writeupUrl = 'https://home-index-prd-mmwwcfi5za-uc.a.run.app/lab-03-writeup'
         } else if (hostname.includes('lab-03-extension-hijacking')) {
           // Production Cloud Run
-          homeUrl = 'https://labs.pcioasis.com'
-          c2Url = 'https://lab-03-extension-hijacking-c2-prd-mmwwcfi5za-uc.a.run.app'
-          writeupUrl = 'https://labs.pcioasis.com/lab-03-writeup'
+          homeUrl = 'https://home-index-prd-mmwwcfi5za-uc.a.run.app'
+          c2Url = window.location.protocol + '//' + hostname + '/skimmed-data'
+          writeupUrl = 'https://home-index-prd-mmwwcfi5za-uc.a.run.app/lab-03-writeup'
         } else if (hostname.includes('run.app') && hostname.includes('lab-03')) {
           // Production Cloud Run direct URL
-          homeUrl = 'https://labs.pcioasis.com'
-          c2Url = 'https://lab-03-extension-hijacking-c2-prd-mmwwcfi5za-uc.a.run.app'
-          writeupUrl = 'https://labs.pcioasis.com/lab-03-writeup'
+          homeUrl = 'https://home-index-prd-mmwwcfi5za-uc.a.run.app'
+          c2Url = window.location.protocol + '//' + hostname + '/skimmed-data'
+          writeupUrl = 'https://home-index-prd-mmwwcfi5za-uc.a.run.app/lab-03-writeup'
         } else {
           homeUrl = window.location.protocol + '//' + hostname
           c2Url = window.location.protocol + '//' + hostname + '/c2'
-          writeupUrl = window.location.protocol + '//' + hostname.replace('lab-03-extension-hijacking', 'labs.pcioasis.com') + '/lab-03-writeup'
+          writeupUrl = window.location.protocol + '//' + hostname.replace('lab-03-extension-hijacking', 'home-index-prd-mmwwcfi5za-uc.a.run.app') + '/lab-03-writeup'
         }
 
         // Update lab navigation buttons
