@@ -23,12 +23,7 @@ ptp:
     team: cybersecurity
     domain: payment-security
     environment: production
-    deployment:
-      hostname: unknown
-      user: kestenbroughton
-      pipeline: github-actions
-      build-number: unknown
-      image-tag: latest
+  git:
     repository: git@github.com:pci-tamper-protect/e-skimming-labs.git
   dependencies:
     runtime:
