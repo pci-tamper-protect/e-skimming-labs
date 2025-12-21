@@ -10,18 +10,8 @@ OUTPUT_FILE="${REPO_ROOT}/catalog-info.yaml"
 
 cd "${REPO_ROOT}"
 
-# Get git information
-GIT_COMMIT_SHA=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
-GIT_COMMIT_SHA_SHORT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-GIT_COMMIT_MESSAGE=$(git log -1 --pretty=%B 2>/dev/null | head -1 || echo "unknown")
-GIT_COMMIT_AUTHOR=$(git log -1 --pretty=%an 2>/dev/null || echo "unknown")
-GIT_COMMIT_DATE=$(git log -1 --pretty=%ai 2>/dev/null || echo "unknown")
-GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
-GIT_IS_DIRTY=$(git diff --quiet && echo "false" || echo "true")
+# Get only static git information (repository URL)
 GIT_REPO=$(git config --get remote.origin.url 2>/dev/null || echo "unknown")
-
-# Get current timestamp
-TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
 
 # Discover services
 declare -a SERVICES=()
@@ -77,24 +67,8 @@ ptp:
     team: cybersecurity
     domain: payment-security
     environment: production
-    deployment:
-      timestamp: ${TIMESTAMP}
-      hostname: unknown
-      user: $(whoami)
-      pipeline: github-actions
-      build-number: unknown
-      image-tag: latest
   git:
-    commit_sha: ${GIT_COMMIT_SHA}
-    commit_sha_short: ${GIT_COMMIT_SHA_SHORT}
-    commit_message: ${GIT_COMMIT_MESSAGE}
-    commit_author: ${GIT_COMMIT_AUTHOR}
-    commit_date: '${GIT_COMMIT_DATE}'
-    branch: ${GIT_BRANCH}
-    is_dirty: ${GIT_IS_DIRTY}
-    source: live_git
     repository: ${GIT_REPO}
-    pull_request: null
   dependencies:
     runtime:
       services:
@@ -132,12 +106,10 @@ cat >> "${OUTPUT_FILE}" <<EOF
     vulnerability-scan: true
     dependency-check: true
     secrets-scan: true
-    last-scan: ${TIMESTAMP}
   compliance:
     pci-dss: true
     soc2: true
     gdpr: true
-    last-audit: ${TIMESTAMP}
 EOF
 
 echo "✅ Generated catalog-info.yaml"
