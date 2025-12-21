@@ -26,7 +26,7 @@ test.describe('Authentication Integration', () => {
     await page.goto(LABS_URL)
     
     // Should load without redirect
-    await expect(page).toHaveURL(new RegExp(LABS_URL))
+    await expect(page).toHaveURL(LABS_URL)
     await expect(page.locator('h1, .hero h1')).toContainText(/E-Skimming|Interactive/i)
   })
 
@@ -37,7 +37,7 @@ test.describe('Authentication Integration', () => {
     await page.goto(LABS_URL)
     
     // Should redirect to sign-in page
-    await expect(page).toHaveURL(new RegExp(`${MAIN_APP_URL}/sign-in`))
+    await expect(page).toHaveURL(`${MAIN_APP_URL}/sign-in`)
   })
 
   test('should allow access when authenticated via token in URL', async ({ page }) => {
@@ -50,8 +50,9 @@ test.describe('Authentication Integration', () => {
     await page.fill('input[type="password"]', TEST_USER_PASSWORD)
     await page.click('button[type="submit"]')
     
-    // Wait for sign-in to complete
-    await page.waitForURL(new RegExp(`${MAIN_APP_URL}/dashboard|${MAIN_APP_URL}/`))
+    // Wait for sign-in to complete (escape dots in URL for regex)
+    const escapedMainUrl = MAIN_APP_URL.replace(/\./g, '\\.')
+    await page.waitForURL(new RegExp(`^${escapedMainUrl}(?:/dashboard|/)$`))
     
     // Get Firebase token from localStorage
     const token = await page.evaluate(() => localStorage.getItem('accessToken'))
@@ -61,14 +62,14 @@ test.describe('Authentication Integration', () => {
     await page.goto(`${LABS_URL}?token=${token}`)
     
     // Should load labs page
-    await expect(page).toHaveURL(new RegExp(LABS_URL))
+    await expect(page).toHaveURL(LABS_URL)
     
     // Token should be stored in sessionStorage
     const storedToken = await page.evaluate(() => sessionStorage.getItem('firebase_token'))
     expect(storedToken).toBe(token)
     
     // Should not redirect to sign-in
-    await expect(page).not.toHaveURL(new RegExp(`${MAIN_APP_URL}/sign-in`))
+    await expect(page).not.toHaveURL(`${MAIN_APP_URL}/sign-in`)
   })
 
   test('should validate token with server', async ({ page, request }) => {
@@ -80,7 +81,8 @@ test.describe('Authentication Integration', () => {
     await page.fill('input[type="email"]', TEST_USER_EMAIL)
     await page.fill('input[type="password"]', TEST_USER_PASSWORD)
     await page.click('button[type="submit"]')
-    await page.waitForURL(new RegExp(`${MAIN_APP_URL}/dashboard|${MAIN_APP_URL}/`))
+    const escapedMainUrl = MAIN_APP_URL.replace(/\./g, '\\.')
+    await page.waitForURL(new RegExp(`^${escapedMainUrl}(?:/dashboard|/)$`))
     
     const token = await page.evaluate(() => localStorage.getItem('accessToken'))
     
@@ -128,7 +130,8 @@ test.describe('Authentication Integration', () => {
     await page.fill('input[type="email"]', TEST_USER_EMAIL)
     await page.fill('input[type="password"]', TEST_USER_PASSWORD)
     await page.click('button[type="submit"]')
-    await page.waitForURL(new RegExp(`${MAIN_APP_URL}/dashboard|${MAIN_APP_URL}/`))
+    const escapedMainUrl = MAIN_APP_URL.replace(/\./g, '\\.')
+    await page.waitForURL(new RegExp(`^${escapedMainUrl}(?:/dashboard|/)$`))
     
     const token = await page.evaluate(() => localStorage.getItem('accessToken'))
     
