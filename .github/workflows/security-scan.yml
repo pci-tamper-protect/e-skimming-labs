@@ -238,7 +238,8 @@ jobs:
           # Check for changes specific to this container's path
           if echo "${CHANGED_FILES}" | grep -qE "^${{ matrix.image_path }}/"; then
             # Further filter: only trigger on Dockerfile, Go files, or config files
-            if echo "${CHANGED_FILES}" | grep -qE "^${{ matrix.image_path }}/(Dockerfile|.*\.go|go\.mod|go\.sum|.*\.yaml|.*\.yml|.*\.json)$|^catalog-info\.yaml$"; then
+            # Use [^/]* instead of .* to match only files ending in the extension, not paths containing the extension
+            if echo "${CHANGED_FILES}" | grep -qE "^${{ matrix.image_path }}/(Dockerfile|[^/]*\.go|go\.mod|go\.sum|[^/]*\.yaml|[^/]*\.yml|[^/]*\.json)$|^catalog-info\.yaml$"; then
               echo "changed=true" >> $GITHUB_OUTPUT
               echo "✅ Container files changed, will scan"
             else
@@ -258,7 +259,7 @@ jobs:
 
       - name: Set up Cloud SDK
         if: steps.check-changes.outputs.changed == 'true'
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
 
       - name: Set up Docker Buildx
         if: steps.check-changes.outputs.changed == 'true'
@@ -409,7 +410,7 @@ jobs:
           fi
 
       - name: Upload tfsec results to GitHub Security
-        # check-tfsec already has the change check, so we only need to verify results exist
+        # 'check-tfsec' already checks for changes; here we only verify that results exist
         if: steps.check-tfsec.outputs.exists == 'true'
         uses: github/codeql-action/upload-sarif@v4
         with:
