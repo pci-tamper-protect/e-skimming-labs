@@ -101,6 +101,81 @@ If you see `Permission "artifactregistry.repositories.downloadArtifacts" denied`
 - Check that cross-project access to `pcioasis-operations` was granted
 - Verify service account keys are correctly added to GitHub secrets
 
+## Dotenvx Setup (Encrypted Environment Files)
+
+This project uses dotenvx to encrypt environment files. The encrypted `.env.stg` and `.env.prd` files are stored in the repository, and the private keys (`.env.keys.stg` and `.env.keys.prd`) are stored in Google Cloud Secret Manager and mounted at runtime in Cloud Run.
+
+### Uploading Dotenvx Keys to Secret Manager
+
+Upload the private keys to Secret Manager:
+
+```bash
+# For staging (labs-stg project)
+./deploy/upload-dotenvx-key.sh stg labs-stg
+
+# For production (labs-prd project)
+./deploy/upload-dotenvx-key.sh prd labs-prd
+```
+
+This script will:
+1. Check if the `.env.keys.<env>` file exists
+2. Create or update the secret `DOTENVX_KEY_<ENV>` in Secret Manager
+3. Provide instructions for granting Cloud Run service account access
+
+### Granting Cloud Run Service Account Access
+
+After uploading the secrets, grant the Cloud Run service accounts access:
+
+```bash
+# For staging - labs services
+gcloud secrets add-iam-policy-binding DOTENVX_KEY_STG \
+  --project=labs-stg \
+  --member='serviceAccount:labs-runtime-sa@labs-stg.iam.gserviceaccount.com' \
+  --role='roles/secretmanager.secretAccessor'
+
+# For staging - home services
+gcloud secrets add-iam-policy-binding DOTENVX_KEY_STG \
+  --project=labs-home-stg \
+  --member='serviceAccount:home-runtime-sa@labs-home-stg.iam.gserviceaccount.com' \
+  --role='roles/secretmanager.secretAccessor'
+
+# For production - labs services
+gcloud secrets add-iam-policy-binding DOTENVX_KEY_PRD \
+  --project=labs-prd \
+  --member='serviceAccount:labs-runtime-sa@labs-prd.iam.gserviceaccount.com' \
+  --role='roles/secretmanager.secretAccessor'
+
+# For production - home services
+gcloud secrets add-iam-policy-binding DOTENVX_KEY_PRD \
+  --project=labs-home-prd \
+  --member='serviceAccount:home-runtime-sa@labs-home-prd.iam.gserviceaccount.com' \
+  --role='roles/secretmanager.secretAccessor'
+```
+
+### How It Works
+
+**Runtime (Cloud Run):**
+- The dotenvx private key is mounted at `/etc/secrets/dotenvx-key` in all Cloud Run services
+- The encrypted `.env.stg` or `.env.prd` files are already in the container image (from the repo)
+- At container startup, the application should:
+  1. Symlink `/etc/secrets/dotenvx-key` → `.env.keys` (or `.env.keys.stg`/`.env.keys.prd`)
+  2. Symlink `.env.stg` or `.env.prd` → `.env` (based on environment)
+  3. dotenvx will automatically and transparently decrypt when it sees both the encrypted file and matching key file
+
+**How dotenvx Works:**
+- When dotenvx sees both `.env.<env>` (encrypted) and `.env.keys.<env>` (key) files, it automatically decrypts on-the-fly
+- No manual `dotenvx decrypt` command needed - it's transparent
+- Tools that read `.env` will get decrypted values automatically
+- The encrypted `.env.<env>` file stays encrypted in the repo (safe to commit)
+
+### Secret Mounting in GitHub Actions
+
+The GitHub Actions workflow (`.github/workflows/deploy_labs.yml`) automatically mounts the appropriate secret for each environment:
+- **Staging services**: `--update-secrets="/etc/secrets/dotenvx-key:DOTENVX_KEY_STG:latest"`
+- **Production services**: `--update-secrets="/etc/secrets/dotenvx-key:DOTENVX_KEY_PRD:latest"`
+
+All Cloud Run deployments (home-seo, home-index, labs-analytics, lab-*-*, labs-index) have the secret mounted automatically.
+
 ### Repository not found errors
 
 If you see `Repository "***" not found`:
