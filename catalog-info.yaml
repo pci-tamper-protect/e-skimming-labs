@@ -23,24 +23,8 @@ ptp:
     team: cybersecurity
     domain: payment-security
     environment: production
-    deployment:
-      timestamp: 2025-12-18T21:55:55.3NZ
-      hostname: unknown
-      user: kestenbroughton
-      pipeline: github-actions
-      build-number: unknown
-      image-tag: latest
   git:
-    commit_sha: 091b7b6f652bdcc74027ec92b552b6a2a1f305ec
-    commit_sha_short: 091b7b6
-    commit_message: fix group permissions (#93)
-    commit_author: kesten
-    commit_date: '2025-12-18 16:51:11 -0500'
-    branch: kbroughton/feature/improve-seo
-    is_dirty: false
-    source: live_git
     repository: git@github.com:pci-tamper-protect/e-skimming-labs.git
-    pull_request: null
   dependencies:
     runtime:
       services:
@@ -68,9 +52,7 @@ ptp:
     vulnerability-scan: true
     dependency-check: true
     secrets-scan: true
-    last-scan: 2025-12-18T21:55:55.3NZ
   compliance:
     pci-dss: true
     soc2: true
     gdpr: true
-    last-audit: 2025-12-18T21:55:55.3NZ

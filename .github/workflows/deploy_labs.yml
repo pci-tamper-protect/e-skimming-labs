@@ -1179,9 +1179,12 @@ jobs:
     needs: [setup, deploy-labs, deploy-home-components, deploy-labs-components]
     runs-on: ubuntu-latest
     if: always()
+    outputs:
+      deployment_success: ${{ steps.check-deployment.outputs.success }}
 
     steps:
-      - name: Report deployment status
+      - name: Check deployment status
+        id: check-deployment
         run: |
           # Check if all required deployments succeeded (or were skipped appropriately)
           DEPLOY_LABS_SUCCESS=$([[ "${{ needs.deploy-labs.result }}" == "success" ]] && echo "true" || echo "false")
@@ -1189,6 +1192,7 @@ jobs:
           DEPLOY_LABS_COMPONENTS_SUCCESS=$([[ "${{ needs.deploy-labs-components.result }}" == "success" ]] && echo "true" || echo "false")
 
           if [[ "$DEPLOY_LABS_SUCCESS" == "true" && "$DEPLOY_HOME_SUCCESS" == "true" && "$DEPLOY_LABS_COMPONENTS_SUCCESS" == "true" ]]; then
+            echo "success=true" >> $GITHUB_OUTPUT
             echo "✅ All required deployments completed successfully to ${{ needs.setup.outputs.domain_prefix }}"
             echo "Labs available at:"
             echo "  - Index: https://${{ needs.setup.outputs.domain_prefix }}"
@@ -1199,9 +1203,95 @@ jobs:
               echo "  - $lab: https://${{ needs.setup.outputs.domain_prefix }}/$lab"
             done
           else
+            echo "success=false" >> $GITHUB_OUTPUT
             echo "❌ Deployment failed or incomplete"
             echo "deploy-labs result: ${{ needs.deploy-labs.result }}"
             echo "deploy-home-components result: ${{ needs.deploy-home-components.result }}"
             echo "deploy-labs-components result: ${{ needs.deploy-labs-components.result }}"
             exit 1
           fi
+
+  e2e-tests:
+    needs: [setup, notify-deployment]
+    runs-on: ubuntu-latest
+    # Only run e2e tests after successful deployment on push events (not PRs)
+    if: github.event_name == 'push' && needs.notify-deployment.outputs.deployment_success == 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: test/package-lock.json
+
+      - name: Install dependencies
+        working-directory: test
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: test
+        run: npx playwright install --with-deps chromium
+
+      - name: Wait for deployment to stabilize
+        run: |
+          echo "⏳ Waiting 30 seconds for deployment to stabilize..."
+          sleep 30
+
+      - name: Run E2E tests
+        working-directory: test
+        env:
+          TEST_ENV: ${{ needs.setup.outputs.environment }}
+        run: |
+          echo "🧪 Running E2E tests against ${{ needs.setup.outputs.environment }} environment"
+          echo "🔗 Base URL: https://${{ needs.setup.outputs.domain_prefix }}"
+          npx playwright test e2e
+        continue-on-error: true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ needs.setup.outputs.environment }}
+          path: test/playwright-report/
+          retention-days: 30
+
+      - name: Upload test screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-screenshots-${{ needs.setup.outputs.environment }}
+          path: test/test-results/
+          retention-days: 7
+
+      - name: Comment test results on commit
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const environment = '${{ needs.setup.outputs.environment }}';
+            const baseUrl = 'https://${{ needs.setup.outputs.domain_prefix }}';
+
+            // Create a simple comment with test status
+            const comment = `## 🧪 E2E Test Results (${environment.toUpperCase()})
+
+            **Environment:** ${environment}
+            **Base URL:** ${baseUrl}
+            **Run:** ${{ github.run_number }}
+
+            Test artifacts:
+            - [Test Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            - [Screenshots](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+            Tests ran against the newly deployed environment.`;
+
+            github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+              body: comment
+            });
