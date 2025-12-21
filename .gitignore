@@ -68,3 +68,8 @@ test/MITRE_ATTACK_FIX_REPORT.md
 
 # dotenvx encryption keys (added by dotenvx-converter)
 .env.*.keys
+
+# dotenvx encryption keys (added by dotenvx-converter)
+.env.prd.keys
+.env.prod.keys
+.env.production.keys
