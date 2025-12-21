@@ -50,3 +50,9 @@ malicious-extension/
 Dockerfile*
 .dockerignore
 
+# Secrets and environment keys
+.env.keys
+.env.keys.*
+**/.env.keys
+**/.env.keys.*
+

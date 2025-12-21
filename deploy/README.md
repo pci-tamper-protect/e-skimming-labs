@@ -157,15 +157,19 @@ gcloud secrets add-iam-policy-binding DOTENVX_KEY_PRD \
 **Runtime (Cloud Run):**
 - The dotenvx private key is mounted at `/etc/secrets/dotenvx-key` in all Cloud Run services
 - The encrypted `.env.stg` or `.env.prd` files are already in the container image (from the repo)
-- At container startup, the application should:
-  1. Symlink `/etc/secrets/dotenvx-key` → `.env.keys` (or `.env.keys.stg`/`.env.keys.prd`)
-  2. Symlink `.env.stg` or `.env.prd` → `.env` (based on environment)
-  3. dotenvx will automatically and transparently decrypt when it sees both the encrypted file and matching key file
+- At container startup, use the `dotenvx-startup.sh` script which:
+  1. Reads `/etc/secrets/dotenvx-key` and sets it as `DOTENV_PRIVATE_KEY` environment variable
+  2. Symlinks `.env.stg` or `.env.prd` → `.env` (based on environment)
+  3. Runs the application with `dotenvx run -- <command>`
+  4. dotenvx automatically decrypts `.env.<env>` using `DOTENV_PRIVATE_KEY` and injects variables
 
 **How dotenvx Works:**
-- When dotenvx sees both `.env.<env>` (encrypted) and `.env.keys.<env>` (key) files, it automatically decrypts on-the-fly
-- No manual `dotenvx decrypt` command needed - it's transparent
-- Tools that read `.env` will get decrypted values automatically
+- dotenvx uses the `DOTENV_PRIVATE_KEY` environment variable to decrypt encrypted `.env` files
+- When you run `dotenvx run -- <command>`, it:
+  1. Reads the encrypted `.env` file (e.g., `.env.stg`)
+  2. Uses `DOTENV_PRIVATE_KEY` to decrypt it
+  3. Injects the decrypted environment variables into the process
+  4. Your Go code continues using `os.Getenv()` - no code changes needed
 - The encrypted `.env.<env>` file stays encrypted in the repo (safe to commit)
 
 ### Secret Mounting in GitHub Actions
@@ -175,6 +179,37 @@ The GitHub Actions workflow (`.github/workflows/deploy_labs.yml`) automatically 
 - **Production services**: `--update-secrets="/etc/secrets/dotenvx-key:DOTENVX_KEY_PRD:latest"`
 
 All Cloud Run deployments (home-seo, home-index, labs-analytics, lab-*-*, labs-index) have the secret mounted automatically.
+
+### Using the Startup Script
+
+To use dotenvx in your Docker containers, update your Dockerfile to:
+
+1. **Copy the startup script**:
+   ```dockerfile
+   COPY ../dotenvx-startup.sh /dotenvx-startup.sh
+   RUN chmod +x /dotenvx-startup.sh
+   ```
+
+2. **Install dotenvx** (or let the script install it at runtime):
+   ```dockerfile
+   RUN npm install -g @dotenvx/dotenvx
+   ```
+
+3. **Copy encrypted .env files**:
+   ```dockerfile
+   COPY .env.stg .env.prd ./
+   ```
+
+4. **Update CMD to use the startup script**:
+   ```dockerfile
+   CMD ["/dotenvx-startup.sh", "./your-binary"]
+   ```
+
+The startup script will:
+- Read the mounted secret at `/etc/secrets/dotenvx-key` and set it as `DOTENV_PRIVATE_KEY` environment variable
+- Symlink the appropriate `.env.<env>` file to `.env` based on `ENVIRONMENT` env var
+- Run your application with `dotenvx run -- <command>`
+- dotenvx automatically decrypts and injects environment variables - your Go code uses `os.Getenv()` as normal
 
 ### Repository not found errors
 

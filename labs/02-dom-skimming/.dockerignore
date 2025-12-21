@@ -52,3 +52,9 @@ Dockerfile*
 .dockerignore
 Dockerfile.c2
 
+# Secrets and environment keys
+.env.keys
+.env.keys.*
+**/.env.keys
+**/.env.keys.*
+

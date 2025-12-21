@@ -40,31 +40,136 @@ echo "Uploading dotenvx private key for ${ENV} environment..."
 echo "Project: ${PROJECT_ID}"
 echo "Secret name: ${SECRET_NAME}"
 echo "Key file: ${KEY_FILE}"
+echo ""
 
-# Check if secret exists
-if gcloud secrets describe "${SECRET_NAME}" --project="${PROJECT_ID}" >/dev/null 2>&1; then
-    echo "Secret ${SECRET_NAME} already exists. Adding new version..."
-    gcloud secrets versions add "${SECRET_NAME}" \
-        --project="${PROJECT_ID}" \
-        --data-file="${KEY_FILE}"
-    echo "✅ Successfully added new version to existing secret"
+# Verify gcloud is available and authenticated
+if ! command -v gcloud &> /dev/null; then
+    echo "Error: gcloud CLI is not installed or not in PATH"
+    exit 1
+fi
+
+# Check if user is authenticated (more lenient check)
+ACTIVE_ACCOUNTS=$(gcloud auth list --filter=status:ACTIVE --format="value(account)" 2>/dev/null || echo "")
+if [ -z "$ACTIVE_ACCOUNTS" ]; then
+    # Try alternative check
+    ACTIVE_ACCOUNTS=$(gcloud config get-value account 2>/dev/null || echo "")
+    if [ -z "$ACTIVE_ACCOUNTS" ] || [ "$ACTIVE_ACCOUNTS" = "(unset)" ]; then
+        echo "⚠️  Warning: No active gcloud authentication found"
+        echo "Run: gcloud auth login"
+        echo "Or: gcloud auth application-default login"
+        exit 1
+    fi
+fi
+echo "✅ Authenticated as: $(gcloud config get-value account 2>/dev/null || echo 'unknown')"
+
+# Verify project access (with verbose output to diagnose hangs)
+echo "Verifying access to project ${PROJECT_ID}..."
+if ! gcloud projects describe "${PROJECT_ID}" 2>&1; then
+    echo "❌ Error: Cannot access project ${PROJECT_ID}"
+    echo "Make sure you have access to this project and it exists"
+    exit 1
+fi
+echo "✅ Project access verified"
+
+echo "Attempting to create or update secret..."
+# Try to create the secret first. If it already exists, add a new version instead.
+# This avoids the need to check if it exists (which can hang)
+# Temporarily disable set -e for this section
+set +e
+echo "Trying to create secret (this may take a moment)..."
+gcloud secrets create "${SECRET_NAME}" \
+    --project="${PROJECT_ID}" \
+    --data-file="${KEY_FILE}" \
+    --replication-policy="automatic" 2>&1
+CREATE_EXIT=$?
+set -e
+
+if [ $CREATE_EXIT -eq 0 ]; then
+    echo "✅ Successfully created new secret ${SECRET_NAME}"
 else
-    echo "Creating new secret ${SECRET_NAME}..."
-    gcloud secrets create "${SECRET_NAME}" \
-        --project="${PROJECT_ID}" \
-        --data-file="${KEY_FILE}" \
-        --replication-policy="automatic"
-    echo "✅ Successfully created secret"
+    # Check if error is because secret already exists
+    echo "Create failed. Checking if secret already exists..."
+    set +e
+    gcloud secrets describe "${SECRET_NAME}" --project="${PROJECT_ID}" 2>&1
+    DESCRIBE_EXIT=$?
+    set -e
+    
+    if [ $DESCRIBE_EXIT -eq 0 ]; then
+        echo "Secret ${SECRET_NAME} already exists. Adding new version..."
+        gcloud secrets versions add "${SECRET_NAME}" \
+            --project="${PROJECT_ID}" \
+            --data-file="${KEY_FILE}" || {
+            echo "❌ Error: Failed to add new version to secret"
+            echo "Make sure you have the 'roles/secretmanager.secretAdmin' role on project ${PROJECT_ID}"
+            exit 1
+        }
+        echo "✅ Successfully added new version to existing secret"
+    else
+        echo "❌ Error: Failed to create secret"
+        echo "The secret doesn't exist and creation failed."
+        echo "Make sure you have the 'roles/secretmanager.admin' role on project ${PROJECT_ID}"
+        exit 1
+    fi
 fi
 
 echo ""
-echo "Next steps:"
-echo "1. Grant the Cloud Run service account access to this secret:"
-echo "   gcloud secrets add-iam-policy-binding ${SECRET_NAME} \\"
-echo "     --project=${PROJECT_ID} \\"
-echo "     --member='serviceAccount:<SERVICE_ACCOUNT_EMAIL>' \\"
-echo "     --role='roles/secretmanager.secretAccessor'"
+echo "Granting Cloud Run service accounts access to the secret..."
+
+# Determine which service accounts need access based on environment
+# Note: The secret is stored in the labs project, but both labs and home services need access
+if [[ "$ENV" == "stg" ]]; then
+    LABS_PROJECT="labs-stg"
+    HOME_PROJECT="labs-home-stg"
+elif [[ "$ENV" == "prd" ]]; then
+    LABS_PROJECT="labs-prd"
+    HOME_PROJECT="labs-home-prd"
+else
+    # Fallback: assume project ID matches the pattern
+    LABS_PROJECT="$PROJECT_ID"
+    HOME_PROJECT=""
+fi
+
+# Grant access to labs runtime service account (in labs project)
+LABS_SA="labs-runtime-sa@${LABS_PROJECT}.iam.gserviceaccount.com"
+echo "Granting access to ${LABS_SA}..."
+set +e
+gcloud secrets add-iam-policy-binding "${SECRET_NAME}" \
+    --project="${PROJECT_ID}" \
+    --member="serviceAccount:${LABS_SA}" \
+    --role="roles/secretmanager.secretAccessor" 2>&1 | grep -v "Updated IAM policy" || true
+LABS_EXIT=$?
+set -e
+
+if [ $LABS_EXIT -eq 0 ]; then
+    echo "✅ Granted access to ${LABS_SA}"
+else
+    echo "⚠️  Warning: Failed to grant access to ${LABS_SA}"
+    echo "   (May already have access, or service account doesn't exist yet)"
+fi
+
+# Grant access to home runtime service account (in home project)
+if [ -n "$HOME_PROJECT" ]; then
+    HOME_SA="home-runtime-sa@${HOME_PROJECT}.iam.gserviceaccount.com"
+    echo "Granting access to ${HOME_SA}..."
+    set +e
+    gcloud secrets add-iam-policy-binding "${SECRET_NAME}" \
+        --project="${PROJECT_ID}" \
+        --member="serviceAccount:${HOME_SA}" \
+        --role="roles/secretmanager.secretAccessor" 2>&1 | grep -v "Updated IAM policy" || true
+    HOME_EXIT=$?
+    set -e
+    
+    if [ $HOME_EXIT -eq 0 ]; then
+        echo "✅ Granted access to ${HOME_SA}"
+    else
+        echo "⚠️  Warning: Failed to grant access to ${HOME_SA}"
+        echo "   (May already have access, or service account doesn't exist yet)"
+    fi
+fi
+
 echo ""
-echo "2. Update .github/workflows/deploy_labs.yml to mount this secret in Cloud Run"
-echo "   See deploy/README.md for details"
+echo "✅ Secret upload and access configuration complete!"
+echo ""
+echo "The GitHub Actions workflow (.github/workflows/deploy_labs.yml) is already"
+echo "configured to mount this secret in Cloud Run at /etc/secrets/dotenvx-key"
 

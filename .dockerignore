@@ -67,3 +67,7 @@ Dockerfile*
 secrets.yml
 *.key
 *.pem
+.env.keys
+.env.keys.*
+**/.env.keys
+**/.env.keys.*
