@@ -34,10 +34,10 @@ type TokenInfo struct {
 
 // Config holds authentication configuration
 type Config struct {
-	Enabled        bool
-	RequireAuth    bool
-	ProjectID      string
-	CredentialsPath string
+	Enabled         bool
+	RequireAuth     bool
+	ProjectID       string
+	CredentialsJSON string  // Service account JSON as string (from FIREBASE_API_KEY env var)
 }
 
 // NewTokenValidator creates a new token validator instance
@@ -58,14 +58,12 @@ func NewTokenValidator(config Config) (*TokenValidator, error) {
 	ctx := context.Background()
 	var opts []option.ClientOption
 
-	// Try to load credentials from file if provided
-	if config.CredentialsPath != "" {
-		if _, err := os.Stat(config.CredentialsPath); err == nil {
-			log.Printf("📁 Loading Firebase credentials from: %s", config.CredentialsPath)
-			opts = append(opts, option.WithCredentialsFile(config.CredentialsPath))
-		} else {
-			log.Printf("⚠️ Credentials file not found at %s, using default credentials", config.CredentialsPath)
-		}
+	// Use credentials from environment variable (JSON string)
+	if config.CredentialsJSON != "" {
+		log.Printf("🔑 Loading Firebase credentials from environment variable")
+		opts = append(opts, option.WithCredentialsJSON([]byte(config.CredentialsJSON)))
+	} else {
+		log.Printf("⚠️ No credentials provided, using application default credentials")
 	}
 
 	// Initialize Firebase app

@@ -240,13 +240,13 @@ func main() {
 	enableAuth := os.Getenv("ENABLE_AUTH") == "true"
 	requireAuth := os.Getenv("REQUIRE_AUTH") == "true"
 	firebaseProjectID := os.Getenv("FIREBASE_PROJECT_ID")
-	firebaseCredentialsPath := os.Getenv("FIREBASE_CREDENTIALS_PATH")
+	firebaseAPIKey := os.Getenv("FIREBASE_API_KEY")
 
 	authConfig := auth.Config{
 		Enabled:         enableAuth,
 		RequireAuth:     requireAuth,
 		ProjectID:       firebaseProjectID,
-		CredentialsPath: firebaseCredentialsPath,
+		CredentialsJSON: firebaseAPIKey,
 	}
 
 	authValidator, err := auth.NewTokenValidator(authConfig)
