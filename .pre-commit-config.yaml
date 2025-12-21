@@ -47,6 +47,13 @@ repos:
         files: go\.mod$
         pass_filenames: false
 
+      - id: goimports
+        name: goimports (remove unused imports)
+        entry: bash -c 'if command -v goimports >/dev/null 2>&1; then cd deploy/shared-components/home-index-service && goimports -w . && cd ../seo-service && goimports -w . && cd ../analytics-service && goimports -w .; else echo "goimports not found, skipping import formatting"; fi'
+        language: system
+        files: \.go$
+        pass_filenames: false
+
       - id: go-fmt
         name: go fmt
         entry: go fmt
@@ -60,5 +67,12 @@ repos:
         language: system
         files: \.go$
         args: [./...]
+
+      - id: go-build-check
+        name: go build (check compilation)
+        entry: bash -c 'cd deploy/shared-components/home-index-service && go build -o /dev/null . && cd ../seo-service && go build -o /dev/null . && cd ../analytics-service && go build -o /dev/null .'
+        language: system
+        files: \.go$
+        pass_filenames: false
 
 

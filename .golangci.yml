@@ -65,7 +65,8 @@ linters:
     - whitespace
   disable:
     - errcheck
-    - unused
+    # Note: 'unused' is disabled globally but enabled for deploy/ paths via exclude-rules
+    # This allows unused imports in deploy/ code but catches them elsewhere
     - gci
 
 issues:
