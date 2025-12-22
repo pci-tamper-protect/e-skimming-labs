@@ -22,18 +22,18 @@ if [ ! -f ".env.keys.stg" ]; then
     exit 1
 fi
 
-# Check if deploy/.env.stg exists
-if [ ! -f "deploy/.env.stg" ]; then
-    echo "❌ Error: deploy/.env.stg not found"
+# Check if .env.stg exists
+if [ ! -f ".env.stg" ]; then
+    echo "❌ Error: .env.stg not found in repository root"
     exit 1
 fi
 
-echo "🔐 Decrypting environment variables from deploy/.env.stg..."
+echo "🔐 Decrypting environment variables from .env.stg..."
 
 # Export DOTENV_PRIVATE_KEY from .env.keys.stg
 export DOTENV_PRIVATE_KEY="$(cat .env.keys.stg)"
 
-# Use dotenvx to decrypt deploy/.env.stg and run docker-compose
+# Use dotenvx to decrypt .env.stg and run docker-compose
 # dotenvx run will decrypt the file and make variables available to the command
-dotenvx run --env-file=deploy/.env.stg -- docker-compose -f docker-compose.yml -f docker-compose.auth.yml "$@"
+dotenvx run --env-file=.env.stg -- docker-compose -f docker-compose.yml -f docker-compose.auth.yml "$@"
 

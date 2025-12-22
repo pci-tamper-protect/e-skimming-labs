@@ -37,7 +37,7 @@ type Config struct {
 	Enabled         bool
 	RequireAuth     bool
 	ProjectID       string
-	CredentialsJSON string  // Service account JSON as string (from FIREBASE_API_KEY env var)
+	CredentialsJSON string  // Service account JSON as string (from FIREBASE_SERVICE_ACCOUNT env var)
 }
 
 // NewTokenValidator creates a new token validator instance
@@ -58,7 +58,7 @@ func NewTokenValidator(config Config) (*TokenValidator, error) {
 	}
 
 	if config.CredentialsJSON == "" || strings.TrimSpace(config.CredentialsJSON) == "" {
-		log.Println("⚠️ FIREBASE_API_KEY is missing - disabling authentication")
+		log.Println("⚠️ FIREBASE_SERVICE_ACCOUNT is missing - disabling authentication")
 		return &TokenValidator{
 			enabled: false,
 		}, nil

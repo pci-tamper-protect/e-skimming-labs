@@ -92,6 +92,86 @@ After running the setup scripts, verify:
    gcloud artifacts repositories get-iam-policy home --location=us-central1 --project=labs-home-prd
    ```
 
+## Firebase SSO Setup
+
+This project uses Firebase Authentication with Single Sign-On (SSO) between `www.pcioasis.com` and `labs.pcioasis.com`. See `docs/FIREBASE_SSO_DESIGN.md` for the complete architecture.
+
+### Create Restricted Firebase Service Account
+
+Create a restricted service account for labs that can set custom claims but has no Firestore access:
+
+```bash
+# For staging
+./deploy/create-firebase-service-account.sh stg
+
+# For production
+./deploy/create-firebase-service-account.sh prd
+```
+
+This script:
+- Creates custom IAM role `labs.firebase.authValidator` with minimal permissions:
+  - `firebaseauth.users.update` - Set custom claims
+  - `firebaseauth.users.get` - Read user information
+  - **No Firestore permissions** (enforces least privilege)
+- Creates service account `labs-auth-validator@<firebase-project>.iam.gserviceaccount.com`
+- Grants the custom role to the service account
+- Creates and downloads service account key to `deploy/labs-auth-validator-<env>-key.json`
+
+**Next Steps:**
+1. Add the service account key JSON to `.env.<env>` (project root) as `FIREBASE_SERVICE_ACCOUNT`
+2. Encrypt the `.env` file: `dotenvx encrypt .env.<env>`
+3. Update Firestore security rules to check custom claims (see `docs/FIREBASE_SSO_DESIGN.md`)
+4. Deploy Cloud Function or backend service to set custom claims on sign-up
+
+### Set Custom Claims for Users
+
+To manually set custom claims for a user (for testing):
+
+```bash
+# Set claims for a user in production
+./deploy/set-firebase-custom-claims.sh <user-id> prd
+
+# Set claims for a user in staging
+./deploy/set-firebase-custom-claims.sh <user-id> stg
+```
+
+This sets:
+- `sign_up_domain`: `labs.pcioasis.com` (or `labs.stg.pcioasis.com` for staging)
+- `websiteAccess`: `['labs']`
+
+**Note:** Users may need to sign out and sign in again for custom claims to take effect.
+
+### Firestore Security Rules
+
+Update Firestore security rules to check custom claims:
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Primary site collections (www.pcioasis.com only)
+    match /primarySiteCollection/{document} {
+      allow read, write: if request.auth != null 
+        && request.auth.token.websiteAccess != null
+        && 'primary' in request.auth.token.websiteAccess;
+    }
+    
+    // Labs collections (labs.pcioasis.com only)
+    match /labsCollection/{document} {
+      allow read, write: if request.auth != null
+        && request.auth.token.sign_up_domain == 'labs.pcioasis.com';
+    }
+    
+    // Shared collections (both sites)
+    match /sharedCollection/{document} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+```
+
+See `docs/FIREBASE_SSO_DESIGN.md` for complete examples and architecture details.
+
 ## Troubleshooting
 
 ### Permission denied errors
@@ -172,6 +252,15 @@ gcloud secrets add-iam-policy-binding DOTENVX_KEY_PRD \
   4. Your Go code continues using `os.Getenv()` - no code changes needed
 - The encrypted `.env.<env>` file stays encrypted in the repo (safe to commit)
 
+**Multiline Values in .env Files:**
+- To define multiline values (e.g., JSON service account keys), use double quotes and escape newlines with `\n`
+- Example:
+  ```
+  FIREBASE_SERVICE_ACCOUNT="{\n  \"type\": \"service_account\",\n  \"project_id\": \"...\"\n}"
+  ```
+- Some modern dotenv implementations support actual newlines within quoted strings, but using `\n` is more universally compatible
+- Use `pcioasis-ops/secrets/dotenvx-converter.py` to encrypt values in place after adding them to the `.env` file
+
 ### Secret Mounting in GitHub Actions
 
 The GitHub Actions workflow (`.github/workflows/deploy_labs.yml`) automatically mounts the appropriate secret for each environment:
@@ -198,18 +287,37 @@ docker-compose up
 
 # Option 2: Manual decryption
 export DOTENV_PRIVATE_KEY="$(cat .env.keys.stg)"
-dotenvx run --env-file=deploy/.env.stg -- docker-compose -f docker-compose.yml -f docker-compose.auth.yml up --build
+dotenvx run --env-file=.env.stg -- docker-compose -f docker-compose.yml -f docker-compose.auth.yml up --build
 ```
-- Decrypts `deploy/.env.stg` using `dotenvx` and `.env.keys.stg`
-- Sets `FIREBASE_API_KEY` and `FIREBASE_PROJECT_ID` from decrypted environment variables
-- Services automatically detect if `FIREBASE_API_KEY` is set and enable auth
+- Decrypts `.env.stg` using `dotenvx` and `.env.keys.stg`
+- Sets `FIREBASE_SERVICE_ACCOUNT`, `FIREBASE_API_KEY`, and `FIREBASE_PROJECT_ID` from decrypted environment variables
+- Services automatically detect if `FIREBASE_SERVICE_ACCOUNT` is set and enable auth
 - Mounts `.env.keys.stg` to `/etc/secrets/dotenvx-key` (for consistency with Cloud Run)
 - Use when testing Firebase authentication
+
+**Note:** For local sign-in page (`/sign-in`), you also need Firebase web config:
+
+**Two Different Firebase Credentials:**
+- `FIREBASE_API_KEY` - Web API key string (client-side Web SDK) - for sign-in page
+- `FIREBASE_SERVICE_ACCOUNT` - Service account JSON (server-side Admin SDK) - for token validation
+
+**Web Config Variables (for sign-in page):**
+- `FIREBASE_API_KEY` (or `VITE_APP_FIREBASE_API_KEY` as fallback) - Web API key
+- `FIREBASE_AUTH_DOMAIN` - Auth domain (e.g., `ui-firebase-pcioasis-stg.firebaseapp.com`)
+- `FIREBASE_STORAGE_BUCKET` - Storage bucket (e.g., `ui-firebase-pcioasis-stg.appspot.com`)
+- `FIREBASE_MESSAGING_SENDER_ID` - Messaging sender ID
+- `FIREBASE_APP_ID` - App ID
+
+**Where to find:**
+- Web API key: Firebase Console → Project Settings → Your apps → Web app → Config → `apiKey`
+- Service account JSON: Firebase Console → Project Settings → Service Accounts → Generate new private key
+
+The web API key (`FIREBASE_API_KEY`) is the same value as `VITE_APP_FIREBASE_API_KEY` used in the main e-skimming-app.
 
 **Requirements:**
 - `dotenvx` installed: `npm install -g @dotenvx/dotenvx`
 - `.env.keys.stg` file in repository root
-- `deploy/.env.stg` file (encrypted) in repository
+- `.env.stg` file (encrypted) in repository root
 
 The `docker-compose.auth.yml` override file adds dotenvx key mounts to:
 - `home-index`
@@ -246,6 +354,86 @@ The startup script will:
 - Symlink the appropriate `.env.<env>` file to `.env` based on `ENVIRONMENT` env var
 - Run your application with `dotenvx run -- <command>`
 - dotenvx automatically decrypts and injects environment variables - your Go code uses `os.Getenv()` as normal
+
+## Firebase SSO Setup
+
+This project uses Firebase Authentication with Single Sign-On (SSO) between `www.pcioasis.com` and `labs.pcioasis.com`. See `docs/FIREBASE_SSO_DESIGN.md` for the complete architecture.
+
+### Create Restricted Firebase Service Account
+
+Create a restricted service account for labs that can set custom claims but has no Firestore access:
+
+```bash
+# For staging
+./deploy/create-firebase-service-account.sh stg
+
+# For production
+./deploy/create-firebase-service-account.sh prd
+```
+
+This script:
+- Creates custom IAM role `labs.firebase.authValidator` with minimal permissions:
+  - `firebaseauth.users.update` - Set custom claims
+  - `firebaseauth.users.get` - Read user information
+  - **No Firestore permissions** (enforces least privilege)
+- Creates service account `labs-auth-validator@<firebase-project>.iam.gserviceaccount.com`
+- Grants the custom role to the service account
+- Creates and downloads service account key to `deploy/labs-auth-validator-<env>-key.json`
+
+**Next Steps:**
+1. Add the service account key JSON to `.env.<env>` (project root) as `FIREBASE_SERVICE_ACCOUNT`
+2. Encrypt the `.env` file: `dotenvx encrypt .env.<env>`
+3. Update Firestore security rules to check custom claims (see `docs/FIREBASE_SSO_DESIGN.md`)
+4. Deploy Cloud Function or backend service to set custom claims on sign-up
+
+### Set Custom Claims for Users
+
+To manually set custom claims for a user (for testing):
+
+```bash
+# Set claims for a user in production
+./deploy/set-firebase-custom-claims.sh <user-id> prd
+
+# Set claims for a user in staging
+./deploy/set-firebase-custom-claims.sh <user-id> stg
+```
+
+This sets:
+- `sign_up_domain`: `labs.pcioasis.com` (or `labs.stg.pcioasis.com` for staging)
+- `websiteAccess`: `['labs']`
+
+**Note:** Users may need to sign out and sign in again for custom claims to take effect.
+
+### Firestore Security Rules
+
+Update Firestore security rules to check custom claims:
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Primary site collections (www.pcioasis.com only)
+    match /primarySiteCollection/{document} {
+      allow read, write: if request.auth != null 
+        && request.auth.token.websiteAccess != null
+        && 'primary' in request.auth.token.websiteAccess;
+    }
+    
+    // Labs collections (labs.pcioasis.com only)
+    match /labsCollection/{document} {
+      allow read, write: if request.auth != null
+        && request.auth.token.sign_up_domain == 'labs.pcioasis.com';
+    }
+    
+    // Shared collections (both sites)
+    match /sharedCollection/{document} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+```
+
+See `docs/FIREBASE_SSO_DESIGN.md` for complete examples and architecture details.
 
 ### Repository not found errors
 

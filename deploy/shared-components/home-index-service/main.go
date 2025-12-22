@@ -40,6 +40,7 @@ type HomePageData struct {
 	AuthEnabled      bool
 	AuthRequired     bool
 	FirebaseProjectID string
+	FirebaseWebAPIKey string
 	MainAppURL       string
 }
 
@@ -238,38 +239,46 @@ func main() {
 
 	// Initialize authentication
 	// Auto-detect if Firebase authentication should be enabled
-	// Only enable if FIREBASE_API_KEY is present and valid
-	firebaseAPIKey := os.Getenv("FIREBASE_API_KEY")
+	// FIREBASE_API_KEY = Web API key (client-side, for sign-in page)
+	// FIREBASE_SERVICE_ACCOUNT = Service account JSON (server-side, for token validation)
+	firebaseWebAPIKey := os.Getenv("FIREBASE_API_KEY")              // Web API key (client-side)
+	firebaseServiceAccount := os.Getenv("FIREBASE_SERVICE_ACCOUNT") // Service account JSON (server-side)
 	firebaseProjectID := os.Getenv("FIREBASE_PROJECT_ID")
 	
 	// Check if Firebase credentials are available
-	hasFirebaseKey := firebaseAPIKey != "" && strings.TrimSpace(firebaseAPIKey) != ""
+	// Need both web API key (for sign-in page) and service account (for token validation)
+	hasWebAPIKey := firebaseWebAPIKey != "" && strings.TrimSpace(firebaseWebAPIKey) != ""
+	hasServiceAccount := firebaseServiceAccount != "" && strings.TrimSpace(firebaseServiceAccount) != ""
 	hasFirebaseProject := firebaseProjectID != "" && strings.TrimSpace(firebaseProjectID) != ""
 	
-	// Enable auth only if both API key and project ID are present
-	enableAuth := hasFirebaseKey && hasFirebaseProject
+	// Enable auth only if service account and project ID are present
+	// Web API key is optional (only needed for sign-in page)
+	enableAuth := hasServiceAccount && hasFirebaseProject
 	
 	// Allow explicit override via ENABLE_AUTH env var (for testing)
 	if os.Getenv("ENABLE_AUTH") == "false" {
 		enableAuth = false
 		log.Println("🔓 Authentication explicitly disabled via ENABLE_AUTH=false")
 	} else if os.Getenv("ENABLE_AUTH") == "true" && !enableAuth {
-		log.Println("⚠️ ENABLE_AUTH=true but FIREBASE_API_KEY or FIREBASE_PROJECT_ID missing")
+		log.Println("⚠️ ENABLE_AUTH=true but FIREBASE_SERVICE_ACCOUNT or FIREBASE_PROJECT_ID missing")
 	}
 	
 	requireAuth := os.Getenv("REQUIRE_AUTH") == "true"
 
 	if enableAuth {
 		log.Printf("🔐 Firebase authentication enabled (project: %s)", firebaseProjectID)
+		if !hasWebAPIKey {
+			log.Println("⚠️ FIREBASE_API_KEY not set - sign-in page will not be available")
+		}
 	} else {
-		log.Println("🔓 Running without Firebase authentication (FIREBASE_API_KEY not available)")
+		log.Println("🔓 Running without Firebase authentication (FIREBASE_SERVICE_ACCOUNT not available)")
 	}
 
 	authConfig := auth.Config{
 		Enabled:         enableAuth,
 		RequireAuth:     requireAuth,
 		ProjectID:       firebaseProjectID,
-		CredentialsJSON: firebaseAPIKey,
+		CredentialsJSON: firebaseServiceAccount, // Use service account for backend validation
 	}
 
 	authValidator, err := auth.NewTokenValidator(authConfig)
@@ -294,6 +303,10 @@ func main() {
 	homeData.AuthRequired = requireAuth
 	homeData.FirebaseProjectID = firebaseProjectID
 	homeData.MainAppURL = fmt.Sprintf("%s://%s", scheme, mainDomain)
+	
+	// Store web API key for sign-in page (if available)
+	// This will be used in serveSignInPage
+	homeData.FirebaseWebAPIKey = firebaseWebAPIKey
 
 	// Create router with auth middleware
 	mux := http.NewServeMux()
@@ -353,6 +366,13 @@ func main() {
 	mux.HandleFunc("/api/auth/user", func(w http.ResponseWriter, r *http.Request) {
 		serveAuthUser(w, r, authValidator)
 	})
+
+	// Sign-in page (only if auth is enabled)
+	if enableAuth {
+		mux.HandleFunc("/sign-in", func(w http.ResponseWriter, r *http.Request) {
+			serveSignInPage(w, r, homeData)
+		})
+	}
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -1517,14 +1537,269 @@ func serveAuthJS(w http.ResponseWriter, r *http.Request, homeData HomePageData) 
     
     function redirectToSignIn(mainAppURL) {
         const redirectUrl = encodeURIComponent(window.location.href);
-        // Use 'url' parameter (not 'redirect') to match e-skimming-app sign-in page expectations
-        // The sign-in page checks for 'url' parameter and redirects there after authentication
-        window.location.href = mainAppURL + '/sign-in?url=' + redirectUrl;
+        // Try local sign-in first (labs.pcioasis.com/sign-in)
+        // This keeps users on the labs domain for a seamless experience
+        const currentOrigin = window.location.origin;
+        const localSignInURL = currentOrigin + '/sign-in?url=' + redirectUrl;
+        
+        // Always try local sign-in first - if it doesn't exist, user will see error
+        // and can manually go to main app if needed
+        window.location.href = localSignInURL;
     }
 })();`, authServiceURL)
 
 	w.Header().Set("Content-Type", "application/javascript")
 	w.Write([]byte(script))
+}
+
+// serveSignInPage serves the sign-in page for labs
+func serveSignInPage(w http.ResponseWriter, r *http.Request, homeData HomePageData) {
+	if !homeData.AuthEnabled {
+		http.Error(w, "Authentication not enabled", http.StatusNotFound)
+		return
+	}
+
+	// Get redirect URL from query parameter
+	redirectURL := r.URL.Query().Get("url")
+	if redirectURL == "" {
+		redirectURL = "/" // Default to home page
+	}
+
+	// Get Firebase web config from environment variables
+	// FIREBASE_API_KEY = Web API key (client-side, for sign-in page)
+	// FIREBASE_SERVICE_ACCOUNT = Service account JSON (server-side, for token validation)
+	firebaseAPIKey := homeData.FirebaseWebAPIKey  // Use web API key from homeData (already loaded)
+	if firebaseAPIKey == "" {
+		// Fallback: try environment variable directly
+		firebaseAPIKey = os.Getenv("FIREBASE_API_KEY")
+	}
+	if firebaseAPIKey == "" {
+		// Also check for VITE_APP_FIREBASE_API_KEY (main app naming convention) as fallback
+		firebaseAPIKey = os.Getenv("VITE_APP_FIREBASE_API_KEY")
+	}
+	
+	firebaseAuthDomain := os.Getenv("FIREBASE_AUTH_DOMAIN")    // e.g., ui-firebase-pcioasis-stg.firebaseapp.com
+	firebaseStorageBucket := os.Getenv("FIREBASE_STORAGE_BUCKET")
+	firebaseMessagingSenderID := os.Getenv("FIREBASE_MESSAGING_SENDER_ID")
+	firebaseAppID := os.Getenv("FIREBASE_APP_ID")
+
+	// If web config not fully available, construct defaults from project ID
+	// Note: This may not work without the actual web API key - user needs to set FIREBASE_API_KEY
+	if firebaseAuthDomain == "" && homeData.FirebaseProjectID != "" {
+		firebaseAuthDomain = homeData.FirebaseProjectID + ".firebaseapp.com"
+	}
+	if firebaseStorageBucket == "" && homeData.FirebaseProjectID != "" {
+		firebaseStorageBucket = homeData.FirebaseProjectID + ".appspot.com"
+	}
+
+	// If web API key is missing, show error message
+	if firebaseAPIKey == "" {
+		html := `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In - Configuration Error</title>
+</head>
+<body>
+    <div style="max-width: 600px; margin: 50px auto; padding: 20px; font-family: sans-serif;">
+        <h1>Sign-In Configuration Error</h1>
+        <p>Firebase web configuration is missing. Please set the following environment variables:</p>
+        <ul>
+            <li><code>FIREBASE_API_KEY</code> - Web API key from Firebase Console (client-side)</li>
+            <li><code>FIREBASE_AUTH_DOMAIN</code> - Auth domain (e.g., ${PROJECT_ID}.firebaseapp.com)</li>
+            <li><code>FIREBASE_STORAGE_BUCKET</code> - Storage bucket (e.g., ${PROJECT_ID}.appspot.com)</li>
+            <li><code>FIREBASE_MESSAGING_SENDER_ID</code> - Messaging sender ID</li>
+            <li><code>FIREBASE_APP_ID</code> - App ID</li>
+        </ul>
+        <p>These values can be found in Firebase Console → Project Settings → Your apps → Web app config.</p>
+        <p><strong>Note:</strong> <code>FIREBASE_API_KEY</code> is the web API key (client-side), different from <code>FIREBASE_SERVICE_ACCOUNT</code> (server-side).</p>
+        <p><a href="/">← Back to Labs</a></p>
+    </div>
+</body>
+</html>`
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write([]byte(html))
+		return
+	}
+
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In - E-Skimming Labs</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .sign-in-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 400px;
+            width: 100%%;
+        }
+        .sign-in-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .sign-in-header h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .sign-in-header p {
+            color: #666;
+            font-size: 14px;
+        }
+        .sign-in-button {
+            width: 100%%;
+            padding: 12px 24px;
+            background: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: background 0.2s;
+            margin-bottom: 15px;
+        }
+        .sign-in-button:hover {
+            background: #357ae8;
+        }
+        .sign-in-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            display: none;
+        }
+        .error-message.show {
+            display: block;
+        }
+        .back-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .back-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .back-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="sign-in-container">
+        <div class="sign-in-header">
+            <h1>Sign In</h1>
+            <p>Access E-Skimming Labs</p>
+        </div>
+        
+        <div id="error-message" class="error-message"></div>
+        
+        <button id="google-sign-in" class="sign-in-button" onclick="signInWithGoogle()">
+            <svg width="20" height="20" viewBox="0 0 24 24">
+                <path fill="white" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="white" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="white" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="white" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            Sign in with Google
+        </button>
+        
+        <div class="back-link">
+            <a href="/">← Back to Labs</a>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, GoogleAuthProvider, signInWithPopup } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: '%s',
+            authDomain: '%s',
+            projectId: '%s',
+            storageBucket: '%s',
+            messagingSenderId: '%s',
+            appId: '%s'
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+
+        // Make signInWithGoogle available globally
+        window.signInWithGoogle = async function() {
+            const button = document.getElementById('google-sign-in');
+            const errorDiv = document.getElementById('error-message');
+            
+            button.disabled = true;
+            button.textContent = 'Signing in...';
+            errorDiv.classList.remove('show');
+
+            try {
+                const result = await signInWithPopup(auth, provider);
+                const user = result.user;
+                const token = await user.getIdToken();
+
+                // Store token in sessionStorage
+                sessionStorage.setItem('firebase_token', token);
+
+                // Redirect to the original URL or home page
+                const redirectUrl = '%s';
+                window.location.href = redirectUrl;
+            } catch (error) {
+                console.error('Sign-in error:', error);
+                errorDiv.textContent = error.message || 'Sign-in failed. Please try again.';
+                errorDiv.classList.add('show');
+                button.disabled = false;
+                button.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24"><path fill="white" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="white" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="white" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="white" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg> Sign in with Google';
+            }
+        };
+    </script>
+</body>
+</html>`, 
+		firebaseAPIKey,
+		firebaseAuthDomain,
+		homeData.FirebaseProjectID,
+		firebaseStorageBucket,
+		firebaseMessagingSenderID,
+		firebaseAppID,
+		template.HTMLEscapeString(redirectURL))
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write([]byte(html))
 }
 
 // serveAuthCheckJS serves a simple auth check script
