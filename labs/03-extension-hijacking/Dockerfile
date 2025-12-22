@@ -1,7 +1,7 @@
 FROM us-central1-docker.pkg.dev/pcioasis-operations/containers/nginx-base:latest
 
-# Install node for C2 server
-RUN apk add --no-cache nodejs npm
+# Install node and netcat for C2 server
+RUN apk add --no-cache nodejs npm netcat-openbsd
 
 # Copy C2 server dependencies first (for better caching)
 WORKDIR /app/c2-server

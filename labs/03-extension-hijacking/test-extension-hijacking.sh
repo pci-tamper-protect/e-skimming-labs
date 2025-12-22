@@ -118,7 +118,7 @@ echo "🚀 Lab 3 Environment Ready!"
 echo "=========================="
 echo "📱 Vulnerable Site: http://localhost:8080"
 echo "📊 Data Server Status: http://localhost:3002/status"
-echo "📡 Data Collection: http://localhost:3002/skimmed-data"
+echo "📡 Data Collection: http://localhost:3002/stolen-data"
 echo ""
 
 # Manual testing instructions
