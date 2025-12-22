@@ -14,10 +14,17 @@ const express = require('express')
 const cors = require('cors')
 const fs = require('fs').promises
 const path = require('path')
+const rateLimit = require('express-rate-limit')
 
 const app = express()
 // Use Cloud Run PORT environment variable, fallback to 3000 for local development
 const PORT = process.env.PORT || 3000
+
+// Rate limiter for /stolen-data endpoints
+const limiter = rateLimit({
+    windowMs: 1000,
+    max: 5,
+})
 
 // Middleware
 app.use(cors())
@@ -37,7 +44,7 @@ let stats = {
 /**
  * Data Collection Endpoint
  */
-app.post('/stolen-data', async (req, res) => {
+app.post('/stolen-data', limiter, async (req, res) => {
   try {
     const timestamp = new Date().toISOString()
     const clientIP = req.ip || req.connection.remoteAddress
@@ -561,7 +568,7 @@ app.get('/', async (req, res) => {
 })
 
 // Also serve dashboard at /stolen-data for nginx proxy (matching Lab 2)
-app.get('/stolen-data', async (req, res) => {
+app.get('/stolen-data', limiter, async (req, res) => {
   try {
     const dashboardPath = path.join(__dirname, 'dashboard.html')
     const dashboard = await fs.readFile(dashboardPath, 'utf8')
