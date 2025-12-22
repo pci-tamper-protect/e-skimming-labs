@@ -285,13 +285,28 @@ This repository uses PR-based deployment with branch protection:
 git clone https://github.com/yourusername/e-skimming-labs.git
 cd e-skimming-labs
 
-# Start with Lab 01 - Basic Magecart
-cd labs/01-basic-magecart
+# Start all services (without authentication - uses environment variables only)
 docker-compose up
+
+# OR start with authentication (requires .env.keys.stg file for encrypted env vars)
+docker-compose -f docker-compose.yml -f docker-compose.auth.yml up
 
 # Visit http://localhost:3000
 # Follow the README.md in the lab folder
 ```
+
+**Local Development Options:**
+
+- **Unauthenticated mode** (default): `docker-compose up`
+  - Services run without dotenvx key mounts
+  - Uses plain environment variables or unencrypted `.env` files
+  - Good for basic testing and development
+
+- **Authenticated mode**: `docker-compose -f docker-compose.yml -f docker-compose.auth.yml up`
+  - Mounts `.env.keys.stg` for dotenvx decryption
+  - Matches Cloud Run production environment
+  - Requires `.env.keys.stg` file in repository root
+  - Use when testing encrypted environment variable decryption
 
 ### Recommended Learning Path
 

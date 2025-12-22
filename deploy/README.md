@@ -180,6 +180,42 @@ The GitHub Actions workflow (`.github/workflows/deploy_labs.yml`) automatically 
 
 All Cloud Run deployments (home-seo, home-index, labs-analytics, lab-*-*, labs-index) have the secret mounted automatically.
 
+### Local Development with Docker Compose
+
+For local development, you can run services with or without authentication:
+
+**Without authentication** (default):
+```bash
+docker-compose up
+```
+- Services run without dotenvx key mounts
+- Uses plain environment variables or unencrypted `.env` files
+
+**With authentication** (matches production):
+```bash
+# Option 1: Use the helper script (recommended)
+./deploy/docker-compose-auth.sh up --build
+
+# Option 2: Manual decryption
+export DOTENV_PRIVATE_KEY="$(cat .env.keys.stg)"
+dotenvx run --env-file=deploy/.env.stg -- docker-compose -f docker-compose.yml -f docker-compose.auth.yml up --build
+```
+- Decrypts `deploy/.env.stg` using `dotenvx` and `.env.keys.stg`
+- Sets `FIREBASE_API_KEY` and `FIREBASE_PROJECT_ID` from decrypted environment variables
+- Services automatically detect if `FIREBASE_API_KEY` is set and enable auth
+- Mounts `.env.keys.stg` to `/etc/secrets/dotenvx-key` (for consistency with Cloud Run)
+- Use when testing Firebase authentication
+
+**Requirements:**
+- `dotenvx` installed: `npm install -g @dotenvx/dotenvx`
+- `.env.keys.stg` file in repository root
+- `deploy/.env.stg` file (encrypted) in repository
+
+The `docker-compose.auth.yml` override file adds dotenvx key mounts to:
+- `home-index`
+- `home-seo`
+- `labs-analytics`
+
 ### Using the Startup Script
 
 To use dotenvx in your Docker containers, update your Dockerfile to:

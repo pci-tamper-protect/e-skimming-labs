@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"firebase.google.com/go/v4/auth"
@@ -42,14 +43,25 @@ type Config struct {
 // NewTokenValidator creates a new token validator instance
 func NewTokenValidator(config Config) (*TokenValidator, error) {
 	if !config.Enabled {
-		log.Println("🔓 Authentication disabled")
+		log.Println("🔓 Authentication disabled - returning disabled validator")
 		return &TokenValidator{
 			enabled: false,
 		}, nil
 	}
 
+	// Validate required configuration
 	if config.ProjectID == "" {
-		return nil, fmt.Errorf("FIREBASE_PROJECT_ID is required when authentication is enabled")
+		log.Println("⚠️ FIREBASE_PROJECT_ID is missing - disabling authentication")
+		return &TokenValidator{
+			enabled: false,
+		}, nil
+	}
+
+	if config.CredentialsJSON == "" || strings.TrimSpace(config.CredentialsJSON) == "" {
+		log.Println("⚠️ FIREBASE_API_KEY is missing - disabling authentication")
+		return &TokenValidator{
+			enabled: false,
+		}, nil
 	}
 
 	log.Printf("🔐 Initializing Firebase token validator for project: %s", config.ProjectID)
@@ -58,25 +70,29 @@ func NewTokenValidator(config Config) (*TokenValidator, error) {
 	var opts []option.ClientOption
 
 	// Use credentials from environment variable (JSON string)
-	if config.CredentialsJSON != "" {
-		log.Printf("🔑 Loading Firebase credentials from environment variable")
-		opts = append(opts, option.WithCredentialsJSON([]byte(config.CredentialsJSON)))
-	} else {
-		log.Printf("⚠️ No credentials provided, using application default credentials")
-	}
+	log.Printf("🔑 Loading Firebase credentials from environment variable")
+	opts = append(opts, option.WithCredentialsJSON([]byte(config.CredentialsJSON)))
 
 	// Initialize Firebase app
 	app, err := firebase.NewApp(ctx, &firebase.Config{
 		ProjectID: config.ProjectID,
 	}, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize Firebase app: %w", err)
+		log.Printf("❌ Failed to initialize Firebase app: %v", err)
+		log.Println("🔓 Returning disabled validator - service will run without authentication")
+		return &TokenValidator{
+			enabled: false,
+		}, nil
 	}
 
 	// Get Auth client
 	authClient, err := app.Auth(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get Auth client: %w", err)
+		log.Printf("❌ Failed to get Auth client: %v", err)
+		log.Println("🔓 Returning disabled validator - service will run without authentication")
+		return &TokenValidator{
+			enabled: false,
+		}, nil
 	}
 
 	tv := &TokenValidator{

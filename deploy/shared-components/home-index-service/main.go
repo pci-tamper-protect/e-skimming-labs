@@ -237,10 +237,33 @@ func main() {
 	}
 
 	// Initialize authentication
-	enableAuth := os.Getenv("ENABLE_AUTH") == "true"
-	requireAuth := os.Getenv("REQUIRE_AUTH") == "true"
-	firebaseProjectID := os.Getenv("FIREBASE_PROJECT_ID")
+	// Auto-detect if Firebase authentication should be enabled
+	// Only enable if FIREBASE_API_KEY is present and valid
 	firebaseAPIKey := os.Getenv("FIREBASE_API_KEY")
+	firebaseProjectID := os.Getenv("FIREBASE_PROJECT_ID")
+	
+	// Check if Firebase credentials are available
+	hasFirebaseKey := firebaseAPIKey != "" && strings.TrimSpace(firebaseAPIKey) != ""
+	hasFirebaseProject := firebaseProjectID != "" && strings.TrimSpace(firebaseProjectID) != ""
+	
+	// Enable auth only if both API key and project ID are present
+	enableAuth := hasFirebaseKey && hasFirebaseProject
+	
+	// Allow explicit override via ENABLE_AUTH env var (for testing)
+	if os.Getenv("ENABLE_AUTH") == "false" {
+		enableAuth = false
+		log.Println("🔓 Authentication explicitly disabled via ENABLE_AUTH=false")
+	} else if os.Getenv("ENABLE_AUTH") == "true" && !enableAuth {
+		log.Println("⚠️ ENABLE_AUTH=true but FIREBASE_API_KEY or FIREBASE_PROJECT_ID missing")
+	}
+	
+	requireAuth := os.Getenv("REQUIRE_AUTH") == "true"
+
+	if enableAuth {
+		log.Printf("🔐 Firebase authentication enabled (project: %s)", firebaseProjectID)
+	} else {
+		log.Println("🔓 Running without Firebase authentication (FIREBASE_API_KEY not available)")
+	}
 
 	authConfig := auth.Config{
 		Enabled:         enableAuth,
@@ -251,7 +274,19 @@ func main() {
 
 	authValidator, err := auth.NewTokenValidator(authConfig)
 	if err != nil {
-		log.Fatalf("Failed to initialize auth validator: %v", err)
+		// If auth is enabled but initialization fails, log error but don't fatal
+		// This allows the service to run without auth if Firebase is unavailable
+		if enableAuth {
+			log.Printf("⚠️ Failed to initialize auth validator: %v", err)
+			log.Println("🔓 Continuing without authentication")
+			enableAuth = false
+			authConfig.Enabled = false
+			// Create a disabled validator
+			authValidator, _ = auth.NewTokenValidator(authConfig)
+		} else {
+			// Auth was already disabled, create disabled validator
+			authValidator, _ = auth.NewTokenValidator(authConfig)
+		}
 	}
 
 	// Add auth info to home page data
@@ -300,6 +335,14 @@ func main() {
 
 	// Auth API endpoints
 	mux.HandleFunc("/api/auth/validate", func(w http.ResponseWriter, r *http.Request) {
+		// Add CORS headers for labs
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
 		serveAuthValidate(w, r, authValidator)
 	})
 
@@ -318,7 +361,35 @@ func main() {
 
 	// Serve static auth scripts
 	mux.HandleFunc("/static/js/auth.js", func(w http.ResponseWriter, r *http.Request) {
+		// Add CORS headers for labs to load this script
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
 		serveAuthJS(w, r, homeData)
+	})
+	
+	// Auth config endpoint for labs to check if auth is enabled
+	mux.HandleFunc("/api/auth/config", func(w http.ResponseWriter, r *http.Request) {
+		// Add CORS headers for labs
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"authEnabled":      homeData.AuthEnabled,
+			"authRequired":     homeData.AuthRequired,
+			"firebaseProjectID": homeData.FirebaseProjectID,
+			"mainAppURL":       homeData.MainAppURL,
+			"authScriptURL":    "/static/js/auth.js",
+		})
 	})
 
 	mux.HandleFunc("/static/js/auth-check.js", func(w http.ResponseWriter, r *http.Request) {
@@ -1318,9 +1389,24 @@ func serveAuthJS(w http.ResponseWriter, r *http.Request, homeData HomePageData) 
 		return
 	}
 
-	script := `// E-Skimming Labs Auth Integration
+	// Determine auth service URL - use the request origin for labs, or relative for home-index
+	authServiceURL := homeData.MainAppURL
+	if origin := r.Header.Get("Origin"); origin != "" {
+		// If request comes from a different origin (lab), use the home-index service URL
+		// Extract protocol and host from the request
+		scheme := "http"
+		if r.TLS != nil {
+			scheme = "https"
+		}
+		authServiceURL = fmt.Sprintf("%s://%s", scheme, r.Host)
+	}
+
+	script := fmt.Sprintf(`// E-Skimming Labs Auth Integration
 (function() {
     'use strict';
+    
+    // Auth service URL (home-index service)
+    const AUTH_SERVICE_URL = '%s';
     
     // Check for token in URL (from redirect)
     const urlParams = new URLSearchParams(window.location.search);
@@ -1335,14 +1421,28 @@ func serveAuthJS(w http.ResponseWriter, r *http.Request, homeData HomePageData) 
     
     // Function to initialize auth
     window.initLabsAuth = function(config) {
-        const { authRequired, mainAppURL, firebaseProjectID } = config;
+        const { authRequired, mainAppURL, firebaseProjectID, authServiceURL } = config;
+        const serviceURL = authServiceURL || AUTH_SERVICE_URL;
         
-        // Check for token in sessionStorage
-        const storedToken = sessionStorage.getItem('firebase_token');
+        // Check for token in multiple locations:
+        // 1. sessionStorage (labs-specific token or token from URL)
+        // 2. localStorage (main app token - for SSO)
+        let storedToken = sessionStorage.getItem('firebase_token');
+        if (!storedToken) {
+            // Check if main app token exists (for SSO)
+            const mainAppToken = localStorage.getItem('accessToken');
+            if (mainAppToken) {
+                console.log('🔐 Found main app token in localStorage, using for SSO');
+                // Store it in sessionStorage for labs to use
+                sessionStorage.setItem('firebase_token', mainAppToken);
+                storedToken = mainAppToken;
+            }
+        }
         
         if (storedToken) {
-            // Validate token with server
-            fetch('/api/auth/validate', {
+            // Validate token with server (use full URL for cross-origin)
+            const validateURL = serviceURL + '/api/auth/validate';
+            fetch(validateURL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1386,8 +1486,9 @@ func serveAuthJS(w http.ResponseWriter, r *http.Request, homeData HomePageData) 
             
             if (event.data && event.data.type === 'FIREBASE_TOKEN' && event.data.token) {
                 sessionStorage.setItem('firebase_token', event.data.token);
-                // Validate the token
-                fetch('/api/auth/validate', {
+                // Validate the token (use full URL for cross-origin)
+                const validateURL = serviceURL + '/api/auth/validate';
+                fetch(validateURL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1416,9 +1517,11 @@ func serveAuthJS(w http.ResponseWriter, r *http.Request, homeData HomePageData) 
     
     function redirectToSignIn(mainAppURL) {
         const redirectUrl = encodeURIComponent(window.location.href);
-        window.location.href = mainAppURL + '/sign-in?redirect=' + redirectUrl;
+        // Use 'url' parameter (not 'redirect') to match e-skimming-app sign-in page expectations
+        // The sign-in page checks for 'url' parameter and redirects there after authentication
+        window.location.href = mainAppURL + '/sign-in?url=' + redirectUrl;
     }
-})();`
+})();`, authServiceURL)
 
 	w.Header().Set("Content-Type", "application/javascript")
 	w.Write([]byte(script))
