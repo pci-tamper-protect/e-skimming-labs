@@ -41,14 +41,12 @@ COPY --from=builder /app/main .
 COPY docs ./docs
 
 # Copy lab README files from their original locations
+# Uses stable filenames: Lab01-README.md, Lab02-README.md, Lab03-README.md
 COPY labs/ ./labs-temp/
-RUN mkdir -p ./docs/labs && \
-    find ./labs-temp -mindepth 2 -name "README.md" -type f -exec sh -c '\
-      for readme; do \
-        lab_name=$(basename "$(dirname "$readme")"); \
-        mkdir -p "./docs/labs/$lab_name" && \
-        cp "$readme" "./docs/labs/$lab_name/README.md"; \
-      done' _ {} + && \
+RUN mkdir -p ./docs/labs/01-basic-magecart ./docs/labs/02-dom-skimming ./docs/labs/03-extension-hijacking && \
+    cp ./labs-temp/01-basic-magecart/Lab01-README.md ./docs/labs/01-basic-magecart/README.md 2>/dev/null || true && \
+    cp ./labs-temp/02-dom-skimming/Lab02-README.md ./docs/labs/02-dom-skimming/README.md 2>/dev/null || true && \
+    cp ./labs-temp/03-extension-hijacking/Lab03-README.md ./docs/labs/03-extension-hijacking/README.md 2>/dev/null || true && \
     rm -rf ./labs-temp
 
 # Copy catalog info for service metadata
