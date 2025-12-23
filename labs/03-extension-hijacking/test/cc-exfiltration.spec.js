@@ -25,7 +25,7 @@ test.describe('Lab 3: Extension Hijacking - Credit Card Exfiltration', () => {
 
     // Capture network requests to C2 server
     page.on('request', request => {
-      if (request.url().includes('/skimmed-data')) {
+      if (request.url().includes('/stolen-data')) {
         console.log('🌐 REQUEST TO C2:', {
           url: request.url(),
           method: request.method(),
