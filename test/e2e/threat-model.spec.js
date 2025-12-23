@@ -3,6 +3,9 @@ const { test, expect } = require('@playwright/test')
 const { currentEnv, TEST_ENV } = require('../config/test-env')
 
 test.describe('Threat Model Page', () => {
+  // Configure tests to run in parallel for maximum speed
+  test.describe.configure({ mode: 'parallel' })
+
   test.beforeEach(async ({ page }) => {
     // Navigate to the threat model page
     await page.goto('/threat-model')

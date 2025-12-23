@@ -46,6 +46,9 @@ async function waitForScrollComplete(page, targetSectionId = null, timeout = 200
 }
 
 test.describe('MITRE ATT&CK Matrix Page', () => {
+  // Configure tests to run in parallel for maximum speed
+  test.describe.configure({ mode: 'parallel' })
+
   test.beforeEach(async ({ page }) => {
     // Check if server is running by trying to access health endpoint first
     try {
@@ -445,6 +448,9 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
 })
 
 test.describe('MITRE ATT&CK Matrix - Environment Detection', () => {
+  // Configure tests to run in parallel for maximum speed
+  test.describe.configure({ mode: 'parallel' })
+
   test('should detect localhost environment and set correct back button URL', async ({ page }) => {
     // Set up console listener BEFORE navigation
     /** @type {string | null} */

@@ -1,0 +1,136 @@
+name: E2E Tests
+
+on:
+  pull_request:
+    branches: [main, stg]
+    paths:
+      - 'test/**'
+      - 'labs/**'
+      - '.github/workflows/test.yml'
+  push:
+    branches: [main, stg]
+    paths:
+      - 'test/**'
+      - 'labs/**'
+      - '.github/workflows/test.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to test against'
+        required: true
+        default: 'stg'
+        type: choice
+        options:
+          - stg
+          - prd
+
+jobs:
+  e2e-tests:
+    runs-on: ubuntu-latest
+    # Use matrix strategy to shard tests across multiple parallel jobs
+    # GitHub Enterprise supports up to 256 matrix jobs
+    # Default to 4 shards for optimal performance (can be increased if needed)
+    strategy:
+      fail-fast: false
+      matrix:
+        # Create shards: [1, 2, 3, 4] for 4-way parallelization
+        shard: [1, 2, 3, 4]
+        total-shards: [4]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: test/package-lock.json
+
+      - name: Install dependencies
+        working-directory: test
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: test
+        run: npx playwright install --with-deps chromium
+
+      - name: Determine test environment
+        id: test-env
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            ENV="${{ github.event.inputs.environment }}"
+          elif [[ "${{ github.ref }}" == "refs/heads/stg" ]] || [[ "${{ github.base_ref }}" == "stg" ]]; then
+            ENV="stg"
+          else
+            ENV="prd"
+          fi
+          echo "environment=$ENV" >> $GITHUB_OUTPUT
+          echo "🧪 Testing against: $ENV environment"
+
+      - name: Run E2E tests (shard ${{ matrix.shard }}/${{ matrix.total-shards }})
+        working-directory: test
+        env:
+          TEST_ENV: ${{ steps.test-env.outputs.environment }}
+          CI: true
+        run: |
+          echo "🧪 Running E2E tests (shard ${{ matrix.shard }}/${{ matrix.total-shards }})"
+          echo "🔗 Test Environment: ${{ steps.test-env.outputs.environment }}"
+          echo "📊 Test shard: ${{ matrix.shard }}/${{ matrix.total-shards }}"
+          npx playwright test e2e --shard=${{ matrix.shard }}/${{ matrix.total-shards }}
+        continue-on-error: true
+
+      - name: Upload test results (shard ${{ matrix.shard }})
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ steps.test-env.outputs.environment }}-shard-${{ matrix.shard }}
+          path: test/playwright-report/
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Upload test JSON results (shard ${{ matrix.shard }})
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-json-${{ steps.test-env.outputs.environment }}-shard-${{ matrix.shard }}
+          path: test/test-results/results.json
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Upload test screenshots (shard ${{ matrix.shard }})
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-screenshots-${{ steps.test-env.outputs.environment }}-shard-${{ matrix.shard }}
+          path: test/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  e2e-tests-summary:
+    needs: e2e-tests
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Download all test results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: playwright-json-*-shard-*
+          merge-multiple: true
+          path: test/test-results-merged/
+
+      - name: Generate test summary
+        run: |
+          echo "## 🧪 E2E Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Total Shards:** 4" >> $GITHUB_STEP_SUMMARY
+          echo "**Test Results:** Available in artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Test Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- HTML Reports: playwright-report-*-shard-*" >> $GITHUB_STEP_SUMMARY
+          echo "- JSON Results: playwright-json-*-shard-*" >> $GITHUB_STEP_SUMMARY
+          echo "- Screenshots: playwright-screenshots-*-shard-*" >> $GITHUB_STEP_SUMMARY

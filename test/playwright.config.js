@@ -16,10 +16,24 @@ module.exports = defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  /* Limit workers to prevent too many browser instances */
-  workers: process.env.CI ? 1 : 2,
+  /* Maximize parallelization: use more workers for faster test execution
+   * CI: Use 4 workers (GitHub Actions typically has 2-4 cores)
+   * Local: Use 50% of CPU cores (default) or set via PLAYWRIGHT_WORKERS env var
+   */
+  workers: process.env.PLAYWRIGHT_WORKERS
+    ? parseInt(process.env.PLAYWRIGHT_WORKERS, 10)
+    : process.env.CI
+      ? 4
+      : undefined, // undefined = 50% of CPU cores (Playwright default)
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
+  /* Use multiple reporters in CI for better sharding support */
+  reporter: process.env.CI
+    ? [
+        ['html'],
+        ['json', { outputFile: 'test-results/results.json' }],
+        ['junit', { outputFile: 'test-results/junit.xml' }]
+      ]
+    : 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */

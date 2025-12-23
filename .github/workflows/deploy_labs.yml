@@ -1226,6 +1226,13 @@ jobs:
     runs-on: ubuntu-latest
     # Only run e2e tests after successful deployment on push events (not PRs)
     if: github.event_name == 'push' && needs.notify-deployment.outputs.deployment_success == 'true'
+    # Use matrix strategy to shard tests across multiple parallel jobs
+    # GitHub Enterprise supports up to 256 matrix jobs, but we'll use 4 shards for optimal performance
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+        total-shards: [4]
 
     steps:
       - name: Checkout code
@@ -1251,31 +1258,58 @@ jobs:
           echo "⏳ Waiting 30 seconds for deployment to stabilize..."
           sleep 30
 
-      - name: Run E2E tests
+      - name: Run E2E tests (shard ${{ matrix.shard }}/${{ matrix.total-shards }})
         working-directory: test
         env:
           TEST_ENV: ${{ needs.setup.outputs.environment }}
         run: |
-          echo "🧪 Running E2E tests against ${{ needs.setup.outputs.environment }} environment"
+          echo "🧪 Running E2E tests (shard ${{ matrix.shard }}/${{ matrix.total-shards }})"
           echo "🔗 Base URL: https://${{ needs.setup.outputs.domain_prefix }}"
-          npx playwright test e2e
+          echo "📊 Test shard: ${{ matrix.shard }}/${{ matrix.total-shards }}"
+          npx playwright test e2e --shard=${{ matrix.shard }}/${{ matrix.total-shards }}
         continue-on-error: true
 
-      - name: Upload test results
+      - name: Upload test results (shard ${{ matrix.shard }})
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ needs.setup.outputs.environment }}
+          name: playwright-report-${{ needs.setup.outputs.environment }}-shard-${{ matrix.shard }}
           path: test/playwright-report/
           retention-days: 30
+          if-no-files-found: ignore
 
-      - name: Upload test screenshots
+      - name: Upload test JSON results (shard ${{ matrix.shard }})
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-screenshots-${{ needs.setup.outputs.environment }}
+          name: playwright-json-${{ needs.setup.outputs.environment }}-shard-${{ matrix.shard }}
+          path: test/test-results/results.json
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Upload test screenshots (shard ${{ matrix.shard }})
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-screenshots-${{ needs.setup.outputs.environment }}-shard-${{ matrix.shard }}
           path: test/test-results/
           retention-days: 7
+          if-no-files-found: ignore
+
+  e2e-tests-merge:
+    needs: [setup, notify-deployment, e2e-tests]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && needs.notify-deployment.outputs.deployment_success == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Download all test results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: playwright-json-${{ needs.setup.outputs.environment }}-shard-*
+          merge-multiple: true
+          path: test/test-results-merged/
 
       - name: Comment test results on commit
         if: always()
@@ -1292,12 +1326,13 @@ jobs:
             **Environment:** ${environment}
             **Base URL:** ${baseUrl}
             **Run:** ${{ github.run_number }}
+            **Shards:** 4 parallel test shards
 
             Test artifacts:
             - [Test Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
             - [Screenshots](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
-            Tests ran against the newly deployed environment.`;
+            Tests ran against the newly deployed environment using parallel sharding for faster execution.`;
 
             github.rest.repos.createCommitComment({
               owner: context.repo.owner,
