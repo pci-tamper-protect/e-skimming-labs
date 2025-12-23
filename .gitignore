@@ -1,6 +1,7 @@
 # Node modules
 node_modules/
 package-lock.json
+!test/package-lock.json
 
 # npm cache files
 **/_update-notifier-last-checked
@@ -65,6 +66,8 @@ deploy/*-sa-key.json
 deploy/*.json
 *.json
 !package.json
+!package-lock.json
+!test/package-lock.json
 !go.mod
 !go.sum
 !tsconfig.json
