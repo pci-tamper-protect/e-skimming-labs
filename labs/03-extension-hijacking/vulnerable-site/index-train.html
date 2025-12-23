@@ -37,7 +37,7 @@
       <!-- Lab Navigation Row (Top Row) -->
       <div class="nav-buttons-row">
         <div class="header-content">
-          <a href="http://localhost:3000" class="nav-button back-button" id="back-button">← Back to Labs</a>
+          <a href="http://localhost:3000" class="nav-button back-button" id="back-button" aria-label="Back To Labs">← Back to Labs</a>
           <a href="http://localhost:9006" class="nav-button c2-button" id="view-stolen-button" target="_blank" aria-label="View Stolen Data">🕵️ View Stolen Data</a>
           <a href="http://localhost:3000/lab-03-writeup" class="nav-button writeup-button" id="writeup-button" target="_blank" aria-label="Lab Writeup">📖 Writeup</a>
         </div>
@@ -69,20 +69,20 @@
                   <div class="form-row">
                     <div class="form-group">
                       <label for="firstName">First Name *</label>
-                      <input type="text" id="firstName" name="firstName" required />
+                      <input type="text" id="firstName" name="firstName" required aria-label="First Name" />
                     </div>
                     <div class="form-group">
                       <label for="lastName">Last Name *</label>
-                      <input type="text" id="lastName" name="lastName" required />
+                      <input type="text" id="lastName" name="lastName" required  aria-label="Last Name"/>
                     </div>
                   </div>
                   <div class="form-group">
                     <label for="email">Email Address *</label>
-                    <input type="email" id="email" name="email" required />
+                    <input type="email" id="email" name="email" required aria-label="Email Address"/>
                   </div>
                   <div class="form-group">
                     <label for="phone">Phone Number</label>
-                    <input type="tel" id="phone" name="phone" />
+                    <input type="tel" id="phone" name="phone" aria-label="Phone Number"/>
                   </div>
                 </form>
               </section>
@@ -93,20 +93,20 @@
                 <form id="shipping-form" class="checkout-form">
                   <div class="form-group">
                     <label for="address1">Street Address *</label>
-                    <input type="text" id="address1" name="address1" required />
+                    <input type="text" id="address1" name="address1" required aria-label="Street Address" />
                   </div>
                   <div class="form-group">
                     <label for="address2">Apartment, Suite, etc.</label>
-                    <input type="text" id="address2" name="address2" />
+                    <input type="text" id="address2" name="address2" aria-label="Apartment, Suite, Etc"/>
                   </div>
                   <div class="form-row">
                     <div class="form-group">
                       <label for="city">City *</label>
-                      <input type="text" id="city" name="city" required />
+                      <input type="text" id="city" name="city" required aria-label="City"/>
                     </div>
                     <div class="form-group">
                       <label for="state">State *</label>
-                      <select id="state" name="state" required>
+                      <select id="state" name="state" required aria-label="State">
                         <option value="">Select State</option>
                         <option value="CA">California</option>
                         <option value="NY">New York</option>
@@ -116,7 +116,7 @@
                     </div>
                     <div class="form-group">
                       <label for="zip">ZIP Code *</label>
-                      <input type="text" id="zip" name="zip" required />
+                      <input type="text" id="zip" name="zip" required aria-label="Zip Code" />
                     </div>
                   </div>
                 </form>
@@ -139,12 +139,13 @@
                       placeholder="1234 5678 9012 3456"
                       maxlength="19"
                       required
+                      aria-label="Card Number"
                     />
                   </div>
                   <div class="form-row">
                     <div class="form-group">
                       <label for="expiryMonth">Expiry Month *</label>
-                      <select id="expiryMonth" name="expiryMonth" required>
+                      <select id="expiryMonth" name="expiryMonth" required aria-label="Expiry Month">
                         <option value="">MM</option>
                         <option value="01">01</option>
                         <option value="02">02</option>
@@ -162,7 +163,7 @@
                     </div>
                     <div class="form-group">
                       <label for="expiryYear">Expiry Year *</label>
-                      <select id="expiryYear" name="expiryYear" required>
+                      <select id="expiryYear" name="expiryYear" required aria-label="Expiry Year">
                         <option value="">YYYY</option>
                         <option value="2024">2024</option>
                         <option value="2025">2025</option>
@@ -181,12 +182,13 @@
                         placeholder="123"
                         maxlength="4"
                         required
+                        aria-label="CVV"
                       />
                     </div>
                   </div>
                   <div class="form-group">
                     <label for="cardholderName">Cardholder Name *</label>
-                    <input type="text" id="cardholderName" name="cardholderName" required />
+                    <input type="text" id="cardholderName" name="cardholderName" required aria-label="Card Holder Name"/>
                   </div>
                 </form>
               </section>
@@ -201,29 +203,29 @@
                 <form id="account-form" class="checkout-form">
                   <div class="form-group">
                     <label for="username">Username</label>
-                    <input type="text" id="username" name="username" />
+                    <input type="text" id="username" name="username" aria-label="Username"/>
                   </div>
                   <div class="form-group">
                     <label for="password">Password</label>
-                    <input type="password" id="password" name="password" />
+                    <input type="password" id="password" name="password" aria-label="Password"/>
                   </div>
                   <div class="form-group">
                     <label for="confirmPassword">Confirm Password</label>
-                    <input type="password" id="confirmPassword" name="confirmPassword" />
+                    <input type="password" id="confirmPassword" name="confirmPassword" aria-label="Confirm Password"/>
                   </div>
                   <div class="form-group checkbox-group">
                     <label class="checkbox-label">
-                      <input type="checkbox" id="newsletter" name="newsletter" />
+                      <input type="checkbox" id="newsletter" name="newsletter" aria-label="News Letter" />
                       <span class="checkmark"></span>
                       Subscribe to our newsletter for exclusive offers
                     </label>
                   </div>
                   <div class="form-group checkbox-group">
                     <label class="checkbox-label">
-                      <input type="checkbox" id="terms" name="terms" required />
+                      <input type="checkbox" id="terms" name="terms" required  aria-label="Checkbox Agree"/>
                       <span class="checkmark"></span>
-                      I agree to the <a href="#" class="terms-link">Terms of Service</a> and
-                      <a href="#" class="terms-link">Privacy Policy</a>
+                      I agree to the <a href="#" class="terms-link" aria-label="Terms of Service">Terms of Service</a> and
+                      <a href="#" class="terms-link" aria-label="Privacy Policy">Privacy Policy</a>
                     </label>
                   </div>
                 </form>
@@ -269,7 +271,7 @@
               </div>
 
               <div class="checkout-actions">
-                <button type="button" class="btn btn-primary" id="place-order">
+                <button type="button" class="btn btn-primary" id="place-order" aria-label="Place Order Button">
                   <span class="btn-text">Place Order</span>
                   <span class="btn-icon">🔒</span>
                 </button>
@@ -321,7 +323,7 @@
           <p>You will receive a confirmation email shortly.</p>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-primary" onclick="closeModal()">
+          <button type="button" class="btn btn-primary" onclick="closeModal()" aria-label="Continue Shopping">
             Continue Shopping
           </button>
         </div>
