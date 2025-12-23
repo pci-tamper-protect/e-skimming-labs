@@ -1,0 +1,6 @@
+# Trufflehog ignore patterns
+# Patterns added automatically by dotenvx-converter.py
+# These are secrets that were intentionally left unencrypted
+
+# This is a client side API key intended to be public
+FIREBASE_API_KEY

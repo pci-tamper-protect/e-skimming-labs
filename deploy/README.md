@@ -102,10 +102,10 @@ Create a restricted service account for labs that can set custom claims but has 
 
 ```bash
 # For staging
-./deploy/create-firebase-service-account.sh stg
+./deploy/secrets/create-firebase-service-account.sh stg
 
 # For production
-./deploy/create-firebase-service-account.sh prd
+./deploy/secrets/create-firebase-service-account.sh prd
 ```
 
 This script:
@@ -119,9 +119,58 @@ This script:
 
 **Next Steps:**
 1. Add the service account key JSON to `.env.<env>` (project root) as `FIREBASE_SERVICE_ACCOUNT`
+   
+   **Easy way (recommended):** Use the helper script from `pcioasis-ops/secrets`:
+   ```bash
+   # Copy key to clipboard (ready to paste into .env file)
+   ../../pcioasis-ops/secrets/copy-service-account-to-env.sh deploy/labs-auth-validator-<env>-key.json
+   
+   # Or directly append to .env file
+   ../../pcioasis-ops/secrets/copy-service-account-to-env.sh deploy/labs-auth-validator-<env>-key.json .env.<env>
+   ```
+   
+   **Note:** 
+   - Scripts are located in `pcioasis-ops/secrets/` (shared across projects)
+   - Requires `jq` (install with `brew install jq`)
+   - The `dotenvx-converter.py` script will automatically add keys to .env files and clean up key files
+   
+   **Manual way:** The key JSON needs to be on a single line with escaped newlines and quotes:
+   ```bash
+   FIREBASE_SERVICE_ACCOUNT="{\"type\":\"service_account\",\"project_id\":\"...\",\"private_key\":\"-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n\"}"
+   ```
+
 2. Encrypt the `.env` file: `dotenvx encrypt .env.<env>`
 3. Update Firestore security rules to check custom claims (see `docs/FIREBASE_SSO_DESIGN.md`)
 4. Deploy Cloud Function or backend service to set custom claims on sign-up
+
+### Validate Firebase API Key
+
+To verify that `FIREBASE_API_KEY` in your `.env.<env>` file is valid and working:
+
+```bash
+# Validate staging API key
+./deploy/secrets/validate-firebase-api-key.sh stg
+
+# Validate production API key
+./deploy/secrets/validate-firebase-api-key.sh prd
+```
+
+This script:
+- Automatically decrypts `.env.<env>` if encrypted (using dotenvx)
+- Extracts `FIREBASE_API_KEY` and `FIREBASE_PROJECT_ID`
+- Makes a test API call to Firebase's Identity Toolkit API
+- Reports whether the key is valid and working
+
+**What it checks:**
+- ✅ API key is present in the `.env` file
+- ✅ API key is valid (not expired or revoked)
+- ✅ API key matches the specified Firebase project
+- ✅ Identity Toolkit API is enabled for the project
+
+**Common errors:**
+- `HTTP 400`: Invalid API key format
+- `HTTP 403`: API key restrictions or Identity Toolkit API not enabled
+- `HTTP 404`: Project ID doesn't exist or you don't have access
 
 ### Set Custom Claims for Users
 
@@ -365,10 +414,10 @@ Create a restricted service account for labs that can set custom claims but has 
 
 ```bash
 # For staging
-./deploy/create-firebase-service-account.sh stg
+./deploy/secrets/create-firebase-service-account.sh stg
 
 # For production
-./deploy/create-firebase-service-account.sh prd
+./deploy/secrets/create-firebase-service-account.sh prd
 ```
 
 This script:

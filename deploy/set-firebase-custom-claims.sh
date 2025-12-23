@@ -64,7 +64,7 @@ fi
 # Check if service account key exists
 if [ ! -f "$SERVICE_ACCOUNT_KEY" ]; then
     print_error "Service account key not found: $SERVICE_ACCOUNT_KEY"
-    print_info "Run ${SCRIPT_DIR}/create-firebase-service-account.sh first"
+    print_info "Run ${SCRIPT_DIR}/secrets/create-firebase-service-account.sh first"
     exit 1
 fi
 
