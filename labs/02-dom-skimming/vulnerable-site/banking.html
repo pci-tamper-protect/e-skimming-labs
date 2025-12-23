@@ -461,23 +461,23 @@
           c2Url = 'https://labs.stg.pcioasis.com/02-dom-skimming-c2'
           writeupUrl = 'https://labs.stg.pcioasis.com/lab-02-writeup'
         } else if (hostname.includes('labs.pcioasis.com')) {
-          homeUrl = 'https://home-index-prd-mmwwcfi5za-uc.a.run.app'
-          c2Url = 'https://home-index-prd-mmwwcfi5za-uc.a.run.app/02-dom-skimming-c2'
-          writeupUrl = 'https://home-index-prd-mmwwcfi5za-uc.a.run.app/lab-02-writeup'
+          homeUrl = 'https://home-index-prd-171147998109.us-central1.run.app'
+          c2Url = 'https://home-index-prd-171147998109.us-central1.run.app/02-dom-skimming-c2'
+          writeupUrl = 'https://home-index-prd-171147998109.us-central1.run.app/lab-02-writeup'
         } else if (hostname.includes('lab-02-dom-skimming')) {
           // Production Cloud Run (combined deployment - nginx + C2 in same container)
-          homeUrl = 'https://home-index-prd-mmwwcfi5za-uc.a.run.app'
+          homeUrl = 'https://home-index-prd-171147998109.us-central1.run.app'
           c2Url = window.location.protocol + '//' + hostname + '/stolen-data'
-          writeupUrl = 'https://home-index-prd-mmwwcfi5za-uc.a.run.app/lab-02-writeup'
+          writeupUrl = 'https://home-index-prd-171147998109.us-central1.run.app/lab-02-writeup'
         } else if (hostname.includes('run.app') && hostname.includes('lab-02')) {
           // Production Cloud Run direct URL
-          homeUrl = 'https://home-index-prd-mmwwcfi5za-uc.a.run.app'
+          homeUrl = window.location.origin + '/banking.html'
           c2Url = window.location.protocol + '//' + hostname + '/stolen-data'
-          writeupUrl = 'https://home-index-prd-mmwwcfi5za-uc.a.run.app/lab-02-writeup'
+          writeupUrl = 'https://home-index-prd-171147998109.us-central1.run.app/lab-02-writeup'
         } else {
           homeUrl = window.location.protocol + '//' + hostname
           c2Url = window.location.protocol + '//' + hostname + '/c2'
-          writeupUrl = window.location.protocol + '//' + hostname.replace('lab-02-dom-skimming', 'home-index-prd-mmwwcfi5za-uc.a.run.app') + '/lab-02-writeup'
+          writeupUrl = window.location.protocol + '//' + hostname.replace('lab-02-dom-skimming', 'home-index-prd-171147998109.us-central1.run.app') + '/lab-02-writeup'
         }
 
         // Update navigation buttons
