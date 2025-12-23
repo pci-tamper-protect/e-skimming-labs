@@ -20,11 +20,13 @@ module.exports = defineConfig({
    * CI: Use 4 workers (GitHub Actions typically has 2-4 cores)
    * Local: Use 50% of CPU cores (default) or set via PLAYWRIGHT_WORKERS env var
    */
-  workers: process.env.PLAYWRIGHT_WORKERS
-    ? parseInt(process.env.PLAYWRIGHT_WORKERS, 10)
-    : process.env.CI
-      ? 4
-      : undefined, // undefined = 50% of CPU cores (Playwright default)
+  workers: (() => {
+    if (process.env.PLAYWRIGHT_WORKERS) {
+      const workers = parseInt(process.env.PLAYWRIGHT_WORKERS, 10)
+      return !Number.isNaN(workers) ? workers : (process.env.CI ? 4 : undefined)
+    }
+    return process.env.CI ? 4 : undefined // undefined = 50% of CPU cores (Playwright default)
+  })(),
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   /* Use multiple reporters in CI for better sharding support */
   reporter: process.env.CI

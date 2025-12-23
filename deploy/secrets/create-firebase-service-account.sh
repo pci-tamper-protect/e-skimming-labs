@@ -77,13 +77,13 @@ check_requirements() {
 # Verify Firebase project access
 verify_project() {
     print_header "Verifying Firebase Project Access"
-    
+
     if ! gcloud projects describe "$FIREBASE_PROJECT_ID" &> /dev/null; then
         print_error "Cannot access project: $FIREBASE_PROJECT_ID"
         print_info "Make sure you have access to this project"
         exit 1
     fi
-    
+
     print_status "Project access verified: $FIREBASE_PROJECT_ID ✓"
 }
 
@@ -168,7 +168,7 @@ create_service_account_key() {
     print_header "Creating Service Account Key"
 
     KEY_FILE="${REPO_ROOT}/deploy/${SERVICE_ACCOUNT_NAME}-${ENVIRONMENT}-key.json"
-    
+
     # Check if key already exists
     if [ -f "$KEY_FILE" ]; then
         print_status "Service account key already exists at $KEY_FILE"
@@ -189,7 +189,7 @@ create_service_account_key() {
     }
 
     print_status "Service account key created: $KEY_FILE ✓"
-    
+
     # Add key to .env file and encrypt
     add_key_to_env_and_encrypt
 }
@@ -199,7 +199,7 @@ print_manual_steps() {
     local env_file="$1"
     local key_file="$2"
     local converter_script="$3"
-    
+
     echo ""
     print_header "Manual Steps Required"
     echo ""
@@ -219,16 +219,16 @@ print_manual_steps() {
 # Add service account key to .env file and encrypt
 add_key_to_env_and_encrypt() {
     print_header "Adding Service Account Key to .env File"
-    
+
     ENV_FILE="${REPO_ROOT}/.env.${ENVIRONMENT}"
-    CONVERTER_SCRIPT="${REPO_ROOT}/../pcioasis-ops/secrets/dotenvx-converter.py"
-    
+    CONVERTER_SCRIPT="${DOTENVX_CONVERTER_SCRIPT_PATH:-${REPO_ROOT}/../pcioasis-ops/secrets/dotenvx-converter.py}"
+
     # Check if .env file exists
     if [ ! -f "$ENV_FILE" ]; then
         print_status "Creating new .env file: $ENV_FILE"
         touch "$ENV_FILE"
     fi
-    
+
     # Read the JSON key file and escape it for multiline .env value
     # Use double quotes and escape newlines with \n
     # Use Python to properly escape the JSON string
@@ -241,7 +241,7 @@ with open('$KEY_FILE', 'r') as f:
 escaped = content.replace('\\\\', '\\\\\\\\').replace('\n', '\\\\n').replace('\"', '\\\\\"')
 print(escaped, end='')
 ")
-    
+
     # Check if FIREBASE_SERVICE_ACCOUNT already exists in .env file
     if grep -q "^FIREBASE_SERVICE_ACCOUNT=" "$ENV_FILE"; then
         print_status "FIREBASE_SERVICE_ACCOUNT already exists in $ENV_FILE"
@@ -258,11 +258,11 @@ print(escaped, end='')
             sed -i '/^FIREBASE_SERVICE_ACCOUNT=/d' "$ENV_FILE"
         fi
     fi
-    
+
     # Add the key to .env file with proper multiline formatting
     echo "FIREBASE_SERVICE_ACCOUNT=\"${KEY_JSON}\"" >> "$ENV_FILE"
     print_status "Added FIREBASE_SERVICE_ACCOUNT to $ENV_FILE ✓"
-    
+
     # Check if dotenvx-converter.py exists
     if [ -f "$CONVERTER_SCRIPT" ]; then
         # Encrypt the .env file using dotenvx-converter.py
@@ -337,4 +337,3 @@ main() {
 
 # Run main function
 main "$@"
-
