@@ -3,11 +3,11 @@ version: '3.8'
 # Override file for authenticated local development
 # Usage: 
 #   Use the helper script: ./deploy/docker-compose-auth.sh up
-#   This script decrypts deploy/.env.stg using dotenvx and sets FIREBASE_API_KEY
+#   This script decrypts .env.stg (in project root) using dotenvx and sets FIREBASE_API_KEY
 #
 #   Or manually:
 #   1. Export DOTENV_PRIVATE_KEY: export DOTENV_PRIVATE_KEY="$(cat .env.keys.stg)"
-#   2. Decrypt and run: dotenvx run --env-file=deploy/.env.stg -- docker-compose -f docker-compose.yml -f docker-compose.auth.yml up
+#   2. Decrypt and run: dotenvx run --env-file=.env.stg -- docker-compose -f docker-compose.yml -f docker-compose.auth.yml up
 #
 # This file adds Firebase authentication environment variables to services.
 # The base docker-compose.yml runs without authentication.

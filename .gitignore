@@ -44,6 +44,9 @@ npm-debug.log*
 .env
 .env.local
 # Note: Encrypted .env.stg and .env.prd files ARE tracked (they're encrypted, safe to commit)
+# BUT: deploy/.env.* files should NEVER be committed (only root-level .env.* files exist)
+deploy/.env.*
+deploy/.env
 # Private keys (.env.keys.*) are NOT tracked (must be kept secret)
 # Hash files (.env.hashes.*) ARE tracked (for audit trail)
 # dotenvx-ops project files (.env.x, .env.x.*) ARE tracked (contains only public DOTENVX_PROJECT_ID)
