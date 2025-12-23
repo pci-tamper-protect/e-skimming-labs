@@ -764,6 +764,7 @@ jobs:
               --min-instances=0 \
               --max-instances=5 \
               --set-env-vars="PROJECT_ID=${{ env.LABS_PROJECT_ID }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},FIRESTORE_DATABASE=(default)" \
+              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
               --labels="environment=${{ needs.setup.outputs.environment }},component=analytics,project=e-skimming-labs"
 
             # Grant access to developer groups for staging (Terraform will also manage this)
@@ -790,6 +791,7 @@ jobs:
               --min-instances=0 \
               --max-instances=5 \
               --set-env-vars="PROJECT_ID=${{ env.LABS_PROJECT_ID }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},FIRESTORE_DATABASE=(default)" \
+              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_PRD:latest \
               --labels="environment=${{ needs.setup.outputs.environment }},component=analytics,project=e-skimming-labs"
           fi
 
@@ -948,6 +950,7 @@ jobs:
               --min-instances=0 \
               --max-instances=10 \
               --set-env-vars="LAB_NAME=${{ matrix.lab }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},HOME_URL=https://${{ needs.setup.outputs.domain_prefix }},C2_URL=https://lab-${{ matrix.lab }}-c2-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app" \
+              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
               --labels="environment=${{ needs.setup.outputs.environment }},lab=${{ matrix.lab }},project=e-skimming-labs"
 
             # Grant access to developer groups for staging
@@ -974,6 +977,7 @@ jobs:
               --min-instances=0 \
               --max-instances=10 \
               --set-env-vars="LAB_NAME=${{ matrix.lab }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},HOME_URL=https://${{ needs.setup.outputs.domain_prefix }},C2_URL=https://lab-${{ matrix.lab }}-c2-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app" \
+              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_PRD:latest \
               --labels="environment=${{ needs.setup.outputs.environment }},lab=${{ matrix.lab }},project=e-skimming-labs"
           fi
 
@@ -1143,6 +1147,7 @@ jobs:
               --min-instances=0 \
               --max-instances=5 \
               --set-env-vars="ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},ANALYTICS_SERVICE_URL=https://labs-analytics-${{ needs.setup.outputs.environment }}-hash.a.run.app,SEO_SERVICE_URL=https://labs-seo-${{ needs.setup.outputs.environment }}-hash.a.run.app" \
+              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
               --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs"
 
             # Grant access to developer groups for staging
@@ -1169,6 +1174,7 @@ jobs:
               --min-instances=0 \
               --max-instances=5 \
               --set-env-vars="ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},ANALYTICS_SERVICE_URL=https://labs-analytics-${{ needs.setup.outputs.environment }}-hash.a.run.app,SEO_SERVICE_URL=https://labs-seo-${{ needs.setup.outputs.environment }}-hash.a.run.app" \
+              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_PRD:latest \
               --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs"
           fi
 
