@@ -471,7 +471,7 @@
           writeupUrl = 'https://home-index-prd-mmwwcfi5za-uc.a.run.app/lab-02-writeup'
         } else if (hostname.includes('run.app') && hostname.includes('lab-02')) {
           // Production Cloud Run direct URL
-          homeUrl = 'https://home-index-prd-mmwwcfi5za-uc.a.run.app'
+          homeUrl = window.location.origin + '/banking.html'
           c2Url = window.location.protocol + '//' + hostname + '/stolen-data'
           writeupUrl = 'https://home-index-prd-mmwwcfi5za-uc.a.run.app/lab-02-writeup'
         } else {
