@@ -1020,6 +1020,7 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, labUR
 	// Read the README file for the lab
 	// In container: /app/docs/labs/{lab-id}/README.md (copied from labs/{lab-id}/README.md)
 	// Local dev: labs/{lab-id}/README.md (original location, no duplication)
+	// Lab IDs should match folder names: 01-basic-magecart, 02-dom-skimming, 03-extension-hijacking
 
 	readmePath := fmt.Sprintf("/app/docs/labs/%s/README.md", labID)
 
