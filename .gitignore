@@ -43,8 +43,10 @@ npm-debug.log*
 # Environment
 .env
 .env.local
-# Note: .env.stg and .env.prd in deploy/ are tracked
-# deploy/.env should be a symlink to one of them
+# Note: Encrypted .env.stg and .env.prd files ARE tracked (they're encrypted, safe to commit)
+# Private keys (.env.keys.*) are NOT tracked (must be kept secret)
+# Hash files (.env.hashes.*) ARE tracked (for audit trail)
+# dotenvx-ops project files (.env.x, .env.x.*) ARE tracked (contains only public DOTENVX_PROJECT_ID)
 
 # Terraform
 **/.terraform/**
