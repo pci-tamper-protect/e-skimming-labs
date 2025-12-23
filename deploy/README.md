@@ -239,21 +239,27 @@ This project uses dotenvx to encrypt environment files. The encrypted `.env.stg`
 Upload the private keys to Secret Manager:
 
 ```bash
-# For staging (labs-stg project)
-./deploy/upload-dotenvx-key.sh stg labs-stg
+# For staging - upload to BOTH projects (required for home services)
+./deploy/upload-dotenvx-key.sh stg labs-stg      # For labs services
+./deploy/upload-dotenvx-key.sh stg labs-home-stg  # For home services (SEO, Index)
 
-# For production (labs-prd project)
-./deploy/upload-dotenvx-key.sh prd labs-prd
+# For production - upload to BOTH projects (required for home services)
+./deploy/upload-dotenvx-key.sh prd labs-prd      # For labs services
+./deploy/upload-dotenvx-key.sh prd labs-home-prd  # For home services (SEO, Index)
 ```
+
+**Important:** The secret must exist in **both projects** because:
+- Labs services (analytics, labs) run in `labs-stg` / `labs-prd`
+- Home services (seo, index) run in `labs-home-stg` / `labs-home-prd`
 
 This script will:
 1. Check if the `.env.keys.<env>` file exists
 2. Create or update the secret `DOTENVX_KEY_<ENV>` in Secret Manager
-3. Provide instructions for granting Cloud Run service account access
+3. Automatically grant Cloud Run service account access
 
 ### Granting Cloud Run Service Account Access
 
-After uploading the secrets, grant the Cloud Run service accounts access:
+The script automatically grants access, but if you need to do it manually:
 
 ```bash
 # For staging - labs services

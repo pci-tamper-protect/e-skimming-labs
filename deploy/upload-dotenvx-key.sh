@@ -2,6 +2,10 @@
 
 # Script to upload dotenvx private key to Google Cloud Secret Manager
 # Usage: ./deploy/upload-dotenvx-key.sh [stg|prd] [PROJECT_ID]
+# 
+# IMPORTANT: For home services, you need to upload the secret to BOTH projects:
+#   1. ./deploy/upload-dotenvx-key.sh stg labs-stg      (for labs services)
+#   2. ./deploy/upload-dotenvx-key.sh stg labs-home-stg (for home services)
 
 set -e
 
@@ -116,7 +120,7 @@ echo ""
 echo "Granting Cloud Run service accounts access to the secret..."
 
 # Determine which service accounts need access based on environment
-# Note: The secret is stored in the labs project, but both labs and home services need access
+# Note: Secrets need to exist in BOTH projects (labs and home) OR we need cross-project access
 if [[ "$ENV" == "stg" ]]; then
     LABS_PROJECT="labs-stg"
     HOME_PROJECT="labs-home-stg"
@@ -148,23 +152,61 @@ else
 fi
 
 # Grant access to home runtime service account (in home project)
+# IMPORTANT: The secret must exist in the home project OR we grant cross-project access
 if [ -n "$HOME_PROJECT" ]; then
     HOME_SA="home-runtime-sa@${HOME_PROJECT}.iam.gserviceaccount.com"
     echo "Granting access to ${HOME_SA}..."
+    
+    # First, check if secret exists in home project
     set +e
-    gcloud secrets add-iam-policy-binding "${SECRET_NAME}" \
-        --project="${PROJECT_ID}" \
-        --member="serviceAccount:${HOME_SA}" \
-        --role="roles/secretmanager.secretAccessor" 2>&1 | grep -v "Updated IAM policy" || true
-    HOME_EXIT=$?
+    gcloud secrets describe "${SECRET_NAME}" --project="${HOME_PROJECT}" &>/dev/null
+    SECRET_EXISTS_IN_HOME=$?
     set -e
+    
+    if [ $SECRET_EXISTS_IN_HOME -eq 0 ]; then
+        # Secret exists in home project, grant access there
+        echo "   Secret exists in ${HOME_PROJECT}, granting access..."
+        set +e
+        gcloud secrets add-iam-policy-binding "${SECRET_NAME}" \
+            --project="${HOME_PROJECT}" \
+            --member="serviceAccount:${HOME_SA}" \
+            --role="roles/secretmanager.secretAccessor" 2>&1 | grep -v "Updated IAM policy" || true
+        HOME_EXIT=$?
+        set -e
+    else
+        # Secret doesn't exist in home project, grant cross-project access
+        echo "   Secret not found in ${HOME_PROJECT}, granting cross-project access from ${PROJECT_ID}..."
+        set +e
+        gcloud secrets add-iam-policy-binding "${SECRET_NAME}" \
+            --project="${PROJECT_ID}" \
+            --member="serviceAccount:${HOME_SA}" \
+            --role="roles/secretmanager.secretAccessor" 2>&1 | grep -v "Updated IAM policy" || true
+        HOME_EXIT=$?
+        set -e
+    fi
     
     if [ $HOME_EXIT -eq 0 ]; then
         echo "✅ Granted access to ${HOME_SA}"
     else
         echo "⚠️  Warning: Failed to grant access to ${HOME_SA}"
-        echo "   (May already have access, or service account doesn't exist yet)"
+        echo ""
+        echo "📋 IMPORTANT: The secret must exist in ${HOME_PROJECT} for home services to work."
+        echo "   Run this command to upload the secret to the home project:"
+        echo "   $0 ${ENV} ${HOME_PROJECT}"
+        echo ""
+        echo "   Or manually grant access if secret exists:"
+        echo "   gcloud secrets add-iam-policy-binding ${SECRET_NAME} \\"
+        echo "     --project=${HOME_PROJECT} \\"
+        echo "     --member='serviceAccount:${HOME_SA}' \\"
+        echo "     --role='roles/secretmanager.secretAccessor'"
     fi
+fi
+
+# If we're uploading to labs project, remind user to also upload to home project
+if [[ "$PROJECT_ID" == "${LABS_PROJECT}" ]] && [ -n "$HOME_PROJECT" ]; then
+    echo ""
+    echo "📋 Next step: Upload the secret to ${HOME_PROJECT} for home services:"
+    echo "   $0 ${ENV} ${HOME_PROJECT}"
 fi
 
 echo ""

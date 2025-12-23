@@ -283,7 +283,6 @@ print(escaped, end='')
         print_manual_steps "$ENV_FILE" "$KEY_FILE" "$CONVERTER_SCRIPT"
     fi
 }
-}
 
 # Verify service account setup
 verify_setup() {
