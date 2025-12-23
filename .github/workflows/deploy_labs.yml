@@ -455,7 +455,7 @@ jobs:
               --min-instances=0 \
               --max-instances=5 \
               --set-env-vars="PROJECT_ID=${{ env.HOME_PROJECT_ID }},HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }}" \
-              --update-secrets="/etc/secrets/dotenvx-key:DOTENVX_KEY_STG:latest" \
+              --update-secrets=/etc/secrets/dotenvx-key:DOTENVX_KEY_STG:latest \
               --labels="environment=${{ needs.setup.outputs.environment }},component=seo,project=e-skimming-labs-home"
 
             # Grant access to developer groups for staging (Terraform will also manage this)
@@ -482,7 +482,7 @@ jobs:
               --min-instances=0 \
               --max-instances=5 \
               --set-env-vars="PROJECT_ID=${{ env.HOME_PROJECT_ID }},HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }}" \
-              --update-secrets="/etc/secrets/dotenvx-key:DOTENVX_KEY_PRD:latest" \
+              --update-secrets=/etc/secrets/dotenvx-key:DOTENVX_KEY_PRD:latest \
               --labels="environment=${{ needs.setup.outputs.environment }},component=seo,project=e-skimming-labs-home"
           fi
 
@@ -504,7 +504,7 @@ jobs:
               --min-instances=0 \
               --max-instances=5 \
               --set-env-vars="HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/banking.html,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/index.html" \
-              --update-secrets="/etc/secrets/dotenvx-key:DOTENVX_KEY_STG:latest" \
+              --update-secrets=/etc/secrets/dotenvx-key:DOTENVX_KEY_STG:latest \
               --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs-home"
 
             # Grant access to developer groups for staging (Terraform will also manage this)
@@ -531,7 +531,7 @@ jobs:
               --min-instances=0 \
               --max-instances=5 \
               --set-env-vars="HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/banking.html,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/index.html" \
-              --update-secrets="/etc/secrets/dotenvx-key:DOTENVX_KEY_PRD:latest" \
+              --update-secrets=/etc/secrets/dotenvx-key:DOTENVX_KEY_PRD:latest \
               --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs-home"
           fi
 
@@ -764,7 +764,7 @@ jobs:
               --min-instances=0 \
               --max-instances=5 \
               --set-env-vars="PROJECT_ID=${{ env.LABS_PROJECT_ID }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},FIRESTORE_DATABASE=(default)" \
-              --update-secrets="/etc/secrets/dotenvx-key:DOTENVX_KEY_STG:latest" \
+              --update-secrets=/etc/secrets/dotenvx-key:DOTENVX_KEY_STG:latest \
               --labels="environment=${{ needs.setup.outputs.environment }},component=analytics,project=e-skimming-labs"
 
             # Grant access to developer groups for staging (Terraform will also manage this)
@@ -791,7 +791,7 @@ jobs:
               --min-instances=0 \
               --max-instances=5 \
               --set-env-vars="PROJECT_ID=${{ env.LABS_PROJECT_ID }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},FIRESTORE_DATABASE=(default)" \
-              --update-secrets="/etc/secrets/dotenvx-key:DOTENVX_KEY_PRD:latest" \
+              --update-secrets=/etc/secrets/dotenvx-key:DOTENVX_KEY_PRD:latest \
               --labels="environment=${{ needs.setup.outputs.environment }},component=analytics,project=e-skimming-labs"
           fi
 
@@ -950,7 +950,7 @@ jobs:
               --min-instances=0 \
               --max-instances=10 \
               --set-env-vars="LAB_NAME=${{ matrix.lab }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},HOME_URL=https://${{ needs.setup.outputs.domain_prefix }},C2_URL=https://lab-${{ matrix.lab }}-c2-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app" \
-              --update-secrets="/etc/secrets/dotenvx-key:DOTENVX_KEY_STG:latest" \
+              --update-secrets=/etc/secrets/dotenvx-key:DOTENVX_KEY_STG:latest \
               --labels="environment=${{ needs.setup.outputs.environment }},lab=${{ matrix.lab }},project=e-skimming-labs"
 
             # Grant access to developer groups for staging
@@ -977,7 +977,7 @@ jobs:
               --min-instances=0 \
               --max-instances=10 \
               --set-env-vars="LAB_NAME=${{ matrix.lab }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},HOME_URL=https://${{ needs.setup.outputs.domain_prefix }},C2_URL=https://lab-${{ matrix.lab }}-c2-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app" \
-              --update-secrets="/etc/secrets/dotenvx-key:DOTENVX_KEY_PRD:latest" \
+              --update-secrets=/etc/secrets/dotenvx-key:DOTENVX_KEY_PRD:latest \
               --labels="environment=${{ needs.setup.outputs.environment }},lab=${{ matrix.lab }},project=e-skimming-labs"
           fi
 
@@ -1147,7 +1147,7 @@ jobs:
               --min-instances=0 \
               --max-instances=5 \
               --set-env-vars="ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},ANALYTICS_SERVICE_URL=https://labs-analytics-${{ needs.setup.outputs.environment }}-hash.a.run.app,SEO_SERVICE_URL=https://labs-seo-${{ needs.setup.outputs.environment }}-hash.a.run.app" \
-              --update-secrets="/etc/secrets/dotenvx-key:DOTENVX_KEY_STG:latest" \
+              --update-secrets=/etc/secrets/dotenvx-key:DOTENVX_KEY_STG:latest \
               --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs"
 
             # Grant access to developer groups for staging
@@ -1174,7 +1174,7 @@ jobs:
               --min-instances=0 \
               --max-instances=5 \
               --set-env-vars="ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},ANALYTICS_SERVICE_URL=https://labs-analytics-${{ needs.setup.outputs.environment }}-hash.a.run.app,SEO_SERVICE_URL=https://labs-seo-${{ needs.setup.outputs.environment }}-hash.a.run.app" \
-              --update-secrets="/etc/secrets/dotenvx-key:DOTENVX_KEY_PRD:latest" \
+              --update-secrets=/etc/secrets/dotenvx-key:DOTENVX_KEY_PRD:latest \
               --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs"
           fi
 
