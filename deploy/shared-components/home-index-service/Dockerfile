@@ -43,11 +43,12 @@ COPY docs ./docs
 # Copy lab README files from their original locations
 COPY labs/ ./labs-temp/
 RUN mkdir -p ./docs/labs && \
-    find ./labs-temp -name "README.md" -type f 2>/dev/null | while read readme; do \
-      lab_name=$(basename $(dirname "$readme")); \
-      mkdir -p "./docs/labs/$lab_name" && \
-      cp "$readme" "./docs/labs/$lab_name/README.md"; \
-    done && \
+    find ./labs-temp -mindepth 2 -name "README.md" -type f -exec sh -c '\
+      for readme; do \
+        lab_name=$(basename "$(dirname "$readme")"); \
+        mkdir -p "./docs/labs/$lab_name" && \
+        cp "$readme" "./docs/labs/$lab_name/README.md"; \
+      done' _ {} + && \
     rm -rf ./labs-temp
 
 # Copy catalog info for service metadata
