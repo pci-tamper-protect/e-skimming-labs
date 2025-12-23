@@ -131,16 +131,52 @@ jobs:
           path: test/test-results-merged/
           if-no-files-found: ignore
 
+      - name: Check which shard jobs failed using GitHub API
+        id: check-shard-jobs
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🔍 Checking which test shard jobs failed..."
+          FAILED_SHARDS=()
+
+          # Use GitHub CLI to check workflow run jobs
+          if command -v gh &> /dev/null && gh auth status &> /dev/null; then
+            echo "Using GitHub CLI to check job status..."
+            # Get jobs for this workflow run
+            JOBS=$(gh run view ${{ github.run_id }} --json jobs --jq '.jobs[] | select(.name | startswith("e2e-tests")) | {name: .name, conclusion: .conclusion, status: .status}')
+            echo "$JOBS" | jq -r '.name + ": " + .conclusion + " (" + .status + ")"' || echo "Could not parse job results"
+
+            # Extract shard numbers from failed jobs
+            echo "$JOBS" | jq -r 'select(.conclusion == "failure" or .conclusion == "cancelled") | .name' | while read job_name; do
+              if [[ "$job_name" =~ shard[[:space:]]*([0-9]+) ]]; then
+                shard_num="${BASH_REMATCH[1]}"
+                FAILED_SHARDS+=("$shard_num")
+                echo "Found failed shard: $shard_num"
+              fi
+            done
+          else
+            echo "GitHub CLI not available, will infer from test results"
+          fi
+
+          # Output failed shards
+          if [ ${#FAILED_SHARDS[@]} -gt 0 ]; then
+            echo "failed_shards=${FAILED_SHARDS[*]}" >> $GITHUB_OUTPUT
+            echo "has_failed_shards=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_failed_shards=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Analyze test results and identify failed shards
         id: analyze-results
         if: always()
         run: |
           echo "📊 Analyzing test results from all shards..."
-          
-          FAILED_SHARDS=()
+
           TOTAL_TESTS=0
           FAILED_TESTS=0
-          
+          PASSED_TESTS=0
+
           # Check JSON results files if they exist
           if [ -d "test/test-results-merged" ]; then
             for json_file in test/test-results-merged/*.json; do
@@ -151,34 +187,35 @@ jobs:
                   if [ -n "$stats" ] && [ "$stats" != "{}" ]; then
                     failures=$(echo "$stats" | jq -r '.failures // 0' 2>/dev/null || echo "0")
                     total=$(echo "$stats" | jq -r '.total // 0' 2>/dev/null || echo "0")
+                    passed=$(echo "$stats" | jq -r '.passed // 0' 2>/dev/null || echo "0")
                     FAILED_TESTS=$((FAILED_TESTS + failures))
                     TOTAL_TESTS=$((TOTAL_TESTS + total))
-                    echo "  Failures: $failures, Total: $total"
+                    PASSED_TESTS=$((PASSED_TESTS + passed))
+                    echo "  Failures: $failures, Passed: $passed, Total: $total"
                   fi
                 fi
               fi
             done
           fi
-          
-          # Check which specific shards failed by examining the workflow run
-          # We'll check job results from the needs context
-          echo "Checking shard job results..."
-          for shard in 1 2 3 4; do
-            # Note: Individual matrix job results aren't directly accessible
-            # We'll need to infer from artifacts or use GitHub API
-            echo "Shard $shard: Check workflow run for individual job status"
-          done
-          
+
           echo "total_tests=$TOTAL_TESTS" >> $GITHUB_OUTPUT
           echo "failed_tests=$FAILED_TESTS" >> $GITHUB_OUTPUT
-          
-          if [ "$FAILED_TESTS" -gt 0 ]; then
+          echo "passed_tests=$PASSED_TESTS" >> $GITHUB_OUTPUT
+
+          if [ "$FAILED_TESTS" -gt 0 ] || [ "${{ steps.check-shard-jobs.outputs.has_failed_shards }}" == "true" ]; then
             echo "has_failures=true" >> $GITHUB_OUTPUT
-            echo "failed_shards=Check workflow run" >> $GITHUB_OUTPUT
             echo "❌ Test failures detected: $FAILED_TESTS out of $TOTAL_TESTS tests failed"
+            if [ "${{ steps.check-shard-jobs.outputs.failed_shards }}" != "" ]; then
+              echo "Failed shards: ${{ steps.check-shard-jobs.outputs.failed_shards }}"
+            fi
           else
             echo "has_failures=false" >> $GITHUB_OUTPUT
-            echo "✅ All tests passed: $TOTAL_TESTS tests"
+            if [ "$TOTAL_TESTS" -gt 0 ]; then
+              echo "✅ All tests passed: $TOTAL_TESTS tests"
+            else
+              echo "⚠️  No test results found (tests may have failed before producing results)"
+              echo "has_failures=true" >> $GITHUB_OUTPUT
+            fi
           fi
 
       - name: Generate test summary
@@ -188,12 +225,16 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Total Shards:** 4" >> $GITHUB_STEP_SUMMARY
           echo "**Total Tests:** ${{ steps.analyze-results.outputs.total_tests }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Passed Tests:** ${{ steps.analyze-results.outputs.passed_tests }}" >> $GITHUB_STEP_SUMMARY
           echo "**Failed Tests:** ${{ steps.analyze-results.outputs.failed_tests }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ steps.analyze-results.outputs.has_failures }}" == "true" ]; then
-            echo "❌ **Some test shards failed. Check individual shard jobs in the workflow run.**" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **Some test shards failed**" >> $GITHUB_STEP_SUMMARY
+            if [ -n "${{ steps.check-shard-jobs.outputs.failed_shards }}" ]; then
+              echo "**Failed Shards:** ${{ steps.check-shard-jobs.outputs.failed_shards }}" >> $GITHUB_STEP_SUMMARY
+            fi
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "To see which shards failed, check the workflow run:" >> $GITHUB_STEP_SUMMARY
+            echo "Check individual shard jobs in the workflow run for detailed failure information:" >> $GITHUB_STEP_SUMMARY
             echo "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
           else
             echo "✅ **All tests passed**" >> $GITHUB_STEP_SUMMARY
@@ -208,9 +249,15 @@ jobs:
         if: steps.analyze-results.outputs.has_failures == 'true'
         run: |
           echo "❌ Test failures detected. Failing summary step."
-          echo "Failed tests: ${{ steps.analyze-results.outputs.failed_tests }}"
-          echo "Total tests: ${{ steps.analyze-results.outputs.total_tests }}"
           echo ""
-          echo "Check individual shard jobs in the workflow run to see which specific shards failed:"
+          echo "Test Summary:"
+          echo "  - Total Tests: ${{ steps.analyze-results.outputs.total_tests }}"
+          echo "  - Passed Tests: ${{ steps.analyze-results.outputs.passed_tests }}"
+          echo "  - Failed Tests: ${{ steps.analyze-results.outputs.failed_tests }}"
+          if [ -n "${{ steps.check-shard-jobs.outputs.failed_shards }}" ]; then
+            echo "  - Failed Shards: ${{ steps.check-shard-jobs.outputs.failed_shards }}"
+          fi
+          echo ""
+          echo "Check individual shard jobs in the workflow run to see detailed failure information:"
           echo "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           exit 1

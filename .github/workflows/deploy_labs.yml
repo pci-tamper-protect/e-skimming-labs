@@ -1445,14 +1445,14 @@ jobs:
         run: |
           echo "🔍 Checking which test shard jobs failed..."
           FAILED_SHARDS=()
-          
+
           # Use GitHub CLI to check workflow run jobs
           if command -v gh &> /dev/null && gh auth status &> /dev/null; then
             echo "Using GitHub CLI to check job status..."
             # Get jobs for this workflow run
             JOBS=$(gh run view ${{ github.run_id }} --json jobs --jq '.jobs[] | select(.name | startswith("e2e-tests")) | {name: .name, conclusion: .conclusion, status: .status}')
             echo "$JOBS" | jq -r '.name + ": " + .conclusion + " (" + .status + ")"' || echo "Could not parse job results"
-            
+
             # Extract shard numbers from failed jobs
             echo "$JOBS" | jq -r 'select(.conclusion == "failure" or .conclusion == "cancelled") | .name' | while read job_name; do
               if [[ "$job_name" =~ shard[[:space:]]*([0-9]+) ]]; then
@@ -1464,7 +1464,7 @@ jobs:
           else
             echo "GitHub CLI not available, will infer from test results"
           fi
-          
+
           # Output failed shards
           if [ ${#FAILED_SHARDS[@]} -gt 0 ]; then
             echo "failed_shards=${FAILED_SHARDS[*]}" >> $GITHUB_OUTPUT
@@ -1478,11 +1478,11 @@ jobs:
         if: always()
         run: |
           echo "📊 Analyzing test results from all shards..."
-          
+
           TOTAL_TESTS=0
           FAILED_TESTS=0
           PASSED_TESTS=0
-          
+
           # Check JSON results files if they exist
           if [ -d "test/test-results-merged" ]; then
             for json_file in test/test-results-merged/*.json; do
@@ -1504,11 +1504,11 @@ jobs:
               fi
             done
           fi
-          
+
           echo "total_tests=$TOTAL_TESTS" >> $GITHUB_OUTPUT
           echo "failed_tests=$FAILED_TESTS" >> $GITHUB_OUTPUT
           echo "passed_tests=$PASSED_TESTS" >> $GITHUB_OUTPUT
-          
+
           if [ "$FAILED_TESTS" -gt 0 ] || [ "${{ steps.check-shard-jobs.outputs.has_failed_shards }}" == "true" ]; then
             echo "has_failures=true" >> $GITHUB_OUTPUT
             echo "❌ Test failures detected: $FAILED_TESTS out of $TOTAL_TESTS tests failed"
@@ -1542,7 +1542,7 @@ jobs:
             const statusText = hasFailures ? 'FAILED' : 'PASSED';
 
             const failedShards = '${{ steps.check-shard-jobs.outputs.failed_shards }}' || 'Unknown';
-            
+
             // Create a comment with test status
             const comment = `## 🧪 E2E Test Results (${environment.toUpperCase()}) ${statusEmoji}
 
@@ -1551,13 +1551,13 @@ jobs:
             **Base URL:** ${baseUrl}
             **Run:** ${{ github.run_number }}
             **Shards:** 4 parallel test shards
-            
+
             **Test Summary:**
             - Total Tests: ${totalTests}
             - Passed Tests: ${{ steps.analyze-results.outputs.passed_tests }}
             - Failed Tests: ${failedTests}
             ${hasFailures ? `- ⚠️ **Failed Shards:** ${failedShards}` : '- ✅ All tests passed'}
-            
+
             ${hasFailures ? '**Check individual shard jobs in the workflow run to see detailed failure information.**' : ''}
 
             Test artifacts:
