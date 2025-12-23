@@ -8,10 +8,24 @@ test.describe('Threat Model Page', () => {
 
   test.beforeEach(async ({ page }) => {
     // Navigate to the threat model page
-    await page.goto('/threat-model')
+    const response = await page.goto('/threat-model')
+
+    // Check for HTTP errors - fail immediately if we get 403 or other errors
+    if (response && response.status() >= 400) {
+      const status = response.status()
+      const statusText = response.statusText()
+      const url = response.url()
+      throw new Error(`HTTP ${status} ${statusText} when accessing ${url}. This indicates authentication or access issues.`)
+    }
 
     // Wait for the page to load completely
     await page.waitForLoadState('networkidle')
+
+    // Verify we didn't get an error page
+    const title = await page.title()
+    if (title.includes('403') || title.includes('Forbidden') || title.includes('401') || title.includes('Unauthorized')) {
+      throw new Error(`Received error page: "${title}" when accessing /threat-model. This indicates authentication or access issues.`)
+    }
   })
 
   test('should display the page title and header correctly', async ({ page }) => {

@@ -11,17 +11,37 @@ const { handleDangerousWarning } = require('../utils/handle-dangerous-warning')
 
 console.log(`🧪 Global Navigation Test - Environment: ${TEST_ENV}`)
 
-test.describe('Global Navigation', () => {
+// Skip navigation tests in staging - staging requires authentication/tunneling
+// TODO: Add authentication support or tunnel setup for staging navigation tests
+const navigationTests = TEST_ENV === 'stg'
+  ? test.describe.skip
+  : test.describe
+
+navigationTests('Global Navigation', () => {
   // Configure tests to run in parallel for maximum speed
   test.describe.configure({ mode: 'parallel' })
   test.beforeEach(async ({ page }) => {
     // Start at the home page
-    await page.goto(currentEnv.homeIndex)
+    const response = await page.goto(currentEnv.homeIndex)
+
+    // Check for HTTP errors - fail immediately if we get 403 or other errors
+    if (response && response.status() >= 400) {
+      const status = response.status()
+      const statusText = response.statusText()
+      const url = response.url()
+      throw new Error(`HTTP ${status} ${statusText} when accessing ${url}. This indicates authentication or access issues.`)
+    }
 
     // Handle dangerous warning page if present (for production)
     await handleDangerousWarning(page)
 
     await page.waitForLoadState('networkidle')
+
+    // Verify we didn't get an error page
+    const title = await page.title()
+    if (title.includes('403') || title.includes('Forbidden') || title.includes('401') || title.includes('Unauthorized')) {
+      throw new Error(`Received error page: "${title}" when accessing ${currentEnv.homeIndex}. This indicates authentication or access issues.`)
+    }
   })
 
   test('should navigate from home to MITRE ATT&CK page and back', async ({ page }) => {

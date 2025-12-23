@@ -22,11 +22,13 @@ test.describe('Authentication Integration - Staging', () => {
 
   test.beforeEach(async ({ page }) => {
     // Clear any existing auth state
+    // Note: localStorage/sessionStorage are per-origin, so they will be fresh
+    // when tests navigate to their target pages. We clear cookies here which
+    // handles cross-origin auth state.
     await page.context().clearCookies()
-    await page.evaluate(() => {
-      localStorage.clear()
-      sessionStorage.clear()
-    })
+
+    // Storage clearing is handled per-test after navigation to avoid
+    // SecurityError when accessing localStorage before page load
   })
 
   test('should allow access when auth is disabled', async ({ page }) => {

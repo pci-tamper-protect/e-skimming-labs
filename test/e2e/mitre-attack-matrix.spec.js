@@ -50,30 +50,49 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
   test.describe.configure({ mode: 'parallel' })
 
   test.beforeEach(async ({ page }) => {
-    // Check if server is running by trying to access health endpoint first
-    try {
-      const response = await page.goto(currentEnv.homeIndex + '/health', {
-        waitUntil: 'networkidle',
-        timeout: 5000
-      }).catch(() => null)
+    // Health check only for local environment (staging/prd should already be deployed)
+    if (TEST_ENV === 'local') {
+      try {
+        const response = await page.goto(currentEnv.homeIndex + '/health', {
+          waitUntil: 'networkidle',
+          timeout: 5000
+        }).catch(() => null)
 
-      if (!response || response.status() !== 200) {
-        console.warn('⚠️  Server health check failed. Make sure the server is running on port 3000.')
+        if (!response || response.status() !== 200) {
+          console.warn(`⚠️  Server health check failed at ${currentEnv.homeIndex}/health. Make sure the server is running.`)
+        }
+      } catch (error) {
+        console.warn(`⚠️  Could not reach server at ${currentEnv.homeIndex}. Make sure the server is running.`)
       }
-    } catch (error) {
-      console.warn(`⚠️  Could not reach server at ${currentEnv.homeIndex}. Make sure the server is running.`)
+    } else {
+      // For staging/prd, just verify we can reach the base URL
+      console.log(`🧪 Testing against ${TEST_ENV} environment: ${currentEnv.homeIndex}`)
     }
 
     // Navigate to the MITRE ATT&CK page with increased timeout
     try {
-      await page.goto('/mitre-attack', {
+      const response = await page.goto('/mitre-attack', {
         waitUntil: 'domcontentloaded',
         timeout: 30000
       })
+
+      // Check for HTTP errors - fail immediately if we get 403 or other errors
+      if (response && response.status() >= 400) {
+        const status = response.status()
+        const statusText = response.statusText()
+        const url = response.url()
+        throw new Error(`HTTP ${status} ${statusText} when accessing ${url}. This indicates authentication or access issues.`)
+      }
     } catch (error) {
       console.error('❌ Failed to navigate to /mitre-attack')
       console.error('Error:', error.message)
       throw error
+    }
+
+    // Verify we didn't get an error page
+    const title = await page.title()
+    if (title.includes('403') || title.includes('Forbidden') || title.includes('401') || title.includes('Unauthorized')) {
+      throw new Error(`Received error page: "${title}" when accessing /mitre-attack. This indicates authentication or access issues.`)
     }
 
     // Wait for the page to load completely
