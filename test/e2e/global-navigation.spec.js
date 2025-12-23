@@ -11,15 +11,37 @@ const { handleDangerousWarning } = require('../utils/handle-dangerous-warning')
 
 console.log(`🧪 Global Navigation Test - Environment: ${TEST_ENV}`)
 
-test.describe('Global Navigation', () => {
+// Skip navigation tests in staging - staging requires authentication/tunneling
+// TODO: Add authentication support or tunnel setup for staging navigation tests
+const navigationTests = TEST_ENV === 'stg'
+  ? test.describe.skip
+  : test.describe
+
+navigationTests('Global Navigation', () => {
+  // Configure tests to run in parallel for maximum speed
+  test.describe.configure({ mode: 'parallel' })
   test.beforeEach(async ({ page }) => {
     // Start at the home page
-    await page.goto(currentEnv.homeIndex)
-    
+    const response = await page.goto(currentEnv.homeIndex)
+
+    // Check for HTTP errors - fail immediately if we get 403 or other errors
+    if (response && response.status() >= 400) {
+      const status = response.status()
+      const statusText = response.statusText()
+      const url = response.url()
+      throw new Error(`HTTP ${status} ${statusText} when accessing ${url}. This indicates authentication or access issues.`)
+    }
+
     // Handle dangerous warning page if present (for production)
     await handleDangerousWarning(page)
-    
+
     await page.waitForLoadState('networkidle')
+
+    // Verify we didn't get an error page
+    const title = await page.title()
+    if (title.includes('403') || title.includes('Forbidden') || title.includes('401') || title.includes('Unauthorized')) {
+      throw new Error(`Received error page: "${title}" when accessing ${currentEnv.homeIndex}. This indicates authentication or access issues.`)
+    }
   })
 
   test('should navigate from home to MITRE ATT&CK page and back', async ({ page }) => {
@@ -123,9 +145,11 @@ test.describe('Global Navigation', () => {
 
     // Navigate back to home from C2 page
     console.log('⬅️  Navigating back to home from C2')
-    const c2BackButton = c2Page.getByRole('link', { name: /Back to Labs|Home/i }).first()
-    if (await c2BackButton.isVisible()) {
-      await c2BackButton.click()
+    // C2 pages have two buttons: "Back to Lab" (goes to lab page) and "Home" (goes to labs home)
+    // We want the Home button to go back to labs home
+    const c2HomeButton = c2Page.getByRole('link', { name: /Home/i }).first()
+    if (await c2HomeButton.isVisible()) {
+      await c2HomeButton.click()
       await c2Page.waitForLoadState('networkidle')
       await expect(c2Page).toHaveURL(currentEnv.homeIndex + '/')
     }
@@ -181,18 +205,26 @@ test.describe('Global Navigation', () => {
 
     // Navigate back to home from C2 page
     console.log('⬅️  Navigating back to home from C2')
-    const c2BackButton = c2Page.getByRole('link', { name: /Back to Labs|Home/i }).first()
-    if (await c2BackButton.isVisible()) {
-      await c2BackButton.click()
+    // C2 pages have two buttons: "Back to Lab" (goes to lab page) and "Home" (goes to labs home)
+    // We want the Home button to go back to labs home
+    const c2HomeButton = c2Page.getByRole('link', { name: /Home/i }).first()
+    if (await c2HomeButton.isVisible()) {
+      await c2HomeButton.click()
       await c2Page.waitForLoadState('networkidle')
       await expect(c2Page).toHaveURL(currentEnv.homeIndex + '/')
     }
     await c2Page.close()
 
+    // Wait for Lab 2 page to be ready after closing C2 tab
+    // Ensure we're still on Lab 2 and page is stable
+    await page.waitForLoadState('networkidle')
+    await expect(page).toHaveTitle(/SecureBank|Banking/)
+
     // Navigate back to home from Lab 2
     console.log('⬅️  Clicking back to home from Lab 2')
-    const lab2BackButton = page.getByRole('link', { name: /Back to Labs/i }).first()
-    await expect(lab2BackButton).toBeVisible()
+    // Use ID selector for more reliable targeting
+    const lab2BackButton = page.locator('#back-button.back-button')
+    await expect(lab2BackButton).toBeVisible({ timeout: 10000 })
     await lab2BackButton.click()
     await page.waitForLoadState('networkidle')
 
@@ -240,9 +272,11 @@ test.describe('Global Navigation', () => {
 
       // Navigate back to home from C2 page
       console.log('⬅️  Navigating back to home from C2')
-      const c2BackButton = c2Page.getByRole('link', { name: /Back to Labs|Home/i }).first()
-      if (await c2BackButton.isVisible()) {
-        await c2BackButton.click()
+      // C2 pages have two buttons: "Back to Lab" (goes to lab page) and "Home" (goes to labs home)
+      // We want the Home button to go back to labs home
+      const c2HomeButton = c2Page.getByRole('link', { name: /Home/i }).first()
+      if (await c2HomeButton.isVisible()) {
+        await c2HomeButton.click()
         await c2Page.waitForLoadState('networkidle')
         await expect(c2Page).toHaveURL(currentEnv.homeIndex + '/')
       }
@@ -300,6 +334,80 @@ test.describe('Global Navigation', () => {
     console.log('✅ All navigation links verified')
   })
 
+  test('should verify C2 page has both "Back to Lab" and "Home" buttons with correct functionality', async ({ page }) => {
+    console.log('🏠 Testing C2 page navigation buttons')
+
+    // Navigate to Lab 1
+    console.log('🔗 Navigating to Lab 1')
+    const lab1Section = page.locator('h3:has-text("Basic Magecart Attack")').locator('..')
+    const lab1Link = lab1Section.getByRole('link', { name: /Start Lab/i })
+    await expect(lab1Link).toBeVisible()
+    await lab1Link.click()
+    await page.waitForLoadState('networkidle')
+
+    // Verify we're on Lab 1 page
+    await expect(page).toHaveTitle(/TechGear Store/)
+
+    // Click C2 server link
+    console.log('🔗 Opening C2 dashboard')
+    const c2Link = page.getByRole('link', { name: /View Stolen Data|C2/i }).first()
+    await expect(c2Link).toBeVisible()
+
+    // Handle C2 link opening in new tab
+    const [c2Page] = await Promise.all([
+      page.context().waitForEvent('page'),
+      c2Link.click()
+    ])
+    await c2Page.waitForLoadState('networkidle')
+
+    // Verify we're on C2 dashboard
+    console.log('✅ Verifying C2 Dashboard')
+    await expect(c2Page).toHaveTitle(/C2.*Dashboard|Stolen Data|Server Dashboard/)
+
+    // Verify both buttons exist on C2 page
+    console.log('🔍 Verifying navigation buttons exist')
+    const backToLabButton = c2Page.getByRole('link', { name: /Back to Lab/i }).first()
+    const homeButton = c2Page.getByRole('link', { name: /Home/i }).first()
+
+    await expect(backToLabButton).toBeVisible()
+    await expect(homeButton).toBeVisible()
+    console.log('✅ Both "Back to Lab" and "Home" buttons are visible')
+
+    // Test "Back to Lab" button - should take us to the lab page
+    console.log('🧪 Testing "Back to Lab" button')
+    await backToLabButton.click()
+    await c2Page.waitForLoadState('networkidle')
+
+    // Should be on Lab 1 page (not home)
+    await expect(c2Page).toHaveTitle(/TechGear Store/)
+    console.log('✅ "Back to Lab" button correctly navigates to lab page')
+
+    // Go back to C2 to test Home button
+    console.log('🔗 Returning to C2 dashboard')
+    const c2LinkAgain = c2Page.getByRole('link', { name: /View Stolen Data|C2/i }).first()
+    const [c2PageAgain] = await Promise.all([
+      c2Page.context().waitForEvent('page'),
+      c2LinkAgain.click()
+    ])
+    await c2PageAgain.waitForLoadState('networkidle')
+    await expect(c2PageAgain).toHaveTitle(/C2.*Dashboard|Stolen Data|Server Dashboard/)
+
+    // Test "Home" button - should take us to labs home
+    console.log('🧪 Testing "Home" button')
+    const homeButtonAgain = c2PageAgain.getByRole('link', { name: /Home/i }).first()
+    await expect(homeButtonAgain).toBeVisible()
+    await homeButtonAgain.click()
+    await c2PageAgain.waitForLoadState('networkidle')
+
+    // Should be on labs home page
+    await expect(c2PageAgain).toHaveURL(currentEnv.homeIndex + '/')
+    await expect(c2PageAgain.getByRole('heading', { name: /Interactive E-Skimming Labs/i })).toBeVisible()
+    console.log('✅ "Home" button correctly navigates to labs home page')
+
+    await c2PageAgain.close()
+    await c2Page.close()
+  })
+
   test('should complete full navigation journey: Home → Lab 1 → C2 → Lab 1 → Home → MITRE → Home', async ({ page }) => {
     console.log('🚀 Starting comprehensive navigation journey')
 
@@ -326,7 +434,8 @@ test.describe('Global Navigation', () => {
 
     // 4. Navigate back to Lab 1 from C2
     console.log('4️⃣  C2 → Lab 1')
-    const c2ToLabButton = c2Page.getByRole('link', { name: /Back to Lab|Lab 1/i }).first()
+    // Use "Back to Lab" button (not "Home") to go back to the lab page
+    const c2ToLabButton = c2Page.getByRole('link', { name: /Back to Lab/i }).first()
     if (await c2ToLabButton.isVisible()) {
       await c2ToLabButton.click()
       await c2Page.waitForLoadState('networkidle')
