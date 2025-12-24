@@ -1,0 +1,275 @@
+# Traefik Dynamic Configuration - Routes and Middlewares
+# This file defines path-based routing for all services
+
+http:
+  # Routers define how incoming requests are matched and forwarded
+  routers:
+    # Home page router - lowest priority (catch-all)
+    home-index:
+      rule: "PathPrefix(`/`)"
+      service: home-index
+      priority: 1
+      entryPoints:
+        - web
+
+    # SEO service router
+    seo-service:
+      rule: "PathPrefix(`/api/seo`)"
+      service: home-seo
+      priority: 500
+      middlewares:
+        - strip-seo-prefix
+      entryPoints:
+        - web
+
+    # Analytics service router
+    analytics-service:
+      rule: "PathPrefix(`/api/analytics`)"
+      service: labs-analytics
+      priority: 500
+      middlewares:
+        - strip-analytics-prefix
+      entryPoints:
+        - web
+
+    # Lab 1 - C2 server (higher priority than main lab)
+    lab1-c2:
+      rule: "PathPrefix(`/lab1/c2`)"
+      service: lab1-c2-server
+      priority: 300
+      middlewares:
+        - strip-lab1-c2-prefix
+      entryPoints:
+        - web
+
+    # Lab 1 - Main vulnerable site
+    lab1-main:
+      rule: "PathPrefix(`/lab1`)"
+      service: lab1-vulnerable-site
+      priority: 200
+      middlewares:
+        - strip-lab1-prefix
+      entryPoints:
+        - web
+
+    # Lab 1 Variants
+    lab1-event-listener:
+      rule: "PathPrefix(`/lab1/variants/event-listener`)"
+      service: lab1-event-listener-variant
+      priority: 400
+      middlewares:
+        - strip-lab1-event-listener-prefix
+      entryPoints:
+        - web
+
+    lab1-obfuscated:
+      rule: "PathPrefix(`/lab1/variants/obfuscated`)"
+      service: lab1-obfuscated-variant
+      priority: 400
+      middlewares:
+        - strip-lab1-obfuscated-prefix
+      entryPoints:
+        - web
+
+    lab1-websocket:
+      rule: "PathPrefix(`/lab1/variants/websocket`)"
+      service: lab1-websocket-variant
+      priority: 400
+      middlewares:
+        - strip-lab1-websocket-prefix
+      entryPoints:
+        - web
+
+    # Lab 2 - C2 server (higher priority than main lab)
+    lab2-c2:
+      rule: "PathPrefix(`/lab2/c2`)"
+      service: lab2-c2-server
+      priority: 300
+      middlewares:
+        - strip-lab2-c2-prefix
+      entryPoints:
+        - web
+
+    # Lab 2 - Main vulnerable site
+    lab2-main:
+      rule: "PathPrefix(`/lab2`)"
+      service: lab2-vulnerable-site
+      priority: 200
+      middlewares:
+        - strip-lab2-prefix
+      entryPoints:
+        - web
+
+    # Lab 3 - Extension server (higher priority than main lab)
+    lab3-extension:
+      rule: "PathPrefix(`/lab3/extension`)"
+      service: lab3-extension-server
+      priority: 300
+      middlewares:
+        - strip-lab3-extension-prefix
+      entryPoints:
+        - web
+
+    # Lab 3 - Main vulnerable site
+    lab3-main:
+      rule: "PathPrefix(`/lab3`)"
+      service: lab3-vulnerable-site
+      priority: 200
+      middlewares:
+        - strip-lab3-prefix
+      entryPoints:
+        - web
+
+  # Middlewares modify requests/responses
+  middlewares:
+    # Strip /api/seo prefix before forwarding
+    strip-seo-prefix:
+      stripPrefix:
+        prefixes:
+          - "/api/seo"
+
+    # Strip /api/analytics prefix before forwarding
+    strip-analytics-prefix:
+      stripPrefix:
+        prefixes:
+          - "/api/analytics"
+
+    # Lab 1 middlewares
+    strip-lab1-prefix:
+      stripPrefix:
+        prefixes:
+          - "/lab1"
+
+    strip-lab1-c2-prefix:
+      stripPrefix:
+        prefixes:
+          - "/lab1/c2"
+
+    strip-lab1-event-listener-prefix:
+      stripPrefix:
+        prefixes:
+          - "/lab1/variants/event-listener"
+
+    strip-lab1-obfuscated-prefix:
+      stripPrefix:
+        prefixes:
+          - "/lab1/variants/obfuscated"
+
+    strip-lab1-websocket-prefix:
+      stripPrefix:
+        prefixes:
+          - "/lab1/variants/websocket"
+
+    # Lab 2 middlewares
+    strip-lab2-prefix:
+      stripPrefix:
+        prefixes:
+          - "/lab2"
+
+    strip-lab2-c2-prefix:
+      stripPrefix:
+        prefixes:
+          - "/lab2/c2"
+
+    # Lab 3 middlewares
+    strip-lab3-prefix:
+      stripPrefix:
+        prefixes:
+          - "/lab3"
+
+    strip-lab3-extension-prefix:
+      stripPrefix:
+        prefixes:
+          - "/lab3/extension"
+
+    # Security headers
+    security-headers:
+      headers:
+        customResponseHeaders:
+          X-Frame-Options: "SAMEORIGIN"
+          X-Content-Type-Options: "nosniff"
+          X-XSS-Protection: "1; mode=block"
+        sslRedirect: false  # Set to true for production
+
+    # Rate limiting (optional, can be enabled per route)
+    rate-limit:
+      rateLimit:
+        average: 100
+        burst: 50
+        period: 1m
+
+  # Services define backend servers
+  # Note: These are defaults for local development
+  # In docker-compose, these will be overridden by service labels
+  services:
+    home-index:
+      loadBalancer:
+        servers:
+          - url: "http://home-index:8080"
+        healthCheck:
+          path: "/health"
+          interval: "10s"
+          timeout: "3s"
+
+    home-seo:
+      loadBalancer:
+        servers:
+          - url: "http://home-seo:8080"
+        healthCheck:
+          path: "/health"
+          interval: "10s"
+          timeout: "3s"
+
+    labs-analytics:
+      loadBalancer:
+        servers:
+          - url: "http://labs-analytics:8080"
+        healthCheck:
+          path: "/health"
+          interval: "10s"
+          timeout: "3s"
+
+    lab1-vulnerable-site:
+      loadBalancer:
+        servers:
+          - url: "http://lab1-vulnerable-site:80"
+
+    lab1-c2-server:
+      loadBalancer:
+        servers:
+          - url: "http://lab1-c2-server:3000"
+
+    lab1-event-listener-variant:
+      loadBalancer:
+        servers:
+          - url: "http://lab1-event-listener-variant:80"
+
+    lab1-obfuscated-variant:
+      loadBalancer:
+        servers:
+          - url: "http://lab1-obfuscated-variant:80"
+
+    lab1-websocket-variant:
+      loadBalancer:
+        servers:
+          - url: "http://lab1-websocket-variant:80"
+
+    lab2-vulnerable-site:
+      loadBalancer:
+        servers:
+          - url: "http://lab2-vulnerable-site:80"
+
+    lab2-c2-server:
+      loadBalancer:
+        servers:
+          - url: "http://lab2-dom-c2-server:3000"
+
+    lab3-vulnerable-site:
+      loadBalancer:
+        servers:
+          - url: "http://lab3-vulnerable-site:80"
+
+    lab3-extension-server:
+      loadBalancer:
+        servers:
+          - url: "http://lab3-extension-server:3000"

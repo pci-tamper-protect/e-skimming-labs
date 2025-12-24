@@ -378,42 +378,35 @@
       })()
     </script>
     <script>
-      // Environment-aware URL configuration
+      // Environment-aware URL configuration with uniform path-based routing
       ;(function () {
         const hostname = window.location.hostname
-        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
 
-        let homeUrl, c2Url, writeupUrl
-
-        if (isLocal) {
-          homeUrl = 'http://localhost:3000'
-          c2Url = 'http://localhost:9006'
-          writeupUrl = 'http://localhost:3000/lab-03-writeup'
-        } else if (hostname.includes('labs.stg.pcioasis.com')) {
-          homeUrl = 'https://labs.stg.pcioasis.com'
-          c2Url = 'https://labs.stg.pcioasis.com/03-extension-hijacking-c2'
-          writeupUrl = 'https://labs.stg.pcioasis.com/lab-03-writeup'
-        } else if (hostname.includes('lab-03-extension-hijacking-prd-207478017187')) {
-          homeUrl = 'https://home-index-prd-171147998109.us-central1.run.app'
-          c2Url = 'https://lab-03-extension-hijacking-prd-207478017187.us-central1.run.app/stolen-data'
-          writeupUrl = 'https://home-index-prd-171147998109.us-central1.run.app/lab-03-writeup'
-        } else if (hostname.includes('lab-03-extension-hijacking')) {
-          homeUrl = 'https://home-index-prd-171147998109.us-central1.run.app'
-          c2Url = 'https://lab-03-extension-hijacking-prd-207478017187.us-central1.run.app/stolen-data'
-          writeupUrl = 'https://home-index-prd-171147998109.us-central1.run.app/lab-03-writeup'
-        } else if (hostname.includes('run.app') && hostname.includes('lab-03')) {
-          homeUrl = 'https://home-index-prd-171147998109.us-central1.run.app'
-          c2Url = 'https://lab-03-extension-hijacking-prd-207478017187.us-central1.run.app/stolen-data'
-          writeupUrl = 'https://home-index-prd-171147998109.us-central1.run.app/lab-03-writeup'
-        } else if (hostname.includes('labs.pcioasis.com')) {
-          homeUrl = 'https://home-index-prd-171147998109.us-central1.run.app'
-          c2Url = 'https://lab-03-extension-hijacking-prd-207478017187.us-central1.run.app/stolen-data'
-          writeupUrl = 'https://home-index-prd-171147998109.us-central1.run.app/lab-03-writeup'
+        // Determine base URL based on environment
+        let baseUrl
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+          // Local development - use port 8080 (Traefik)
+          baseUrl = 'http://localhost:8080'
+        } else if (hostname.includes('stg.pcioasis.com') || hostname.includes('staging')) {
+          // Staging environment
+          baseUrl = 'https://labs.stg.pcioasis.com'
+        } else if (hostname.includes('pcioasis.com') && !hostname.includes('stg')) {
+          // Production environment
+          baseUrl = 'https://labs.pcioasis.com'
         } else {
-          homeUrl = 'https://home-index-prd-171147998109.us-central1.run.app'
-          c2Url = 'https://lab-03-extension-hijacking-prd-207478017187.us-central1.run.app/stolen-data'
-          writeupUrl = 'https://home-index-prd-171147998109.us-central1.run.app/lab-03-writeup'
+          // Fallback: use current origin
+          baseUrl = window.location.origin
         }
+
+        // Uniform path-based routing (works across all environments)
+        const homeUrl = baseUrl + '/'
+        const c2Url = baseUrl + '/lab3/extension'
+        const writeupUrl = baseUrl + '/lab-03-writeup'
+
+        // Uniform path-based routing (works across all environments)
+        const homeUrl = baseUrl + '/'
+        const c2Url = baseUrl + '/lab3/extension'
+        const writeupUrl = baseUrl + '/lab-03-writeup'
 
         // Update lab navigation buttons
         const backButton = document.getElementById('back-button')
@@ -433,7 +426,3 @@
     </script>
   </body>
 </html>
-
-
-
-

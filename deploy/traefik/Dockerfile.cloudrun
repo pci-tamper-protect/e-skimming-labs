@@ -1,0 +1,30 @@
+# Traefik Dockerfile for Google Cloud Run
+# This Dockerfile creates a Traefik image that routes to Cloud Run backend services
+
+FROM traefik:v3.0
+
+# Install curl for health checks
+USER root
+RUN apk add --no-cache curl ca-certificates
+
+# Copy Traefik configuration
+COPY traefik.cloudrun.yml /etc/traefik/traefik.yml
+COPY dynamic/ /etc/traefik/dynamic/
+
+# Copy entrypoint script that generates dynamic config from env vars
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Switch back to traefik user
+USER traefik
+
+# Expose ports
+EXPOSE 80 443 8080
+
+# Health check
+HEALTHCHECK --interval=10s --timeout=3s --retries=3 \
+    CMD traefik healthcheck --ping || exit 1
+
+# Use custom entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["traefik"]

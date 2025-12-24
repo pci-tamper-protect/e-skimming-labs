@@ -448,39 +448,32 @@
       // Environment-aware URL configuration
       ;(function () {
         const hostname = window.location.hostname
-        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
 
-        let homeUrl, c2Url, writeupUrl
-
-        if (isLocal) {
-          homeUrl = 'http://localhost:3000'
-          c2Url = 'http://localhost:9004'
-          writeupUrl = 'http://localhost:3000/lab-02-writeup'
-        } else if (hostname.includes('labs.stg.pcioasis.com')) {
-          homeUrl = 'https://labs.stg.pcioasis.com'
-          c2Url = 'https://labs.stg.pcioasis.com/02-dom-skimming-c2'
-          writeupUrl = 'https://labs.stg.pcioasis.com/lab-02-writeup'
-        } else if (hostname.includes('lab-02-dom-skimming-prd-207478017187')) {
-          homeUrl = 'https://home-index-prd-171147998109.us-central1.run.app'
-          c2Url = 'https://lab-02-dom-skimming-prd-207478017187.us-central1.run.app/stolen-data'
-          writeupUrl = 'https://home-index-prd-171147998109.us-central1.run.app/lab-02-writeup'
-        } else if (hostname.includes('lab-02-dom-skimming')) {
-          homeUrl = 'https://home-index-prd-171147998109.us-central1.run.app'
-          c2Url = 'https://lab-02-dom-skimming-prd-207478017187.us-central1.run.app/stolen-data'
-          writeupUrl = 'https://home-index-prd-171147998109.us-central1.run.app/lab-02-writeup'
-        } else if (hostname.includes('run.app') && hostname.includes('lab-02')) {
-          homeUrl = 'https://home-index-prd-171147998109.us-central1.run.app'
-          c2Url = 'https://lab-02-dom-skimming-prd-207478017187.us-central1.run.app/stolen-data'
-          writeupUrl = 'https://home-index-prd-171147998109.us-central1.run.app/lab-02-writeup'
-        } else if (hostname.includes('labs.pcioasis.com')) {
-          homeUrl = 'https://home-index-prd-171147998109.us-central1.run.app'
-          c2Url = 'https://lab-02-dom-skimming-prd-207478017187.us-central1.run.app/stolen-data'
-          writeupUrl = 'https://home-index-prd-171147998109.us-central1.run.app/lab-02-writeup'
+        // Determine base URL based on environment
+        let baseUrl
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+          // Local development - use port 8080 (Traefik)
+          baseUrl = 'http://localhost:8080'
+        } else if (hostname.includes('stg.pcioasis.com') || hostname.includes('staging')) {
+          // Staging environment
+          baseUrl = 'https://labs.stg.pcioasis.com'
+        } else if (hostname.includes('pcioasis.com') && !hostname.includes('stg')) {
+          // Production environment
+          baseUrl = 'https://labs.pcioasis.com'
         } else {
-          homeUrl = 'https://home-index-prd-171147998109.us-central1.run.app'
-          c2Url = 'https://lab-02-dom-skimming-prd-207478017187.us-central1.run.app/stolen-data'
-          writeupUrl = 'https://home-index-prd-171147998109.us-central1.run.app/lab-02-writeup'
+          // Fallback: use current origin
+          baseUrl = window.location.origin
         }
+
+        // Uniform path-based routing (works across all environments)
+        const homeUrl = baseUrl + '/'
+        const c2Url = baseUrl + '/lab2/c2'
+        const writeupUrl = baseUrl + '/lab-02-writeup'
+
+        // Uniform path-based routing (works across all environments)
+        const homeUrl = baseUrl + '/'
+        const c2Url = baseUrl + '/lab2/c2'
+        const writeupUrl = baseUrl + '/lab-02-writeup'
 
         // Update navigation buttons
         const backButton = document.getElementById('back-button')

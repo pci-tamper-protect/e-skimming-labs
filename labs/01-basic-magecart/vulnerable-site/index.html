@@ -32,12 +32,12 @@
 
     <nav>
       <ul>
-        <li><a href="http://localhost:3000" class="back-button" aria-label="Go back to labs homepage">← Back to Labs</a></li>
+        <li><a href="#" class="back-button" aria-label="Go back to labs homepage">← Back to Labs</a></li>
         <li>
-          <a href="http://localhost:9002/stolen" class="c2-button" target="_blank" aria-label="View Stolen Data">🕵️ View Stolen Data</a>
+          <a href="#" class="c2-button" target="_blank" aria-label="View Stolen Data">🕵️ View Stolen Data</a>
         </li>
         <li>
-          <a href="http://localhost:3000/lab-01-writeup" class="writeup-button" target="_blank" aria-label="Lab Writeup">📖 Writeup</a>
+          <a href="#" class="writeup-button" target="_blank" aria-label="Lab Writeup">📖 Writeup</a>
         </li>
         <li><a href="#" aria-label="Go to homepage">Home</a></li>
         <li><a href="checkout.html" aria-label="Go to checkout page">Checkout</a></li>
@@ -102,39 +102,32 @@
     </script>
 
     <script>
-      // Environment-aware URL configuration
+      // Environment-aware URL configuration with uniform path-based routing
       ;(function () {
         const hostname = window.location.hostname
-        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
+        const port = window.location.port
+        const protocol = window.location.protocol
 
-        let homeUrl, c2Url, writeupUrl
-
-        if (isLocal) {
-          // Local development
-          homeUrl = 'http://localhost:3000'
-          c2Url = 'http://localhost:9002/stolen'
-          writeupUrl = 'http://localhost:3000/lab-01-writeup'
-        } else if (hostname.includes('labs.stg.pcioasis.com')) {
+        // Determine base URL based on environment
+        let baseUrl
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+          // Local development - use port 8080 (Traefik)
+          baseUrl = 'http://localhost:8080'
+        } else if (hostname.includes('stg.pcioasis.com') || hostname.includes('staging')) {
           // Staging environment
-          homeUrl = 'https://labs.stg.pcioasis.com'
-          c2Url = 'https://labs.stg.pcioasis.com/01-basic-magecart-c2'
-          writeupUrl = 'https://labs.stg.pcioasis.com/lab-01-writeup'
-        } else if (hostname.includes('labs.pcioasis.com')) {
-          // Production environment (legacy, for future)
-          homeUrl = 'https://labs.pcioasis.com'
-          c2Url = 'https://labs.pcioasis.com/01-basic-magecart-c2'
-          writeupUrl = 'https://labs.pcioasis.com/lab-01-writeup'
-        } else if (hostname.includes('lab-01-basic-magecart')) {
-          // Production Cloud Run (combined deployment - nginx + C2 in same container)
-          homeUrl = 'https://labs.pcioasis.com'
-          c2Url = window.location.protocol + '//' + hostname + '/stolen'
-          writeupUrl = 'https://labs.pcioasis.com/lab-01-writeup'
+          baseUrl = 'https://labs.stg.pcioasis.com'
+        } else if (hostname.includes('pcioasis.com') && !hostname.includes('stg')) {
+          // Production environment
+          baseUrl = 'https://labs.pcioasis.com'
         } else {
-          // Fallback for unknown environments
-          homeUrl = window.location.protocol + '//' + hostname
-          c2Url = window.location.protocol + '//' + hostname + '/c2'
-          writeupUrl = window.location.protocol + '//' + hostname.replace('lab-01-basic-magecart', 'labs.pcioasis.com') + '/lab-01-writeup'
+          // Fallback: use current origin
+          baseUrl = window.location.origin
         }
+
+        // Uniform path-based routing (works across all environments)
+        const homeUrl = baseUrl + '/'
+        const c2Url = baseUrl + '/lab1/c2'
+        const writeupUrl = baseUrl + '/lab-01-writeup'
 
         // Update links
         const backButton = document.querySelector('.back-button')

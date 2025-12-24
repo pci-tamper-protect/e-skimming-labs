@@ -1,0 +1,179 @@
+name: Deploy Traefik Reverse Proxy
+
+on:
+  push:
+    branches:
+      - main
+      - stg
+    paths:
+      - 'deploy/traefik/**'
+      - '.github/workflows/deploy-traefik.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        type: choice
+        options:
+          - stg
+          - prd
+
+env:
+  REGION: us-central1
+  SERVICE_NAME: traefik
+
+jobs:
+  determine-environment:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.set-env.outputs.environment }}
+      project_id: ${{ steps.set-env.outputs.project_id }}
+    steps:
+      - name: Determine environment
+        id: set-env
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "environment=prd" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" = "refs/heads/stg" ]; then
+            echo "environment=stg" >> $GITHUB_OUTPUT
+          else
+            echo "environment=stg" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set project ID
+        run: |
+          if [ "${{ steps.set-env.outputs.environment }}" = "prd" ]; then
+            echo "project_id=${{ secrets.GCP_LABS_PROJECT_ID }}" >> $GITHUB_OUTPUT
+          else
+            echo "project_id=${{ secrets.GCP_LABS_STG_PROJECT_ID }}" >> $GITHUB_OUTPUT
+          fi
+
+  build-and-deploy:
+    needs: determine-environment
+    runs-on: ubuntu-latest
+    environment: ${{ needs.determine-environment.outputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_LABS_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+      - name: Get project number
+        id: project
+        run: |
+          PROJECT_NUMBER=$(gcloud projects describe ${{ needs.determine-environment.outputs.project_id }} --format='value(projectNumber)')
+          echo "number=$PROJECT_NUMBER" >> $GITHUB_OUTPUT
+
+      - name: Build Traefik image
+        run: |
+          cd deploy/traefik
+          docker build \
+            -f Dockerfile.cloudrun \
+            -t ${{ env.REGION }}-docker.pkg.dev/${{ needs.determine-environment.outputs.project_id }}/e-skimming-labs/traefik:${{ github.sha }} \
+            -t ${{ env.REGION }}-docker.pkg.dev/${{ needs.determine-environment.outputs.project_id }}/e-skimming-labs/traefik:latest \
+            .
+
+      - name: Push Traefik image
+        run: |
+          docker push ${{ env.REGION }}-docker.pkg.dev/${{ needs.determine-environment.outputs.project_id }}/e-skimming-labs/traefik:${{ github.sha }}
+          docker push ${{ env.REGION }}-docker.pkg.dev/${{ needs.determine-environment.outputs.project_id }}/e-skimming-labs/traefik:latest
+
+      - name: Get backend service URLs
+        id: services
+        run: |
+          ENV="${{ needs.determine-environment.outputs.environment }}"
+          PROJECT_ID="${{ needs.determine-environment.outputs.project_id }}"
+          PROJECT_NUM="${{ steps.project.outputs.number }}"
+
+          # Get home project number (labs-home-prd or labs-home-stg)
+          HOME_PROJECT_ID="${PROJECT_ID/labs-/labs-home-}"
+          HOME_PROJECT_NUM=$(gcloud projects describe $HOME_PROJECT_ID --format='value(projectNumber)')
+
+          # Set service URLs
+          echo "home_index_url=https://home-index-${ENV}-${HOME_PROJECT_NUM}.a.run.app" >> $GITHUB_OUTPUT
+          echo "seo_url=https://home-seo-${ENV}-${HOME_PROJECT_NUM}.a.run.app" >> $GITHUB_OUTPUT
+          echo "analytics_url=https://labs-analytics-${ENV}-${PROJECT_NUM}.a.run.app" >> $GITHUB_OUTPUT
+          echo "lab1_url=https://lab1-${ENV}-${PROJECT_NUM}.a.run.app" >> $GITHUB_OUTPUT
+          echo "lab1_c2_url=https://lab1-c2-${ENV}-${PROJECT_NUM}.a.run.app" >> $GITHUB_OUTPUT
+          echo "lab2_url=https://lab2-${ENV}-${PROJECT_NUM}.a.run.app" >> $GITHUB_OUTPUT
+          echo "lab2_c2_url=https://lab2-c2-${ENV}-${PROJECT_NUM}.a.run.app" >> $GITHUB_OUTPUT
+          echo "lab3_url=https://lab3-${ENV}-${PROJECT_NUM}.a.run.app" >> $GITHUB_OUTPUT
+          echo "lab3_extension_url=https://lab3-extension-${ENV}-${PROJECT_NUM}.a.run.app" >> $GITHUB_OUTPUT
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.SERVICE_NAME }}-${{ needs.determine-environment.outputs.environment }} \
+            --image=${{ env.REGION }}-docker.pkg.dev/${{ needs.determine-environment.outputs.project_id }}/e-skimming-labs/traefik:${{ github.sha }} \
+            --platform=managed \
+            --region=${{ env.REGION }} \
+            --project=${{ needs.determine-environment.outputs.project_id }} \
+            --service-account=traefik-${{ needs.determine-environment.outputs.environment }}@${{ needs.determine-environment.outputs.project_id }}.iam.gserviceaccount.com \
+            --port=8080 \
+            --set-env-vars="ENVIRONMENT=${{ needs.determine-environment.outputs.environment }}" \
+            --set-env-vars="DOMAIN=${{ needs.determine-environment.outputs.environment == 'prd' && 'labs.pcioasis.com' || 'labs.stg.pcioasis.com' }}" \
+            --set-env-vars="HOME_INDEX_URL=${{ steps.services.outputs.home_index_url }}" \
+            --set-env-vars="SEO_URL=${{ steps.services.outputs.seo_url }}" \
+            --set-env-vars="ANALYTICS_URL=${{ steps.services.outputs.analytics_url }}" \
+            --set-env-vars="LAB1_URL=${{ steps.services.outputs.lab1_url }}" \
+            --set-env-vars="LAB1_C2_URL=${{ steps.services.outputs.lab1_c2_url }}" \
+            --set-env-vars="LAB2_URL=${{ steps.services.outputs.lab2_url }}" \
+            --set-env-vars="LAB2_C2_URL=${{ steps.services.outputs.lab2_c2_url }}" \
+            --set-env-vars="LAB3_URL=${{ steps.services.outputs.lab3_url }}" \
+            --set-env-vars="LAB3_EXTENSION_URL=${{ steps.services.outputs.lab3_extension_url }}" \
+            --min-instances=${{ needs.determine-environment.outputs.environment == 'prd' && '1' || '0' }} \
+            --max-instances=${{ needs.determine-environment.outputs.environment == 'prd' && '10' || '3' }} \
+            --memory=512Mi \
+            --cpu=1 \
+            --timeout=60s \
+            --allow-unauthenticated=${{ needs.determine-environment.outputs.environment == 'prd' && 'true' || 'false' }}
+
+      - name: Update traffic to new revision
+        run: |
+          gcloud run services update-traffic ${{ env.SERVICE_NAME }}-${{ needs.determine-environment.outputs.environment }} \
+            --to-latest \
+            --region=${{ env.REGION }} \
+            --project=${{ needs.determine-environment.outputs.project_id }}
+
+      - name: Verify deployment
+        run: |
+          SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }}-${{ needs.determine-environment.outputs.environment }} \
+            --region=${{ env.REGION }} \
+            --project=${{ needs.determine-environment.outputs.project_id }} \
+            --format='value(status.url)')
+
+          echo "Service deployed at: $SERVICE_URL"
+
+          # Test health endpoint
+          if curl -f -s "${SERVICE_URL}/ping" > /dev/null; then
+            echo "✅ Health check passed"
+          else
+            echo "❌ Health check failed"
+            exit 1
+          fi
+
+      - name: Output deployment info
+        run: |
+          echo "### Traefik Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: ${{ needs.determine-environment.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Project**: ${{ needs.determine-environment.outputs.project_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Region**: ${{ env.REGION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image**: traefik:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Service URL**: https://${{ needs.determine-environment.outputs.environment == 'prd' && 'labs.pcioasis.com' || 'labs.stg.pcioasis.com' }}" >> $GITHUB_STEP_SUMMARY

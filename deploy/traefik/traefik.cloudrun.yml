@@ -1,0 +1,62 @@
+# Traefik Static Configuration for Google Cloud Run
+# This configuration uses environment variables to discover backend services
+
+# Entry points
+entryPoints:
+  web:
+    address: ":8080"  # Cloud Run uses port 8080
+    # No HTTP to HTTPS redirect as Cloud Run handles HTTPS termination
+    http:
+      # Add forwarded headers for proper client IP
+      middlewares:
+        - forwarded-headers@file
+
+  # Dashboard/API endpoint for monitoring
+  traefik:
+    address: ":8081"
+
+# Providers - File-based for Cloud Run (no Docker socket available)
+providers:
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+# API and Dashboard
+api:
+  dashboard: true
+  insecure: false
+
+# Logging
+log:
+  level: INFO
+  format: json
+
+# Access logs for Cloud Run
+accessLog:
+  format: json
+  fields:
+    defaultMode: keep
+    headers:
+      defaultMode: keep
+      names:
+        User-Agent: keep
+        X-Forwarded-For: keep
+        X-Forwarded-Proto: keep
+        X-Cloud-Trace-Context: keep
+
+# Metrics for Cloud Monitoring
+metrics:
+  prometheus:
+    addEntryPointsLabels: true
+    addRoutersLabels: true
+    addServicesLabels: true
+    entryPoint: traefik
+
+# Health check endpoint
+ping:
+  entryPoint: web
+
+# Global settings
+global:
+  checkNewVersion: false  # Disable in production
+  sendAnonymousUsage: false
