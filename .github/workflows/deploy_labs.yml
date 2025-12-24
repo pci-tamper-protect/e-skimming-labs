@@ -1369,6 +1369,53 @@ jobs:
         working-directory: test
         run: npx playwright install --with-deps chromium
 
+      - name: Install dotenvx
+        if: needs.setup.outputs.environment == 'stg'
+        run: npm install -g @dotenvx/dotenvx
+
+      - name: Decrypt test credentials (staging only)
+        if: needs.setup.outputs.environment == 'stg'
+        id: decrypt-test-creds
+        run: |
+          # Check if .env.tests.stg exists
+          if [ -f ".env.tests.stg" ]; then
+            echo "🔐 Decrypting test credentials from .env.tests.stg"
+            # Check if key file exists (should be committed for tests)
+            if [ -f ".env.keys.tests-stg" ]; then
+              # Decrypt to temporary file
+              dotenvx decrypt -f .env.tests.stg -fk .env.keys.tests-stg > /tmp/test-creds.env 2>/dev/null || true
+              if [ -f "/tmp/test-creds.env" ]; then
+                # Extract and export to GITHUB_ENV
+                while IFS='=' read -r key value; do
+                  # Skip comments and empty lines
+                  [[ "$key" =~ ^#.*$ ]] && continue
+                  [[ -z "$key" ]] && continue
+                  # Only export the variables we need
+                  case "$key" in
+                    TEST_USER_EMAIL_STG|TEST_USER_PASSWORD_STG|AUTH_ENABLED)
+                      # Remove quotes if present
+                      value=$(echo "$value" | sed 's/^"//;s/"$//')
+                      echo "${key}=${value}" >> $GITHUB_ENV
+                      ;;
+                  esac
+                done < /tmp/test-creds.env
+                # Ensure AUTH_ENABLED is set
+                if ! grep -q "^AUTH_ENABLED=" $GITHUB_ENV; then
+                  echo "AUTH_ENABLED=true" >> $GITHUB_ENV
+                fi
+                echo "✅ Test credentials decrypted and exported"
+                # Clean up
+                rm -f /tmp/test-creds.env
+              else
+                echo "⚠️  Failed to decrypt .env.tests.stg"
+              fi
+            else
+              echo "⚠️  .env.keys.tests-stg not found, skipping auth setup"
+            fi
+          else
+            echo "⚠️  .env.tests.stg not found, tests will run without authentication"
+          fi
+
       - name: Wait for deployment to stabilize
         run: |
           echo "⏳ Waiting 30 seconds for deployment to stabilize..."
@@ -1382,6 +1429,9 @@ jobs:
           echo "🧪 Running E2E tests (shard ${{ matrix.shard }}/${{ matrix.total-shards }})"
           echo "🔗 Base URL: https://${{ needs.setup.outputs.domain_prefix }}"
           echo "📊 Test shard: ${{ matrix.shard }}/${{ matrix.total-shards }}"
+          if [ -n "$TEST_USER_EMAIL_STG" ]; then
+            echo "🔐 Using authenticated test account: $TEST_USER_EMAIL_STG"
+          fi
           npx playwright test e2e --shard=${{ matrix.shard }}/${{ matrix.total-shards }}
         continue-on-error: true
 

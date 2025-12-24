@@ -3,9 +3,9 @@
 
 FROM traefik:v3.0
 
-# Install curl for health checks
+# Install curl and bash for health checks and entrypoint
 USER root
-RUN apk add --no-cache curl ca-certificates
+RUN apk add --no-cache curl ca-certificates bash
 
 # Copy Traefik configuration
 COPY traefik.cloudrun.yml /etc/traefik/traefik.yml
@@ -13,7 +13,11 @@ COPY dynamic/ /etc/traefik/dynamic/
 
 # Copy entrypoint script that generates dynamic config from env vars
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN chmod +x /entrypoint.sh && \
+    ls -la /entrypoint.sh && \
+    test -f /entrypoint.sh && \
+    test -x /entrypoint.sh && \
+    echo "✅ entrypoint.sh copied and made executable"
 
 # Switch back to traefik user
 USER traefik

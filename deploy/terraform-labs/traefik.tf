@@ -16,9 +16,18 @@ resource "google_project_iam_member" "traefik_invoker" {
   member  = "serviceAccount:${google_service_account.traefik.email}"
 }
 
+# Grant Traefik permission to pull images from Artifact Registry
+resource "google_project_iam_member" "traefik_artifact_registry_reader" {
+  project = local.labs_project_id
+  role    = "roles/artifactregistry.reader"
+  member  = "serviceAccount:${google_service_account.traefik.email}"
+}
+
 # Traefik Cloud Run Service
+# Note: Service is deployed by GitHub Actions workflow, Terraform only manages IAM and domain mapping
+# Keep in state to prevent destruction, but ignore all changes (managed by GitHub Actions)
 resource "google_cloud_run_v2_service" "traefik" {
-  count    = 1
+  count    = 1  # Always keep in state to prevent destruction
   name     = "traefik-${var.environment}"
   location = var.region
   project  = local.labs_project_id
@@ -151,17 +160,15 @@ resource "google_cloud_run_v2_service" "traefik" {
   depends_on = [
     google_artifact_registry_repository.labs_repo,
     google_service_account.traefik,
-    google_project_iam_member.traefik_invoker
+    google_project_iam_member.traefik_invoker,
+    google_project_iam_member.traefik_artifact_registry_reader
   ]
 
-  # Ignore changes made by GitHub Actions
+  # Let GitHub Actions workflow manage the service configuration
+  # Terraform only needs the service to exist for IAM bindings and domain mapping
+  # Ignore all changes since GitHub Actions manages the actual deployment
   lifecycle {
-    ignore_changes = [
-      template[0].containers[0].image,
-      template[0].annotations,
-      client,
-      client_version
-    ]
+    ignore_changes = all  # Ignore all changes - service is fully managed by GitHub Actions
   }
 }
 
@@ -184,10 +191,23 @@ resource "google_cloud_run_v2_service_iam_member" "traefik_public" {
   member   = "allUsers"
 }
 
-# For staging, grant access to developer groups (configured in iap.tf)
-# Note: The actual IAM bindings are in iap.tf for staging environment
+# For staging, grant access to developer groups
+# Traefik is the single entry point - only it needs IAM protection
+resource "google_cloud_run_v2_service_iam_member" "traefik_stg_group_access" {
+  for_each = var.environment == "stg" ? toset([
+    "group:2025-interns@pcioasis.com",
+    "group:core-eng@pcioasis.com"
+  ]) : toset([])
+
+  location = google_cloud_run_v2_service.traefik[0].location
+  project  = google_cloud_run_v2_service.traefik[0].project
+  name     = google_cloud_run_v2_service.traefik[0].name
+  role     = "roles/run.invoker"
+  member   = each.value
+}
 
 # Domain mapping for Traefik service
+# Managed in terraform-labs since Traefik service lives here
 resource "google_cloud_run_domain_mapping" "traefik_domain" {
   count = 1
 
@@ -203,7 +223,7 @@ resource "google_cloud_run_domain_mapping" "traefik_domain" {
     route_name = google_cloud_run_v2_service.traefik[0].name
   }
 
-  # Ignore changes to allow manual management
+  # Ignore changes to allow manual management if needed
   lifecycle {
     ignore_changes = all
   }

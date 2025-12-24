@@ -17,9 +17,10 @@ terraform {
   }
 }
 
-# Calculate project ID from environment
+# Calculate project IDs from environment
 locals {
   labs_project_id = "labs-${var.environment}"
+  home_project_id = "labs-home-${var.environment}"
 }
 
 provider "google" {

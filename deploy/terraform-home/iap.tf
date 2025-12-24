@@ -80,3 +80,26 @@ resource "google_cloud_run_v2_service_iam_member" "seo_stg_user_access" {
   member   = "user:${each.value}"
 }
 
+# Grant Traefik service account permission to invoke home services
+# Traefik acts as a reverse proxy and needs to call these services on behalf of users
+# This allows Traefik to route requests to home services without requiring user authentication
+data "google_project" "labs_project" {
+  project_id = var.environment == "prd" ? "labs-prd" : "labs-stg"
+}
+
+# Traefik service account from labs project needs invoker access to home services
+resource "google_cloud_run_v2_service_iam_member" "traefik_seo_access" {
+  location = data.google_cloud_run_v2_service.home_seo_service[0].location
+  project  = data.google_cloud_run_v2_service.home_seo_service[0].project
+  name     = data.google_cloud_run_v2_service.home_seo_service[0].name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:traefik-${var.environment}@${data.google_project.labs_project.project_id}.iam.gserviceaccount.com"
+}
+
+resource "google_cloud_run_v2_service_iam_member" "traefik_index_access" {
+  location = data.google_cloud_run_v2_service.home_index_service[0].location
+  project  = data.google_cloud_run_v2_service.home_index_service[0].project
+  name     = data.google_cloud_run_v2_service.home_index_service[0].name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:traefik-${var.environment}@${data.google_project.labs_project.project_id}.iam.gserviceaccount.com"
+}

@@ -24,6 +24,7 @@ labs/01-basic-magecart/malicious-code/c2-server/stolen-data/master-log.jsonl
 
 **/playwright-report/*
 **/test-results/*
+test/.auth/
 
 *.png
 *.webm
