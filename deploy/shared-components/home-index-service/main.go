@@ -177,7 +177,7 @@ func main() {
 			lab3URL = fmt.Sprintf("%s://%s/index.html", scheme, lab3Domain)
 		} else {
 			// Production: link directly to index.html page
-			lab3URL = "https://lab-03-extension-hijacking-prd-mmwwcfi5za-uc.a.run.app/index.html"
+			lab3URL = "https://lab-03-extension-hijacking-prd-207478017187.us-central1.run.app/index.html"
 		}
 	}
 	if lab3URL != "" && !strings.HasSuffix(lab3URL, "/index.html") {
@@ -1001,7 +1001,7 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, labUR
 			if isLocal {
 				labBackURL = "http://localhost:9005/index.html"
 			} else {
-				labBackURL = "https://lab-03-extension-hijacking-prd-mmwwcfi5za-uc.a.run.app/index.html"
+				labBackURL = "https://lab-03-extension-hijacking-prd-207478017187.us-central1.run.app/index.html"
 			}
 		}
 	}
