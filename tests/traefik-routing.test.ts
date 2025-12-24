@@ -6,13 +6,10 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { currentEnv } from '../test/config/test-env';
 
-// Get base URL from environment variable or default to localhost
-const BASE_URL = process.env.TEST_ENV === 'prd'
-  ? 'https://labs.pcioasis.com'
-  : process.env.TEST_ENV === 'stg'
-  ? 'https://labs.stg.pcioasis.com'
-  : 'http://localhost:8080';
+// Get base URL from shared test configuration
+const BASE_URL = currentEnv.homeIndex;
 
 test.describe('Traefik Routing Tests', () => {
   test.describe('Health Checks', () => {

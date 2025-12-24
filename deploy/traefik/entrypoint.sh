@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Entrypoint script for Traefik on Cloud Run
 # Generates dynamic configuration from environment variables
 

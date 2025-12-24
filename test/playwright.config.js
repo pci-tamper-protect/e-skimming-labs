@@ -102,7 +102,7 @@ module.exports = defineConfig({
     ? {
         command: 'cd .. && docker-compose -f docker-compose.traefik.yml up -d traefik home-index',
         url: currentEnv.homeIndex,
-        reuseExistingServer: true, // Always reuse if server is already running
+        reuseExistingServer: true, // Allow reusing the server if it is already running
         timeout: 120 * 1000
       }
     : undefined
