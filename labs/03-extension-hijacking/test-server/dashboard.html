@@ -243,8 +243,8 @@
     <!-- Navigation Buttons Row -->
     <div class="nav-buttons-row">
       <div class="nav-buttons-container">
-        <a href="#" class="nav-button back-button" id="back-button">← Back to Lab</a>
-        <a href="#" class="nav-button home-button" id="home-button">🏠 Home</a>
+        <a href="#" class="nav-button back-button" id="back-button" aria-label="Back to Lab">← Back to Lab</a>
+        <a href="#" class="nav-button home-button" id="home-button" aria-label="Home">🏠 Home</a>
       </div>
     </div>
 
@@ -284,12 +284,12 @@
           "
         >
           <h2>Collected Data</h2>
-          <button class="refresh-btn" onclick="loadData()">🔄 Refresh</button>
+          <button class="refresh-btn" onclick="loadData()" aria-label="Refresh">🔄 Refresh</button>
         </div>
 
         <div class="tabs">
-          <button class="tab active" onclick="switchTab('sessions')">Recent Sessions</button>
-          <button class="tab" onclick="switchTab('stats')">Statistics</button>
+          <button class="tab active" onclick="switchTab('sessions')" aria-label="Recent Sessions">Recent Sessions</button>
+          <button class="tab" onclick="switchTab('stats')" aria-label="Statistics">Statistics</button>
         </div>
 
         <div id="sessions-tab" class="tab-content active">
