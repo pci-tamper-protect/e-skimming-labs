@@ -118,13 +118,35 @@ navigationTests('Global Navigation', () => {
     const lab1Section = page.locator('h3:has-text("Basic Magecart Attack")').locator('..')
     const lab1Link = lab1Section.getByRole('link', { name: /Start Lab/i })
     await expect(lab1Link).toBeVisible()
+
+    // Get the href to see what URL it's trying to navigate to
+    const lab1Href = await lab1Link.getAttribute('href')
+    console.log('Lab 1 link href:', lab1Href)
+
+    // Click and wait for navigation
     await lab1Link.click()
-    await page.waitForLoadState('networkidle')
+
+    // Wait for navigation to complete (with longer timeout for mobile)
+    try {
+      await page.waitForLoadState('networkidle', { timeout: 15000 })
+    } catch (e) {
+      console.log('Network idle timeout, checking page state...')
+    }
+
+    // Check if we got an error page
+    const currentUrl = page.url()
+    console.log('Current URL after clicking Lab 1:', currentUrl)
+
+    if (currentUrl.includes('chrome-error://') || currentUrl.includes('error')) {
+      throw new Error(`Failed to load Lab 1 page. URL: ${currentUrl}. Check if lab1-vulnerable-site container is running.`)
+    }
 
     // Verify we're on Lab 1 page
     console.log('✅ Verifying Lab 1 page')
-    await expect(page).toHaveTitle(/TechGear Store/)
-    await expect(page.getByRole('heading', { name: /TechGear Store/i })).toBeVisible()
+    // Wait for page to fully load - Lab 1 uses /lab1/index.html
+    await expect(page).toHaveURL(/\/lab1/, { timeout: 10000 })
+    await expect(page).toHaveTitle(/TechGear Store/, { timeout: 10000 })
+    await expect(page.getByRole('heading', { name: /TechGear Store/i })).toBeVisible({ timeout: 10000 })
 
     // Click C2 server link
     console.log('🔗 Clicking C2 Server link')
@@ -179,13 +201,35 @@ navigationTests('Global Navigation', () => {
     const lab2Section = page.locator('h3:has-text("DOM-Based Skimming")').locator('..')
     const lab2Link = lab2Section.getByRole('link', { name: /Start Lab/i })
     await expect(lab2Link).toBeVisible()
+
+    // Get the href to see what URL it's trying to navigate to
+    const lab2Href = await lab2Link.getAttribute('href')
+    console.log('Lab 2 link href:', lab2Href)
+
+    // Click and wait for navigation
     await lab2Link.click()
-    await page.waitForLoadState('networkidle')
+
+    // Wait for navigation to complete (with longer timeout for mobile)
+    try {
+      await page.waitForLoadState('networkidle', { timeout: 15000 })
+    } catch (e) {
+      console.log('Network idle timeout, checking page state...')
+    }
+
+    // Check if we got an error page
+    const currentUrl = page.url()
+    console.log('Current URL after clicking Lab 2:', currentUrl)
+
+    if (currentUrl.includes('chrome-error://') || currentUrl.includes('error')) {
+      throw new Error(`Failed to load Lab 2 page. URL: ${currentUrl}. Check if lab2-vulnerable-site container is running.`)
+    }
 
     // Verify we're on Lab 2 page
     console.log('✅ Verifying Lab 2 page')
-    await expect(page).toHaveTitle(/SecureBank|Banking/)
-    await expect(page.locator('h1, h2').filter({ hasText: /SecureBank|Banking/i }).first()).toBeVisible()
+    // Wait for page to fully load - Lab 2 uses /lab2/banking.html
+    await expect(page).toHaveURL(/\/lab2/, { timeout: 10000 })
+    await expect(page).toHaveTitle(/SecureBank|Banking/, { timeout: 10000 })
+    await expect(page.locator('h1, h2').filter({ hasText: /SecureBank|Banking/i }).first()).toBeVisible({ timeout: 10000 })
 
     // Click C2 server link
     console.log('🔗 Clicking C2 Server link')
@@ -245,13 +289,35 @@ navigationTests('Global Navigation', () => {
     const lab3Section = page.locator('h3:has-text("Browser Extension Hijacking")').locator('..')
     const lab3Link = lab3Section.getByRole('link', { name: /Start Lab/i })
     await expect(lab3Link).toBeVisible()
+
+    // Get the href to see what URL it's trying to navigate to
+    const lab3Href = await lab3Link.getAttribute('href')
+    console.log('Lab 3 link href:', lab3Href)
+
+    // Click and wait for navigation
     await lab3Link.click()
-    await page.waitForLoadState('networkidle')
+
+    // Wait for navigation to complete (with longer timeout for potential service startup)
+    try {
+      await page.waitForLoadState('networkidle', { timeout: 10000 })
+    } catch (e) {
+      console.log('Network idle timeout, checking page state...')
+    }
+
+    // Check if we got an error page
+    const currentUrl = page.url()
+    console.log('Current URL after clicking Lab 3:', currentUrl)
+
+    if (currentUrl.includes('chrome-error://') || currentUrl.includes('error')) {
+      throw new Error(`Failed to load Lab 3 page. URL: ${currentUrl}. Check if lab3-vulnerable-site container is running.`)
+    }
 
     // Verify we're on Lab 3 page
     console.log('✅ Verifying Lab 3 page')
-    // Lab 3 may have different title - adjust as needed
-    await expect(page.locator('h1, h2').first()).toBeVisible()
+    // Wait for page to fully load - Lab 3 uses /lab3/index.html
+    await expect(page).toHaveURL(/\/lab3/, { timeout: 10000 })
+    await expect(page).toHaveTitle(/SecureShop|Checkout/, { timeout: 10000 })
+    await expect(page.locator('h1, h2').filter({ hasText: /SecureShop|Checkout/i }).first()).toBeVisible({ timeout: 10000 })
 
     // Click C2 server link
     console.log('🔗 Clicking C2 Server link')
@@ -379,18 +445,23 @@ navigationTests('Global Navigation', () => {
     await c2Page.waitForLoadState('networkidle')
 
     // Should be on Lab 1 page (not home)
-    await expect(c2Page).toHaveTitle(/TechGear Store/)
+    // Wait for page to fully load and verify URL first
+    await expect(c2Page).toHaveURL(/\/lab1/, { timeout: 10000 })
+    await expect(c2Page).toHaveTitle(/TechGear Store/, { timeout: 10000 })
+    await expect(c2Page.getByRole('heading', { name: /TechGear Store/i })).toBeVisible({ timeout: 10000 })
     console.log('✅ "Back to Lab" button correctly navigates to lab page')
 
     // Go back to C2 to test Home button
     console.log('🔗 Returning to C2 dashboard')
     const c2LinkAgain = c2Page.getByRole('link', { name: /View Stolen Data|C2/i }).first()
+    await expect(c2LinkAgain).toBeVisible({ timeout: 10000 })
+
     const [c2PageAgain] = await Promise.all([
       c2Page.context().waitForEvent('page'),
       c2LinkAgain.click()
     ])
     await c2PageAgain.waitForLoadState('networkidle')
-    await expect(c2PageAgain).toHaveTitle(/C2.*Dashboard|Stolen Data|Server Dashboard/)
+    await expect(c2PageAgain).toHaveTitle(/C2.*Dashboard|Stolen Data|Server Dashboard/, { timeout: 10000 })
 
     // Test "Home" button - should take us to labs home
     console.log('🧪 Testing "Home" button')
@@ -418,9 +489,25 @@ navigationTests('Global Navigation', () => {
     // 2. Navigate to Lab 1
     console.log('2️⃣  Home → Lab 1')
     const lab1Section = page.locator('h3:has-text("Basic Magecart Attack")').locator('..')
-    await lab1Section.getByRole('link', { name: /Start Lab/i }).click()
-    await page.waitForLoadState('networkidle')
-    await expect(page).toHaveTitle(/TechGear Store/)
+    const lab1Link = lab1Section.getByRole('link', { name: /Start Lab/i })
+    await expect(lab1Link).toBeVisible()
+    await lab1Link.click()
+
+    // Wait for navigation with error handling
+    try {
+      await page.waitForLoadState('networkidle', { timeout: 15000 })
+    } catch (e) {
+      console.log('Network idle timeout, checking page state...')
+    }
+
+    // Check for error pages
+    const lab1Url = page.url()
+    if (lab1Url.includes('chrome-error://') || lab1Url.includes('error')) {
+      throw new Error(`Failed to load Lab 1 page. URL: ${lab1Url}. Check if lab1-vulnerable-site container is running.`)
+    }
+
+    await expect(page).toHaveURL(/\/lab1/, { timeout: 10000 })
+    await expect(page).toHaveTitle(/TechGear Store/, { timeout: 10000 })
 
     // 3. Navigate to C2
     console.log('3️⃣  Lab 1 → C2')
@@ -439,6 +526,10 @@ navigationTests('Global Navigation', () => {
     if (await c2ToLabButton.isVisible()) {
       await c2ToLabButton.click()
       await c2Page.waitForLoadState('networkidle')
+
+      // Verify we're back on Lab 1 page
+      await expect(c2Page).toHaveURL(/\/lab1/, { timeout: 10000 })
+      await expect(c2Page).toHaveTitle(/TechGear Store/, { timeout: 10000 })
     }
     await c2Page.close()
 

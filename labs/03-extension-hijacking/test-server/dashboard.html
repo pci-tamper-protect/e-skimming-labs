@@ -443,7 +443,8 @@
         }
 
         // Uniform path-based routing (works across all environments)
-        const labUrl = baseUrl + '/lab3'
+        // Use /lab3/index.html to ensure CSS and other assets load correctly
+        const labUrl = baseUrl + '/lab3/index.html'
         const homeUrl = baseUrl + '/'
 
         const backButton = document.getElementById('back-button')

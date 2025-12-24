@@ -15,22 +15,22 @@ const TEST_ENV = process.env.TEST_ENV || 'local'
 
 const environments = {
   local: {
-    homeIndex: 'http://localhost:3000',
+    homeIndex: 'http://localhost:8080',
     mainApp: 'http://localhost:5173',
     lab1: {
-      vulnerable: 'http://localhost:9001',
-      c2: 'http://localhost:9002',
-      writeup: 'http://localhost:3000/lab-01-writeup',
+      vulnerable: 'http://localhost:8080/lab1',
+      c2: 'http://localhost:8080/lab1/c2',
+      writeup: 'http://localhost:8080/lab-01-writeup',
     },
     lab2: {
-      vulnerable: 'http://localhost:9003',
-      c2: 'http://localhost:9004',
-      writeup: 'http://localhost:3000/lab-02-writeup',
+      vulnerable: 'http://localhost:8080/lab2',
+      c2: 'http://localhost:8080/lab2/c2',
+      writeup: 'http://localhost:8080/lab-02-writeup',
     },
     lab3: {
-      vulnerable: 'http://localhost:9005',
-      c2: 'http://localhost:9006',
-      writeup: 'http://localhost:3000/lab-03-writeup',
+      vulnerable: 'http://localhost:8080/lab3',
+      c2: 'http://localhost:8080/lab3/extension',
+      writeup: 'http://localhost:8080/lab-03-writeup',
     },
   },
   stg: {

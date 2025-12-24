@@ -491,7 +491,8 @@
         }
 
         // Uniform path-based routing (works across all environments)
-        const labUrl = baseUrl + '/lab2'
+        // Use /lab2/banking.html to ensure CSS and other assets load correctly
+        const labUrl = baseUrl + '/lab2/banking.html'
         const homeUrl = baseUrl + '/'
 
         const backButton = document.getElementById('back-button')
