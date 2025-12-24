@@ -445,9 +445,11 @@
       })()
     </script>
     <script>
-      // Environment-aware URL configuration
+      // Environment-aware URL configuration with uniform path-based routing
       ;(function () {
         const hostname = window.location.hostname
+        const port = window.location.port
+        const protocol = window.location.protocol
 
         // Determine base URL based on environment
         let baseUrl
@@ -470,24 +472,22 @@
         const c2Url = baseUrl + '/lab2/c2'
         const writeupUrl = baseUrl + '/lab-02-writeup'
 
-        // Uniform path-based routing (works across all environments)
-        const homeUrl = baseUrl + '/'
-        const c2Url = baseUrl + '/lab2/c2'
-        const writeupUrl = baseUrl + '/lab-02-writeup'
-
-        // Update navigation buttons
-        const backButton = document.getElementById('back-button')
-        const viewStolenButton = document.getElementById('view-stolen-button')
-        const writeupButton = document.getElementById('writeup-button')
-
-        if (backButton) {
-          backButton.href = homeUrl
+        // Update links (using class selectors for consistency with Lab 1)
+        // Wait for DOM to be ready
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', updateLinks)
+        } else {
+          updateLinks()
         }
-        if (viewStolenButton) {
-          viewStolenButton.href = c2Url
-        }
-        if (writeupButton) {
-          writeupButton.href = writeupUrl
+
+        function updateLinks() {
+          const backButton = document.querySelector('.back-button')
+          const c2Button = document.querySelector('.c2-button')
+          const writeupButton = document.querySelector('.writeup-button')
+
+          if (backButton) backButton.href = homeUrl
+          if (c2Button) c2Button.href = c2Url
+          if (writeupButton) writeupButton.href = writeupUrl
         }
       })()
     </script>

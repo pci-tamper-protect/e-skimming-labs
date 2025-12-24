@@ -191,10 +191,10 @@ app.get('/collect', async (req, res) => {
     if (req.query.d) {
       // Decode base64 data
       const decoded = Buffer.from(req.query.d, 'base64').toString('utf8')
-      
+
       // Security: Parse JSON and sanitize to prevent prototype pollution
       const stolenData = JSON.parse(decoded)
-      
+
       // Remove dangerous prototype properties if present
       if (stolenData && typeof stolenData === 'object') {
         delete stolenData.__proto__
@@ -202,7 +202,7 @@ app.get('/collect', async (req, res) => {
         // Create a clean object without prototype pollution
         const cleanData = JSON.parse(JSON.stringify(stolenData))
         Object.setPrototypeOf(cleanData, Object.prototype)
-        
+
         cleanData.server = {
           receivedAt: new Date().toISOString(),
           clientIP: req.ip,
@@ -378,6 +378,22 @@ function generateDashboard(records) {
  * The root / is handled by nginx to serve the vulnerable site
  */
 app.get('/dashboard', async (req, res) => {
+  try {
+    const dashboardPath = path.join(__dirname, 'dashboard.html')
+    const dashboard = await fs.readFile(dashboardPath, 'utf8')
+    res.send(dashboard)
+  } catch (error) {
+    console.error('[C2] Failed to serve dashboard:', error)
+    res.status(500).send('Dashboard not available')
+  }
+})
+
+/**
+ * Root endpoint - serve dashboard directly
+ * Note: Traefik strips /lab1/c2 prefix, so / becomes / at the C2 server
+ * We serve the dashboard directly instead of redirecting to preserve the path
+ */
+app.get('/', async (req, res) => {
   try {
     const dashboardPath = path.join(__dirname, 'dashboard.html')
     const dashboard = await fs.readFile(dashboardPath, 'utf8')
