@@ -2,13 +2,32 @@ name: Deploy CloudRun
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, stg]
     types: [opened, synchronize, reopened]
-    paths-ignore:
-      - 'test/**'
-      - '**/*.spec.js'
-      - '**/playwright.config.js'
-      - '**/test/**'
+    paths:
+      # Home components
+      - 'deploy/shared-components/seo-service/**'
+      - 'deploy/shared-components/home-index-service/**'
+      - 'deploy/Dockerfile.index'
+      # Labs components
+      - 'deploy/shared-components/analytics-service/**'
+      - 'labs/**'
+      # Common files that affect all
+      - '.github/workflows/deploy_labs.yml'
+  push:
+    branches:
+      - 'stg'
+      - 'main'
+    paths:
+      # Home components
+      - 'deploy/shared-components/seo-service/**'
+      - 'deploy/shared-components/home-index-service/**'
+      - 'deploy/Dockerfile.index'
+      # Labs components
+      - 'deploy/shared-components/analytics-service/**'
+      - 'labs/**'
+      # Common files that affect all
+      - '.github/workflows/deploy_labs.yml'
   workflow_dispatch:
     inputs:
       environment:
@@ -21,19 +40,12 @@ on:
           - stg
 
 env:
-  # Home page project (labs-home-prd) - Configuration (from config.yml)
-  HOME_PROJECT_ID: "labs-home-prd"
+  # Artifact Registry configuration (same for both environments)
   HOME_GAR_LOCATION: "us-central1"
-  HOME_REPOSITORY: "home"
-  # Secrets (only service account keys)
-  HOME_GCP_SA_KEY: ${{ secrets.GCP_HOME_SA_KEY }}
-
-  # Individual labs project (labs-prd) - Configuration (from config.yml)
-  LABS_PROJECT_ID: "labs-prd"
+  HOME_REPOSITORY: "e-skimming-labs-home"
   LABS_GAR_LOCATION: "us-central1"
-  LABS_REPOSITORY: "labs"
-  # Secrets (only service account keys)
-  LABS_GCP_SA_KEY: ${{ secrets.GCP_LABS_SA_KEY }}
+  LABS_REPOSITORY: "e-skimming-labs"
+  # Note: Service account keys are set per-job based on environment
 
 jobs:
   setup:
@@ -42,20 +54,126 @@ jobs:
       labs: ${{ steps.discover-labs.outputs.labs }}
       environment: ${{ steps.set-env.outputs.environment }}
       domain_prefix: ${{ steps.set-env.outputs.domain_prefix }}
+      home_project_id: ${{ steps.set-env.outputs.home_project_id }}
+      labs_project_id: ${{ steps.set-env.outputs.labs_project_id }}
+      deploy_home: ${{ steps.detect-changes.outputs.deploy_home }}
+      deploy_labs: ${{ steps.detect-changes.outputs.deploy_labs }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # Need full history for change detection
+
+      - name: Detect changes and force keywords
+        id: detect-changes
+        run: |
+          # Default: deploy based on what changed
+          DEPLOY_HOME="false"
+          DEPLOY_LABS="false"
+
+          # Fetch commit message once and reuse throughout this step
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+
+          # Check commit message for force keywords (preferred method)
+          # Use word boundaries to prevent partial matches (e.g., "unforce-all")
+          if echo "$COMMIT_MSG" | grep -qiE "\[force-all\]|\bforce-all\b"; then
+            DEPLOY_HOME="true"
+            DEPLOY_LABS="true"
+            echo "✅ Force deploy detected in commit message: [force-all]"
+          elif echo "$COMMIT_MSG" | grep -qiE "\[force-home\]|\bforce-home\b"; then
+            DEPLOY_HOME="true"
+            echo "✅ Force deploy detected in commit message: [force-home]"
+          elif echo "$COMMIT_MSG" | grep -qiE "\[force-labs\]|\bforce-labs\b"; then
+            DEPLOY_LABS="true"
+            echo "✅ Force deploy detected in commit message: [force-labs]"
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # For PRs, detect changed paths
+            echo "🔍 Detecting changes in PR..."
+
+            if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q "^deploy/shared-components/seo-service/\|^deploy/shared-components/home-index-service/\|^deploy/Dockerfile.index"; then
+              DEPLOY_HOME="true"
+              echo "✅ Home components changed"
+            fi
+
+            if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q "^deploy/shared-components/analytics-service/\|^labs/\|^deploy/Dockerfile.index"; then
+              DEPLOY_LABS="true"
+              echo "✅ Labs components changed"
+            fi
+
+            # If workflow file changed, deploy all (safety)
+            if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q "^\.github/workflows/deploy_labs\.yml"; then
+              DEPLOY_HOME="true"
+              DEPLOY_LABS="true"
+              echo "✅ Workflow changed, deploying all"
+            fi
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            # For pushes, detect changes from previous commit
+            echo "🔍 Detecting changes in push..."
+
+            if git diff --name-only HEAD~1 HEAD | grep -q "^deploy/shared-components/seo-service/\|^deploy/shared-components/home-index-service/\|^deploy/Dockerfile.index"; then
+              DEPLOY_HOME="true"
+              echo "✅ Home components changed"
+            fi
+
+            if git diff --name-only HEAD~1 HEAD | grep -q "^deploy/shared-components/analytics-service/\|^labs/\|^deploy/Dockerfile.index"; then
+              DEPLOY_LABS="true"
+              echo "✅ Labs components changed"
+            fi
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Manual trigger: deploy all
+            DEPLOY_HOME="true"
+            DEPLOY_LABS="true"
+            echo "✅ Manual trigger, deploying all"
+          fi
+
+          echo "deploy_home=$DEPLOY_HOME" >> $GITHUB_OUTPUT
+          echo "deploy_labs=$DEPLOY_LABS" >> $GITHUB_OUTPUT
+
+          echo ""
+          echo "📋 Deployment plan:"
+          echo "  Home components: $DEPLOY_HOME"
+          echo "  Labs components: $DEPLOY_LABS"
 
       - name: Set environment variables
         id: set-env
         run: |
-          if [[ "${{ github.event.inputs.environment }}" == "stg" ]]; then
+          # Determine environment:
+          # - For workflow_dispatch: use the input parameter
+          # - For pull_request: use the base branch (stg -> stg, main -> prd)
+          # - For push: use the target branch (stg -> stg, main -> prd)
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            ENV_INPUT="${{ github.event.inputs.environment }}"
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # PRs against stg branch deploy to STG, PRs against main deploy to PRD
+            if [[ "${{ github.base_ref }}" == "stg" ]]; then
+              ENV_INPUT="stg"
+            else
+              ENV_INPUT="prd"
+            fi
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            # Push to stg branch deploys to STG, push to main deploys to PRD
+            if [[ "${{ github.ref }}" == "refs/heads/stg" ]]; then
+              ENV_INPUT="stg"
+            else
+              ENV_INPUT="prd"
+            fi
+          else
+            ENV_INPUT="prd"
+          fi
+
+          if [[ "$ENV_INPUT" == "stg" ]]; then
             echo "environment=stg" >> $GITHUB_OUTPUT
             echo "domain_prefix=labs.stg.pcioasis.com" >> $GITHUB_OUTPUT
+            echo "home_project_id=labs-home-stg" >> $GITHUB_OUTPUT
+            echo "labs_project_id=labs-stg" >> $GITHUB_OUTPUT
           else
             echo "environment=prd" >> $GITHUB_OUTPUT
             echo "domain_prefix=labs.pcioasis.com" >> $GITHUB_OUTPUT
+            echo "home_project_id=labs-home-prd" >> $GITHUB_OUTPUT
+            echo "labs_project_id=labs-prd" >> $GITHUB_OUTPUT
           fi
+
+          echo "Determined environment: $ENV_INPUT (from ${{ github.event_name }}, ref: ${{ github.ref }}, base_ref: ${{ github.base_ref }})"
 
       - name: Discover lab directories
         id: discover-labs
@@ -69,7 +187,13 @@ jobs:
     needs: setup
     runs-on: ubuntu-latest
     # Skip deployment for Dependabot PRs (secrets not available)
-    if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
+    # Only deploy if home components changed or force keyword detected
+    if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && needs.setup.outputs.deploy_home == 'true'
+    env:
+      HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
+      LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
+      # Use environment-specific secrets if available, fallback to generic secret
+      HOME_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_HOME_SA_KEY_STG != '' && secrets.GCP_HOME_SA_KEY_STG != null && secrets.GCP_HOME_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_HOME_SA_KEY_PRD != '' && secrets.GCP_HOME_SA_KEY_PRD != null && secrets.GCP_HOME_SA_KEY_PRD) || secrets.GCP_HOME_SA_KEY }}
 
     steps:
       - name: Checkout code
@@ -85,6 +209,61 @@ jobs:
         if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null
         uses: google-github-actions/setup-gcloud@v3
 
+      - name: Verify authenticated service account
+        if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null
+        run: |
+          echo "🔍 Verifying authenticated service account..."
+          SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
+          EXPECTED_SA="home-deploy-sa@${{ env.HOME_PROJECT_ID }}.iam.gserviceaccount.com"
+          echo "Authenticated as: $SA_EMAIL"
+          echo "Expected service account: $EXPECTED_SA"
+          echo "Environment: ${{ needs.setup.outputs.environment }}"
+          echo "Project: ${{ env.HOME_PROJECT_ID }}"
+
+          if [[ "$SA_EMAIL" != *"home-deploy-sa@${{ env.HOME_PROJECT_ID }}.iam.gserviceaccount.com" ]]; then
+            echo "❌ ERROR: Service account mismatch!"
+            echo "   Authenticated: $SA_EMAIL"
+            echo "   Expected: $EXPECTED_SA"
+            echo ""
+            echo "📋 This indicates the GitHub secret GCP_HOME_SA_KEY contains the wrong service account key."
+            echo "   For ${{ needs.setup.outputs.environment }} environment, you need:"
+            echo "   - Service account: $EXPECTED_SA"
+            echo ""
+            echo "   To fix:"
+            echo "   1. Create a key for the correct service account:"
+            echo "      gcloud iam service-accounts keys create /tmp/home-deploy-key.json \\"
+            echo "        --iam-account=$EXPECTED_SA \\"
+            echo "        --project=${{ env.HOME_PROJECT_ID }}"
+            echo ""
+            echo "   2. Update the GitHub secret:"
+            if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
+              echo "      gh secret set GCP_HOME_SA_KEY_STG --body \"\$(cat /tmp/home-deploy-key.json)\" \\"
+              echo "        --repo pci-tamper-protect/e-skimming-labs"
+            else
+              echo "      gh secret set GCP_HOME_SA_KEY_PRD --body \"\$(cat /tmp/home-deploy-key.json)\" \\"
+              echo "        --repo pci-tamper-protect/e-skimming-labs"
+            fi
+            echo ""
+            echo "   3. Or use the generic secret (less secure):"
+            echo "      gh secret set GCP_HOME_SA_KEY --body \"\$(cat /tmp/home-deploy-key.json)\" \\"
+            echo "        --repo pci-tamper-protect/e-skimming-labs"
+            echo ""
+            echo "   4. Clean up: rm /tmp/home-deploy-key.json"
+            echo ""
+            exit 1
+          else
+            echo "✅ Service account matches expected value"
+          fi
+
+          # Also check project
+          CURRENT_PROJECT=$(gcloud config get-value project 2>/dev/null || echo "unknown")
+          echo "Current GCP project: $CURRENT_PROJECT"
+          echo "Expected project: ${{ env.HOME_PROJECT_ID }}"
+          if [[ "$CURRENT_PROJECT" != "${{ env.HOME_PROJECT_ID }}" ]]; then
+            echo "⚠️  WARNING: Project mismatch! Setting correct project..."
+            gcloud config set project ${{ env.HOME_PROJECT_ID }}
+          fi
+
       - name: Configure Docker to use gcloud as credential helper
         if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null
         run: |
@@ -95,7 +274,21 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Check if SEO image exists
+        id: check-seo-image
+        if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null
+        run: |
+          IMAGE="${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:${{ github.sha }}"
+          if gcloud artifacts docker images describe "$IMAGE" --project="${{ env.HOME_PROJECT_ID }}" --location="${{ env.HOME_GAR_LOCATION }}" &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Image already exists: $IMAGE"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  Image not found, will build: $IMAGE"
+          fi
+
       - name: Build SEO Service
+        if: steps.check-seo-image.outputs.exists != 'true'
         uses: docker/build-push-action@v6
         with:
           context: deploy/shared-components/seo-service
@@ -110,7 +303,38 @@ jobs:
           cache-to: type=gha,mode=max
           load: true
 
+      - name: Check if Index image exists
+        id: check-index-image
+        if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null
+        run: |
+          IMAGE="${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:${{ github.sha }}"
+          if gcloud artifacts docker images describe "$IMAGE" --project="${{ env.HOME_PROJECT_ID }}" --location="${{ env.HOME_GAR_LOCATION }}" &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Image already exists: $IMAGE"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  Image not found, will build: $IMAGE"
+          fi
+
+      - name: Generate catalog-info.yaml
+        if: steps.check-index-image.outputs.exists != 'true'
+        run: |
+          echo "🔄 Generating catalog-info.yaml..."
+          if [ ! -f scripts/generate-catalog-info.sh ]; then
+            echo "❌ ERROR: scripts/generate-catalog-info.sh not found"
+            echo "The catalog-info.yaml file must be generated before building"
+            exit 1
+          fi
+          chmod +x scripts/generate-catalog-info.sh
+          ./scripts/generate-catalog-info.sh
+          if [ ! -f catalog-info.yaml ]; then
+            echo "❌ ERROR: catalog-info.yaml was not generated"
+            exit 1
+          fi
+          echo "✅ catalog-info.yaml generated successfully"
+
       - name: Build Index Service
+        if: steps.check-index-image.outputs.exists != 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -128,54 +352,201 @@ jobs:
       - name: Push SEO Service to Artifact Registry
         if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null
         run: |
-          docker push ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:${{ github.sha }}
-          docker push ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:latest
+          echo "📤 Pushing SEO service images to Artifact Registry..."
+          echo "Repository: ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}"
+          SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
+          echo "Using service account: $SA_EMAIL"
+
+          # Verify repository exists and check permissions
+          echo "🔍 Verifying repository access..."
+          REPO_NAME="${{ env.HOME_REPOSITORY }}"
+          REPO_LOCATION="${{ env.HOME_GAR_LOCATION }}"
+          REPO_PROJECT="${{ env.HOME_PROJECT_ID }}"
+
+          if ! gcloud artifacts repositories describe "$REPO_NAME" \
+            --location="$REPO_LOCATION" \
+            --project="$REPO_PROJECT" &>/dev/null; then
+            echo "❌ Repository $REPO_NAME does not exist in project $REPO_PROJECT"
+            echo ""
+            echo "📋 To create the repository, run:"
+            echo "   cd deploy/terraform-home"
+            echo "   terraform init -backend-config=backend-${{ needs.setup.outputs.environment }}.conf"
+            echo "   terraform apply -var=\"environment=${{ needs.setup.outputs.environment }}\""
+            echo ""
+            echo "   Or create it manually:"
+            echo "   gcloud artifacts repositories create $REPO_NAME \\"
+            echo "     --repository-format=docker \\"
+            echo "     --location=$REPO_LOCATION \\"
+            echo "     --project=$REPO_PROJECT"
+            exit 1
+          fi
+
+          # Check IAM permissions
+          echo "🔍 Checking IAM permissions for $SA_EMAIL..."
+          gcloud artifacts repositories get-iam-policy "$REPO_NAME" \
+            --location="$REPO_LOCATION" \
+            --project="$REPO_PROJECT" \
+            --flatten="bindings[].members" \
+            --filter="bindings.members:serviceAccount:$SA_EMAIL" \
+            --format="table(bindings.role)" || echo "⚠️  Could not check repository IAM policy"
+
+          # Push images
+          IMAGE_BASE="${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo"
+          IMAGE_SHA="${IMAGE_BASE}:${{ github.sha }}"
+          IMAGE_LATEST="${IMAGE_BASE}:latest"
+
+          docker push "$IMAGE_SHA" || {
+            echo "❌ Failed to push image with SHA tag"
+            echo "Service account used: $SA_EMAIL"
+            echo "Repository: $REPO_NAME"
+            echo "Project: $REPO_PROJECT"
+            echo "Location: $REPO_LOCATION"
+            echo "Image: $IMAGE_SHA"
+            exit 1
+          }
+          docker push "$IMAGE_LATEST" || {
+            echo "❌ Failed to push image with latest tag"
+            echo "Service account used: $SA_EMAIL"
+            echo "Image: $IMAGE_LATEST"
+            exit 1
+          }
 
       - name: Push Index Service to Artifact Registry
-        if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null
+        if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null && steps.check-index-image.outputs.exists != 'true'
         run: |
-          docker push ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:${{ github.sha }}
-          docker push ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:latest
+          echo "📤 Pushing Index service images to Artifact Registry..."
+          SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
+          echo "Using service account: $SA_EMAIL"
+
+          IMAGE_BASE="${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index"
+          IMAGE_SHA="${IMAGE_BASE}:${{ github.sha }}"
+          IMAGE_LATEST="${IMAGE_BASE}:latest"
+
+          docker push "$IMAGE_SHA" || {
+            echo "❌ Failed to push index image with SHA tag"
+            echo "Service account used: $SA_EMAIL"
+            echo "Repository: $REPO_NAME"
+            echo "Project: $REPO_PROJECT"
+            echo "Image: $IMAGE_SHA"
+            exit 1
+          }
+          docker push "$IMAGE_LATEST" || {
+            echo "❌ Failed to push index image with latest tag"
+            echo "Service account used: $SA_EMAIL"
+            echo "Image: $IMAGE_LATEST"
+            exit 1
+          }
 
       - name: Deploy SEO Service to Cloud Run
         if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null
         run: |
-          gcloud run deploy home-seo-${{ needs.setup.outputs.environment }} \
-            --image=${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:${{ github.sha }} \
-            --region=${{ env.HOME_GAR_LOCATION }} \
-            --platform=managed \
-            --allow-unauthenticated \
-            --service-account=home-runtime-sa@${{ env.HOME_PROJECT_ID }}.iam.gserviceaccount.com \
-            --port=8080 \
-            --memory=512Mi \
-            --cpu=1 \
-            --min-instances=0 \
-            --max-instances=5 \
-            --set-env-vars="PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }}" \
-            --labels="environment=${{ needs.setup.outputs.environment }},component=seo,project=e-skimming-labs-home"
+          # For staging: Use --no-allow-unauthenticated (IAM groups will be added via Terraform)
+          # For production: Use --allow-unauthenticated (public access)
+          if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
+            gcloud run deploy home-seo-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:${{ github.sha }} \
+              --region=${{ env.HOME_GAR_LOCATION }} \
+              --platform=managed \
+              --no-allow-unauthenticated \
+              --service-account=home-runtime-sa@${{ env.HOME_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=8080 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=0 \
+              --max-instances=5 \
+              --set-env-vars="PROJECT_ID=${{ env.HOME_PROJECT_ID }},HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }}" \
+              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=seo,project=e-skimming-labs-home"
+
+            # Grant access to developer groups for staging (Terraform will also manage this)
+            echo "Granting access to developer groups for staging SEO service..."
+            gcloud run services add-iam-policy-binding home-seo-${{ needs.setup.outputs.environment }} \
+              --region=${{ env.HOME_GAR_LOCATION }} \
+              --member="group:2025-interns@pcioasis.com" \
+              --role="roles/run.invoker"
+
+            gcloud run services add-iam-policy-binding home-seo-${{ needs.setup.outputs.environment }} \
+              --region=${{ env.HOME_GAR_LOCATION }} \
+              --member="group:core-eng@pcioasis.com" \
+              --role="roles/run.invoker"
+          else
+            gcloud run deploy home-seo-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:${{ github.sha }} \
+              --region=${{ env.HOME_GAR_LOCATION }} \
+              --platform=managed \
+              --allow-unauthenticated \
+              --service-account=home-runtime-sa@${{ env.HOME_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=8080 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=0 \
+              --max-instances=5 \
+              --set-env-vars="PROJECT_ID=${{ env.HOME_PROJECT_ID }},HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }}" \
+              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_PRD:latest \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=seo,project=e-skimming-labs-home"
+          fi
 
       - name: Deploy Index Service to Cloud Run
         if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null
         run: |
-          gcloud run deploy home-index-${{ needs.setup.outputs.environment }} \
-            --image=${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:${{ github.sha }} \
-            --region=${{ env.HOME_GAR_LOCATION }} \
-            --platform=managed \
-            --allow-unauthenticated \
-            --service-account=home-runtime-sa@${{ env.HOME_PROJECT_ID }}.iam.gserviceaccount.com \
-            --port=8080 \
-            --memory=512Mi \
-            --cpu=1 \
-            --min-instances=0 \
-            --max-instances=5 \
-            --set-env-vars="PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app" \
-            --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs-home"
+          # For staging: Use --no-allow-unauthenticated (IAM groups will be added via Terraform)
+          # For production: Use --allow-unauthenticated (public access)
+          if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
+            gcloud run deploy home-index-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:${{ github.sha }} \
+              --region=${{ env.HOME_GAR_LOCATION }} \
+              --platform=managed \
+              --no-allow-unauthenticated \
+              --service-account=home-runtime-sa@${{ env.HOME_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=8080 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=0 \
+              --max-instances=5 \
+              --set-env-vars="HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/banking.html,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/index.html" \
+              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs-home"
+
+            # Grant access to developer groups for staging (Terraform will also manage this)
+            echo "Granting access to developer groups for staging Index service..."
+            gcloud run services add-iam-policy-binding home-index-${{ needs.setup.outputs.environment }} \
+              --region=${{ env.HOME_GAR_LOCATION }} \
+              --member="group:2025-interns@pcioasis.com" \
+              --role="roles/run.invoker"
+
+            gcloud run services add-iam-policy-binding home-index-${{ needs.setup.outputs.environment }} \
+              --region=${{ env.HOME_GAR_LOCATION }} \
+              --member="group:core-eng@pcioasis.com" \
+              --role="roles/run.invoker"
+          else
+            gcloud run deploy home-index-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:${{ github.sha }} \
+              --region=${{ env.HOME_GAR_LOCATION }} \
+              --platform=managed \
+              --allow-unauthenticated \
+              --service-account=home-runtime-sa@${{ env.HOME_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=8080 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=0 \
+              --max-instances=5 \
+              --set-env-vars="HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/banking.html,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/index.html" \
+              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_PRD:latest \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs-home"
+          fi
 
   deploy-labs-components:
     needs: setup
     runs-on: ubuntu-latest
     # Skip deployment for Dependabot PRs (secrets not available)
-    if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
+    # Only deploy if labs components changed or force keyword detected
+    if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && needs.setup.outputs.deploy_labs == 'true'
+    env:
+      HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
+      LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
+      # Use environment-specific secrets - fallback to generic secret
+      # Note: GitHub Actions treats missing secrets as empty strings, so we check for non-empty
+      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
 
     steps:
       - name: Checkout code
@@ -191,6 +562,69 @@ jobs:
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
         uses: google-github-actions/setup-gcloud@v3
 
+      - name: Verify authenticated service account
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        run: |
+          echo "🔍 Verifying authenticated service account..."
+          echo ""
+          echo "📋 Secret selection info:"
+          if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
+            echo "   Expected secret: GCP_LABS_SA_KEY_STG"
+            echo "   Fallback secret: GCP_LABS_SA_KEY (if STG not set)"
+          else
+            echo "   Expected secret: GCP_LABS_SA_KEY_PRD"
+            echo "   Fallback secret: GCP_LABS_SA_KEY (if PRD not set)"
+          fi
+          echo ""
+
+          SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
+          EXPECTED_SA="labs-deploy-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com"
+          echo "Authenticated as: $SA_EMAIL"
+          echo "Expected service account: $EXPECTED_SA"
+          echo "Environment: ${{ needs.setup.outputs.environment }}"
+          echo "Project: ${{ env.LABS_PROJECT_ID }}"
+          echo ""
+
+          if [[ "$SA_EMAIL" != *"labs-deploy-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com" ]]; then
+            echo "❌ ERROR: Service account mismatch!"
+            echo "   Authenticated: $SA_EMAIL"
+            echo "   Expected: $EXPECTED_SA"
+            echo ""
+            echo "📋 This indicates the GitHub secret contains the wrong service account key."
+            echo "   For ${{ needs.setup.outputs.environment }} environment, you need:"
+            echo "   - Service account: $EXPECTED_SA"
+            echo ""
+            echo "   To fix:"
+            echo "   1. Create a key for the correct service account:"
+            echo "      gcloud iam service-accounts keys create /tmp/labs-deploy-key.json \\"
+            echo "        --iam-account=$EXPECTED_SA \\"
+            echo "        --project=${{ env.LABS_PROJECT_ID }}"
+            echo ""
+            echo "   2. Update the GitHub secret:"
+            if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
+              echo "      gh secret set GCP_LABS_SA_KEY_STG --body \"\$(cat /tmp/labs-deploy-key.json)\" \\"
+              echo "        --repo pci-tamper-protect/e-skimming-labs"
+            else
+              echo "      gh secret set GCP_LABS_SA_KEY_PRD --body \"\$(cat /tmp/labs-deploy-key.json)\" \\"
+              echo "        --repo pci-tamper-protect/e-skimming-labs"
+            fi
+            echo ""
+            echo "   3. Clean up: rm /tmp/labs-deploy-key.json"
+            echo ""
+            exit 1
+          else
+            echo "✅ Service account verification passed!"
+          fi
+
+          # Also check project
+          CURRENT_PROJECT=$(gcloud config get-value project 2>/dev/null || echo "unknown")
+          echo "Current GCP project: $CURRENT_PROJECT"
+          echo "Expected project: ${{ env.LABS_PROJECT_ID }}"
+          if [[ "$CURRENT_PROJECT" != "${{ env.LABS_PROJECT_ID }}" ]]; then
+            echo "⚠️  WARNING: Project mismatch! Setting correct project..."
+            gcloud config set project ${{ env.LABS_PROJECT_ID }}
+          fi
+
       - name: Configure Docker to use gcloud as credential helper
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
         run: |
@@ -201,7 +635,43 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Calculate Analytics content hash
+        id: analytics-hash
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        run: |
+          cd deploy/shared-components/analytics-service
+          # Calculate hash of all files that affect the build
+          CONTENT_HASH=$(find . -type f \( -name "*.go" -o -name "*.mod" -o -name "*.sum" -o -name "Dockerfile*" -o -name "go.*" \) -exec sha256sum {} \; 2>/dev/null | sort | sha256sum | cut -d' ' -f1)
+          echo "hash=$CONTENT_HASH" >> $GITHUB_OUTPUT
+          echo "Content hash: $CONTENT_HASH"
+          echo "Files included:"
+          find . -type f \( -name "*.go" -o -name "*.mod" -o -name "*.sum" -o -name "Dockerfile*" -o -name "go.*" \) | head -10
+
+      - name: Check if Analytics image exists
+        id: check-analytics-image
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        run: |
+          # Check both SHA tag and content hash tag
+          IMAGE_SHA="${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ github.sha }}"
+          IMAGE_HASH="${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ steps.analytics-hash.outputs.hash }}"
+
+          # Check if image with content hash exists (most reliable)
+          if gcloud artifacts docker images describe "$IMAGE_HASH" --project="${{ env.LABS_PROJECT_ID }}" --location="${{ env.LABS_GAR_LOCATION }}" &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Image with content hash already exists: $IMAGE_HASH"
+            echo "ℹ️  Source files haven't changed, skipping build"
+          # Fallback: check if image with SHA exists (for re-runs)
+          elif gcloud artifacts docker images describe "$IMAGE_SHA" --project="${{ env.LABS_PROJECT_ID }}" --location="${{ env.LABS_GAR_LOCATION }}" &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Image with SHA already exists: $IMAGE_SHA"
+            echo "ℹ️  Skipping build (re-run of same commit)"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  Image not found, will build: $IMAGE_SHA"
+          fi
+
       - name: Build Analytics Service
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null && steps.check-analytics-image.outputs.exists != 'true'
         uses: docker/build-push-action@v6
         with:
           context: deploy/shared-components/analytics-service
@@ -209,41 +679,134 @@ jobs:
           push: false
           tags: |
             ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ github.sha }}
+            ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ steps.analytics-hash.outputs.hash }}
             ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:latest
           build-args: |
             ENVIRONMENT=${{ needs.setup.outputs.environment }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=analytics
+          cache-to: type=gha,mode=max,scope=analytics
           load: true
 
       - name: Push Analytics Service to Artifact Registry
-        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null && steps.check-analytics-image.outputs.exists != 'true'
         run: |
-          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ github.sha }}
-          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:latest
+          echo "📤 Pushing analytics image with tags:"
+          SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
+          echo "Using service account: $SA_EMAIL"
+          echo "Repository: ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}"
+
+          # Verify repository exists and check permissions
+          echo "🔍 Verifying repository access..."
+          REPO_NAME="${{ env.LABS_REPOSITORY }}"
+          REPO_LOCATION="${{ env.LABS_GAR_LOCATION }}"
+          REPO_PROJECT="${{ env.LABS_PROJECT_ID }}"
+
+          if ! gcloud artifacts repositories describe "$REPO_NAME" \
+            --location="$REPO_LOCATION" \
+            --project="$REPO_PROJECT" &>/dev/null; then
+            echo "❌ Repository $REPO_NAME does not exist in project $REPO_PROJECT"
+            exit 1
+          fi
+
+          # Check IAM permissions
+          echo "🔍 Checking IAM permissions for $SA_EMAIL..."
+          gcloud artifacts repositories get-iam-policy "$REPO_NAME" \
+            --location="$REPO_LOCATION" \
+            --project="$REPO_PROJECT" \
+            --flatten="bindings[].members" \
+            --filter="bindings.members:serviceAccount:$SA_EMAIL" \
+            --format="table(bindings.role)" || echo "⚠️  Could not check repository IAM policy"
+
+          # Push images
+          IMAGE_BASE="${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics"
+          IMAGE_SHA="${IMAGE_BASE}:${{ github.sha }}"
+          IMAGE_HASH="${IMAGE_BASE}:${{ steps.analytics-hash.outputs.hash }}"
+          IMAGE_LATEST="${IMAGE_BASE}:latest"
+
+          docker push "$IMAGE_SHA" || {
+            echo "❌ Failed to push analytics image with SHA tag"
+            echo "Service account used: $SA_EMAIL"
+            echo "Repository: $REPO_NAME"
+            echo "Project: $REPO_PROJECT"
+            echo "Image: $IMAGE_SHA"
+            exit 1
+          }
+          docker push "$IMAGE_HASH" || {
+            echo "❌ Failed to push analytics image with hash tag"
+            echo "Service account used: $SA_EMAIL"
+            echo "Image: $IMAGE_HASH"
+            exit 1
+          }
+          docker push "$IMAGE_LATEST" || {
+            echo "❌ Failed to push analytics image with latest tag"
+            echo "Service account used: $SA_EMAIL"
+            echo "Image: $IMAGE_LATEST"
+            exit 1
+          }
 
       - name: Deploy Analytics Service to Cloud Run
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
         run: |
-          gcloud run deploy labs-analytics-${{ needs.setup.outputs.environment }} \
-            --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ github.sha }} \
-            --region=${{ env.LABS_GAR_LOCATION }} \
-            --platform=managed \
-            --allow-unauthenticated \
-            --service-account=labs-runtime-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
-            --port=8080 \
-            --memory=512Mi \
-            --cpu=1 \
-            --min-instances=0 \
-            --max-instances=5 \
-            --set-env-vars="PROJECT_ID=${{ env.LABS_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},FIRESTORE_DATABASE=(default)" \
-            --labels="environment=${{ needs.setup.outputs.environment }},component=analytics,project=e-skimming-labs"
+          # Analytics service is backend-only (called by lab services)
+          # For staging: Use --no-allow-unauthenticated (IAM groups will be added via Terraform)
+          # For production: Keep --allow-unauthenticated for service-to-service calls
+          # Note: Analytics is typically only called by lab services, not directly by users
+          if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
+            gcloud run deploy labs-analytics-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ github.sha }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --platform=managed \
+              --no-allow-unauthenticated \
+              --service-account=labs-runtime-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=8080 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=0 \
+              --max-instances=5 \
+              --set-env-vars="PROJECT_ID=${{ env.LABS_PROJECT_ID }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},FIRESTORE_DATABASE=(default)" \
+              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=analytics,project=e-skimming-labs"
+
+            # Grant access to developer groups for staging (Terraform will also manage this)
+            echo "Granting access to developer groups for staging Analytics service..."
+            gcloud run services add-iam-policy-binding labs-analytics-${{ needs.setup.outputs.environment }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --member="group:2025-interns@pcioasis.com" \
+              --role="roles/run.invoker"
+
+            gcloud run services add-iam-policy-binding labs-analytics-${{ needs.setup.outputs.environment }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --member="group:core-eng@pcioasis.com" \
+              --role="roles/run.invoker"
+          else
+            gcloud run deploy labs-analytics-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/analytics:${{ github.sha }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --platform=managed \
+              --allow-unauthenticated \
+              --service-account=labs-runtime-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=8080 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=0 \
+              --max-instances=5 \
+              --set-env-vars="PROJECT_ID=${{ env.LABS_PROJECT_ID }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},FIRESTORE_DATABASE=(default)" \
+              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_PRD:latest \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=analytics,project=e-skimming-labs"
+          fi
 
   deploy-labs:
     needs: [setup, deploy-labs-components]
     runs-on: ubuntu-latest
     # Skip deployment for Dependabot PRs (secrets not available)
-    if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
+    # Only deploy if labs components changed or force keyword detected
+    if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && needs.setup.outputs.deploy_labs == 'true'
+    env:
+      HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
+      LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
+      # Use environment-specific secrets - fallback to generic secret
+      # Note: GitHub Actions treats missing secrets as empty strings, so we check for non-empty
+      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
     strategy:
       matrix:
         lab: ${{ fromJson(needs.setup.outputs.labs) }}
@@ -263,6 +826,38 @@ jobs:
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
         uses: google-github-actions/setup-gcloud@v3
 
+      - name: Verify authenticated service account
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        run: |
+          echo "🔍 Verifying authenticated service account..."
+          SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
+          EXPECTED_SA="labs-deploy-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com"
+          echo "Authenticated as: $SA_EMAIL"
+          echo "Expected service account: $EXPECTED_SA"
+          echo "Environment: ${{ needs.setup.outputs.environment }}"
+          echo "Project: ${{ env.LABS_PROJECT_ID }}"
+
+          if [[ "$SA_EMAIL" != *"labs-deploy-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com" ]]; then
+            echo "❌ ERROR: Service account mismatch!"
+            echo "   Authenticated: $SA_EMAIL"
+            echo "   Expected: $EXPECTED_SA"
+            echo ""
+            echo "📋 This indicates the GitHub secret contains the wrong service account key."
+            echo "   See verification step output above for fix instructions."
+            exit 1
+          else
+            echo "✅ Service account matches expected value"
+          fi
+
+          # Also check project
+          CURRENT_PROJECT=$(gcloud config get-value project 2>/dev/null || echo "unknown")
+          echo "Current GCP project: $CURRENT_PROJECT"
+          echo "Expected project: ${{ env.LABS_PROJECT_ID }}"
+          if [[ "$CURRENT_PROJECT" != "${{ env.LABS_PROJECT_ID }}" ]]; then
+            echo "⚠️  WARNING: Project mismatch! Setting correct project..."
+            gcloud config set project ${{ env.LABS_PROJECT_ID }}
+          fi
+
       - name: Configure Docker to use gcloud as credential helper
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
         run: |
@@ -273,7 +868,21 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Check if lab image exists
+        id: check-lab-image
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        run: |
+          IMAGE="${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }}"
+          if gcloud artifacts docker images describe "$IMAGE" --project="${{ env.LABS_PROJECT_ID }}" --location="${{ env.LABS_GAR_LOCATION }}" &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Image already exists: $IMAGE"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  Image not found, will build: $IMAGE"
+          fi
+
       - name: Build lab container image
+        if: steps.check-lab-image.outputs.exists != 'true'
         uses: docker/build-push-action@v6
         with:
           context: labs/${{ matrix.lab }}
@@ -290,28 +899,87 @@ jobs:
           load: true
 
       - name: Push container image to Artifact Registry
-        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null && steps.check-lab-image.outputs.exists != 'true'
         run: |
-          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }}
-          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:latest
+          SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
+          REPO_NAME="${{ env.LABS_REPOSITORY }}"
+          REPO_LOCATION="${{ env.LABS_GAR_LOCATION }}"
+          REPO_PROJECT="${{ env.LABS_PROJECT_ID }}"
+
+          echo "📤 Pushing lab container image: ${{ matrix.lab }}"
+          echo "Using service account: $SA_EMAIL"
+          echo "Repository: $REPO_NAME"
+          echo "Project: $REPO_PROJECT"
+
+          IMAGE_BASE="${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}"
+          IMAGE_SHA="${IMAGE_BASE}:${{ github.sha }}"
+          IMAGE_LATEST="${IMAGE_BASE}:latest"
+
+          docker push "$IMAGE_SHA" || {
+            echo "❌ Failed to push lab image with SHA tag"
+            echo "Service account used: $SA_EMAIL"
+            echo "Lab: ${{ matrix.lab }}"
+            echo "Repository: $REPO_NAME"
+            echo "Project: $REPO_PROJECT"
+            echo "Image: $IMAGE_SHA"
+            exit 1
+          }
+          docker push "$IMAGE_LATEST" || {
+            echo "❌ Failed to push lab image with latest tag"
+            echo "Service account used: $SA_EMAIL"
+            echo "Image: $IMAGE_LATEST"
+            exit 1
+          }
 
       - name: Deploy to Cloud Run
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
         run: |
           # Deploy lab as separate Cloud Run service
-          gcloud run deploy lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
-            --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }} \
-            --region=${{ env.LABS_GAR_LOCATION }} \
-            --platform=managed \
-            --allow-unauthenticated \
-            --service-account=labs-runtime-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
-            --port=8080 \
-            --memory=512Mi \
-            --cpu=1 \
-            --min-instances=0 \
-            --max-instances=10 \
-            --set-env-vars="LAB_NAME=${{ matrix.lab }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},HOME_URL=https://${{ needs.setup.outputs.domain_prefix }},C2_URL=https://lab-${{ matrix.lab }}-c2-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app" \
-            --labels="environment=${{ needs.setup.outputs.environment }},lab=${{ matrix.lab }},project=e-skimming-labs"
+          # For staging: Use --no-allow-unauthenticated to restrict access (IAM groups will be added via Terraform)
+          # For production: Use --allow-unauthenticated for public access
+          if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
+            gcloud run deploy lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --platform=managed \
+              --no-allow-unauthenticated \
+              --service-account=labs-runtime-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=8080 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=0 \
+              --max-instances=10 \
+              --set-env-vars="LAB_NAME=${{ matrix.lab }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},HOME_URL=https://${{ needs.setup.outputs.domain_prefix }},C2_URL=https://lab-${{ matrix.lab }}-c2-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app" \
+              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
+              --labels="environment=${{ needs.setup.outputs.environment }},lab=${{ matrix.lab }},project=e-skimming-labs"
+
+            # Grant access to developer groups for staging
+            echo "Granting access to developer groups for staging lab..."
+            gcloud run services add-iam-policy-binding lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --member="group:2025-interns@pcioasis.com" \
+              --role="roles/run.invoker"
+
+            gcloud run services add-iam-policy-binding lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --member="group:core-eng@pcioasis.com" \
+              --role="roles/run.invoker"
+          else
+            gcloud run deploy lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --platform=managed \
+              --allow-unauthenticated \
+              --service-account=labs-runtime-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=8080 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=0 \
+              --max-instances=10 \
+              --set-env-vars="LAB_NAME=${{ matrix.lab }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},HOME_URL=https://${{ needs.setup.outputs.domain_prefix }},C2_URL=https://lab-${{ matrix.lab }}-c2-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app" \
+              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_PRD:latest \
+              --labels="environment=${{ needs.setup.outputs.environment }},lab=${{ matrix.lab }},project=e-skimming-labs"
+          fi
 
       - name: Configure custom domain mapping
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
@@ -334,7 +1002,14 @@ jobs:
     needs: [setup, deploy-labs, deploy-home-components]
     runs-on: ubuntu-latest
     # Skip deployment for Dependabot PRs (secrets not available)
-    if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
+    # Only deploy if labs components changed or force keyword detected (index is part of labs)
+    if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && needs.setup.outputs.deploy_labs == 'true'
+    env:
+      HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
+      LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
+      # Use environment-specific secrets - fallback to generic secret
+      # Note: GitHub Actions treats missing secrets as empty strings, so we check for non-empty
+      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
 
     steps:
       - name: Checkout code
@@ -350,6 +1025,38 @@ jobs:
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
         uses: google-github-actions/setup-gcloud@v3
 
+      - name: Verify authenticated service account
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        run: |
+          echo "🔍 Verifying authenticated service account..."
+          SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
+          EXPECTED_SA="labs-deploy-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com"
+          echo "Authenticated as: $SA_EMAIL"
+          echo "Expected service account: $EXPECTED_SA"
+          echo "Environment: ${{ needs.setup.outputs.environment }}"
+          echo "Project: ${{ env.LABS_PROJECT_ID }}"
+
+          if [[ "$SA_EMAIL" != *"labs-deploy-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com" ]]; then
+            echo "❌ ERROR: Service account mismatch!"
+            echo "   Authenticated: $SA_EMAIL"
+            echo "   Expected: $EXPECTED_SA"
+            echo ""
+            echo "📋 This indicates the GitHub secret contains the wrong service account key."
+            echo "   See verification step output above for fix instructions."
+            exit 1
+          else
+            echo "✅ Service account matches expected value"
+          fi
+
+          # Also check project
+          CURRENT_PROJECT=$(gcloud config get-value project 2>/dev/null || echo "unknown")
+          echo "Current GCP project: $CURRENT_PROJECT"
+          echo "Expected project: ${{ env.LABS_PROJECT_ID }}"
+          if [[ "$CURRENT_PROJECT" != "${{ env.LABS_PROJECT_ID }}" ]]; then
+            echo "⚠️  WARNING: Project mismatch! Setting correct project..."
+            gcloud config set project ${{ env.LABS_PROJECT_ID }}
+          fi
+
       - name: Configure Docker to use gcloud as credential helper
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
         run: |
@@ -360,7 +1067,21 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Check if labs index image exists
+        id: check-labs-index-image
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        run: |
+          IMAGE="${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:${{ github.sha }}"
+          if gcloud artifacts docker images describe "$IMAGE" --project="${{ env.LABS_PROJECT_ID }}" --location="${{ env.LABS_GAR_LOCATION }}" &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Image already exists: $IMAGE"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  Image not found, will build: $IMAGE"
+          fi
+
       - name: Build index page container
+        if: steps.check-labs-index-image.outputs.exists != 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -377,27 +1098,85 @@ jobs:
           load: true
 
       - name: Push index container to Artifact Registry
-        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null && steps.check-labs-index-image.outputs.exists != 'true'
         run: |
-          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:${{ github.sha }}
-          docker push ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:latest
+          SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
+          REPO_NAME="${{ env.LABS_REPOSITORY }}"
+          REPO_LOCATION="${{ env.LABS_GAR_LOCATION }}"
+          REPO_PROJECT="${{ env.LABS_PROJECT_ID }}"
+
+          echo "📤 Pushing labs index container image"
+          echo "Using service account: $SA_EMAIL"
+          echo "Repository: $REPO_NAME"
+          echo "Project: $REPO_PROJECT"
+
+          IMAGE_BASE="${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index"
+          IMAGE_SHA="${IMAGE_BASE}:${{ github.sha }}"
+          IMAGE_LATEST="${IMAGE_BASE}:latest"
+
+          docker push "$IMAGE_SHA" || {
+            echo "❌ Failed to push labs index image with SHA tag"
+            echo "Service account used: $SA_EMAIL"
+            echo "Repository: $REPO_NAME"
+            echo "Project: $REPO_PROJECT"
+            echo "Image: $IMAGE_SHA"
+            exit 1
+          }
+          docker push "$IMAGE_LATEST" || {
+            echo "❌ Failed to push labs index image with latest tag"
+            echo "Service account used: $SA_EMAIL"
+            echo "Image: $IMAGE_LATEST"
+            exit 1
+          }
 
       - name: Deploy index page to Cloud Run
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
         run: |
-          gcloud run deploy labs-index-${{ needs.setup.outputs.environment }} \
-            --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:${{ github.sha }} \
-            --region=${{ env.LABS_GAR_LOCATION }} \
-            --platform=managed \
-            --allow-unauthenticated \
-            --service-account=labs-runtime-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
-            --port=8080 \
-            --memory=512Mi \
-            --cpu=1 \
-            --min-instances=0 \
-            --max-instances=5 \
-            --set-env-vars="ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},ANALYTICS_SERVICE_URL=https://labs-analytics-${{ needs.setup.outputs.environment }}-hash.a.run.app,SEO_SERVICE_URL=https://labs-seo-${{ needs.setup.outputs.environment }}-hash.a.run.app" \
-            --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs"
+          # For staging: Use --no-allow-unauthenticated (IAM groups will be added via Terraform)
+          # For production: Use --allow-unauthenticated (public access)
+          if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
+            gcloud run deploy labs-index-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:${{ github.sha }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --platform=managed \
+              --no-allow-unauthenticated \
+              --service-account=labs-runtime-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=8080 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=0 \
+              --max-instances=5 \
+              --set-env-vars="ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},ANALYTICS_SERVICE_URL=https://labs-analytics-${{ needs.setup.outputs.environment }}-hash.a.run.app,SEO_SERVICE_URL=https://labs-seo-${{ needs.setup.outputs.environment }}-hash.a.run.app" \
+              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs"
+
+            # Grant access to developer groups for staging
+            echo "Granting access to developer groups for staging Index service..."
+            gcloud run services add-iam-policy-binding labs-index-${{ needs.setup.outputs.environment }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --member="group:2025-interns@pcioasis.com" \
+              --role="roles/run.invoker"
+
+            gcloud run services add-iam-policy-binding labs-index-${{ needs.setup.outputs.environment }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --member="group:core-eng@pcioasis.com" \
+              --role="roles/run.invoker"
+          else
+            gcloud run deploy labs-index-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/index:${{ github.sha }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --platform=managed \
+              --allow-unauthenticated \
+              --service-account=labs-runtime-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=8080 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=0 \
+              --max-instances=5 \
+              --set-env-vars="ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},ANALYTICS_SERVICE_URL=https://labs-analytics-${{ needs.setup.outputs.environment }}-hash.a.run.app,SEO_SERVICE_URL=https://labs-seo-${{ needs.setup.outputs.environment }}-hash.a.run.app" \
+              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_PRD:latest \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs"
+          fi
 
       - name: Configure index domain mapping
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
@@ -410,24 +1189,409 @@ jobs:
     needs: [setup, deploy-labs, deploy-home-components, deploy-labs-components]
     runs-on: ubuntu-latest
     if: always()
+    env:
+      LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
+      HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
+      ENVIRONMENT: ${{ needs.setup.outputs.environment }}
+      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
+    outputs:
+      deployment_success: ${{ steps.check-deployment.outputs.success }}
 
     steps:
-      - name: Report deployment status
-        run: |
-          if [[ "${{ needs.deploy-labs.result }}" == "success" && "${{ needs.deploy-home-components.result }}" == "success" && "${{ needs.deploy-labs-components.result }}" == "success" ]]; then
-            echo "✅ All labs deployed successfully to ${{ needs.setup.outputs.domain_prefix }}"
-            echo "Labs available at:"
-            echo "  - Index: https://${{ needs.setup.outputs.domain_prefix }}"
+      - name: Checkout code
+        uses: actions/checkout@v6
 
-            # List deployed labs
-            labs='${{ needs.setup.outputs.labs }}'
-            echo "$labs" | jq -r '.[]' | while read lab; do
-              echo "  - $lab: https://${{ needs.setup.outputs.domain_prefix }}/$lab"
-            done
+      - name: Authenticate to Google Cloud
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ env.LABS_GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Check deployment status
+        id: check-deployment
+        run: |
+          # Check if all required deployments succeeded (or were skipped appropriately)
+          DEPLOY_LABS_SUCCESS=$([[ "${{ needs.deploy-labs.result }}" == "success" ]] && echo "true" || echo "false")
+          DEPLOY_HOME_SUCCESS=$([[ "${{ needs.deploy-home-components.result }}" == "success" || "${{ needs.deploy-home-components.result }}" == "skipped" ]] && echo "true" || echo "false")
+          DEPLOY_LABS_COMPONENTS_SUCCESS=$([[ "${{ needs.deploy-labs-components.result }}" == "success" ]] && echo "true" || echo "false")
+
+          if [[ "$DEPLOY_LABS_SUCCESS" == "true" && "$DEPLOY_HOME_SUCCESS" == "true" && "$DEPLOY_LABS_COMPONENTS_SUCCESS" == "true" ]]; then
+            echo "success=true" >> $GITHUB_OUTPUT
+            echo "✅ All required deployments completed successfully to ${{ needs.setup.outputs.domain_prefix }}"
           else
-            echo "❌ Deployment failed"
+            echo "success=false" >> $GITHUB_OUTPUT
+            echo "❌ Deployment failed or incomplete"
             echo "deploy-labs result: ${{ needs.deploy-labs.result }}"
             echo "deploy-home-components result: ${{ needs.deploy-home-components.result }}"
             echo "deploy-labs-components result: ${{ needs.deploy-labs-components.result }}"
             exit 1
           fi
+
+      - name: Wait for Cloud Run services to be ready
+        if: steps.check-deployment.outputs.success == 'true' && env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        run: |
+          echo "⏳ Waiting for Cloud Run services to be ready and serving traffic..."
+
+          REGION="us-central1"
+          MAX_ATTEMPTS=30
+          ATTEMPT=0
+
+          # Function to check if service is ready
+          check_service_ready() {
+            local SERVICE_NAME=$1
+            local PROJECT=$2
+            local STATUS=$(gcloud run services describe "$SERVICE_NAME" \
+              --region="$REGION" \
+              --project="$PROJECT" \
+              --format="value(status.conditions[0].status)" 2>/dev/null || echo "Unknown")
+
+            if [[ "$STATUS" == "True" ]]; then
+              local URL=$(gcloud run services describe "$SERVICE_NAME" \
+                --region="$REGION" \
+                --project="$PROJECT" \
+                --format="value(status.url)" 2>/dev/null)
+
+              # Try to access the service
+              if curl -sf --max-time 5 "$URL" > /dev/null 2>&1; then
+                return 0
+              fi
+            fi
+            return 1
+          }
+
+          # Wait for home-index service
+          if [[ "${{ needs.setup.outputs.deploy_home }}" == "true" ]]; then
+            echo "Checking home-index-${{ needs.setup.outputs.environment }}..."
+            ATTEMPT=0
+            while [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; do
+              if check_service_ready "home-index-${{ needs.setup.outputs.environment }}" "${{ env.HOME_PROJECT_ID }}"; then
+                echo "✅ home-index-${{ needs.setup.outputs.environment }} is ready"
+                break
+              fi
+              ATTEMPT=$((ATTEMPT + 1))
+              echo "  Attempt $ATTEMPT/$MAX_ATTEMPTS: Waiting for home-index service..."
+              sleep 5
+            done
+
+            if [[ $ATTEMPT -eq $MAX_ATTEMPTS ]]; then
+              echo "⚠️  Warning: home-index service may not be fully ready, but continuing..."
+            fi
+          fi
+
+          # Wait for labs-index service
+          echo "Checking labs-index-${{ needs.setup.outputs.environment }}..."
+          ATTEMPT=0
+          while [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; do
+            if check_service_ready "labs-index-${{ needs.setup.outputs.environment }}" "${{ env.LABS_PROJECT_ID }}"; then
+              echo "✅ labs-index-${{ needs.setup.outputs.environment }} is ready"
+              break
+            fi
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "  Attempt $ATTEMPT/$MAX_ATTEMPTS: Waiting for labs-index service..."
+            sleep 5
+          done
+
+          if [[ $ATTEMPT -eq $MAX_ATTEMPTS ]]; then
+            echo "⚠️  Warning: labs-index service may not be fully ready, but continuing..."
+          fi
+
+          # Wait for a few lab services (sample check)
+          labs='${{ needs.setup.outputs.labs }}'
+          LAB_COUNT=$(echo "$labs" | jq 'length')
+          if [[ $LAB_COUNT -gt 0 ]]; then
+            FIRST_LAB=$(echo "$labs" | jq -r '.[0]')
+            echo "Checking lab-$FIRST_LAB-${{ needs.setup.outputs.environment }}..."
+            ATTEMPT=0
+            while [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; do
+              if check_service_ready "lab-$FIRST_LAB-${{ needs.setup.outputs.environment }}" "${{ env.LABS_PROJECT_ID }}"; then
+                echo "✅ lab-$FIRST_LAB-${{ needs.setup.outputs.environment }} is ready"
+                break
+              fi
+              ATTEMPT=$((ATTEMPT + 1))
+              echo "  Attempt $ATTEMPT/$MAX_ATTEMPTS: Waiting for lab service..."
+              sleep 5
+            done
+          fi
+
+          echo "✅ Cloud Run services are ready for testing"
+
+      - name: List deployed services
+        if: steps.check-deployment.outputs.success == 'true'
+        run: |
+          echo "Labs available at:"
+          echo "  - Index: https://${{ needs.setup.outputs.domain_prefix }}"
+
+          # List deployed labs
+          labs='${{ needs.setup.outputs.labs }}'
+          echo "$labs" | jq -r '.[]' | while read lab; do
+            echo "  - $lab: https://${{ needs.setup.outputs.domain_prefix }}/$lab"
+          done
+
+  e2e-tests:
+    needs: [setup, deploy-labs, deploy-home-components, deploy-labs-components, deploy-index, notify-deployment]
+    runs-on: ubuntu-latest
+    # Only run e2e tests after successful deployment on push events (not PRs)
+    if: github.event_name == 'push' && needs.notify-deployment.outputs.deployment_success == 'true'
+    # Use matrix strategy to shard tests across multiple parallel jobs
+    # GitHub Enterprise supports up to 256 matrix jobs, but we'll use 4 shards for optimal performance
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+        total-shards: [4]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: test/node_modules
+          key: ${{ runner.os }}-npm-${{ hashFiles('test/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      - name: Install dependencies
+        working-directory: test
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: test
+        run: npx playwright install --with-deps chromium
+
+      - name: Wait for deployment to stabilize
+        run: |
+          echo "⏳ Waiting 30 seconds for deployment to stabilize..."
+          sleep 30
+
+      - name: Run E2E tests (shard ${{ matrix.shard }}/${{ matrix.total-shards }})
+        working-directory: test
+        env:
+          TEST_ENV: ${{ needs.setup.outputs.environment }}
+        run: |
+          echo "🧪 Running E2E tests (shard ${{ matrix.shard }}/${{ matrix.total-shards }})"
+          echo "🔗 Base URL: https://${{ needs.setup.outputs.domain_prefix }}"
+          echo "📊 Test shard: ${{ matrix.shard }}/${{ matrix.total-shards }}"
+          npx playwright test e2e --shard=${{ matrix.shard }}/${{ matrix.total-shards }}
+        continue-on-error: true
+
+      - name: Upload test results (shard ${{ matrix.shard }})
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ needs.setup.outputs.environment }}-shard-${{ matrix.shard }}
+          path: test/playwright-report/
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Upload test JSON results (shard ${{ matrix.shard }})
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-json-${{ needs.setup.outputs.environment }}-shard-${{ matrix.shard }}
+          path: test/test-results/results.json
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Upload test screenshots (shard ${{ matrix.shard }})
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-screenshots-${{ needs.setup.outputs.environment }}-shard-${{ matrix.shard }}
+          path: test/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  e2e-tests-merge:
+    needs: [setup, deploy-labs, deploy-home-components, deploy-labs-components, deploy-index, notify-deployment, e2e-tests]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && needs.notify-deployment.outputs.deployment_success == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Download all test results
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          pattern: playwright-json-${{ needs.setup.outputs.environment }}-shard-*
+          merge-multiple: true
+          path: test/test-results-merged/
+          if-no-files-found: ignore
+
+      - name: Download test reports from all shards
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          pattern: playwright-report-${{ needs.setup.outputs.environment }}-shard-*
+          path: test/reports-merged/
+          if-no-files-found: ignore
+
+      - name: Check which shard jobs failed using GitHub API
+        id: check-shard-jobs
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🔍 Checking which test shard jobs failed..."
+          FAILED_SHARDS=()
+
+          # Use GitHub CLI to check workflow run jobs
+          if command -v gh &> /dev/null && gh auth status &> /dev/null; then
+            echo "Using GitHub CLI to check job status..."
+            # Get jobs for this workflow run
+            JOBS=$(gh run view ${{ github.run_id }} --json jobs --jq '.jobs[] | select(.name | startswith("e2e-tests")) | {name: .name, conclusion: .conclusion, status: .status}')
+            echo "$JOBS" | jq -r '.name + ": " + .conclusion + " (" + .status + ")"' || echo "Could not parse job results"
+
+            # Extract shard numbers from failed jobs
+            echo "$JOBS" | jq -r 'select(.conclusion == "failure" or .conclusion == "cancelled") | .name' | while read job_name; do
+              if [[ "$job_name" =~ shard[[:space:]]*([0-9]+) ]]; then
+                shard_num="${BASH_REMATCH[1]}"
+                FAILED_SHARDS+=("$shard_num")
+                echo "Found failed shard: $shard_num"
+              fi
+            done
+          else
+            echo "GitHub CLI not available, will infer from test results"
+          fi
+
+          # Output failed shards
+          if [ ${#FAILED_SHARDS[@]} -gt 0 ]; then
+            echo "failed_shards=${FAILED_SHARDS[*]}" >> $GITHUB_OUTPUT
+            echo "has_failed_shards=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_failed_shards=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Analyze test results and report failures
+        id: analyze-results
+        if: always()
+        run: |
+          echo "📊 Analyzing test results from all shards..."
+
+          TOTAL_TESTS=0
+          FAILED_TESTS=0
+          PASSED_TESTS=0
+
+          # Check JSON results files if they exist
+          if [ -d "test/test-results-merged" ]; then
+            for json_file in test/test-results-merged/*.json; do
+              if [ -f "$json_file" ]; then
+                echo "Found results file: $json_file"
+                if command -v jq &> /dev/null; then
+                  # Playwright JSON results format
+                  stats=$(jq -r '.stats // {}' "$json_file" 2>/dev/null || echo "{}")
+                  if [ -n "$stats" ] && [ "$stats" != "{}" ]; then
+                    failures=$(echo "$stats" | jq -r '.failures // 0' 2>/dev/null || echo "0")
+                    total=$(echo "$stats" | jq -r '.total // 0' 2>/dev/null || echo "0")
+                    passed=$(echo "$stats" | jq -r '.passed // 0' 2>/dev/null || echo "0")
+                    FAILED_TESTS=$((FAILED_TESTS + failures))
+                    TOTAL_TESTS=$((TOTAL_TESTS + total))
+                    PASSED_TESTS=$((PASSED_TESTS + passed))
+                    echo "  Failures: $failures, Passed: $passed, Total: $total"
+                  fi
+                fi
+              fi
+            done
+          fi
+
+          echo "total_tests=$TOTAL_TESTS" >> $GITHUB_OUTPUT
+          echo "failed_tests=$FAILED_TESTS" >> $GITHUB_OUTPUT
+          echo "passed_tests=$PASSED_TESTS" >> $GITHUB_OUTPUT
+
+          if [ "$FAILED_TESTS" -gt 0 ] || [ "${{ steps.check-shard-jobs.outputs.has_failed_shards }}" == "true" ]; then
+            echo "has_failures=true" >> $GITHUB_OUTPUT
+            echo "❌ Test failures detected: $FAILED_TESTS out of $TOTAL_TESTS tests failed"
+            if [ "${{ steps.check-shard-jobs.outputs.failed_shards }}" != "" ]; then
+              echo "Failed shards: ${{ steps.check-shard-jobs.outputs.failed_shards }}"
+            fi
+          else
+            echo "has_failures=false" >> $GITHUB_OUTPUT
+            if [ "$TOTAL_TESTS" -gt 0 ]; then
+              echo "✅ All tests passed: $TOTAL_TESTS tests"
+            else
+              echo "⚠️  No test results found (tests may have failed before producing results)"
+              echo "has_failures=true" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Comment test results on commit
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const environment = '${{ needs.setup.outputs.environment }}';
+            const baseUrl = 'https://${{ needs.setup.outputs.domain_prefix }}';
+            const failedTests = '${{ steps.analyze-results.outputs.failed_tests }}' || '0';
+            const totalTests = '${{ steps.analyze-results.outputs.total_tests }}' || '0';
+            const hasFailures = '${{ steps.analyze-results.outputs.has_failures }}' === 'true';
+
+            // Determine status emoji and message
+            const statusEmoji = hasFailures ? '❌' : '✅';
+            const statusText = hasFailures ? 'FAILED' : 'PASSED';
+
+            const failedShards = '${{ steps.check-shard-jobs.outputs.failed_shards }}' || 'Unknown';
+
+            // Create a comment with test status
+            const comment = `## 🧪 E2E Test Results (${environment.toUpperCase()}) ${statusEmoji}
+
+            **Status:** ${statusText}
+            **Environment:** ${environment}
+            **Base URL:** ${baseUrl}
+            **Run:** ${{ github.run_number }}
+            **Shards:** 4 parallel test shards
+
+            **Test Summary:**
+            - Total Tests: ${totalTests}
+            - Passed Tests: ${{ steps.analyze-results.outputs.passed_tests }}
+            - Failed Tests: ${failedTests}
+            ${hasFailures ? `- ⚠️ **Failed Shards:** ${failedShards}` : '- ✅ All tests passed'}
+
+            ${hasFailures ? '**Check individual shard jobs in the workflow run to see detailed failure information.**' : ''}
+
+            Test artifacts:
+            - [Test Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            - [Screenshots](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+            Tests ran against the newly deployed environment using parallel sharding for faster execution.`;
+
+            github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+              body: comment
+            });
+
+      - name: Fail if any shard had test failures
+        if: steps.analyze-results.outputs.has_failures == 'true'
+        run: |
+          echo "❌ Test failures detected. Failing merge step."
+          echo ""
+          echo "Test Summary:"
+          echo "  - Total Tests: ${{ steps.analyze-results.outputs.total_tests }}"
+          echo "  - Passed Tests: ${{ steps.analyze-results.outputs.passed_tests }}"
+          echo "  - Failed Tests: ${{ steps.analyze-results.outputs.failed_tests }}"
+          if [ -n "${{ steps.check-shard-jobs.outputs.failed_shards }}" ]; then
+            echo "  - Failed Shards: ${{ steps.check-shard-jobs.outputs.failed_shards }}"
+          fi
+          echo ""
+          echo "Check individual shard jobs in the workflow run to see detailed failure information:"
+          echo "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo ""
+          echo "To view specific shard results:"
+          echo "  - Shard 1: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/job/..."
+          echo "  - Shard 2: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/job/..."
+          echo "  - Shard 3: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/job/..."
+          echo "  - Shard 4: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/job/..."
+          exit 1

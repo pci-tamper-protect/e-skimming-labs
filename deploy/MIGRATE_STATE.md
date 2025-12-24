@@ -1,5 +1,13 @@
 # Migrating Local Terraform State to GCS Backend
 
+## Prerequisites
+
+Before running any Terraform commands, authenticate with Google Cloud:
+
+```bash
+gcloud auth application-default login
+```
+
 ## Problem
 You previously deployed Terraform locally, so you have local `.tfstate` files. Now you're switching to a GCS backend, but you need to:
 1. Fix permissions on the state bucket

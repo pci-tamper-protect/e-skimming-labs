@@ -11,7 +11,8 @@ test/
 *.md
 README.md
 **/README.md
-# Allow lab README files for home-index service (exceptions handled in labs section below)
+# Allow lab README files for home-index service (exceptions handled below)
+!labs/*/README.md
 # Keep docs/ for home-index service build
 # docs/
 # **/docs/
@@ -41,10 +42,8 @@ dist/
 *.tmp
 
 # Labs (only build when needed)
-# Exclude labs but allow README files for home-index service
-# Pattern: exclude all labs, but allow README.md files in any lab subdirectory
-labs/
-!labs/*/README.md
+# Note: labs/ directory is copied by home-index Dockerfile to extract README files
+# The !labs/*/README.md exception above ensures README files are included
 
 # Test results
 test-results/

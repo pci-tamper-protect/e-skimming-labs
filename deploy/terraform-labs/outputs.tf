@@ -1,8 +1,8 @@
 # Outputs
 
-output "project_id" {
-  description = "The GCP project ID"
-  value       = var.project_id
+output "labs_project_id" {
+  description = "The GCP project ID for labs"
+  value       = local.labs_project_id
 }
 
 output "region" {
@@ -32,7 +32,7 @@ output "storage_bucket_logs" {
 
 output "analytics_service_url" {
   description = "The Analytics service URL"
-  value       = var.deploy_services ? google_cloud_run_v2_service.analytics_service[0].uri : "Service not deployed yet"
+  value       = google_cloud_run_v2_service.analytics_service[0].uri
 }
 
 output "seo_service_url" {
@@ -71,7 +71,7 @@ output "github_secrets_instructions_labs" {
   value       = <<-EOT
     Add the following secrets to your GitHub repository for LABS deployment:
     
-    1. GCP_LABS_PROJECT_ID: ${var.project_id}
+    1. GCP_LABS_PROJECT_ID: ${local.labs_project_id}
     2. GCP_LABS_SA_KEY: [Use the service account key from terraform output]
     3. GAR_LABS_LOCATION: ${var.region}
     4. REPOSITORY_LABS: e-skimming-labs

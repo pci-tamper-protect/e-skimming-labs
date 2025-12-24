@@ -1,10 +1,16 @@
 # Node modules
 node_modules/
 package-lock.json
+!test/package-lock.json
 
 # npm cache files
 **/_update-notifier-last-checked
 **/clean/
+
+.env.keys.*
+.env.keys
+.env.*.bak.*
+.env.*.bak
 
 # Stolen data
 **/stolen-data/*
@@ -38,8 +44,13 @@ npm-debug.log*
 # Environment
 .env
 .env.local
-# Note: .env.stg and .env.prd in deploy/ are tracked
-# deploy/.env should be a symlink to one of them
+# Note: Encrypted .env.stg and .env.prd files ARE tracked (they're encrypted, safe to commit)
+# BUT: deploy/.env.* files should NEVER be committed (only root-level .env.* files exist)
+deploy/.env.*
+deploy/.env
+# Private keys (.env.keys.*) are NOT tracked (must be kept secret)
+# Hash files (.env.hashes.*) ARE tracked (for audit trail)
+# dotenvx-ops project files (.env.x, .env.x.*) ARE tracked (contains only public DOTENVX_PROJECT_ID)
 
 # Terraform
 **/.terraform/**
@@ -55,8 +66,18 @@ deploy/*-sa-key.json
 deploy/*.json
 *.json
 !package.json
+!package-lock.json
+!test/package-lock.json
 !go.mod
 !go.sum
 !tsconfig.json
 
 test/MITRE_ATTACK_FIX_REPORT.md
+
+# dotenvx encryption keys (added by dotenvx-converter)
+.env.*.keys
+
+# dotenvx encryption keys (added by dotenvx-converter)
+.env.prd.keys
+.env.prod.keys
+.env.production.keys

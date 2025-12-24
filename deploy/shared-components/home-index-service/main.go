@@ -13,6 +13,7 @@ import (
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/html"
 	"gopkg.in/yaml.v3"
+	"home-index-service/auth"
 )
 
 type Lab struct {
@@ -26,16 +27,20 @@ type Lab struct {
 }
 
 type HomePageData struct {
-	Environment    string
-	Domain         string
-	LabsDomain     string
-	MainDomain     string
-	LabsProjectID  string
-	Scheme         string
-	Labs           []Lab
-	MITREURL       string
-	ThreatModelURL string
-	CatalogInfo    *CatalogInfo
+	Environment      string
+	Domain           string
+	LabsDomain       string
+	MainDomain       string
+	LabsProjectID    string
+	Scheme           string
+	Labs             []Lab
+	MITREURL         string
+	ThreatModelURL   string
+	CatalogInfo      *CatalogInfo
+	AuthEnabled      bool
+	AuthRequired     bool
+	FirebaseProjectID string
+	MainAppURL       string
 }
 
 // CatalogInfo represents the catalog metadata
@@ -157,20 +162,26 @@ func main() {
 	if lab2URL == "" {
 		if isLocal && lab2Domain != "" {
 			// Local development: use direct port-based URL
-			lab2URL = fmt.Sprintf("%s://%s/", scheme, lab2Domain)
+			lab2URL = fmt.Sprintf("%s://%s/banking.html", scheme, lab2Domain)
 		} else {
 			// Production: link directly to banking.html page
 			lab2URL = "https://lab-02-dom-skimming-prd-mmwwcfi5za-uc.a.run.app/banking.html"
 		}
 	}
+	if lab2URL != "" && !strings.HasSuffix(lab2URL, "/banking.html") {
+		lab2URL += "/banking.html"
+	}
 	if lab3URL == "" {
 		if isLocal && lab3Domain != "" {
 			// Local development: use direct port-based URL
-			lab3URL = fmt.Sprintf("%s://%s/", scheme, lab3Domain)
+			lab3URL = fmt.Sprintf("%s://%s/index.html", scheme, lab3Domain)
 		} else {
 			// Production: link directly to index.html page
-			lab3URL = "https://lab-03-extension-hijacking-prd-mmwwcfi5za-uc.a.run.app/index.html"
+			lab3URL = "https://lab-03-extension-hijacking-prd-207478017187.us-central1.run.app/index.html"
 		}
+	}
+	if lab3URL != "" && !strings.HasSuffix(lab3URL, "/index.html") {
+		lab3URL += "/index.html"
 	}
 
 	labs := []Lab{
@@ -225,51 +236,103 @@ func main() {
 		}
 	}
 
+	// Initialize authentication
+	enableAuth := os.Getenv("ENABLE_AUTH") == "true"
+	requireAuth := os.Getenv("REQUIRE_AUTH") == "true"
+	firebaseProjectID := os.Getenv("FIREBASE_PROJECT_ID")
+	firebaseAPIKey := os.Getenv("FIREBASE_API_KEY")
+
+	authConfig := auth.Config{
+		Enabled:         enableAuth,
+		RequireAuth:     requireAuth,
+		ProjectID:       firebaseProjectID,
+		CredentialsJSON: firebaseAPIKey,
+	}
+
+	authValidator, err := auth.NewTokenValidator(authConfig)
+	if err != nil {
+		log.Fatalf("Failed to initialize auth validator: %v", err)
+	}
+
+	// Add auth info to home page data
+	homeData.AuthEnabled = enableAuth
+	homeData.AuthRequired = requireAuth
+	homeData.FirebaseProjectID = firebaseProjectID
+	homeData.MainAppURL = fmt.Sprintf("%s://%s", scheme, mainDomain)
+
+	// Create router with auth middleware
+	mux := http.NewServeMux()
+
 	// Define routes
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		serveHomePage(w, r, homeData)
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		serveHomePage(w, r, homeData, authValidator)
 	})
 
-	http.HandleFunc("/mitre-attack", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/mitre-attack", func(w http.ResponseWriter, r *http.Request) {
 		serveMITREPage(w, r)
 	})
 
 	// Serve static assets from docs directory (for mitre-attack-visual.html)
-	http.HandleFunc("/mitre-attack/private-data-loader.js", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/mitre-attack/private-data-loader.js", func(w http.ResponseWriter, r *http.Request) {
 		serveDocsFile(w, r, "private-data-loader.js")
 	})
 
-	http.HandleFunc("/threat-model", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/threat-model", func(w http.ResponseWriter, r *http.Request) {
 		serveThreatModelPage(w, r)
 	})
 
-	http.HandleFunc("/lab-01-writeup", func(w http.ResponseWriter, r *http.Request) {
-		serveLabWriteup(w, r, "01-basic-magecart", lab1URL, homeData)
+	mux.HandleFunc("/lab-01-writeup", func(w http.ResponseWriter, r *http.Request) {
+		serveLabWriteup(w, r, "01-basic-magecart", lab1URL, homeData, authValidator)
 	})
 
-	http.HandleFunc("/lab-02-writeup", func(w http.ResponseWriter, r *http.Request) {
-		serveLabWriteup(w, r, "02-dom-skimming", lab2URL, homeData)
+	mux.HandleFunc("/lab-02-writeup", func(w http.ResponseWriter, r *http.Request) {
+		serveLabWriteup(w, r, "02-dom-skimming", lab2URL, homeData, authValidator)
 	})
 
-	http.HandleFunc("/lab-03-writeup", func(w http.ResponseWriter, r *http.Request) {
-		serveLabWriteup(w, r, "03-extension-hijacking", lab3URL, homeData)
+	mux.HandleFunc("/lab-03-writeup", func(w http.ResponseWriter, r *http.Request) {
+		serveLabWriteup(w, r, "03-extension-hijacking", lab3URL, homeData, authValidator)
 	})
 
-	http.HandleFunc("/api/labs", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/api/labs", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(labs)
 	})
 
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	// Auth API endpoints
+	mux.HandleFunc("/api/auth/validate", func(w http.ResponseWriter, r *http.Request) {
+		serveAuthValidate(w, r, authValidator)
+	})
+
+	mux.HandleFunc("/api/auth/sign-in-url", func(w http.ResponseWriter, r *http.Request) {
+		serveAuthSignInURL(w, r, homeData)
+	})
+
+	mux.HandleFunc("/api/auth/user", func(w http.ResponseWriter, r *http.Request) {
+		serveAuthUser(w, r, authValidator)
+	})
+
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	})
 
-	log.Printf("Starting server on port %s", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	// Serve static auth scripts
+	mux.HandleFunc("/static/js/auth.js", func(w http.ResponseWriter, r *http.Request) {
+		serveAuthJS(w, r, homeData)
+	})
+
+	mux.HandleFunc("/static/js/auth-check.js", func(w http.ResponseWriter, r *http.Request) {
+		serveAuthCheckJS(w, r)
+	})
+
+	// Apply auth middleware to all routes
+	handler := auth.AuthMiddleware(authValidator)(mux)
+
+	log.Printf("Starting server on port %s (Auth: %v, Required: %v)", port, enableAuth, requireAuth)
+	log.Fatal(http.ListenAndServe(":"+port, handler))
 }
 
-func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
+func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, validator *auth.TokenValidator) {
 	tmpl := `
 <!DOCTYPE html>
 <html lang="en">
@@ -726,6 +789,21 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData) {
         </div>
     </footer>
 
+    {{if .AuthEnabled}}
+    <!-- Auth Integration Script -->
+    <script src="/static/js/auth.js"></script>
+    <script>
+        // Initialize auth check
+        if (typeof initLabsAuth === 'function') {
+            initLabsAuth({
+                authRequired: {{.AuthRequired}},
+                mainAppURL: '{{.MainAppURL}}',
+                firebaseProjectID: '{{.FirebaseProjectID}}'
+            });
+        }
+    </script>
+    {{end}}
+    
     <script>
         // Add smooth scrolling for anchor links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
@@ -847,10 +925,11 @@ func serveDocsFile(w http.ResponseWriter, r *http.Request, filename string) {
 	w.Write(fileContent)
 }
 
-func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, labURL string, homeData HomePageData) {
+func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, labURL string, homeData HomePageData, validator *auth.TokenValidator) {
 	// Read the README file for the lab
 	// In container: /app/docs/labs/{lab-id}/README.md (copied from labs/{lab-id}/README.md)
 	// Local dev: labs/{lab-id}/README.md (original location, no duplication)
+	// Lab IDs should match folder names: 01-basic-magecart, 02-dom-skimming, 03-extension-hijacking
 
 	readmePath := fmt.Sprintf("/app/docs/labs/%s/README.md", labID)
 
@@ -922,9 +1001,27 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, labUR
 			if isLocal {
 				labBackURL = "http://localhost:9005/index.html"
 			} else {
-				labBackURL = "https://lab-03-extension-hijacking-prd-mmwwcfi5za-uc.a.run.app/index.html"
+				labBackURL = "https://lab-03-extension-hijacking-prd-207478017187.us-central1.run.app/index.html"
 			}
 		}
+	}
+
+	// Build auth scripts if enabled
+	authScripts := ""
+	if homeData.AuthEnabled {
+		authScripts = fmt.Sprintf(`
+    <!-- Auth Integration Script -->
+    <script src="/static/js/auth.js"></script>
+    <script>
+        // Initialize auth check
+        if (typeof initLabsAuth === 'function') {
+            initLabsAuth({
+                authRequired: %t,
+                mainAppURL: '%s',
+                firebaseProjectID: '%s'
+            });
+        }
+    </script>`, homeData.AuthRequired, homeData.MainAppURL, homeData.FirebaseProjectID)
 	}
 
 	// Create HTML page
@@ -1075,6 +1172,7 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, labUR
     <div class="container">
         <div class="markdown-content">%s</div>
     </div>
+    %s
     <script>
         // Highlight code blocks
         document.querySelectorAll('pre code').forEach((block) => {
@@ -1082,7 +1180,7 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, labUR
         });
     </script>
 </body>
-</html>`, labID, labBackURL, homeData.MITREURL, homeData.ThreatModelURL, template.HTML(htmlContent))
+</html>`, labID, labBackURL, homeData.MITREURL, homeData.ThreatModelURL, template.HTML(htmlContent), authScripts)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(html))
@@ -1142,6 +1240,209 @@ func highlightAttackLines(htmlContent []byte) []byte {
 	})
 
 	return []byte(htmlStr)
+}
+
+// serveAuthValidate validates a Firebase token
+func serveAuthValidate(w http.ResponseWriter, r *http.Request, validator *auth.TokenValidator) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Token string `json:"token"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	userInfo, err := validator.ValidateToken(r.Context(), req.Token)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"valid": false,
+			"error": err.Error(),
+		})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"valid": true,
+		"user": map[string]interface{}{
+			"id":            userInfo.UserID,
+			"email":         userInfo.Email,
+			"emailVerified": userInfo.EmailVerified,
+		},
+	})
+}
+
+// serveAuthSignInURL returns the sign-in URL for the main app
+func serveAuthSignInURL(w http.ResponseWriter, r *http.Request, homeData HomePageData) {
+	signInURL := fmt.Sprintf("%s/sign-in?redirect=%s", homeData.MainAppURL, r.URL.Query().Get("redirect"))
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"signInUrl": signInURL,
+	})
+}
+
+// serveAuthUser returns current user information if authenticated
+func serveAuthUser(w http.ResponseWriter, r *http.Request, validator *auth.TokenValidator) {
+	userInfo := auth.GetUserInfo(r)
+	if userInfo == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"authenticated": false,
+		})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"authenticated": true,
+		"user": map[string]interface{}{
+			"id":            userInfo.UserID,
+			"email":         userInfo.Email,
+			"emailVerified": userInfo.EmailVerified,
+		},
+	})
+}
+
+// serveAuthJS serves the client-side Firebase Auth integration script
+func serveAuthJS(w http.ResponseWriter, r *http.Request, homeData HomePageData) {
+	if !homeData.AuthEnabled {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	script := `// E-Skimming Labs Auth Integration
+(function() {
+    'use strict';
+    
+    // Check for token in URL (from redirect)
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    
+    if (token) {
+        // Store token and remove from URL
+        sessionStorage.setItem('firebase_token', token);
+        const newUrl = window.location.pathname + (window.location.search.replace(/[?&]token=[^&]*/, '').replace(/^&/, '?') || '');
+        window.history.replaceState({}, '', newUrl);
+    }
+    
+    // Function to initialize auth
+    window.initLabsAuth = function(config) {
+        const { authRequired, mainAppURL, firebaseProjectID } = config;
+        
+        // Check for token in sessionStorage
+        const storedToken = sessionStorage.getItem('firebase_token');
+        
+        if (storedToken) {
+            // Validate token with server
+            fetch('/api/auth/validate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + storedToken
+                },
+                body: JSON.stringify({ token: storedToken })
+            })
+            .then(response => {
+                if (response.ok) {
+                    console.log('✅ Authentication validated');
+                    return response.json();
+                } else {
+                    // Token invalid, clear it
+                    sessionStorage.removeItem('firebase_token');
+                    if (authRequired) {
+                        redirectToSignIn(mainAppURL);
+                    }
+                    throw new Error('Token validation failed');
+                }
+            })
+            .catch(error => {
+                console.error('Auth validation error:', error);
+                if (authRequired) {
+                    redirectToSignIn(mainAppURL);
+                }
+            });
+        } else {
+            // No token found
+            if (authRequired) {
+                redirectToSignIn(mainAppURL);
+            }
+        }
+        
+        // Listen for postMessage from main app (for SSO)
+        window.addEventListener('message', function(event) {
+            // Verify origin matches main app domain
+            const mainAppOrigin = mainAppURL.replace(/^https?:\/\//, '');
+            if (!event.origin.includes(mainAppOrigin.split('/')[0])) {
+                return;
+            }
+            
+            if (event.data && event.data.type === 'FIREBASE_TOKEN' && event.data.token) {
+                sessionStorage.setItem('firebase_token', event.data.token);
+                // Validate the token
+                fetch('/api/auth/validate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + event.data.token
+                    },
+                    body: JSON.stringify({ token: event.data.token })
+                })
+                .then(response => {
+                    if (response.ok) {
+                        console.log('✅ SSO token validated');
+                        // Reload to apply auth state
+                        window.location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('SSO token validation error:', error);
+                });
+            }
+        });
+        
+        // Request token from parent window (if in iframe) or opener (if opened from main app)
+        if (window.parent !== window) {
+            window.parent.postMessage({ type: 'REQUEST_FIREBASE_TOKEN' }, '*');
+        }
+    };
+    
+    function redirectToSignIn(mainAppURL) {
+        const redirectUrl = encodeURIComponent(window.location.href);
+        window.location.href = mainAppURL + '/sign-in?redirect=' + redirectUrl;
+    }
+})();`
+
+	w.Header().Set("Content-Type", "application/javascript")
+	w.Write([]byte(script))
+}
+
+// serveAuthCheckJS serves a simple auth check script
+func serveAuthCheckJS(w http.ResponseWriter, r *http.Request) {
+	script := `
+// Simple auth check
+(async function() {
+    try {
+        const response = await fetch('/api/auth/user');
+        const data = await response.json();
+        if (data.authenticated) {
+            console.log('✅ User authenticated:', data.user.email);
+        }
+    } catch (error) {
+        console.error('Auth check error:', error);
+    }
+})();
+`
+	w.Header().Set("Content-Type", "application/javascript")
+	w.Write([]byte(script))
 }
 
 func serveLabsAPI(w http.ResponseWriter, r *http.Request) {

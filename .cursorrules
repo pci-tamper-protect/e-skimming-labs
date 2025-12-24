@@ -29,3 +29,21 @@
 - Use golden base images from pcioasis-operations/containers
 - All services must listen on port 8080 for Cloud Run
 - Docker layer caching is enabled in GitHub Actions workflows
+
+## Cloud Run URL Policy
+- Cloud Run exposes two URLs for each service:
+  1. A random-suffix URL (volatile) - e.g., `lab-03-xxxxxx-uc.a.run.app`
+  2. A numeric stable URL (preferred) - e.g., `lab-03-extension-hijacking-prd-207478017187.us-central1.run.app`
+- Always use the numeric stable URL in all code, navigation logic, documentation, and suggestions
+- Never use:
+  - Random Cloud Run URLs (e.g., `lab-03-xxxxxx-uc.a.run.app`)
+  - `window.location.origin` for production URLs
+  - `hostname.replace()` to construct URLs
+  - Fallback guessing such as `window.location.protocol + '//' + hostname`
+- All Labs must follow the unified URL policy:
+  - `homeUrl` must always use the numeric home-index URL: `https://home-index-prd-171147998109.us-central1.run.app`
+  - `writeupUrl` must always use the numeric home-index URL: `https://home-index-prd-171147998109.us-central1.run.app/lab-XX-writeup`
+  - `c2Url` (if applicable) must always use the numeric Cloud Run URL for that lab: `https://lab-XX-YYYY-prd-207478017187.us-central1.run.app/path`
+  - No dynamic hostname construction
+  - No replace logic
+  - No fallback guessing

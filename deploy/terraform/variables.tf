@@ -1,8 +1,4 @@
-variable "project_id" {
-  description = "The GCP project ID"
-  type        = string
-  default     = "labs-prd"
-}
+# project_id is calculated from environment - no need to pass it
 
 variable "region" {
   description = "The GCP region"
@@ -29,9 +25,8 @@ variable "main_domain" {
 }
 
 variable "environment" {
-  description = "Environment (prd, stg)"
+  description = "Environment (prd, stg) - REQUIRED, no default"
   type        = string
-  default     = "prd"
 }
 
 variable "min_instances" {

@@ -2,28 +2,37 @@
 # Note: These services will be deployed after Docker images are built and pushed
 
 # Analytics Service - Shared component for progress tracking
+# Note: Service is deployed by GitHub Actions workflow, Terraform only manages IAM
+# Keep in state to prevent destruction, but ignore all changes (managed by GitHub Actions)
 resource "google_cloud_run_v2_service" "analytics_service" {
-  count    = var.deploy_services ? 1 : 0
+  count    = 1  # Always keep in state to prevent destruction
   name     = "labs-analytics-${var.environment}"
   location = var.region
-  project  = var.project_id
+  project  = local.labs_project_id
 
   # Protect staging from accidental deletion
   deletion_protection = var.environment == "stg" ? true : false
+
+  # Let GitHub Actions workflow manage the service configuration
+  # Terraform only needs the service to exist for IAM bindings
+  # Ignore all changes since GitHub Actions manages the actual deployment
+  lifecycle {
+    ignore_changes = all  # Ignore all changes - service is fully managed by GitHub Actions
+  }
 
   template {
     service_account = google_service_account.labs_analytics.email
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/e-skimming-labs/analytics:latest"
+      image = "${var.region}-docker.pkg.dev/${local.labs_project_id}/e-skimming-labs/analytics:latest"
 
       ports {
         container_port = 8080
       }
 
       env {
-        name  = "PROJECT_ID"
-        value = var.project_id
+        name  = "LABS_PROJECT_ID"
+        value = local.labs_project_id
       }
 
       env {
@@ -59,8 +68,8 @@ resource "google_cloud_run_v2_service" "analytics_service" {
 # Note: SEO Service and Index Service are now deployed in labs-home-prd project
 
 # Analytics service - Protected backend, only callable by lab services
+# IAM binding persists regardless of deploy_services flag
 resource "google_cloud_run_v2_service_iam_member" "analytics_runtime_access" {
-  count    = var.deploy_services ? 1 : 0
   location = google_cloud_run_v2_service.analytics_service[0].location
   project  = google_cloud_run_v2_service.analytics_service[0].project
   name     = google_cloud_run_v2_service.analytics_service[0].name

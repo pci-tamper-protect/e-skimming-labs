@@ -395,24 +395,26 @@
           homeUrl = 'https://labs.stg.pcioasis.com'
           c2Url = 'https://labs.stg.pcioasis.com/03-extension-hijacking-c2'
           writeupUrl = 'https://labs.stg.pcioasis.com/lab-03-writeup'
-        } else if (hostname.includes('labs.pcioasis.com')) {
-          homeUrl = 'https://labs.pcioasis.com'
-          c2Url = 'https://labs.pcioasis.com/03-extension-hijacking-c2'
-          writeupUrl = 'https://labs.pcioasis.com/lab-03-writeup'
+        } else if (hostname.includes('lab-03-extension-hijacking-prd-207478017187')) {
+          homeUrl = 'https://home-index-prd-171147998109.us-central1.run.app'
+          c2Url = 'https://lab-03-extension-hijacking-prd-207478017187.us-central1.run.app/stolen-data'
+          writeupUrl = 'https://home-index-prd-171147998109.us-central1.run.app/lab-03-writeup'
         } else if (hostname.includes('lab-03-extension-hijacking')) {
-          // Production Cloud Run
-          homeUrl = 'https://labs.pcioasis.com'
-          c2Url = 'https://lab-03-extension-hijacking-c2-prd-mmwwcfi5za-uc.a.run.app'
-          writeupUrl = 'https://labs.pcioasis.com/lab-03-writeup'
+          homeUrl = 'https://home-index-prd-171147998109.us-central1.run.app'
+          c2Url = 'https://lab-03-extension-hijacking-prd-207478017187.us-central1.run.app/stolen-data'
+          writeupUrl = 'https://home-index-prd-171147998109.us-central1.run.app/lab-03-writeup'
         } else if (hostname.includes('run.app') && hostname.includes('lab-03')) {
-          // Production Cloud Run direct URL
-          homeUrl = 'https://labs.pcioasis.com'
-          c2Url = 'https://lab-03-extension-hijacking-c2-prd-mmwwcfi5za-uc.a.run.app'
-          writeupUrl = 'https://labs.pcioasis.com/lab-03-writeup'
+          homeUrl = 'https://home-index-prd-171147998109.us-central1.run.app'
+          c2Url = 'https://lab-03-extension-hijacking-prd-207478017187.us-central1.run.app/stolen-data'
+          writeupUrl = 'https://home-index-prd-171147998109.us-central1.run.app/lab-03-writeup'
+        } else if (hostname.includes('labs.pcioasis.com')) {
+          homeUrl = 'https://home-index-prd-171147998109.us-central1.run.app'
+          c2Url = 'https://lab-03-extension-hijacking-prd-207478017187.us-central1.run.app/stolen-data'
+          writeupUrl = 'https://home-index-prd-171147998109.us-central1.run.app/lab-03-writeup'
         } else {
-          homeUrl = window.location.protocol + '//' + hostname
-          c2Url = window.location.protocol + '//' + hostname + '/c2'
-          writeupUrl = window.location.protocol + '//' + hostname.replace('lab-03-extension-hijacking', 'labs.pcioasis.com') + '/lab-03-writeup'
+          homeUrl = 'https://home-index-prd-171147998109.us-central1.run.app'
+          c2Url = 'https://lab-03-extension-hijacking-prd-207478017187.us-central1.run.app/stolen-data'
+          writeupUrl = 'https://home-index-prd-171147998109.us-central1.run.app/lab-03-writeup'
         }
 
         // Update lab navigation buttons
