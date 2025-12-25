@@ -28,7 +28,7 @@ api:
 
 # Logging
 log:
-  level: INFO
+  level: DEBUG  # Increased to DEBUG for troubleshooting auth issues
   format: json
 
 # Access logs for Cloud Run
@@ -43,6 +43,7 @@ accessLog:
         X-Forwarded-For: keep
         X-Forwarded-Proto: keep
         X-Cloud-Trace-Context: keep
+        Authorization: keep  # Log Authorization header for debugging
 
 # Metrics for Cloud Monitoring
 metrics:

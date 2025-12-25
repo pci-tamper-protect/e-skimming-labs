@@ -1,4 +1,42 @@
 #!/bin/bash
+# Injected mock get_identity_token for testing
+get_identity_token() {
+  local service_url=$1
+  local token_var=""
+
+  case "$service_url" in
+    *home-index*) token_var="HOME_INDEX_TOKEN" ;;
+    *home-seo*) token_var="SEO_TOKEN" ;;
+    *analytics*) token_var="ANALYTICS_TOKEN" ;;
+    *lab-01-basic-magecart*|*lab1*)
+      if [[ "$service_url" == *c2* ]]; then
+        token_var="LAB1_C2_TOKEN"
+      else
+        token_var="LAB1_TOKEN"
+      fi
+      ;;
+    *lab-02-dom-skimming*|*lab2*)
+      if [[ "$service_url" == *c2* ]]; then
+        token_var="LAB2_C2_TOKEN"
+      else
+        token_var="LAB2_TOKEN"
+      fi
+      ;;
+    *lab-03-extension*|*lab3*)
+      if [[ "$service_url" == *extension* ]]; then
+        token_var="LAB3_EXTENSION_TOKEN"
+      else
+        token_var="LAB3_TOKEN"
+      fi
+      ;;
+  esac
+
+  if [ -n "$token_var" ]; then
+    eval "echo \$$token_var"
+  else
+    echo ""
+  fi
+}
 # Entrypoint script for Traefik on Cloud Run
 # Generates dynamic configuration from environment variables
 
@@ -9,49 +47,49 @@ echo "Environment: ${ENVIRONMENT:-local}"
 echo "Domain: ${DOMAIN:-localhost}"
 
 # Create dynamic config directory if it doesn't exist
-mkdir -p /etc/traefik/dynamic
+mkdir -p /Users/kestenbroughton/projectos/e-skimming-labs/deploy/traefik/test-output/dynamic
 
 # Function to get identity token from metadata server for a service URL
-get_identity_token() {
-  local service_url=$1
-  if [ -z "$service_url" ] || [[ "$service_url" == http://localhost* ]]; then
-    # Local development or no URL - return empty
-    echo ""
-    return
-  fi
-
-  # Extract the audience (service URL) for the token
-  local audience="$service_url"
-
-  echo "  🔑 Fetching token for: ${service_url}" >&2
-
-  # Get identity token from metadata server
-  # Metadata server is available at http://metadata.google.internal
-  # URL-encode the audience parameter
-  local encoded_audience=$(echo -n "$audience" | sed 's/:/%3A/g; s/\//%2F/g')
-  local metadata_url="http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=${encoded_audience}"
-
-  local token=$(curl -s -f -H "Metadata-Flavor: Google" "$metadata_url" 2>&1)
-  local curl_exit=$?
-
-  if [ $curl_exit -ne 0 ] || [ -z "$token" ] || [[ "$token" == *"error"* ]] || [[ "$token" == *"Error"* ]]; then
-    echo "⚠️  Warning: Could not fetch identity token for ${service_url} (exit: $curl_exit)" >&2
-    if [ -n "$token" ]; then
-      echo "  Response: ${token:0:200}" >&2  # Truncate to first 200 chars
-    fi
-    echo ""
-  else
-    # Verify token looks valid (should start with eyJ for JWT)
-    if [[ "$token" =~ ^eyJ ]]; then
-      echo "  ✅ Token fetched successfully for ${service_url} (${#token} chars)" >&2
-      echo "$token"
-    else
-      echo "⚠️  Warning: Token response doesn't look valid for ${service_url}" >&2
-      echo "  Response preview: ${token:0:100}" >&2
-      echo ""
-    fi
-  fi
-}
+# get_identity_token() { # COMMENTED OUT FOR TESTING
+#   local service_url=$1
+#   if [ -z "$service_url" ] || [[ "$service_url" == http://localhost* ]]; then
+#     # Local development or no URL - return empty
+#     echo ""
+#     return
+#   fi
+# 
+#   # Extract the audience (service URL) for the token
+#   local audience="$service_url"
+# 
+#   echo "  🔑 Fetching token for: ${service_url}" >&2
+# 
+#   # Get identity token from metadata server
+#   # Metadata server is available at http://metadata.google.internal
+#   # URL-encode the audience parameter
+#   local encoded_audience=$(echo -n "$audience" | sed 's/:/%3A/g; s/\//%2F/g')
+#   local metadata_url="http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=${encoded_audience}"
+# 
+#   local token=$(curl -s -f -H "Metadata-Flavor: Google" "$metadata_url" 2>&1)
+#   local curl_exit=$?
+# 
+#   if [ $curl_exit -ne 0 ] || [ -z "$token" ] || [[ "$token" == *"error"* ]] || [[ "$token" == *"Error"* ]]; then
+#     echo "⚠️  Warning: Could not fetch identity token for ${service_url} (exit: $curl_exit)" >&2
+#     if [ -n "$token" ]; then
+#       echo "  Response: ${token:0:200}" >&2  # Truncate to first 200 chars
+#     fi
+#     echo ""
+#   else
+#     # Verify token looks valid (should start with eyJ for JWT)
+#     if [[ "$token" =~ ^eyJ ]]; then
+#       echo "  ✅ Token fetched successfully for ${service_url} (${#token} chars)" >&2
+#       echo "$token"
+#     else
+#       echo "⚠️  Warning: Token response doesn't look valid for ${service_url}" >&2
+#       echo "  Response preview: ${token:0:100}" >&2
+#       echo ""
+#     fi
+#   fi
+# } # END OF COMMENTED FUNCTION
 
 # Fetch identity tokens for all backend services (only in Cloud Run, not local)
 echo "🔍 Debug: ENVIRONMENT=${ENVIRONMENT}, HOME_INDEX_URL=${HOME_INDEX_URL}"
@@ -95,13 +133,13 @@ else
 fi
 
 # Remove static routes.yml if it exists (for local dev only, conflicts with generated config)
-if [ -f "/etc/traefik/dynamic/routes.yml" ]; then
+if [ -f "/Users/kestenbroughton/projectos/e-skimming-labs/deploy/traefik/test-output/dynamic/routes.yml" ]; then
   echo "⚠️  Removing static routes.yml (conflicts with generated cloudrun-services.yml)"
-  rm /etc/traefik/dynamic/routes.yml
+  rm /Users/kestenbroughton/projectos/e-skimming-labs/deploy/traefik/test-output/dynamic/routes.yml
 fi
 
 # Generate dynamic configuration from environment variables
-cat > /etc/traefik/dynamic/cloudrun-services.yml <<EOF
+cat > /Users/kestenbroughton/projectos/e-skimming-labs/deploy/traefik/test-output/dynamic/cloudrun-services.yml <<EOF
 # Auto-generated Cloud Run service configuration
 # Generated at: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
 # Environment: ${ENVIRONMENT:-local}
@@ -424,7 +462,7 @@ echo ""
 # Validate YAML syntax
 if command -v yq &> /dev/null || command -v python3 &> /dev/null; then
   echo "🔍 Validating generated YAML configuration..."
-  if python3 -c "import yaml; yaml.safe_load(open('/etc/traefik/dynamic/cloudrun-services.yml'))" 2>/dev/null; then
+  if python3 -c "import yaml; yaml.safe_load(open('/Users/kestenbroughton/projectos/e-skimming-labs/deploy/traefik/test-output/dynamic/cloudrun-services.yml'))" 2>/dev/null; then
     echo "  ✅ YAML syntax is valid"
   else
     echo "  ⚠️  YAML validation failed (non-critical, Traefik will validate on load)"
@@ -435,7 +473,7 @@ fi
 if [ -n "$HOME_INDEX_TOKEN" ]; then
   echo ""
   echo "📋 home-index-auth middleware snippet:"
-  grep -A 5 "home-index-auth:" /etc/traefik/dynamic/cloudrun-services.yml | head -6 || echo "  ⚠️  Could not read middleware from config file"
+  grep -A 5 "home-index-auth:" /Users/kestenbroughton/projectos/e-skimming-labs/deploy/traefik/test-output/dynamic/cloudrun-services.yml | head -6 || echo "  ⚠️  Could not read middleware from config file"
 fi
 
 echo ""
@@ -469,8 +507,8 @@ echo "  LAB2_C2_URL: ${LAB2_C2_URL:-http://localhost:3000}"
 echo "  LAB3_URL: ${LAB3_URL:-http://localhost:80}"
 echo "  LAB3_EXTENSION_URL: ${LAB3_EXTENSION_URL:-http://localhost:3000}"
 echo ""
-echo "📝 Generated config file location: /etc/traefik/dynamic/cloudrun-services.yml"
-echo "   To inspect: cat /etc/traefik/dynamic/cloudrun-services.yml | grep -A 10 'home-index-auth'"
+echo "📝 Generated config file location: /Users/kestenbroughton/projectos/e-skimming-labs/deploy/traefik/test-output/dynamic/cloudrun-services.yml"
+echo "   To inspect: cat /Users/kestenbroughton/projectos/e-skimming-labs/deploy/traefik/test-output/dynamic/cloudrun-services.yml | grep -A 10 'home-index-auth'"
 echo ""
 
 # Start Traefik with all arguments passed to this script
