@@ -10,10 +10,11 @@ import (
 	"regexp"
 	"strings"
 
+	"home-index-service/auth"
+
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/html"
 	"gopkg.in/yaml.v3"
-	"home-index-service/auth"
 )
 
 type Lab struct {
@@ -339,18 +340,19 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
 	host := r.Host
 	forwardedHost := r.Header.Get("X-Forwarded-Host")
 	forwardedFor := r.Header.Get("X-Forwarded-For")
-	
+
 	// Check if accessed via proxy:
-	// 1. Direct Host header check (if Traefik passes it through)
-	// 2. X-Forwarded-Host header (if Traefik forwards it)
+	// 1. Direct Host header check (if Traefik passes it through) - must be port 8081
+	// 2. X-Forwarded-Host header (if Traefik forwards it) - must be port 8081
 	// 3. X-Forwarded-For contains 127.0.0.1 (indicates local proxy)
 	// 4. Check if Host contains Cloud Run domain but X-Forwarded-For is localhost (proxy access)
 	isLocalProxy := strings.Contains(forwardedFor, "127.0.0.1") || strings.Contains(forwardedFor, "localhost")
-	isProxyHost := host == "127.0.0.1:8081" || host == "localhost:8081" || 
-		strings.HasPrefix(host, "127.0.0.1:") || strings.HasPrefix(host, "localhost:")
+	// Only match port 8081 (the proxy port), not any localhost port
+	isProxyHost := host == "127.0.0.1:8081" || host == "localhost:8081" ||
+		strings.HasSuffix(host, ":8081")
 	isForwardedProxyHost := forwardedHost == "127.0.0.1:8081" || forwardedHost == "localhost:8081" ||
-		strings.HasPrefix(forwardedHost, "127.0.0.1:") || strings.HasPrefix(forwardedHost, "localhost:")
-	
+		strings.HasSuffix(forwardedHost, ":8081")
+
 	// Use relative URLs if accessed via proxy (any of the above conditions)
 	useRelativeURLs := isProxyHost || isForwardedProxyHost || isLocalProxy
 

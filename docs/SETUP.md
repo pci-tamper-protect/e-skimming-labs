@@ -259,7 +259,19 @@ tools. Instead:
 
 ---
 
-## 🌍 Production Deployment
+## 🌍 Staging & Production Deployment
+
+### Staging Environment
+
+For staging environment setup, testing, and E2E testing, see:
+- **[docs/STAGING.md](STAGING.md)** - Complete staging environment guide
+
+**Quick access:**
+- Staging URL: `https://labs.stg.pcioasis.com`
+- Proxy: `gcloud run services proxy traefik-stg --region=us-central1 --project=labs-stg --port=8081`
+- **Important:** Restart proxy after deploying changes to Traefik or home-index-service
+
+### Production Deployment
 
 In production (Cloud Run), services use environment-aware URLs:
 

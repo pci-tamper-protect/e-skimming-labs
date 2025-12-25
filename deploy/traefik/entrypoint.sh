@@ -238,6 +238,11 @@ http:
       headers:
         customRequestHeaders:
           X-Forwarded-Proto: "https"
+        # Forward the original Host header so backend can detect proxy access
+        # This allows home-index to use relative URLs when accessed via proxy
+        hostsProxyHeaders:
+          - "X-Forwarded-Host"
+          - "Host"
 
     # Authentication middlewares (add identity tokens for Cloud Run services)
 $(if [ -n "$HOME_INDEX_TOKEN" ]; then
