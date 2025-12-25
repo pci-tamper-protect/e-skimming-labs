@@ -333,6 +333,50 @@ func main() {
 }
 
 func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, validator *auth.TokenValidator) {
+	// Detect if accessed via proxy (127.0.0.1:8081 or localhost:8081)
+	// When using gcloud run services proxy, Traefik may not forward the original Host header
+	// We check multiple sources: Host header, X-Forwarded-Host, and X-Forwarded-For (for localhost)
+	host := r.Host
+	forwardedHost := r.Header.Get("X-Forwarded-Host")
+	forwardedFor := r.Header.Get("X-Forwarded-For")
+	
+	// Check if accessed via proxy:
+	// 1. Direct Host header check (if Traefik passes it through)
+	// 2. X-Forwarded-Host header (if Traefik forwards it)
+	// 3. X-Forwarded-For contains 127.0.0.1 (indicates local proxy)
+	// 4. Check if Host contains Cloud Run domain but X-Forwarded-For is localhost (proxy access)
+	isLocalProxy := strings.Contains(forwardedFor, "127.0.0.1") || strings.Contains(forwardedFor, "localhost")
+	isProxyHost := host == "127.0.0.1:8081" || host == "localhost:8081" || 
+		strings.HasPrefix(host, "127.0.0.1:") || strings.HasPrefix(host, "localhost:")
+	isForwardedProxyHost := forwardedHost == "127.0.0.1:8081" || forwardedHost == "localhost:8081" ||
+		strings.HasPrefix(forwardedHost, "127.0.0.1:") || strings.HasPrefix(forwardedHost, "localhost:")
+	
+	// Use relative URLs if accessed via proxy (any of the above conditions)
+	useRelativeURLs := isProxyHost || isForwardedProxyHost || isLocalProxy
+
+	// Create a copy of data to modify URLs if needed
+	pageData := data
+	if useRelativeURLs {
+		// Use relative URLs for navigation when accessed via proxy
+		pageData.MITREURL = "/mitre-attack"
+		pageData.ThreatModelURL = "/threat-model"
+		// Create a copy of Labs slice to avoid modifying the original
+		labsCopy := make([]Lab, len(data.Labs))
+		copy(labsCopy, data.Labs)
+		pageData.Labs = labsCopy
+		// Update lab writeup URLs to be relative
+		for i := range pageData.Labs {
+			switch pageData.Labs[i].ID {
+			case "lab1-basic-magecart":
+				pageData.Labs[i].WriteupURL = "/lab-01-writeup"
+			case "lab2-dom-skimming":
+				pageData.Labs[i].WriteupURL = "/lab-02-writeup"
+			case "lab3-extension-hijacking":
+				pageData.Labs[i].WriteupURL = "/lab-03-writeup"
+			}
+		}
+	}
+
 	tmpl := `
 <!DOCTYPE html>
 <html lang="en">
@@ -803,7 +847,7 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
         }
     </script>
     {{end}}
-    
+
     <script>
         // Add smooth scrolling for anchor links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
@@ -835,7 +879,7 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	err = t.Execute(w, data)
+	err = t.Execute(w, pageData)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -1322,25 +1366,25 @@ func serveAuthJS(w http.ResponseWriter, r *http.Request, homeData HomePageData) 
 	script := `// E-Skimming Labs Auth Integration
 (function() {
     'use strict';
-    
+
     // Check for token in URL (from redirect)
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
-    
+
     if (token) {
         // Store token and remove from URL
         sessionStorage.setItem('firebase_token', token);
         const newUrl = window.location.pathname + (window.location.search.replace(/[?&]token=[^&]*/, '').replace(/^&/, '?') || '');
         window.history.replaceState({}, '', newUrl);
     }
-    
+
     // Function to initialize auth
     window.initLabsAuth = function(config) {
         const { authRequired, mainAppURL, firebaseProjectID } = config;
-        
+
         // Check for token in sessionStorage
         const storedToken = sessionStorage.getItem('firebase_token');
-        
+
         if (storedToken) {
             // Validate token with server
             fetch('/api/auth/validate', {
@@ -1376,7 +1420,7 @@ func serveAuthJS(w http.ResponseWriter, r *http.Request, homeData HomePageData) 
                 redirectToSignIn(mainAppURL);
             }
         }
-        
+
         // Listen for postMessage from main app (for SSO)
         window.addEventListener('message', function(event) {
             // Verify origin matches main app domain
@@ -1384,7 +1428,7 @@ func serveAuthJS(w http.ResponseWriter, r *http.Request, homeData HomePageData) 
             if (!event.origin.includes(mainAppOrigin.split('/')[0])) {
                 return;
             }
-            
+
             if (event.data && event.data.type === 'FIREBASE_TOKEN' && event.data.token) {
                 sessionStorage.setItem('firebase_token', event.data.token);
                 // Validate the token
@@ -1408,13 +1452,13 @@ func serveAuthJS(w http.ResponseWriter, r *http.Request, homeData HomePageData) 
                 });
             }
         });
-        
+
         // Request token from parent window (if in iframe) or opener (if opened from main app)
         if (window.parent !== window) {
             window.parent.postMessage({ type: 'REQUEST_FIREBASE_TOKEN' }, '*');
         }
     };
-    
+
     function redirectToSignIn(mainAppURL) {
         const redirectUrl = encodeURIComponent(window.location.href);
         window.location.href = mainAppURL + '/sign-in?redirect=' + redirectUrl;
