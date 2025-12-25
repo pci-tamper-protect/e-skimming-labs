@@ -341,20 +341,40 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
 	forwardedHost := r.Header.Get("X-Forwarded-Host")
 	forwardedFor := r.Header.Get("X-Forwarded-For")
 
+	// Debug logging (only in staging/local, not production)
+	environment := os.Getenv("ENVIRONMENT")
+	if environment == "stg" || environment == "local" {
+		log.Printf("🔍 Proxy detection - Host: %s, X-Forwarded-Host: %s, X-Forwarded-For: %s", host, forwardedHost, forwardedFor)
+	}
+
 	// Check if accessed via proxy:
-	// 1. Direct Host header check (if Traefik passes it through) - must be port 8081
-	// 2. X-Forwarded-Host header (if Traefik forwards it) - must be port 8081
-	// 3. X-Forwarded-For contains 127.0.0.1 (indicates local proxy)
-	// 4. Check if Host contains Cloud Run domain but X-Forwarded-For is localhost (proxy access)
+	// When using gcloud run services proxy, the flow is:
+	// Browser -> Proxy (127.0.0.1:8081) -> Traefik -> home-index
+	// Traefik has passHostHeader: false, so it doesn't forward the original Host
+	// But X-Forwarded-For will contain 127.0.0.1 from the proxy
+	// 
+	// Detection methods (in order of reliability):
+	// 1. X-Forwarded-For contains 127.0.0.1 or localhost (most reliable - proxy always sets this)
+	// 2. X-Forwarded-Host is 127.0.0.1:8081 or localhost:8081 (if Traefik forwards it)
+	// 3. Host header is 127.0.0.1:8081 or localhost:8081 (unlikely due to passHostHeader: false)
+	
+	// Most reliable: X-Forwarded-For from gcloud proxy will contain 127.0.0.1
 	isLocalProxy := strings.Contains(forwardedFor, "127.0.0.1") || strings.Contains(forwardedFor, "localhost")
-	// Only match port 8081 (the proxy port), not any localhost port
+	
+	// Less reliable: Host header (Traefik may not forward it)
 	isProxyHost := host == "127.0.0.1:8081" || host == "localhost:8081" ||
 		strings.HasSuffix(host, ":8081")
+	
+	// Medium reliability: X-Forwarded-Host (if Traefik forwards it)
 	isForwardedProxyHost := forwardedHost == "127.0.0.1:8081" || forwardedHost == "localhost:8081" ||
 		strings.HasSuffix(forwardedHost, ":8081")
 
-	// Use relative URLs if accessed via proxy (any of the above conditions)
-	useRelativeURLs := isProxyHost || isForwardedProxyHost || isLocalProxy
+	// Use relative URLs if accessed via proxy (prioritize X-Forwarded-For detection)
+	useRelativeURLs := isLocalProxy || isProxyHost || isForwardedProxyHost
+
+	if environment == "stg" || environment == "local" {
+		log.Printf("🔍 Proxy detection result - isProxyHost: %v, isForwardedProxyHost: %v, isLocalProxy: %v, useRelativeURLs: %v", isProxyHost, isForwardedProxyHost, isLocalProxy, useRelativeURLs)
+	}
 
 	// Create a copy of data to modify URLs if needed
 	pageData := data
