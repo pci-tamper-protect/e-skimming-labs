@@ -238,11 +238,11 @@ http:
       headers:
         customRequestHeaders:
           X-Forwarded-Proto: "https"
-        # Forward the original Host header so backend can detect proxy access
+        # Forward X-Forwarded-For so backend can detect proxy access
         # This allows home-index to use relative URLs when accessed via proxy
-        hostsProxyHeaders:
-          - "X-Forwarded-Host"
-          - "Host"
+        # The gcloud proxy sets X-Forwarded-For with 127.0.0.1
+        forwardedForHeader: "X-Forwarded-For"
+        forwardedHostHeader: "X-Forwarded-Host"
 
     # Authentication middlewares (add identity tokens for Cloud Run services)
 $(if [ -n "$HOME_INDEX_TOKEN" ]; then

@@ -350,7 +350,7 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
 	// Check if accessed via proxy:
 	// When using gcloud run services proxy, the flow is:
 	// Browser -> Proxy (127.0.0.1:8081) -> Traefik -> home-index
-	// 
+	//
 	// What we see in logs:
 	// - Host: home-index-stg-xxxxx-uc.a.run.app (Cloud Run hostname)
 	// - X-Forwarded-Host: traefik-stg-xxxxx-uc.a.run.app (Traefik's hostname)
@@ -359,24 +359,24 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
 	// Detection: If X-Forwarded-Host contains "traefik" and we're in staging,
 	// we're behind Traefik. Since the proxy is the only way to access staging locally,
 	// we can use relative URLs when behind Traefik in staging.
-	
+
 	// Check if we're behind Traefik (X-Forwarded-Host contains traefik)
 	isBehindTraefik := strings.Contains(strings.ToLower(forwardedHost), "traefik")
-	
+
 	// In staging, if we're behind Traefik, use relative URLs (proxy access)
 	// In production, always use absolute URLs for SEO
 	useRelativeURLs := false
 	if environment == "stg" && isBehindTraefik {
 		useRelativeURLs = true
 	}
-	
+
 	// Also check for direct proxy access (for local testing)
 	isLocalProxy := strings.Contains(forwardedFor, "127.0.0.1") || strings.Contains(forwardedFor, "localhost")
 	isProxyHost := host == "127.0.0.1:8081" || host == "localhost:8081" ||
 		strings.HasSuffix(host, ":8081")
 	isForwardedProxyHost := forwardedHost == "127.0.0.1:8081" || forwardedHost == "localhost:8081" ||
 		strings.HasSuffix(forwardedHost, ":8081")
-	
+
 	// Use relative URLs if any proxy detection matches
 	useRelativeURLs = useRelativeURLs || isLocalProxy || isProxyHost || isForwardedProxyHost
 
