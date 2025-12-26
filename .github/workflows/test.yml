@@ -203,7 +203,6 @@ jobs:
 
           echo "📊 Test shard: ${{ matrix.shard }}/${{ matrix.total-shards }}"
           npx playwright test e2e --shard=${{ matrix.shard }}/${{ matrix.total-shards }}
-        continue-on-error: true
 
       - name: Stop proxy (cleanup)
         if: always() && steps.test-env.outputs.environment == 'stg' && steps.start-proxy.outputs.proxy_pid != ''

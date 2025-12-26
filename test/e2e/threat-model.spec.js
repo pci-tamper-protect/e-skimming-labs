@@ -49,10 +49,28 @@ test.describe('Threat Model Page', () => {
     // Find the back button
     const backButton = page.getByRole('link', { name: '← Back to Labs' })
 
-    // Check that the back button is visible and has correct href
-    // (expect will automatically wait and retry until condition is met)
+    // Check that the back button is visible
     await expect(backButton).toBeVisible()
-    await expect(backButton).toHaveAttribute('href', currentEnv.homeIndex)
+
+    // Normalize URLs for comparison (handle localhost vs 127.0.0.1 and trailing slashes)
+    const normalizeUrlForComparison = (url) => {
+      if (!url) return url
+      // Normalize localhost to 127.0.0.1
+      let normalized = url.replace(/^https?:\/\/localhost/, 'http://127.0.0.1')
+      // Remove trailing slash for consistent comparison (except for root path)
+      if (normalized.endsWith('/') && normalized !== 'http://127.0.0.1/' && normalized !== 'http://localhost/') {
+        normalized = normalized.slice(0, -1)
+      }
+      return normalized
+    }
+
+    // Get the actual href and normalize both for comparison
+    const actualHref = await backButton.getAttribute('href')
+    const normalizedActual = normalizeUrlForComparison(actualHref)
+    const normalizedExpected = normalizeUrlForComparison(currentEnv.homeIndex)
+
+    // Check that normalized URLs match (handles localhost vs 127.0.0.1 differences)
+    expect(normalizedActual).toBe(normalizedExpected)
 
     // Debug: Log the actual href value
     const hrefValue = await backButton.getAttribute('href')
@@ -64,8 +82,11 @@ test.describe('Threat Model Page', () => {
     // Wait for navigation
     await page.waitForLoadState('networkidle')
 
-    // Verify we're on the home page
-    await expect(page).toHaveURL(currentEnv.homeIndex + '/')
+    // Verify we're on the home page (normalize URL for comparison)
+    const expectedHomeUrl = normalizeUrlForComparison(currentEnv.homeIndex) + '/'
+    const actualPageUrl = page.url()
+    const normalizedPageUrl = normalizeUrlForComparison(actualPageUrl) + (actualPageUrl.endsWith('/') ? '' : '/')
+    expect(normalizedPageUrl).toBe(expectedHomeUrl)
     await expect(page).toHaveTitle('E-Skimming Labs - Interactive Training Platform')
 
     // Verify we can see the main labs content
@@ -180,13 +201,29 @@ test.describe('Threat Model Page', () => {
   })
 
   test('should have proper navigation flow', async ({ page }) => {
+    // Normalize URLs for comparison (handle localhost vs 127.0.0.1 and trailing slashes)
+    const normalizeUrlForComparison = (url) => {
+      if (!url) return url
+      // Normalize localhost to 127.0.0.1
+      let normalized = url.replace(/^https?:\/\/localhost/, 'http://127.0.0.1')
+      // Remove trailing slash for consistent comparison (except for root path)
+      if (normalized.endsWith('/') && normalized !== 'http://127.0.0.1/' && normalized !== 'http://localhost/') {
+        normalized = normalized.slice(0, -1)
+      }
+      return normalized
+    }
+
     // Test navigation from threat model to home and back
     const backButton = page.getByRole('link', { name: '← Back to Labs' })
 
     // Go back to home
     await backButton.click()
     await page.waitForLoadState('networkidle')
-    await expect(page).toHaveURL(currentEnv.homeIndex + '/')
+    // Verify we're on the home page (normalize URL for comparison)
+    const expectedHomeUrlAfterClick = normalizeUrlForComparison(currentEnv.homeIndex) + '/'
+    const actualPageUrlAfterClick = page.url()
+    const normalizedPageUrlAfterClick = normalizeUrlForComparison(actualPageUrlAfterClick) + (actualPageUrlAfterClick.endsWith('/') ? '' : '/')
+    expect(normalizedPageUrlAfterClick).toBe(expectedHomeUrlAfterClick)
 
     // Navigate back to threat model (use .first() for duplicate links)
     const threatModelLink = page.getByRole('link', { name: 'Threat Model' }).first()
@@ -233,11 +270,36 @@ test.describe('Threat Model Page - Environment Detection', () => {
 
     // Find the back button and check its href
     const backButton = page.getByRole('link', { name: '← Back to Labs' })
-    await expect(backButton).toHaveAttribute('href', currentEnv.homeIndex)
+
+    // Normalize URLs for comparison (handle localhost vs 127.0.0.1 and trailing slashes)
+    const normalizeUrlForComparison = (url) => {
+      if (!url) return url
+      // Normalize localhost to 127.0.0.1
+      let normalized = url.replace(/^https?:\/\/localhost/, 'http://127.0.0.1')
+      // Remove trailing slash for consistent comparison (except for root path)
+      if (normalized.endsWith('/') && normalized !== 'http://127.0.0.1/' && normalized !== 'http://localhost/') {
+        normalized = normalized.slice(0, -1)
+      }
+      return normalized
+    }
+
+    // Get the actual href and normalize both for comparison
+    const actualHref = await backButton.getAttribute('href')
+    const normalizedActual = normalizeUrlForComparison(actualHref)
+    const normalizedExpected = normalizeUrlForComparison(currentEnv.homeIndex)
+
+    // Check that normalized URLs match (handles localhost vs 127.0.0.1 differences)
+    expect(normalizedActual).toBe(normalizedExpected)
 
     // Verify console log was generated (if captured - may not work in all test environments)
     if (consoleLogText) {
-      expect(consoleLogText).toContain(currentEnv.homeIndex)
+      const logText = String(consoleLogText)
+      // Check if the log contains either the expected URL or a normalized version
+      const normalizedExpectedForLog = normalizeUrlForComparison(currentEnv.homeIndex)
+      const containsExpected = logText.indexOf(currentEnv.homeIndex) >= 0 ||
+                               logText.indexOf(normalizedExpectedForLog) >= 0 ||
+                               logText.replace(/localhost/g, '127.0.0.1').indexOf(normalizedExpectedForLog) >= 0
+      expect(containsExpected).toBeTruthy()
     } else {
       // If console log doesn't work in test environment, just verify the href is correct
       console.log('Console log not captured, but href is correct')
