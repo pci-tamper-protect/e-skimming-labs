@@ -1334,8 +1334,13 @@ jobs:
   e2e-tests:
     needs: [setup, deploy-labs, deploy-home-components, deploy-labs-components, deploy-index, notify-deployment]
     runs-on: ubuntu-latest
-    # Only run e2e tests after successful deployment on push events (not PRs)
-    if: github.event_name == 'push' && needs.notify-deployment.outputs.deployment_success == 'true'
+    # Run e2e tests after successful deployment on push events or PRs against stg
+    if: (github.event_name == 'push' || (github.event_name == 'pull_request' && needs.setup.outputs.environment == 'stg')) && needs.notify-deployment.outputs.deployment_success == 'true'
+    env:
+      HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
+      LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
+      # Use environment-specific secrets for proxy authentication
+      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
     # Use matrix strategy to shard tests across multiple parallel jobs
     # GitHub Enterprise supports up to 256 matrix jobs, but we'll use 4 shards for optimal performance
     strategy:
@@ -1484,23 +1489,37 @@ jobs:
         working-directory: test
         env:
           TEST_ENV: ${{ needs.setup.outputs.environment }}
-          # For staging, use proxy URL if available
+          # For staging, use proxy URL if available (set by start-proxy step)
           PROXY_URL: ${{ steps.start-proxy.outputs.proxy_url }}
-          USE_PROXY: ${{ needs.setup.outputs.environment == 'stg' && steps.start-proxy.outputs.proxy_url != '' && 'true' || 'false' }}
         run: |
           echo "🧪 Running E2E tests (shard ${{ matrix.shard }}/${{ matrix.total-shards }})"
-          if [ "$USE_PROXY" == "true" ] && [ -n "$PROXY_URL" ]; then
-            echo "🔗 Using proxy URL: $PROXY_URL"
+          echo "TEST_ENV: $TEST_ENV"
+          echo "PROXY_URL from step: ${{ steps.start-proxy.outputs.proxy_url }}"
+          echo "PROXY_URL from env: $PROXY_URL"
+
+          # Determine if we should use the proxy
+          if [ "${{ needs.setup.outputs.environment }}" == "stg" ] && [ -n "${{ steps.start-proxy.outputs.proxy_url }}" ]; then
+            echo "🔗 Using proxy URL: ${{ steps.start-proxy.outputs.proxy_url }}"
+            export USE_PROXY="true"
+            export PROXY_URL="${{ steps.start-proxy.outputs.proxy_url }}"
             echo "USE_PROXY=true" >> $GITHUB_ENV
-            echo "PROXY_URL=$PROXY_URL" >> $GITHUB_ENV
+            echo "PROXY_URL=${{ steps.start-proxy.outputs.proxy_url }}" >> $GITHUB_ENV
           else
             echo "🔗 Base URL: https://${{ needs.setup.outputs.domain_prefix }}"
+            export USE_PROXY="false"
             echo "USE_PROXY=false" >> $GITHUB_ENV
+            # Unset PROXY_URL to ensure tests use direct URLs
+            echo "PROXY_URL=" >> $GITHUB_ENV
           fi
+
           echo "📊 Test shard: ${{ matrix.shard }}/${{ matrix.total-shards }}"
+          echo "Final USE_PROXY: $USE_PROXY"
+          echo "Final PROXY_URL: $PROXY_URL"
+
           if [ -n "$TEST_USER_EMAIL_STG" ]; then
             echo "🔐 Using authenticated test account: $TEST_USER_EMAIL_STG"
           fi
+
           npx playwright test e2e --shard=${{ matrix.shard }}/${{ matrix.total-shards }}
         continue-on-error: true
 
