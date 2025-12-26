@@ -36,6 +36,9 @@ jobs:
         # Create shards: [1, 2, 3, 4] for 4-way parallelization
         shard: [1, 2, 3, 4]
         total-shards: [4]
+    env:
+      # Use environment-specific secrets for proxy authentication (staging only)
+      LABS_GCP_SA_KEY: ${{ secrets.GCP_LABS_SA_KEY_STG || secrets.GCP_LABS_SA_KEY }}
 
     steps:
       - name: Checkout code
@@ -75,17 +78,125 @@ jobs:
           echo "environment=$ENV" >> $GITHUB_OUTPUT
           echo "🧪 Testing against: $ENV environment"
 
+      - name: Authenticate to Google Cloud (for proxy)
+        if: steps.test-env.outputs.environment == 'stg' && env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ env.LABS_GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK (for proxy)
+        if: steps.test-env.outputs.environment == 'stg' && env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Start gcloud proxy for staging tests
+        if: steps.test-env.outputs.environment == 'stg' && env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        id: start-proxy
+        run: |
+          echo "🔗 Starting gcloud proxy for staging tests..."
+          PROXY_PORT=8081
+
+          # Start proxy in background
+          echo "Starting proxy on port $PROXY_PORT..."
+          gcloud run services proxy traefik-stg \
+            --region=us-central1 \
+            --project=labs-stg \
+            --port=$PROXY_PORT > /tmp/proxy.log 2>&1 &
+
+          PROXY_PID=$!
+          echo "Proxy PID: $PROXY_PID"
+          echo "proxy_pid=$PROXY_PID" >> $GITHUB_OUTPUT
+          echo "proxy_port=$PROXY_PORT" >> $GITHUB_OUTPUT
+
+          # Wait for proxy to be ready
+          echo "⏳ Waiting for proxy to be ready..."
+          MAX_WAIT=30
+          WAIT_COUNT=0
+          while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
+            # Check if proxy is responding (try both health endpoint and root)
+            if curl -sf --max-time 2 http://127.0.0.1:$PROXY_PORT/health > /dev/null 2>&1 || \
+               curl -sf --max-time 2 http://127.0.0.1:$PROXY_PORT/ > /dev/null 2>&1; then
+              echo "✅ Proxy is ready on port $PROXY_PORT"
+              break
+            fi
+            sleep 1
+            WAIT_COUNT=$((WAIT_COUNT + 1))
+            if [ $((WAIT_COUNT % 5)) -eq 0 ]; then
+              echo "  Still waiting... ($WAIT_COUNT/$MAX_WAIT)"
+              # Show proxy log if available
+              if [ -f /tmp/proxy.log ]; then
+                echo "  Proxy log (last 5 lines):"
+                tail -5 /tmp/proxy.log || true
+              fi
+            fi
+          done
+
+          if [ $WAIT_COUNT -eq $MAX_WAIT ]; then
+            echo "⚠️  Warning: Proxy may not be fully ready, but continuing..."
+            echo "Proxy log (last 20 lines):"
+            tail -20 /tmp/proxy.log || true
+            echo ""
+            echo "Checking if proxy process is running:"
+            ps aux | grep "gcloud run services proxy" | grep -v grep || echo "  No proxy process found"
+          fi
+
+          # Verify proxy is actually working before setting URL
+          if curl -sf --max-time 5 http://127.0.0.1:$PROXY_PORT/ > /dev/null 2>&1; then
+            PROXY_URL="http://127.0.0.1:$PROXY_PORT"
+            echo "✅ Proxy confirmed working: $PROXY_URL"
+          else
+            PROXY_URL=""
+            echo "❌ Proxy is not responding, tests will use direct URLs"
+            echo "Proxy log (last 10 lines):"
+            tail -10 /tmp/proxy.log || true
+          fi
+
+          echo "proxy_url=$PROXY_URL" >> $GITHUB_OUTPUT
+          echo "proxy_pid=$PROXY_PID" >> $GITHUB_OUTPUT
+
+          if [ -n "$PROXY_URL" ]; then
+            echo "🔗 Proxy URL set: $PROXY_URL"
+          else
+            echo "⚠️  Proxy URL not set - tests will use direct domain URLs"
+          fi
+
       - name: Run E2E tests (shard ${{ matrix.shard }}/${{ matrix.total-shards }})
         working-directory: test
         env:
           TEST_ENV: ${{ steps.test-env.outputs.environment }}
           CI: true
+          # For staging, use proxy URL if available (set by start-proxy step)
+          # Set USE_PROXY based on whether proxy URL is available
+          PROXY_URL: ${{ steps.start-proxy.outputs.proxy_url }}
+          USE_PROXY: ${{ steps.test-env.outputs.environment == 'stg' && steps.start-proxy.outputs.proxy_url != '' && 'true' || 'false' }}
         run: |
           echo "🧪 Running E2E tests (shard ${{ matrix.shard }}/${{ matrix.total-shards }})"
-          echo "🔗 Test Environment: ${{ steps.test-env.outputs.environment }}"
+          echo "TEST_ENV: $TEST_ENV"
+          echo "PROXY_URL: $PROXY_URL"
+          echo "USE_PROXY: $USE_PROXY"
+
+          if [ "$USE_PROXY" == "true" ] && [ -n "$PROXY_URL" ]; then
+            echo "🔗 Using gcloud proxy: $PROXY_URL"
+          else
+            echo "🔗 Base URL: https://labs.${{ steps.test-env.outputs.environment == 'stg' && 'stg.' || '' }}pcioasis.com"
+          fi
+
           echo "📊 Test shard: ${{ matrix.shard }}/${{ matrix.total-shards }}"
           npx playwright test e2e --shard=${{ matrix.shard }}/${{ matrix.total-shards }}
         continue-on-error: true
+
+      - name: Stop proxy (cleanup)
+        if: always() && steps.test-env.outputs.environment == 'stg' && steps.start-proxy.outputs.proxy_pid != ''
+        run: |
+          echo "🧹 Stopping proxy..."
+          PROXY_PID="${{ steps.start-proxy.outputs.proxy_pid }}"
+          if [ -n "$PROXY_PID" ] && kill -0 "$PROXY_PID" 2>/dev/null; then
+            kill "$PROXY_PID" 2>/dev/null || true
+            echo "✅ Proxy stopped"
+          else
+            # Try to kill any remaining proxy processes
+            pkill -f "gcloud run services proxy" || true
+            echo "✅ Cleaned up proxy processes"
+          fi
 
       - name: Upload test results (shard ${{ matrix.shard }})
         if: always()
