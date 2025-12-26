@@ -8,7 +8,7 @@ This directory contains Traefik reverse proxy configuration for unified routing 
 
 1. **Start all services with Traefik:**
    ```bash
-   docker-compose -f docker-compose.traefik.yml up -d
+   docker-compose up -d
    ```
 
 2. **Access services:**
@@ -25,12 +25,12 @@ This directory contains Traefik reverse proxy configuration for unified routing 
 
 3. **View logs:**
    ```bash
-   docker-compose -f docker-compose.traefik.yml logs -f traefik
+   docker-compose logs -f traefik
    ```
 
 4. **Stop services:**
    ```bash
-   docker-compose -f docker-compose.traefik.yml down
+   docker-compose down
    ```
 
 ## Directory Structure
@@ -109,7 +109,7 @@ http:
 ### 3. Restart Traefik
 
 ```bash
-docker-compose -f docker-compose.traefik.yml restart traefik
+docker-compose restart traefik
 ```
 
 ## Debugging
@@ -144,10 +144,10 @@ curl -v http://localhost:8080/lab1/c2
 
 ```bash
 # All logs
-docker-compose -f docker-compose.traefik.yml logs traefik
+docker-compose logs traefik
 
 # Follow logs
-docker-compose -f docker-compose.traefik.yml logs -f traefik
+docker-compose logs -f traefik
 
 # Access logs only
 docker exec e-skimming-labs-traefik tail -f /var/log/access.log
@@ -226,7 +226,7 @@ In Cloud Run, Traefik authenticates to backend services using:
 
 1. Check service is running:
    ```bash
-   docker-compose -f docker-compose.traefik.yml ps
+   docker-compose ps
    ```
 
 2. Check Traefik can reach service:
@@ -250,14 +250,14 @@ In Cloud Run, Traefik authenticates to backend services using:
 1. Backend service is down or not responding
 2. Check service health:
    ```bash
-   docker-compose -f docker-compose.traefik.yml logs lab1-vulnerable-site
+   docker-compose logs lab1-vulnerable-site
    ```
 
 ### Changes not taking effect
 
 1. Restart Traefik:
    ```bash
-   docker-compose -f docker-compose.traefik.yml restart traefik
+   docker-compose restart traefik
    ```
 
 2. Check file watch is enabled in traefik.yml:

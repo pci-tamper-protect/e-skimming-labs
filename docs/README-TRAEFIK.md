@@ -5,9 +5,8 @@
 New to Traefik setup? Start here:
 
 1. **[Quick Start Guide](./TRAEFIK-QUICKSTART.md)** - Get running in 5 minutes
-2. **[Implementation Summary](../TRAEFIK-IMPLEMENTATION-SUMMARY.md)** - What was built and why
-3. **[Architecture Design](./traefik-architecture.md)** - Deep dive into the design
-4. **[Migration Guide](./traefik-migration-guide.md)** - How to migrate from old setup
+2. **[Architecture Design](./TRAEFIK-ARCHITECTURE.md)** - Complete architecture and design
+3. **[Router Setup Guide](../deploy/TRAEFIK_ROUTER_SETUP.md)** - Cloud Run deployment details
 
 ## 📚 Documentation Index
 
@@ -16,19 +15,19 @@ New to Traefik setup? Start here:
 - **[Implementation Summary](../TRAEFIK-IMPLEMENTATION-SUMMARY.md)** - Overview of what was implemented
 
 ### Design & Architecture
-- **[Architecture Design](./traefik-architecture.md)** - Complete architecture documentation
-  - Problem statement
-  - Proposed solution
+- **[Architecture Design](./TRAEFIK-ARCHITECTURE.md)** - Complete architecture documentation
+  - Problem statement and solution
   - Routing configuration
   - Environment-specific configs
   - Security considerations
+  - Migration status
+  - Troubleshooting
 
-### Migration & Deployment
-- **[Migration Guide](./traefik-migration-guide.md)** - Step-by-step migration plan
-  - Current vs. future state
-  - Migration phases
-  - Testing checklist
-  - Rollback procedures
+### Deployment
+- **[Router Setup Guide](../deploy/TRAEFIK_ROUTER_SETUP.md)** - Cloud Run deployment
+  - IAM configuration
+  - Service account permissions
+  - Domain mapping
   - Troubleshooting
 
 ### Configuration & Usage
@@ -38,13 +37,21 @@ New to Traefik setup? Start here:
   - Debugging guide
   - Environment variables
 
+### Testing & Troubleshooting
+- **[Testing & Troubleshooting Guide](./TESTING_TROUBLESHOOTING.md)** - Complete testing and troubleshooting guide
+  - Testing Traefik locally
+  - Testing Cloud Run services
+  - Troubleshooting routing issues
+  - Troubleshooting authentication
+  - GitHub workflows reference
+
 ## 🎯 Common Tasks
 
 ### Local Development
 
 **Start services:**
 ```bash
-docker-compose -f docker-compose.traefik.yml up -d
+docker-compose up -d
 ```
 
 **Access services:**
@@ -62,14 +69,14 @@ npx playwright test tests/traefik-routing.test.ts
 
 **Stop services:**
 ```bash
-docker-compose -f docker-compose.traefik.yml down
+docker-compose down
 ```
 
 ### Debugging
 
 **View Traefik logs:**
 ```bash
-docker-compose -f docker-compose.traefik.yml logs -f traefik
+docker-compose logs -f traefik
 ```
 
 **Check registered services:**
@@ -91,12 +98,16 @@ curl -v http://localhost:8080/lab1
 
 **Deploy to staging:**
 ```bash
-gh workflow run deploy-traefik.yml -f environment=stg
+cd deploy/traefik
+./build-and-push.sh stg
+# Then deploy via gcloud or Terraform
 ```
 
 **Deploy to production:**
 ```bash
-gh workflow run deploy-traefik.yml -f environment=prd
+cd deploy/traefik
+./build-and-push.sh prd
+# Then deploy via gcloud or Terraform
 ```
 
 ## 📁 Key Files
@@ -114,8 +125,8 @@ deploy/traefik/
 
 ### Docker Compose
 ```
-docker-compose.traefik.yml   # Traefik-enabled compose file
-docker-compose.yml          # Original compose file (still works)
+docker-compose.yml          # Default compose file (with Traefik)
+docker-compose.no-traefik.yml  # Legacy compose file (port-based routing)
 ```
 
 ### Terraform
@@ -130,9 +141,10 @@ tests/
 └── traefik-routing.test.ts      # Playwright tests
 ```
 
-### CI/CD
+### Deployment
 ```
-.github/workflows/deploy-traefik.yml  # Deployment workflow
+deploy/traefik/build-and-push.sh  # Build and push script
+deploy/terraform-labs/traefik.tf  # Terraform deployment
 ```
 
 ## 🔄 URL Mappings
@@ -217,26 +229,26 @@ curl http://localhost:8080/api/analytics
 ```bash
 docker ps | grep traefik
 docker logs e-skimming-labs-traefik
-docker-compose -f docker-compose.traefik.yml restart traefik
+docker-compose restart traefik
 ```
 
 **Lab returns 404**
 ```bash
-docker-compose -f docker-compose.traefik.yml ps
+docker-compose ps
 curl http://localhost:8081/api/http/services | jq
-docker-compose -f docker-compose.traefik.yml restart lab1-vulnerable-site
+docker-compose restart lab1-vulnerable-site
 ```
 
 **Lab returns 502 Bad Gateway**
 ```bash
-docker-compose -f docker-compose.traefik.yml logs lab1-vulnerable-site
+docker-compose logs lab1-vulnerable-site
 docker exec lab1-techgear-store wget -O- http://localhost:80
-docker-compose -f docker-compose.traefik.yml restart lab1-vulnerable-site
+docker-compose restart lab1-vulnerable-site
 ```
 
 For more troubleshooting, see:
 - [Traefik README](../deploy/traefik/README.md#troubleshooting)
-- [Migration Guide](./traefik-migration-guide.md#common-issues-and-solutions)
+- [Architecture Guide](./TRAEFIK-ARCHITECTURE.md#troubleshooting)
 
 ## 📈 Monitoring
 
@@ -272,13 +284,13 @@ If issues occur in production:
 2. **Full rollback:**
    ```bash
    # Use old docker-compose locally
-   docker-compose -f docker-compose.yml up -d
+   docker-compose -f docker-compose.no-traefik.yml up -d
 
    # Revert DNS changes
    # Redeploy old services
    ```
 
-See [Migration Guide - Rollback Plan](./traefik-migration-guide.md#rollback-plan) for details.
+For rollback procedures, see [Router Setup Guide](../deploy/TRAEFIK_ROUTER_SETUP.md).
 
 ## 📞 Support
 

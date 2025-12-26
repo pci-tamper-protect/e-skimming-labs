@@ -5,7 +5,7 @@
 ### 1. Start Everything
 
 ```bash
-docker-compose -f docker-compose.traefik.yml up -d
+docker-compose up -d
 ```
 
 ### 2. Access Services
@@ -25,7 +25,7 @@ docker-compose -f docker-compose.traefik.yml up -d
 ### 4. Stop Everything
 
 ```bash
-docker-compose -f docker-compose.traefik.yml down
+docker-compose down
 ```
 
 ## What Changed?
@@ -46,7 +46,7 @@ docker-compose up -d
 ### After (Path-Based with Traefik)
 
 ```bash
-docker-compose -f docker-compose.traefik.yml up -d
+docker-compose up -d
 ```
 
 **Everything at:** http://localhost:8080
@@ -76,7 +76,7 @@ curl http://localhost:8080/ping
 ### View Traefik Logs
 
 ```bash
-docker-compose -f docker-compose.traefik.yml logs -f traefik
+docker-compose logs -f traefik
 ```
 
 ### Check Registered Services
@@ -103,65 +103,65 @@ curl -v http://localhost:8080/lab1
 
 ```bash
 # Start all services
-docker-compose -f docker-compose.traefik.yml up -d
+docker-compose up -d
 
 # Start only specific services
-docker-compose -f docker-compose.traefik.yml up -d traefik home-index lab1-vulnerable-site
+docker-compose up -d traefik home-index lab1-vulnerable-site
 
 # Start in foreground (see logs)
-docker-compose -f docker-compose.traefik.yml up
+docker-compose up
 ```
 
 ### View Logs
 
 ```bash
 # All logs
-docker-compose -f docker-compose.traefik.yml logs
+docker-compose logs
 
 # Follow logs
-docker-compose -f docker-compose.traefik.yml logs -f
+docker-compose logs -f
 
 # Specific service
-docker-compose -f docker-compose.traefik.yml logs -f lab1-vulnerable-site
+docker-compose logs -f lab1-vulnerable-site
 ```
 
 ### Restart Services
 
 ```bash
 # Restart all
-docker-compose -f docker-compose.traefik.yml restart
+docker-compose restart
 
 # Restart Traefik only
-docker-compose -f docker-compose.traefik.yml restart traefik
+docker-compose restart traefik
 
 # Restart a lab
-docker-compose -f docker-compose.traefik.yml restart lab1-vulnerable-site
+docker-compose restart lab1-vulnerable-site
 ```
 
 ### Stop Services
 
 ```bash
 # Stop all (keeps volumes)
-docker-compose -f docker-compose.traefik.yml stop
+docker-compose stop
 
 # Stop and remove (keeps volumes)
-docker-compose -f docker-compose.traefik.yml down
+docker-compose down
 
 # Stop and remove everything including volumes
-docker-compose -f docker-compose.traefik.yml down -v
+docker-compose down -v
 ```
 
 ### Rebuild Services
 
 ```bash
 # Rebuild all
-docker-compose -f docker-compose.traefik.yml build
+docker-compose build
 
 # Rebuild specific service
-docker-compose -f docker-compose.traefik.yml build lab1-vulnerable-site
+docker-compose build lab1-vulnerable-site
 
 # Rebuild and restart
-docker-compose -f docker-compose.traefik.yml up -d --build
+docker-compose up -d --build
 ```
 
 ## Troubleshooting
@@ -177,7 +177,7 @@ docker ps | grep traefik
 docker logs e-skimming-labs-traefik
 
 # Restart Traefik
-docker-compose -f docker-compose.traefik.yml restart traefik
+docker-compose restart traefik
 ```
 
 ### Problem: Lab returns 404
@@ -185,7 +185,7 @@ docker-compose -f docker-compose.traefik.yml restart traefik
 **Solution:**
 ```bash
 # Check if service is running
-docker-compose -f docker-compose.traefik.yml ps
+docker-compose ps
 
 # Check if service is registered in Traefik
 curl http://localhost:8081/api/http/services | jq '.[] | select(.name | contains("lab1"))'
@@ -194,7 +194,7 @@ curl http://localhost:8081/api/http/services | jq '.[] | select(.name | contains
 docker inspect lab1-techgear-store | jq '.[0].Config.Labels'
 
 # Restart the service
-docker-compose -f docker-compose.traefik.yml restart lab1-vulnerable-site
+docker-compose restart lab1-vulnerable-site
 ```
 
 ### Problem: Lab returns 502 Bad Gateway
@@ -202,16 +202,16 @@ docker-compose -f docker-compose.traefik.yml restart lab1-vulnerable-site
 **Solution:**
 ```bash
 # Check service is healthy
-docker-compose -f docker-compose.traefik.yml ps
+docker-compose ps
 
 # Check service logs
-docker-compose -f docker-compose.traefik.yml logs lab1-vulnerable-site
+docker-compose logs lab1-vulnerable-site
 
 # Test service directly
 docker exec lab1-techgear-store wget -O- http://localhost:80
 
 # Restart the service
-docker-compose -f docker-compose.traefik.yml restart lab1-vulnerable-site
+docker-compose restart lab1-vulnerable-site
 ```
 
 ### Problem: Changes to code not reflected
@@ -219,20 +219,20 @@ docker-compose -f docker-compose.traefik.yml restart lab1-vulnerable-site
 **Solution:**
 ```bash
 # Rebuild the service
-docker-compose -f docker-compose.traefik.yml build lab1-vulnerable-site
+docker-compose build lab1-vulnerable-site
 
 # Restart with new image
-docker-compose -f docker-compose.traefik.yml up -d --build lab1-vulnerable-site
+docker-compose up -d --build lab1-vulnerable-site
 
 # Force recreate
-docker-compose -f docker-compose.traefik.yml up -d --force-recreate lab1-vulnerable-site
+docker-compose up -d --force-recreate lab1-vulnerable-site
 ```
 
 ## Next Steps
 
-1. Read the full [Traefik Architecture Design](./traefik-architecture.md)
-2. Read the [Migration Guide](./traefik-migration-guide.md)
-3. Check the [Traefik Configuration README](../deploy/traefik/README.md)
+1. Read the full [Traefik Architecture Design](./TRAEFIK-ARCHITECTURE.md)
+2. Check the [Traefik Configuration README](../deploy/traefik/README.md)
+3. For Cloud Run deployment, see [Router Setup Guide](../deploy/TRAEFIK_ROUTER_SETUP.md)
 4. Run the tests: `./tests/test-traefik-routing.sh`
 5. Explore the Traefik dashboard: http://localhost:8081/dashboard/
 
@@ -253,14 +253,18 @@ This same setup works in production:
 
 Deploy with:
 ```bash
-gh workflow run deploy-traefik.yml -f environment=stg
-gh workflow run deploy-traefik.yml -f environment=prd
+# Build and push image
+cd deploy/traefik
+./build-and-push.sh stg  # or prd
+
+# Then deploy via gcloud or Terraform
+# See deploy/TRAEFIK_ROUTER_SETUP.md for details
 ```
 
 ## Help
 
 For more help:
-- Check logs: `docker-compose -f docker-compose.traefik.yml logs`
+- Check logs: `docker-compose logs`
 - View Traefik dashboard: http://localhost:8081/dashboard/
 - Read Traefik docs: https://doc.traefik.io/
 - Open an issue on GitHub

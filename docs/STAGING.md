@@ -390,7 +390,7 @@ After restarting:
 - **[test/AUTH_SETUP.md](../test/AUTH_SETUP.md)** - E2E test authentication setup
 - **[test/ENVIRONMENT_TESTING.md](../test/ENVIRONMENT_TESTING.md)** - General environment testing guide
 - **[docs/SETUP.md](SETUP.md)** - Local development setup
-- **[docs/traefik-architecture.md](traefik-architecture.md)** - Traefik architecture
+- **[docs/TRAEFIK-ARCHITECTURE.md](TRAEFIK-ARCHITECTURE.md)** - Traefik architecture
 - **[deploy/shared-components/home-index-service/DEPLOY_INSTRUCTIONS.md](../deploy/shared-components/home-index-service/DEPLOY_INSTRUCTIONS.md)** - Deployment instructions
 
 ---
@@ -406,4 +406,3 @@ After restarting:
 
 **Last Updated:** 2025-12-23  
 **Version:** 1.0
-

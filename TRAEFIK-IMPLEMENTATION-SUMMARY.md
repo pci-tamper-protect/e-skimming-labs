@@ -66,7 +66,8 @@ I've successfully designed and implemented a complete Traefik-based routing solu
 
 ```
 e-skimming-labs/
-├── docker-compose.traefik.yml              # New Traefik-enabled compose file
+├── docker-compose.yml                      # Default compose file (with Traefik)
+├── docker-compose.no-traefik.yml          # Legacy compose file (port-based)
 ├── deploy/
 │   ├── traefik/
 │   │   ├── README.md                       # Traefik usage guide
@@ -80,13 +81,12 @@ e-skimming-labs/
 │       └── traefik.tf                      # Terraform configuration
 ├── .github/
 │   └── workflows/
-│       └── deploy-traefik.yml              # CI/CD workflow
+│       └── build-and-push.sh              # Build and push script
 ├── tests/
 │   ├── test-traefik-routing.sh             # Bash test script
 │   └── traefik-routing.test.ts             # Playwright tests
 └── docs/
-    ├── traefik-architecture.md             # Architecture design
-    ├── traefik-migration-guide.md          # Migration guide
+    ├── TRAEFIK-ARCHITECTURE.md             # Architecture design (includes migration status)
     └── TRAEFIK-QUICKSTART.md               # Quick start guide
 ```
 
@@ -123,7 +123,7 @@ e-skimming-labs/
 
 ```bash
 # Start all services with Traefik
-docker-compose -f docker-compose.traefik.yml up -d
+docker-compose up -d
 
 # Access services
 open http://localhost:8080/          # Home page
@@ -136,17 +136,18 @@ open http://localhost:8081/dashboard/ # Traefik dashboard
 ./tests/test-traefik-routing.sh
 
 # Stop services
-docker-compose -f docker-compose.traefik.yml down
+docker-compose down
 ```
 
 ### Cloud Run Deployment
 
 ```bash
-# Deploy to staging
-gh workflow run deploy-traefik.yml -f environment=stg
+# Build and push image
+cd deploy/traefik
+./build-and-push.sh stg  # or prd
 
-# Deploy to production
-gh workflow run deploy-traefik.yml -f environment=prd
+# Deploy via gcloud or Terraform
+# See deploy/TRAEFIK_ROUTER_SETUP.md for details
 ```
 
 ## Testing Results
@@ -181,57 +182,14 @@ The configuration has been validated:
 | Lab 1 C2 | https://lab1-c2-prd-xxx.run.app | https://labs.pcioasis.com/lab1/c2 |
 | Lab 2 | https://lab2-prd-xxx.run.app | https://labs.pcioasis.com/lab2 |
 
-## Next Steps
+## Current Status
 
-### Immediate Actions (Do Not Require User Approval)
+✅ **Migration Complete** - Traefik is deployed and operational in all environments:
+- ✅ Local development: `http://localhost:8080`
+- ✅ Staging: `https://labs.stg.pcioasis.com`
+- ✅ Production: `https://labs.pcioasis.com`
 
-1. **Test Locally**
-   ```bash
-   docker-compose -f docker-compose.traefik.yml up -d
-   ./tests/test-traefik-routing.sh
-   ```
-
-2. **Review Configuration**
-   - Check `docker-compose.traefik.yml`
-   - Review `deploy/traefik/dynamic/routes.yml`
-   - Verify service labels are correct
-
-### Actions Requiring User Approval
-
-3. **Update Lab Code**
-   - Update C2 server URLs in JavaScript files
-   - Make URLs environment-aware
-   - Test each lab after updates
-
-4. **Deploy to Staging**
-   - Apply Terraform changes
-   - Deploy Traefik service
-   - Run end-to-end tests
-   - Verify all routes work
-
-5. **Deploy to Production**
-   - Review staging results
-   - Create deployment plan
-   - Deploy Traefik
-   - Update DNS
-   - Monitor metrics
-
-6. **Cleanup**
-   - Deprecate old port-based setup
-   - Update documentation
-   - Archive old configuration
-
-## Migration Timeline
-
-| Phase | Duration | Actions |
-|-------|----------|---------|
-| **Phase 1: Local Testing** | 1 week | Test Traefik locally, fix issues |
-| **Phase 2: Code Updates** | 1 week | Update URLs in lab code |
-| **Phase 3: Staging Deploy** | 1 week | Deploy and test in staging |
-| **Phase 4: Production Deploy** | 1 week | Deploy to production |
-| **Phase 5: Cleanup** | 1 week | Remove old setup |
-
-**Total**: ~5 weeks
+All services use path-based routing through Traefik as the single entry point.
 
 ## Benefits Summary
 
@@ -267,8 +225,7 @@ The configuration has been validated:
 ## Support and Resources
 
 - **Quick Start**: `docs/TRAEFIK-QUICKSTART.md`
-- **Architecture**: `docs/traefik-architecture.md`
-- **Migration Guide**: `docs/traefik-migration-guide.md`
+- **Architecture**: `docs/TRAEFIK-ARCHITECTURE.md`
 - **Traefik README**: `deploy/traefik/README.md`
 - **Tests**: `tests/test-traefik-routing.sh` and `tests/traefik-routing.test.ts`
 
@@ -285,6 +242,6 @@ The Traefik implementation is **complete and ready for testing**. All configurat
 
 **Recommended Next Step**: Start local testing by running:
 ```bash
-docker-compose -f docker-compose.traefik.yml up -d
+docker-compose up -d
 ./tests/test-traefik-routing.sh
 ```

@@ -4,4 +4,4 @@
 #   - labs.stg.pcioasis.com → traefik-stg (managed in terraform-labs)
 #   - labs.pcioasis.com → traefik-prd (managed in terraform-labs)
 # All traffic goes through Traefik, which routes to home-index and other services
-# See: docs/traefik-architecture.md and deploy/TRAEFIK_ROUTER_SETUP.md
+# See: docs/TRAEFIK-ARCHITECTURE.md and deploy/TRAEFIK_ROUTER_SETUP.md

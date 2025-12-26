@@ -120,7 +120,7 @@ module.exports = defineConfig({
   /* Note: If containers are already running, reuseExistingServer will skip starting them */
   webServer: TEST_ENV === 'local'
     ? {
-        command: 'cd .. && docker-compose -f docker-compose.traefik.yml up -d traefik home-index',
+        command: 'cd .. && docker-compose up -d traefik home-index',
         url: currentEnv.homeIndex,
         reuseExistingServer: true, // Allow reusing the server if it is already running
         timeout: 120 * 1000

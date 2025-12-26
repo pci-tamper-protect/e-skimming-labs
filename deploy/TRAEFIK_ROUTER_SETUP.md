@@ -75,13 +75,21 @@ terraform apply
 ### 2. Deploy Traefik Service
 
 ```bash
-# Deploy Traefik via GitHub Actions
-gh workflow run deploy-traefik.yml -f environment=stg
-
-# Or manually:
+# Build and push Traefik image
 cd deploy/traefik
-docker build -f Dockerfile.cloudrun -t us-central1-docker.pkg.dev/labs-stg/e-skimming-labs/traefik:latest .
-docker push us-central1-docker.pkg.dev/labs-stg/e-skimming-labs/traefik:latest
+./build-and-push.sh stg
+
+# Then deploy via gcloud
+gcloud run deploy traefik-stg \
+  --image=us-central1-docker.pkg.dev/labs-stg/e-skimming-labs/traefik:latest \
+  --region=us-central1 \
+  --project=labs-stg \
+  --service-account=traefik-stg@labs-stg.iam.gserviceaccount.com \
+  --port=8080
+
+# Or use Terraform (recommended)
+cd ../terraform-labs
+terraform apply -var="environment=stg"
 ```
 
 ### 3. Verify Domain Mapping
