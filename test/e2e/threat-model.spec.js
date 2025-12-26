@@ -53,13 +53,17 @@ test.describe('Threat Model Page', () => {
     await expect(backButton).toBeVisible()
 
     // Normalize URLs for comparison (handle localhost vs 127.0.0.1 and trailing slashes)
-    const normalizeUrlForComparison = (url) => {
+    const normalizeUrlForComparison = (url, addTrailingSlash = false) => {
       if (!url) return url
       // Normalize localhost to 127.0.0.1
       let normalized = url.replace(/^https?:\/\/localhost/, 'http://127.0.0.1')
       // Remove trailing slash for consistent comparison (except for root path)
       if (normalized.endsWith('/') && normalized !== 'http://127.0.0.1/' && normalized !== 'http://localhost/') {
         normalized = normalized.slice(0, -1)
+      }
+      // Add trailing slash if requested (for home page URLs)
+      if (addTrailingSlash && !normalized.endsWith('/')) {
+        normalized = normalized + '/'
       }
       return normalized
     }
@@ -83,9 +87,10 @@ test.describe('Threat Model Page', () => {
     await page.waitForLoadState('networkidle')
 
     // Verify we're on the home page (normalize URL for comparison)
-    const expectedHomeUrl = normalizeUrlForComparison(currentEnv.homeIndex) + '/'
+    // Both URLs should have trailing slashes for home page comparison
+    const expectedHomeUrl = normalizeUrlForComparison(currentEnv.homeIndex, true)
     const actualPageUrl = page.url()
-    const normalizedPageUrl = normalizeUrlForComparison(actualPageUrl) + (actualPageUrl.endsWith('/') ? '' : '/')
+    const normalizedPageUrl = normalizeUrlForComparison(actualPageUrl, true)
     expect(normalizedPageUrl).toBe(expectedHomeUrl)
     await expect(page).toHaveTitle('E-Skimming Labs - Interactive Training Platform')
 
@@ -202,13 +207,17 @@ test.describe('Threat Model Page', () => {
 
   test('should have proper navigation flow', async ({ page }) => {
     // Normalize URLs for comparison (handle localhost vs 127.0.0.1 and trailing slashes)
-    const normalizeUrlForComparison = (url) => {
+    const normalizeUrlForComparison = (url, addTrailingSlash = false) => {
       if (!url) return url
       // Normalize localhost to 127.0.0.1
       let normalized = url.replace(/^https?:\/\/localhost/, 'http://127.0.0.1')
       // Remove trailing slash for consistent comparison (except for root path)
       if (normalized.endsWith('/') && normalized !== 'http://127.0.0.1/' && normalized !== 'http://localhost/') {
         normalized = normalized.slice(0, -1)
+      }
+      // Add trailing slash if requested (for home page URLs)
+      if (addTrailingSlash && !normalized.endsWith('/')) {
+        normalized = normalized + '/'
       }
       return normalized
     }
@@ -220,9 +229,10 @@ test.describe('Threat Model Page', () => {
     await backButton.click()
     await page.waitForLoadState('networkidle')
     // Verify we're on the home page (normalize URL for comparison)
-    const expectedHomeUrlAfterClick = normalizeUrlForComparison(currentEnv.homeIndex) + '/'
+    // Both URLs should have trailing slashes for home page comparison
+    const expectedHomeUrlAfterClick = normalizeUrlForComparison(currentEnv.homeIndex, true)
     const actualPageUrlAfterClick = page.url()
-    const normalizedPageUrlAfterClick = normalizeUrlForComparison(actualPageUrlAfterClick) + (actualPageUrlAfterClick.endsWith('/') ? '' : '/')
+    const normalizedPageUrlAfterClick = normalizeUrlForComparison(actualPageUrlAfterClick, true)
     expect(normalizedPageUrlAfterClick).toBe(expectedHomeUrlAfterClick)
 
     // Navigate back to threat model (use .first() for duplicate links)
@@ -272,13 +282,17 @@ test.describe('Threat Model Page - Environment Detection', () => {
     const backButton = page.getByRole('link', { name: '← Back to Labs' })
 
     // Normalize URLs for comparison (handle localhost vs 127.0.0.1 and trailing slashes)
-    const normalizeUrlForComparison = (url) => {
+    const normalizeUrlForComparison = (url, addTrailingSlash = false) => {
       if (!url) return url
       // Normalize localhost to 127.0.0.1
       let normalized = url.replace(/^https?:\/\/localhost/, 'http://127.0.0.1')
       // Remove trailing slash for consistent comparison (except for root path)
       if (normalized.endsWith('/') && normalized !== 'http://127.0.0.1/' && normalized !== 'http://localhost/') {
         normalized = normalized.slice(0, -1)
+      }
+      // Add trailing slash if requested (for home page URLs)
+      if (addTrailingSlash && !normalized.endsWith('/')) {
+        normalized = normalized + '/'
       }
       return normalized
     }
