@@ -34,23 +34,46 @@ const environments = {
     },
   },
   stg: {
-    homeIndex: 'https://labs.stg.pcioasis.com',
+    // Use proxy URL if available (for CI/CD), otherwise use direct domain
+    // When using proxy, all URLs go through the proxy (relative paths)
+    homeIndex: process.env.PROXY_URL && process.env.USE_PROXY === 'true'
+      ? process.env.PROXY_URL
+      : 'https://labs.stg.pcioasis.com',
     mainApp: 'https://stg.pcioasis.com',
     firebaseProjectId: 'ui-firebase-pcioasis-stg',
     lab1: {
-      vulnerable: 'https://lab-01-basic-magecart-stg-mmwwcfi5za-uc.a.run.app',
-      c2: 'https://lab-01-basic-magecart-stg-mmwwcfi5za-uc.a.run.app',
-      writeup: 'https://labs.stg.pcioasis.com/lab-01-writeup',
+      // When using proxy, use relative paths through Traefik
+      vulnerable: process.env.PROXY_URL && process.env.USE_PROXY === 'true'
+        ? `${process.env.PROXY_URL}/lab1`
+        : 'https://lab-01-basic-magecart-stg-mmwwcfi5za-uc.a.run.app',
+      c2: process.env.PROXY_URL && process.env.USE_PROXY === 'true'
+        ? `${process.env.PROXY_URL}/lab1/c2`
+        : 'https://lab-01-basic-magecart-stg-mmwwcfi5za-uc.a.run.app',
+      writeup: process.env.PROXY_URL && process.env.USE_PROXY === 'true'
+        ? `${process.env.PROXY_URL}/lab-01-writeup`
+        : 'https://labs.stg.pcioasis.com/lab-01-writeup',
     },
     lab2: {
-      vulnerable: 'https://lab-02-dom-skimming-stg-mmwwcfi5za-uc.a.run.app',
-      c2: 'https://lab-02-dom-skimming-c2-stg-mmwwcfi5za-uc.a.run.app',
-      writeup: 'https://labs.stg.pcioasis.com/lab-02-writeup',
+      vulnerable: process.env.PROXY_URL && process.env.USE_PROXY === 'true'
+        ? `${process.env.PROXY_URL}/lab2`
+        : 'https://lab-02-dom-skimming-stg-mmwwcfi5za-uc.a.run.app',
+      c2: process.env.PROXY_URL && process.env.USE_PROXY === 'true'
+        ? `${process.env.PROXY_URL}/lab2/c2`
+        : 'https://lab-02-dom-skimming-c2-stg-mmwwcfi5za-uc.a.run.app',
+      writeup: process.env.PROXY_URL && process.env.USE_PROXY === 'true'
+        ? `${process.env.PROXY_URL}/lab-02-writeup`
+        : 'https://labs.stg.pcioasis.com/lab-02-writeup',
     },
     lab3: {
-      vulnerable: 'https://lab-03-extension-hijacking-stg-mmwwcfi5za-uc.a.run.app',
-      c2: 'https://lab-03-extension-hijacking-c2-stg-mmwwcfi5za-uc.a.run.app',
-      writeup: 'https://labs.stg.pcioasis.com/lab-03-writeup',
+      vulnerable: process.env.PROXY_URL && process.env.USE_PROXY === 'true'
+        ? `${process.env.PROXY_URL}/lab3`
+        : 'https://lab-03-extension-hijacking-stg-mmwwcfi5za-uc.a.run.app',
+      c2: process.env.PROXY_URL && process.env.USE_PROXY === 'true'
+        ? `${process.env.PROXY_URL}/lab3/extension`
+        : 'https://lab-03-extension-hijacking-c2-stg-mmwwcfi5za-uc.a.run.app',
+      writeup: process.env.PROXY_URL && process.env.USE_PROXY === 'true'
+        ? `${process.env.PROXY_URL}/lab-03-writeup`
+        : 'https://labs.stg.pcioasis.com/lab-03-writeup',
     },
   },
   prd: {
@@ -109,6 +132,9 @@ function getC2CollectEndpoint(labNumber) {
 }
 
 console.log(`🧪 Test Environment: ${TEST_ENV}`)
+if (process.env.USE_PROXY === 'true' && process.env.PROXY_URL) {
+  console.log(`🔗 Using gcloud proxy: ${process.env.PROXY_URL}`)
+}
 console.log(`📍 Home Index: ${currentEnv.homeIndex}`)
 if (currentEnv.mainApp) {
   console.log(`📍 Main App: ${currentEnv.mainApp}`)
