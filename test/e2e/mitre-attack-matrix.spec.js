@@ -146,20 +146,26 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
     // Get the actual href attribute
     const href = await backButton.getAttribute('href')
 
-    // Normalize URLs for comparison (handle relative URLs and localhost vs 127.0.0.1)
+    // Normalize URLs for comparison (handle relative URLs, localhost vs 127.0.0.1, and trailing slashes)
     const normalizeUrl = (url) => {
       if (!url) return url
+      let normalized = url
       // If it's a relative URL, resolve it against currentEnv.homeIndex
       if (url.startsWith('/')) {
         try {
           const resolved = new URL(url, currentEnv.homeIndex).href
-          return resolved.replace(/^https?:\/\/localhost/, 'http://127.0.0.1')
+          normalized = resolved
         } catch {
-          return url
+          normalized = url
         }
       }
       // Normalize localhost to 127.0.0.1 for comparison
-      return url.replace(/^https?:\/\/localhost/, 'http://127.0.0.1')
+      normalized = normalized.replace(/^https?:\/\/localhost/, 'http://127.0.0.1')
+      // Remove trailing slash for consistent comparison (except for root path)
+      if (normalized.endsWith('/') && normalized !== 'http://127.0.0.1/' && normalized !== 'http://localhost/') {
+        normalized = normalized.slice(0, -1)
+      }
+      return normalized
     }
 
     const expectedUrl = normalizeUrl(currentEnv.homeIndex)
@@ -586,12 +592,36 @@ test.describe('MITRE ATT&CK Matrix - Environment Detection', () => {
 
     // Find the back button and check its href
     const backButton = page.getByRole('link', { name: '← Back to Labs' })
-    await expect(backButton).toHaveAttribute('href', currentEnv.homeIndex)
+
+    // Normalize URLs for comparison (handle localhost vs 127.0.0.1 and trailing slashes)
+    const normalizeUrlForComparison = (url) => {
+      if (!url) return url
+      // Normalize localhost to 127.0.0.1
+      let normalized = url.replace(/^https?:\/\/localhost/, 'http://127.0.0.1')
+      // Remove trailing slash for consistent comparison (except for root path)
+      if (normalized.endsWith('/') && normalized !== 'http://127.0.0.1/' && normalized !== 'http://localhost/') {
+        normalized = normalized.slice(0, -1)
+      }
+      return normalized
+    }
+
+    // Get the actual href and normalize both for comparison
+    const actualHref = await backButton.getAttribute('href')
+    const normalizedActual = normalizeUrlForComparison(actualHref)
+    const normalizedExpected = normalizeUrlForComparison(currentEnv.homeIndex)
+
+    // Check that normalized URLs match (handles localhost vs 127.0.0.1 differences)
+    expect(normalizedActual).toBe(normalizedExpected)
 
     // Verify console log was generated (if captured - may not work in all test environments)
     if (consoleLogText) {
       const logText = String(consoleLogText)
-      expect(logText.indexOf(currentEnv.homeIndex) >= 0).toBeTruthy()
+      // Check if the log contains either the expected URL or a normalized version
+      const normalizedExpected = normalizeUrlForComparison(currentEnv.homeIndex)
+      const containsExpected = logText.indexOf(currentEnv.homeIndex) >= 0 ||
+                               logText.indexOf(normalizedExpected) >= 0 ||
+                               logText.replace(/localhost/g, '127.0.0.1').indexOf(normalizedExpected) >= 0
+      expect(containsExpected).toBeTruthy()
     } else {
       // If console log doesn't work in test environment, just verify the href is correct
       console.log('Console log not captured, but href is verified correct')
