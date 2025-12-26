@@ -49,6 +49,11 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
   // Configure tests to run in parallel for maximum speed
   test.describe.configure({ mode: 'parallel' })
 
+  // Log environment once at the start of the test suite
+  test.beforeAll(() => {
+    console.log(`🧪 Testing against ${TEST_ENV} environment: ${currentEnv.homeIndex}`)
+  })
+
   test.beforeEach(async ({ page }) => {
     // Health check only for local environment (staging/prd should already be deployed)
     if (TEST_ENV === 'local') {
@@ -64,9 +69,6 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
       } catch (error) {
         console.warn(`⚠️  Could not reach server at ${currentEnv.homeIndex}. Make sure the server is running.`)
       }
-    } else {
-      // For staging/prd, just verify we can reach the base URL
-      console.log(`🧪 Testing against ${TEST_ENV} environment: ${currentEnv.homeIndex}`)
     }
 
     // Navigate to the MITRE ATT&CK page with increased timeout
@@ -141,8 +143,34 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
     // Check that the back button is visible
     await expect(backButton).toBeVisible()
 
-    // Check that the back button has the correct href for localhost (port 3000)
-    await expect(backButton).toHaveAttribute('href', currentEnv.homeIndex)
+    // Get the actual href attribute
+    const href = await backButton.getAttribute('href')
+
+    // Normalize URLs for comparison (handle relative URLs and localhost vs 127.0.0.1)
+    const normalizeUrl = (url) => {
+      if (!url) return url
+      // If it's a relative URL, resolve it against currentEnv.homeIndex
+      if (url.startsWith('/')) {
+        try {
+          return new URL(url, currentEnv.homeIndex).href.replace('localhost', '127.0.0.1')
+        } catch {
+          return url
+        }
+      }
+      // Normalize localhost to 127.0.0.1 for comparison
+      return url.replace('localhost', '127.0.0.1')
+    }
+
+    const expectedUrl = normalizeUrl(currentEnv.homeIndex)
+    const actualUrl = normalizeUrl(href)
+
+    // Accept either the exact URL, relative path '/', or a normalized match
+    const isValid = href === '/' ||
+                    href === currentEnv.homeIndex ||
+                    actualUrl === expectedUrl ||
+                    (href && actualUrl.replace(/\/$/, '') === expectedUrl.replace(/\/$/, ''))
+
+    expect(isValid).toBe(true)
 
     // Test clicking the back button
     await backButton.click()

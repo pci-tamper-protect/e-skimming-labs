@@ -93,7 +93,7 @@ jobs:
         id: start-proxy
         run: |
           echo "🔗 Starting gcloud proxy for staging tests..."
-          PROXY_PORT=8081
+          PROXY_PORT=8080
 
           # Start proxy in background
           echo "Starting proxy on port $PROXY_PORT..."

@@ -1441,7 +1441,7 @@ jobs:
         id: start-proxy
         run: |
           echo "🔗 Starting gcloud proxy for staging tests..."
-          PROXY_PORT=8081
+          PROXY_PORT=8080
 
           # Start proxy in background
           gcloud run services proxy traefik-stg \
@@ -1585,7 +1585,6 @@ jobs:
           pattern: playwright-json-${{ needs.setup.outputs.environment }}-shard-*
           merge-multiple: true
           path: test/test-results-merged/
-          if-no-files-found: ignore
 
       - name: Download test reports from all shards
         if: always()
@@ -1593,7 +1592,6 @@ jobs:
         with:
           pattern: playwright-report-${{ needs.setup.outputs.environment }}-shard-*
           path: test/reports-merged/
-          if-no-files-found: ignore
 
       - name: Check which shard jobs failed using GitHub API
         id: check-shard-jobs
