@@ -20,7 +20,7 @@ I've successfully designed and implemented a complete Traefik-based routing solu
 2. **Traefik Configuration**
    - Static configuration (`traefik.yml`)
    - Dynamic route configuration (`dynamic/routes.yml`)
-   - Docker Compose integration (`docker-compose.traefik.yml`)
+   - Docker Compose integration (`docker-compose.yml`)
    - Service labels for automatic discovery
 
 3. **Service Routes Implemented**

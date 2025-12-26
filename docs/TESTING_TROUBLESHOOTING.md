@@ -172,7 +172,7 @@ docker-compose ps
 ```
 
 **Solutions:**
-1. Verify service labels in `docker-compose.traefik.yml`
+1. Verify service labels in `docker-compose.yml`
 2. Check service is running: `docker-compose ps`
 3. Restart Traefik: `docker-compose restart traefik`
 4. For Cloud Run: Check environment variables are set correctly

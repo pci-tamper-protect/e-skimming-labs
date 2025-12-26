@@ -238,7 +238,8 @@ docker-compose up -d --force-recreate lab1-vulnerable-site
 
 ## Configuration Files
 
-- `docker-compose.traefik.yml` - Main compose file with Traefik
+- `docker-compose.yml` - Default compose file with Traefik
+- `docker-compose.no-traefik.yml` - Legacy compose file (port-based)
 - `deploy/traefik/traefik.yml` - Traefik static configuration
 - `deploy/traefik/dynamic/routes.yml` - Route definitions
 - `deploy/traefik/Dockerfile.cloudrun` - Cloud Run deployment

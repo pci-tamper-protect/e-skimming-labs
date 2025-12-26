@@ -74,7 +74,7 @@ This file defines:
 
 To add a new lab (e.g., Lab 4):
 
-### 1. Add service to docker-compose.traefik.yml
+### 1. Add service to docker-compose.yml
 
 ```yaml
 lab4-vulnerable-site:

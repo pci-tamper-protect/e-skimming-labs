@@ -268,7 +268,7 @@ For more troubleshooting, see:
 See [Traefik README - Adding a New Lab](../deploy/traefik/README.md#adding-a-new-lab) for detailed instructions.
 
 Quick steps:
-1. Add service to `docker-compose.traefik.yml` with Traefik labels
+1. Add service to `docker-compose.yml` with Traefik labels
 2. Add middleware to `deploy/traefik/dynamic/routes.yml`
 3. Restart Traefik
 4. Test the new route

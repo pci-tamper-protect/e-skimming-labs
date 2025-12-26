@@ -27,7 +27,7 @@ That's it! 🎉
 
 ## 📍 Access Points
 
-**Using Traefik (Recommended - `docker-compose.traefik.yml`):**
+**Default Setup (Recommended - `docker-compose.yml` with Traefik):**
 
 All services are accessible through a single entry point at `http://localhost:8080`:
 
