@@ -1436,12 +1436,31 @@ jobs:
         if: needs.setup.outputs.environment == 'stg' && env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
         uses: google-github-actions/setup-gcloud@v3
 
+      - name: Load proxy configuration from .env.stg
+        if: needs.setup.outputs.environment == 'stg'
+        id: proxy-config
+        run: |
+          # Read proxy configuration from .env.stg
+          # Source the file and extract PROXY_HOST and PROXY_PORT
+          set +e  # Don't fail on errors (in case .env.stg has encrypted values)
+          source .env.stg 2>/dev/null || true
+          set -e
+
+          # Use values from .env.stg or fallback to defaults
+          PROXY_HOST="${PROXY_HOST:-127.0.0.1}"
+          PROXY_PORT="${PROXY_PORT:-8080}"
+
+          echo "proxy_port=$PROXY_PORT" >> $GITHUB_OUTPUT
+          echo "proxy_host=$PROXY_HOST" >> $GITHUB_OUTPUT
+          echo "🔗 Proxy config from .env.stg: $PROXY_HOST:$PROXY_PORT"
+
       - name: Start gcloud proxy for staging tests
         if: needs.setup.outputs.environment == 'stg' && env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
         id: start-proxy
         run: |
           echo "🔗 Starting gcloud proxy for staging tests..."
-          PROXY_PORT=8080
+          PROXY_PORT="${{ steps.proxy-config.outputs.proxy_port }}"
+          PROXY_HOST="${{ steps.proxy-config.outputs.proxy_host }}"
 
           # Start proxy in background
           gcloud run services proxy traefik-stg \
@@ -1459,8 +1478,8 @@ jobs:
           WAIT_COUNT=0
           while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
             # Check if proxy is responding (try both health endpoint and root)
-            if curl -sf --max-time 2 http://127.0.0.1:$PROXY_PORT/health > /dev/null 2>&1 || \
-               curl -sf --max-time 2 http://127.0.0.1:$PROXY_PORT/ > /dev/null 2>&1; then
+            if curl -sf --max-time 2 http://$PROXY_HOST:$PROXY_PORT/health > /dev/null 2>&1 || \
+               curl -sf --max-time 2 http://$PROXY_HOST:$PROXY_PORT/ > /dev/null 2>&1; then
               echo "✅ Proxy is ready on port $PROXY_PORT"
               break
             fi
@@ -1481,8 +1500,8 @@ jobs:
           fi
 
           # Verify proxy is actually working before setting URL
-          if curl -sf --max-time 5 http://127.0.0.1:$PROXY_PORT/ > /dev/null 2>&1; then
-            PROXY_URL="http://127.0.0.1:$PROXY_PORT"
+          if curl -sf --max-time 5 http://$PROXY_HOST:$PROXY_PORT/ > /dev/null 2>&1; then
+            PROXY_URL="http://$PROXY_HOST:$PROXY_PORT"
             echo "✅ Proxy confirmed working: $PROXY_URL"
           else
             PROXY_URL=""
@@ -1508,6 +1527,8 @@ jobs:
           # Set USE_PROXY based on whether proxy URL is available
           PROXY_URL: ${{ steps.start-proxy.outputs.proxy_url }}
           USE_PROXY: ${{ needs.setup.outputs.environment == 'stg' && steps.start-proxy.outputs.proxy_url != '' && 'true' || 'false' }}
+          PROXY_HOST: ${{ steps.proxy-config.outputs.proxy_host }}
+          PROXY_PORT: ${{ steps.proxy-config.outputs.proxy_port }}
         run: |
           echo "🧪 Running E2E tests (shard ${{ matrix.shard }}/${{ matrix.total-shards }})"
           echo "TEST_ENV: $TEST_ENV"

@@ -152,13 +152,14 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
       // If it's a relative URL, resolve it against currentEnv.homeIndex
       if (url.startsWith('/')) {
         try {
-          return new URL(url, currentEnv.homeIndex).href.replace('localhost', '127.0.0.1')
+          const resolved = new URL(url, currentEnv.homeIndex).href
+          return resolved.replace(/^https?:\/\/localhost/, 'http://127.0.0.1')
         } catch {
           return url
         }
       }
       // Normalize localhost to 127.0.0.1 for comparison
-      return url.replace('localhost', '127.0.0.1')
+      return url.replace(/^https?:\/\/localhost/, 'http://127.0.0.1')
     }
 
     const expectedUrl = normalizeUrl(currentEnv.homeIndex)
@@ -175,8 +176,19 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
     // Test clicking the back button
     await backButton.click()
 
-    // Verify we're on the home page
-    await expect(page).toHaveURL(currentEnv.homeIndex + '/')
+    // Wait for navigation and normalize the URL for comparison
+    await page.waitForURL('**', { timeout: 10000 })
+    const currentUrl = page.url()
+    const normalizedCurrentUrl = normalizeUrl(currentUrl)
+    const normalizedExpectedUrl = normalizeUrl(currentEnv.homeIndex)
+
+    // Compare normalized URLs (handles localhost vs 127.0.0.1)
+    expect(normalizedCurrentUrl).toBe(normalizedExpectedUrl)
+
+    // Verify we're on the home page (normalize both URLs for comparison)
+    const expectedHomeUrl = normalizeUrl(currentEnv.homeIndex + '/')
+    const actualPageUrl = normalizeUrl(page.url())
+    expect(actualPageUrl).toBe(expectedHomeUrl)
     await expect(page).toHaveTitle('E-Skimming Labs - Interactive Training Platform')
 
     // Verify we can see the main labs content
