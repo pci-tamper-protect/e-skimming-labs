@@ -89,7 +89,8 @@ resource "google_cloud_run_v2_service" "home_index_service" {
   }
 
   template {
-    service_account = google_service_account.home_runtime.email
+    # Use Firebase Admin SDK runtime service account for authentication
+    service_account = google_service_account.fbase_adm_sdk_runtime.email
 
     containers {
       image = "${var.region}-docker.pkg.dev/${local.home_project_id}/e-skimming-labs-home/index:latest"
@@ -149,7 +150,7 @@ resource "google_cloud_run_v2_service" "home_index_service" {
 
   depends_on = [
     google_artifact_registry_repository.home_repo,
-    google_service_account.home_runtime
+    google_service_account.fbase_adm_sdk_runtime
   ]
 }
 

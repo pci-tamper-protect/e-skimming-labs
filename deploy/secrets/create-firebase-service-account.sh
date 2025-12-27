@@ -242,9 +242,9 @@ escaped = content.replace('\\\\', '\\\\\\\\').replace('\n', '\\\\n').replace('\"
 print(escaped, end='')
 ")
 
-    # Check if FIREBASE_SERVICE_ACCOUNT already exists in .env file
-    if grep -q "^FIREBASE_SERVICE_ACCOUNT=" "$ENV_FILE"; then
-        print_status "FIREBASE_SERVICE_ACCOUNT already exists in $ENV_FILE"
+    # Check if FIREBASE_SERVICE_ACCOUNT_KEY already exists in .env file
+    if grep -q "^FIREBASE_SERVICE_ACCOUNT_KEY=" "$ENV_FILE"; then
+        print_status "FIREBASE_SERVICE_ACCOUNT_KEY already exists in $ENV_FILE"
         read -p "Do you want to update it? (y/N) " -n 1 -r
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -253,15 +253,15 @@ print(escaped, end='')
         fi
         # Remove existing line (macOS-compatible)
         if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' '/^FIREBASE_SERVICE_ACCOUNT=/d' "$ENV_FILE"
+            sed -i '' '/^FIREBASE_SERVICE_ACCOUNT_KEY=/d' "$ENV_FILE"
         else
-            sed -i '/^FIREBASE_SERVICE_ACCOUNT=/d' "$ENV_FILE"
+            sed -i '/^FIREBASE_SERVICE_ACCOUNT_KEY=/d' "$ENV_FILE"
         fi
     fi
 
     # Add the key to .env file with proper multiline formatting
-    echo "FIREBASE_SERVICE_ACCOUNT=\"${KEY_JSON}\"" >> "$ENV_FILE"
-    print_status "Added FIREBASE_SERVICE_ACCOUNT to $ENV_FILE ✓"
+    echo "FIREBASE_SERVICE_ACCOUNT_KEY=\"${KEY_JSON}\"" >> "$ENV_FILE"
+    print_status "Added FIREBASE_SERVICE_ACCOUNT_KEY to $ENV_FILE ✓"
 
     # Check if dotenvx-converter.py exists
     if [ -f "$CONVERTER_SCRIPT" ]; then

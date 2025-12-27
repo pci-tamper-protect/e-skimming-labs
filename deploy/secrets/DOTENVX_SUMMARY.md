@@ -332,9 +332,7 @@ This tool complements the existing secrets management:
 
 | Tool | Purpose | Format |
 |------|---------|--------|
-| `update-secret-hashes.py` | GCP Secret Manager hashes | YAML |
 | `dotenvx-converter.py` | dotenvx environment encryption | .env |
-| `setup-secrets.sh` | Initial secrets setup | YAML |
 
 Both use SHA256 for hash verification and audit trails.
 

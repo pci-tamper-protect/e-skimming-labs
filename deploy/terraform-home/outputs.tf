@@ -50,18 +50,29 @@ output "home_seo_service_account" {
   value       = google_service_account.home_seo.email
 }
 
+output "fbase_adm_sdk_runtime_service_account" {
+  description = "The Firebase Admin SDK runtime service account email"
+  value       = google_service_account.fbase_adm_sdk_runtime.email
+}
+
 # GitHub Secrets (to be added manually)
 output "github_secrets_instructions_home" {
   description = "Instructions for setting up GitHub secrets for home page"
   value       = <<-EOT
     Add the following secrets to your GitHub repository for HOME PAGE deployment:
-    
+
     1. GCP_HOME_PROJECT_ID: ${local.home_project_id}
-    2. GCP_HOME_SA_KEY: [Use the service account key from terraform output]
+    2. GCP_HOME_SA_KEY: [Create service account key using gcloud]
     3. GAR_HOME_LOCATION: ${var.region}
     4. REPOSITORY_HOME: e-skimming-labs-home
-    
-    To get the service account key, run:
-    terraform output -raw home_deploy_key
+
+    To create the service account key (NOT managed by Terraform):
+      gcloud iam service-accounts keys create /tmp/home-deploy-key.json \
+        --iam-account=${google_service_account.home_deploy.email} \
+        --project=${local.home_project_id}
+
+    Then add to GitHub secrets:
+      gh secret set GCP_HOME_SA_KEY --body "$(cat /tmp/home-deploy-key.json | base64)"
+      rm /tmp/home-deploy-key.json
   EOT
 }

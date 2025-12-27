@@ -50,6 +50,12 @@ services:
       - LAB3_DOMAIN=localhost:8080/lab3
       - MAIN_DOMAIN=pcioasis.com
       - LABS_PROJECT_ID=labs-prd
+      # Auth configuration - set FIREBASE_API_KEY to enable auth
+      # Use docker-compose.auth.yml override for full auth setup
+      - ENABLE_AUTH=${ENABLE_AUTH:-false}
+      - REQUIRE_AUTH=${REQUIRE_AUTH:-false}
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-}
+      - FIREBASE_API_KEY=${FIREBASE_API_KEY:-}
     networks:
       - labs-network
     depends_on:
