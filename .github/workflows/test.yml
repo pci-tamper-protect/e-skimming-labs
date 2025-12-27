@@ -89,7 +89,7 @@ jobs:
 
       - name: Upload test results (shard ${{ matrix.shard }})
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-report-${{ steps.test-env.outputs.environment }}-shard-${{ matrix.shard }}
           path: test/playwright-report/
@@ -98,7 +98,7 @@ jobs:
 
       - name: Upload test JSON results (shard ${{ matrix.shard }})
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-json-${{ steps.test-env.outputs.environment }}-shard-${{ matrix.shard }}
           path: test/test-results/results.json
@@ -107,7 +107,7 @@ jobs:
 
       - name: Upload test screenshots (shard ${{ matrix.shard }})
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-screenshots-${{ steps.test-env.outputs.environment }}-shard-${{ matrix.shard }}
           path: test/test-results/
