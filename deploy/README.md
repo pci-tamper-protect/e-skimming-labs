@@ -118,7 +118,7 @@ This script:
 - Creates and downloads service account key to `deploy/labs-auth-validator-<env>-key.json`
 
 **Next Steps:**
-1. Add the service account key JSON to `.env.<env>` (project root) as `FIREBASE_SERVICE_ACCOUNT`
+1. Add the service account key JSON to `.env.<env>` (project root) as `FIREBASE_SERVICE_ACCOUNT_KEY`
    
    **Easy way (recommended):** Use the helper script from `pcioasis-ops/secrets`:
    ```bash
@@ -136,7 +136,7 @@ This script:
    
    **Manual way:** The key JSON needs to be on a single line with escaped newlines and quotes:
    ```bash
-   FIREBASE_SERVICE_ACCOUNT="{\"type\":\"service_account\",\"project_id\":\"...\",\"private_key\":\"-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n\"}"
+   FIREBASE_SERVICE_ACCOUNT_KEY="{\"type\":\"service_account\",\"project_id\":\"...\",\"private_key\":\"-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n\"}"
    ```
 
 2. Encrypt the `.env` file: `dotenvx encrypt .env.<env>`
@@ -311,7 +311,7 @@ gcloud secrets add-iam-policy-binding DOTENVX_KEY_PRD \
 - To define multiline values (e.g., JSON service account keys), use double quotes and escape newlines with `\n`
 - Example:
   ```
-  FIREBASE_SERVICE_ACCOUNT="{\n  \"type\": \"service_account\",\n  \"project_id\": \"...\"\n}"
+  FIREBASE_SERVICE_ACCOUNT_KEY="{\n  \"type\": \"service_account\",\n  \"project_id\": \"...\"\n}"
   ```
 - Some modern dotenv implementations support actual newlines within quoted strings, but using `\n` is more universally compatible
 - Use `pcioasis-ops/secrets/dotenvx-converter.py` to encrypt values in place after adding them to the `.env` file
@@ -345,8 +345,8 @@ export DOTENV_PRIVATE_KEY="$(cat .env.keys.stg)"
 dotenvx run --env-file=.env.stg -- docker-compose -f docker-compose.yml -f docker-compose.auth.yml up --build
 ```
 - Decrypts `.env.stg` using `dotenvx` and `.env.keys.stg`
-- Sets `FIREBASE_SERVICE_ACCOUNT`, `FIREBASE_API_KEY`, and `FIREBASE_PROJECT_ID` from decrypted environment variables
-- Services automatically detect if `FIREBASE_SERVICE_ACCOUNT` is set and enable auth
+- Sets `FIREBASE_SERVICE_ACCOUNT_KEY`, `FIREBASE_API_KEY`, and `FIREBASE_PROJECT_ID` from decrypted environment variables
+- Services automatically detect if `FIREBASE_SERVICE_ACCOUNT_KEY` is set and enable auth
 - Mounts `.env.keys.stg` to `/etc/secrets/dotenvx-key` (for consistency with Cloud Run)
 - Use when testing Firebase authentication
 
@@ -354,7 +354,7 @@ dotenvx run --env-file=.env.stg -- docker-compose -f docker-compose.yml -f docke
 
 **Two Different Firebase Credentials:**
 - `FIREBASE_API_KEY` - Web API key string (client-side Web SDK) - for sign-in page
-- `FIREBASE_SERVICE_ACCOUNT` - Service account JSON (server-side Admin SDK) - for token validation
+- `FIREBASE_SERVICE_ACCOUNT_KEY` - Service account JSON (server-side Admin SDK) - for token validation
 
 **Web Config Variables (for sign-in page):**
 - `FIREBASE_API_KEY` (or `VITE_APP_FIREBASE_API_KEY` as fallback) - Web API key

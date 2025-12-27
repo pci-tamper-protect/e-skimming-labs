@@ -1,0 +1,260 @@
+version: '3.8'
+
+services:
+  # =============================================================================
+  # LABS-HOME SERVICES (Landing Page & Shared Components)
+  # =============================================================================
+
+  # Home Index Service - Main landing page
+  home-index:
+    build:
+      context: .
+      dockerfile: deploy/shared-components/home-index-service/Dockerfile
+    container_name: e-skimming-labs-home-index
+    ports:
+      - '3000:8080' # Changed: Avoid 8080 (common proxy port)
+    environment:
+      - PORT=8080
+      - ENVIRONMENT=local
+      - DOMAIN=localhost:3000
+      - LABS_DOMAIN=localhost:9001
+      - LAB1_DOMAIN=localhost:9001
+      - LAB2_DOMAIN=localhost:9003
+      - LAB3_DOMAIN=localhost:9005
+      - MAIN_DOMAIN=pcioasis.com
+      - LABS_PROJECT_ID=labs-prd
+    networks:
+      - labs-network
+    depends_on:
+      - home-seo
+      - labs-analytics
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:8080/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # SEO Service - Cross-domain SEO integration
+  home-seo:
+    build:
+      context: deploy/shared-components/seo-service
+      dockerfile: Dockerfile
+    container_name: e-skimming-labs-home-seo
+    ports:
+      - '3001:8080' # Changed: Avoid common ports
+    environment:
+      - PORT=8080
+      - PROJECT_ID=labs-home-prd
+      - ENVIRONMENT=local
+      - MAIN_DOMAIN=pcioasis.com
+      - LABS_DOMAIN=localhost
+      - LABS_PROJECT_ID=labs-prd
+    networks:
+      - labs-network
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:8080/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Analytics Service - Lab progress tracking
+  labs-analytics:
+    build:
+      context: deploy/shared-components/analytics-service
+      dockerfile: Dockerfile
+    container_name: e-skimming-labs-analytics
+    ports:
+      - '3002:8080' # Changed: Avoid common ports
+    environment:
+      - PORT=8080
+      - PROJECT_ID=labs-prd
+      - ENVIRONMENT=local
+      - FIRESTORE_DATABASE=(default)
+    networks:
+      - labs-network
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:8080/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # =============================================================================
+  # LAB 1: BASIC MAGECART ATTACK
+  # =============================================================================
+
+  # Lab 1 - Vulnerable E-commerce Site
+  lab1-vulnerable-site:
+    build: ./labs/01-basic-magecart/vulnerable-site
+    container_name: lab1-techgear-store
+    ports:
+      - '9001:80'
+    networks:
+      - labs-network
+    environment:
+      - NGINX_HOST=localhost
+      - NGINX_PORT=80
+      - SKIMMER_VARIANT=base
+    volumes:
+      - ./labs/01-basic-magecart/vulnerable-site:/usr/share/nginx/html:ro
+    labels:
+      - 'lab=lab1-basic-magecart'
+      - 'component=vulnerable-site'
+
+  # Lab 1 - C2 Server (Data Collection)
+  lab1-c2-server:
+    build: ./labs/01-basic-magecart/malicious-code/c2-server
+    container_name: lab1-attacker-c2
+    ports:
+      - '9002:3000'
+    networks:
+      - labs-network
+    volumes:
+      - ./labs/01-basic-magecart/malicious-code/c2-server/stolen-data:/app/stolen-data
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+    labels:
+      - 'lab=lab1-basic-magecart'
+      - 'component=c2-server'
+
+  # =============================================================================
+  # LAB 2: DOM-BASED SKIMMING
+  # =============================================================================
+
+  # Lab 2 - Vulnerable Banking Site
+  lab2-vulnerable-site:
+    build: ./labs/02-dom-skimming/vulnerable-site
+    container_name: lab2-securebank
+    ports:
+      - '9003:80'
+    networks:
+      - labs-network
+    labels:
+      - 'lab=lab2-dom-skimming'
+      - 'component=vulnerable-site'
+
+  # Lab 2 - C2 Server (DOM Skimming Data Collection)
+  lab2-c2-server:
+    build:
+      context: ./labs/02-dom-skimming
+      dockerfile: Dockerfile.c2
+    container_name: lab2-dom-c2-server
+    ports:
+      - '9004:3000'
+    networks:
+      - labs-network
+    volumes:
+      - ./labs/02-dom-skimming/malicious-code/stolen-data:/app/stolen-data
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+    labels:
+      - 'lab=lab2-dom-skimming'
+      - 'component=c2-server'
+
+  # =============================================================================
+  # LAB 3: BROWSER EXTENSION HIJACKING
+  # =============================================================================
+
+  # Lab 3 - Vulnerable Site
+  lab3-vulnerable-site:
+    build: ./labs/03-extension-hijacking/vulnerable-site
+    container_name: lab3-vulnerable-site
+    ports:
+      - '9005:80'
+    networks:
+      - labs-network
+    labels:
+      - 'lab=lab3-extension-hijacking'
+      - 'component=vulnerable-site'
+
+  # Lab 3 - Extension Data Server
+  lab3-extension-server:
+    build:
+      context: ./labs/03-extension-hijacking/test-server
+      dockerfile: Dockerfile
+    container_name: lab3-extension-server
+    ports:
+      - '9006:3000'
+    networks:
+      - labs-network
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+    labels:
+      - 'lab=lab3-extension-hijacking'
+      - 'component=extension-server'
+
+  # =============================================================================
+  # LAB VARIANTS (Optional - Advanced Scenarios)
+  # =============================================================================
+
+  # Lab 1 Variant - Event Listener Variant
+  lab1-event-listener-variant:
+    build: ./labs/01-basic-magecart/variants/event-listener-variant/vulnerable-site
+    container_name: lab1-event-listener-variant
+    ports:
+      - '9011:80'
+    networks:
+      - labs-network
+    environment:
+      - SKIMMER_VARIANT=event-listener
+    volumes:
+      - ./labs/01-basic-magecart/variants/event-listener-variant/vulnerable-site:/usr/share/nginx/html:ro
+    labels:
+      - 'lab=lab1-basic-magecart'
+      - 'variant=event-listener'
+      - 'component=vulnerable-site'
+
+  # Lab 1 Variant - Obfuscated Base64 Variant
+  lab1-obfuscated-variant:
+    build: ./labs/01-basic-magecart/variants/obfuscated-base64/vulnerable-site
+    container_name: lab1-obfuscated-variant
+    ports:
+      - '9012:80'
+    networks:
+      - labs-network
+    environment:
+      - SKIMMER_VARIANT=obfuscated-base64
+    volumes:
+      - ./labs/01-basic-magecart/variants/obfuscated-base64/vulnerable-site:/usr/share/nginx/html:ro
+    labels:
+      - 'lab=lab1-basic-magecart'
+      - 'variant=obfuscated-base64'
+      - 'component=vulnerable-site'
+
+  # Lab 1 Variant - WebSocket Exfiltration
+  lab1-websocket-variant:
+    build: ./labs/01-basic-magecart/variants/websocket-exfil/vulnerable-site
+    container_name: lab1-websocket-variant
+    ports:
+      - '9013:80'
+    networks:
+      - labs-network
+    environment:
+      - SKIMMER_VARIANT=websocket-exfil
+    volumes:
+      - ./labs/01-basic-magecart/variants/websocket-exfil/vulnerable-site:/usr/share/nginx/html:ro
+    labels:
+      - 'lab=lab1-basic-magecart'
+      - 'variant=websocket-exfil'
+      - 'component=vulnerable-site'
+
+# =============================================================================
+# NETWORKS
+# =============================================================================
+networks:
+  labs-network:
+    driver: bridge
+    name: e-skimming-labs-network
+
+# =============================================================================
+# VOLUMES
+# =============================================================================
+volumes:
+  lab1-stolen-data:
+    driver: local
+  lab2-stolen-data:
+    driver: local
+  lab3-stolen-data:
+    driver: local

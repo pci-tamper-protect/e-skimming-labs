@@ -47,7 +47,14 @@
       "Bash(docker restart:*)",
       "Bash(docker inspect:*)",
       "Bash(ls:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(./tests/test-traefik-routing.sh:*)",
+      "Bash(timeout 60 ./tests/test-traefik-routing.sh:*)",
+      "Bash(bash:*)",
+      "Bash(docker exec lab1-attacker-c2 wget -q -O- http://localhost:3000/)",
+      "Bash(docker exec e-skimming-labs-traefik wget -q -O- http://lab1-c2-server:3000/stolen)",
+      "Bash(docker exec e-skimming-labs-home-seo wget -q -O- http://localhost:8080/)"
     ],
     "deny": [],
     "ask": []

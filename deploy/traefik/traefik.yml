@@ -1,0 +1,65 @@
+# Traefik Static Configuration
+# This configuration is environment-agnostic and works for local, staging, and production
+
+# Entry points - where Traefik listens for incoming connections
+entryPoints:
+  web:
+    address: ":80"
+    # Redirect HTTP to HTTPS in production/staging (disabled for local)
+    # http:
+    #   redirections:
+    #     entryPoint:
+    #       to: websecure
+    #       scheme: https
+
+  websecure:
+    address: ":443"
+
+# Providers - how Traefik discovers services
+providers:
+  # Docker provider for local development
+  docker:
+    exposedByDefault: false  # Only expose services with traefik.enable=true label
+    network: labs-network    # Use the labs network for service discovery
+    watch: true              # Watch for container changes
+
+  # File provider for static configuration and overrides
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+# API and Dashboard
+api:
+  dashboard: true
+  insecure: false  # Dashboard requires authentication
+
+# Logging
+log:
+  level: INFO
+  format: json
+
+# Access logs
+accessLog:
+  format: json
+  fields:
+    headers:
+      defaultMode: keep
+      names:
+        User-Agent: keep
+        X-Forwarded-For: keep
+
+# Metrics for monitoring
+metrics:
+  prometheus:
+    addEntryPointsLabels: true
+    addRoutersLabels: true
+    addServicesLabels: true
+
+# Health check endpoint
+ping:
+  entryPoint: web
+
+# Global settings
+global:
+  checkNewVersion: true
+  sendAnonymousUsage: false

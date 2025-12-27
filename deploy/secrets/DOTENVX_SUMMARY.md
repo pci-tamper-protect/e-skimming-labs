@@ -332,9 +332,7 @@ This tool complements the existing secrets management:
 
 | Tool | Purpose | Format |
 |------|---------|--------|
-| `update-secret-hashes.py` | GCP Secret Manager hashes | YAML |
 | `dotenvx-converter.py` | dotenvx environment encryption | .env |
-| `setup-secrets.sh` | Initial secrets setup | YAML |
 
 Both use SHA256 for hash verification and audit trails.
 
@@ -369,6 +367,95 @@ dotenvx decrypt -f .env.stg -fk .env.keys.stg
 ```bash
 dotenvx run -f .env.stg -fk .env.keys.stg -- your-command
 ```
+
+## 📊 Comparison: dotenvx vs SOPS
+
+| Feature | dotenvx | SOPS (Secrets Operations) |
+|---------|---------|----------------------------|
+| **Primary Purpose** | Encrypt `.env` files with Git-friendly workflow | Encrypt any file format (YAML, JSON, INI, etc.) |
+| **Encryption Method** | ECIES (Elliptic Curve Integrated Encryption Scheme) | AES-256-GCM with key management service integration |
+| **Key Management** | Private key files (`.env.keys.*`) | AWS KMS, GCP KMS, Azure Key Vault, HashiCorp Vault, PGP |
+| **File Format Support** | `.env` files only | YAML, JSON, INI, ENV, binary files |
+| **Selective Encryption** | ✅ Encrypts only secrets (pattern-based), keeps config plaintext | ✅ Encrypts specific values/keys, keeps structure readable |
+| **Git Integration** | ✅ Designed for Git (encrypted files safe to commit) | ✅ Encrypted files safe to commit, but changes hard to review |
+| **Version Control** | ✅ Encrypted files + hashes trackable in Git | ⚠️ Encrypted files trackable, but diffs are encrypted |
+| **Access Control** | Environment-specific keys (stg vs prd) | Managed via key management service policies |
+| **Team Sharing** | `.env.keys.*` files (stg: commit, prd: CI/CD secrets) | Key management service IAM policies |
+| **CI/CD Integration** | ✅ Simple (mount key from Secret Manager) | ✅ Requires key management service access |
+| **Local Development** | ✅ Easy (decrypt with key file) | ⚠️ Requires key management service access or PGP keys |
+| **Audit Trail** | ⚠️ Custom wrapper only* (SHA256 hashes via `dotenvx-converter.py`) | ⚠️ Limited (encrypted diffs) |
+| **Secret Detection** | ✅ Trufflehog integration (700+ secret types) | ❌ Not built-in |
+| **Backup & Recovery** | ✅ Timestamped backups | ⚠️ Manual (encrypted files in Git) |
+| **Multi-Environment** | ✅ Separate keys per environment | ✅ Multiple key management service keys |
+| **Plaintext Config** | ✅ Stores non-secrets as plaintext | ⚠️ Can encrypt entire file or selective values |
+| **Re-encryption Prevention** | ✅ Detects already encrypted values | ⚠️ Manual (must check before encrypting) |
+| **Platform Support** | ✅ Cross-platform (Node.js) | ✅ Cross-platform (Go) |
+| **Dependencies** | Node.js, npm | Go binary (standalone) |
+| **Learning Curve** | 🟢 Low (familiar `.env` workflow) | 🟡 Medium (key management service setup) |
+| **Setup Complexity** | 🟢 Simple (generate keys, encrypt) | 🟡 Moderate (configure key management service) |
+| **Cost** | ✅ Free (open source) + optional dotenvx-ops | ✅ Free (open source) + key management service costs |
+| **Cloud Provider Lock-in** | ✅ None (keys are portable) | ⚠️ Depends on key management service choice |
+| **Key Rotation** | ✅ Easy (generate new key, re-encrypt) | ⚠️ Complex (depends on key management service) |
+| **Secret Rotation** | ✅ Easy (update value, re-encrypt) | ✅ Easy (update value, re-encrypt) |
+| **File Size** | ✅ Small (only secrets encrypted) | ⚠️ Larger (entire file structure preserved) |
+| **Performance** | ✅ Fast (selective encryption) | 🟡 Moderate (full file processing) |
+| **Use Case Fit** | ✅ `.env` files, environment variables | ✅ Config files (Kubernetes, Terraform, Ansible) |
+| **Best For** | Node.js projects, `.env` files, Git workflows | Infrastructure as Code, multi-format configs, enterprise |
+
+### When to Use dotenvx
+
+✅ **Choose dotenvx if:**
+- Working with `.env` files
+- Need Git-friendly encrypted secrets
+- Want simple local development workflow
+- Need selective encryption (secrets vs config)
+- Want audit trail (SHA256 hashes via custom wrapper*)
+- Prefer simple key management (files vs services)
+- Working in Node.js/JavaScript ecosystem
+
+**Note:** SHA256 hash audit trail is provided by our custom `dotenvx-converter.py` wrapper script, not by dotenvx itself. Standard dotenvx does not include hash generation.
+
+### When to Use SOPS
+
+✅ **Choose SOPS if:**
+- Working with YAML/JSON config files (Kubernetes, Terraform)
+- Need integration with cloud key management services
+- Require enterprise-grade key management
+- Working with infrastructure as code
+- Need to encrypt multiple file formats
+- Already using AWS KMS, GCP KMS, or HashiCorp Vault
+
+### Hybrid Approach
+
+You can use both tools:
+- **dotenvx** for application `.env` files
+- **SOPS** for infrastructure config files (Kubernetes secrets, Terraform variables)
+
+### Feature Notes
+
+**\* SHA256 Hash Audit Trail:**
+- **dotenvx (standard)**: ❌ Does not generate hashes
+- **dotenvx-ops**: ❌ Does not generate hashes
+- **Our wrapper (`dotenvx-converter.py`)**: ✅ Generates SHA256 hashes for secrets only
+  - Creates `.env.hashes.<stg|prd>` files
+  - Committable to Git (one-way hashes)
+  - Tracks secret value changes over time
+  - Only hashes secrets (not config values)
+
+**\* Selective Encryption:**
+- **dotenvx (standard)**: ⚠️ Encrypts entire file or all values
+- **Our wrapper (`dotenvx-converter.py`)**: ✅ Encrypts only secrets (pattern-based)
+  - Uses `dotenvx set --plain` for config values
+  - Pattern-based secret detection (KEY, TOKEN, PASSWORD, etc.)
+  - Exclude patterns for public values (FIREBASE_APP_ID, etc.)
+
+**Other Custom Features (via `dotenvx-converter.py`):**
+- ✅ Trufflehog secret detection integration
+- ✅ Automatic `.gitignore` safety checks
+- ✅ Timestamped backups
+- ✅ Re-encryption prevention (detects already encrypted values)
+- ✅ Automatic hash file cleanup
+- ✅ Environment-specific key files (`.env.keys.stg` vs `.env.keys.prd`)
 
 ---
 

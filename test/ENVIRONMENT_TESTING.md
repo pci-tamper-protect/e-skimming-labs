@@ -143,27 +143,59 @@ TEST_ENV=prd npm test
 TEST_ENV=staging npm test  # staging not configured yet
 ```
 
-## Adding New Environments
+## Staging Environment
 
-To add a new environment (e.g., `staging`):
+Staging environment (`stg`) is fully configured and ready to use!
+
+### Running Tests Against Staging
+
+```bash
+# Set environment variable
+export TEST_ENV=stg
+
+# Run all tests
+cd test
+npm test
+
+# Or run specific test suites
+npx playwright test e2e/global-navigation.spec.js
+npx playwright test e2e/auth-stg.spec.js
+```
+
+### Staging Setup
+
+For complete staging environment documentation, see:
+- **[docs/STAGING.md](../docs/STAGING.md)** - Complete staging guide (setup, testing, E2E)
+- **[test/AUTH_SETUP.md](AUTH_SETUP.md)** - E2E test authentication setup
+
+**Quick Notes:**
+- Staging URL: `https://labs.stg.pcioasis.com`
+- Requires Google IAM authentication for browser access
+- Use proxy for development: `gcloud run services proxy traefik-stg --region=us-central1 --project=labs-stg --port=8081`
+- **Important:** Restart proxy after deploying changes to Traefik or home-index-service
+
+### Adding New Environments
+
+To add a new environment (e.g., `dev`):
 
 1. Edit `test/config/test-env.js`
 2. Add new environment configuration:
 ```javascript
 const environments = {
   local: { /* ... */ },
+  stg: { /* ... */ },
   prd: { /* ... */ },
-  staging: {
-    homeIndex: 'https://labs.stg.pcioasis.com',
+  dev: {
+    homeIndex: 'https://labs.dev.pcioasis.com',
     lab1: {
-      vulnerable: 'https://lab-01-stg-...',
-      c2: 'https://lab-01-c2-stg-...',
+      vulnerable: 'https://lab-01-dev-...',
+      c2: 'https://lab-01-c2-dev-...',
     },
     // ... other labs
   }
 }
 ```
-3. Create corresponding test script: `test/run-tests-staging.sh`
+3. Create corresponding test script: `test/run-tests-dev.sh`
 4. Update this documentation
 
 ## CI/CD Integration

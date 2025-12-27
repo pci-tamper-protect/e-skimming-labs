@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  traefik-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    environment:
+      # Mock staging environment
+      ENVIRONMENT: stg
+      DOMAIN: labs.stg.pcioasis.com
+      HOME_INDEX_URL: https://home-index-stg-327539540168.a.run.app
+      SEO_URL: https://home-seo-stg-327539540168.a.run.app
+      ANALYTICS_URL: https://labs-analytics-stg-207478017187.us-central1.run.app
+      LAB1_URL: https://lab-01-basic-magecart-stg-mmwwcfi5za-uc.a.run.app
+      LAB1_C2_URL: https://lab-01-c2-stg-207478017187.us-central1.run.app
+      LAB2_URL: https://lab-02-dom-skimming-stg-mmwwcfi5za-uc.a.run.app
+      LAB2_C2_URL: https://lab-02-c2-stg-207478017187.us-central1.run.app
+      LAB3_URL: https://lab-03-extension-hijacking-stg-mmwwcfi5za-uc.a.run.app
+      LAB3_EXTENSION_URL: https://lab-03-extension-server-stg-207478017187.us-central1.run.app
+
+      # Mock identity tokens (valid JWT format)
+      HOME_INDEX_TOKEN: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJodHRwczovL2hvbWUtaW5kZXgtc3RnLTMwNzUzOTU0MDE2OC5hLnJ1bi5hcHAiLCJleHAiOjE3MzUxMjM0NTYsImlhdCI6MTczNTEyMzQ1NiwiaXNzIjoiaHR0cHM6Ly9hY2NvdW50cy5nb29nbGUuY29tIiwic3ViIjoic2VydmljZS1hY2NvdW50QHRlc3QuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20ifQ.test_signature"
+      SEO_TOKEN: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJodHRwczovL2hvbWUtc2VvLXN0Zy0zMDc1Mzk1NDAxNjguYS5ydW4uYXBwIiwiZXhwIjoxNzM1MTIzNDU2LCJpYXQiOjE3MzUxMjM0NTYsImlzcyI6Imh0dHBzOi8vYWNjb3VudHMuZ29vZ2xlLmNvbSIsInN1YiI6InNlcnZpY2UtYWNjb3VudEB0ZXN0LmlhbS5nc2VydmljZWFjY291bnQuY29tIn0.test_signature"
+      ANALYTICS_TOKEN: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJodHRwczovL2xhYnMtYW5hbHl0aWNzLXN0Zy0yMDc0NzgwMTcxODcudXMtc3RhZ2luZy5ydW4uYXBwIiwiZXhwIjoxNzM1MTIzNDU2LCJpYXQiOjE3MzUxMjM0NTYsImlzcyI6Imh0dHBzOi8vYWNjb3VudHMuZ29vZ2xlLmNvbSIsInN1YiI6InNlcnZpY2UtYWNjb3VudEB0ZXN0LmlhbS5nc2VydmljZWFjY291bnQuY29tIn0.test_signature"
+      LAB1_TOKEN: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJodHRwczovL2xhYi0wMS1iYXNpYy1tYWdlY2FydC1zdGctbW13d2NmaTV6YS11Yy5hLnJ1bi5hcHAiLCJleHAiOjE3MzUxMjM0NTYsImlhdCI6MTczNTEyMzQ1NiwiaXNzIjoiaHR0cHM6Ly9hY2NvdW50cy5nb29nbGUuY29tIiwic3ViIjoic2VydmljZS1hY2NvdW50QHRlc3QuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20ifQ.test_signature"
+      LAB1_C2_TOKEN: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJodHRwczovL2xhYi0wMS1jMi1zdGctMjA3NDc4MDE3MTg3LnVzLXN0YWdpbmcucnVuLmFwcCIsImV4cCI6MTczNTEyMzQ1NiwiaWF0IjoxNzM1MTIzNDU2LCJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJzdWIiOiJzZXJ2aWNlLWFjY291bnRAdGVzdC5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSJ9.test_signature"
+      LAB2_TOKEN: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJodHRwczovL2xhYi0wMi1kb20tc2tpbW1pbmctc3RnLW1td3djZmk1emEtdWMuYS5ydW4uYXBwIiwiZXhwIjoxNzM1MTIzNDU2LCJpYXQiOjE3MzUxMjM0NTYsImlzcyI6Imh0dHBzOi8vYWNjb3VudHMuZ29vZ2xlLmNvbSIsInN1YiI6InNlcnZpY2UtYWNjb3VudEB0ZXN0LmlhbS5nc2VydmljZWFjY291bnQuY29tIn0.test_signature"
+      LAB2_C2_TOKEN: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJodHRwczovL2xhYi0wMi1jMi1zdGctMjA3NDc4MDE3MTg3LnVzLXN0YWdpbmcucnVuLmFwcCIsImV4cCI6MTczNTEyMzQ1NiwiaWF0IjoxNzM1MTIzNDU2LCJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJzdWIiOiJzZXJ2aWNlLWFjY291bnRAdGVzdC5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSJ9.test_signature"
+      LAB3_TOKEN: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJodHRwczovL2xhYi0wMy1leHRlbnNpb24taGlqYWNraW5nLXN0Zy1tbXd3Y2ZpNXphLXVjLmEucnVuLmFwcCIsImV4cCI6MTczNTEyMzQ1NiwiaWF0IjoxNzM1MTIzNDU2LCJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJzdWIiOiJzZXJ2aWNlLWFjY291bnRAdGVzdC5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSJ9.test_signature"
+      LAB3_EXTENSION_TOKEN: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJodHRwczovL2xhYi0wMy1leHRlbnNpb24tc2VydmVyLXN0Zy0yMDc0NzgwMTcxODcudXMtc3RhZ2luZy5ydW4uYXBwIiwiZXhwIjoxNzM1MTIzNDU2LCJpYXQiOjE3MzUxMjM0NTYsImlzcyI6Imh0dHBzOi8vYWNjb3VudHMuZ29vZ2xlLmNvbSIsInN1YiI6InNlcnZpY2UtYWNjb3VudEB0ZXN0LmlhbS5nc2VydmljZWFjY291bnQuY29tIn0.test_signature"
+    volumes:
+      - ./dynamic:/etc/traefik/dynamic:ro
+      - ./test-output:/test-output
+    command: >
+      sh -c "
+        /entrypoint.sh traefik --configfile=/etc/traefik/traefik.yml &
+        sleep 5 &&
+        cat /etc/traefik/dynamic/cloudrun-services.yml > /test-output/generated-config.yml &&
+        echo 'Config saved to /test-output/generated-config.yml' &&
+        tail -f /dev/null
+      "
+    ports:
+      - "8080:8080"
+      - "8081:8081"

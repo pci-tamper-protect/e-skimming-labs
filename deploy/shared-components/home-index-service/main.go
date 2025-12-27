@@ -10,10 +10,11 @@ import (
 	"regexp"
 	"strings"
 
+	"home-index-service/auth"
+
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/html"
 	"gopkg.in/yaml.v3"
-	"home-index-service/auth"
 )
 
 type Lab struct {
@@ -41,6 +42,8 @@ type HomePageData struct {
 	AuthRequired     bool
 	FirebaseProjectID string
 	MainAppURL       string
+	UserEmail        string
+	UserID           string
 }
 
 // CatalogInfo represents the catalog metadata
@@ -240,13 +243,30 @@ func main() {
 	enableAuth := os.Getenv("ENABLE_AUTH") == "true"
 	requireAuth := os.Getenv("REQUIRE_AUTH") == "true"
 	firebaseProjectID := os.Getenv("FIREBASE_PROJECT_ID")
-	firebaseAPIKey := os.Getenv("FIREBASE_API_KEY")
+	// FIREBASE_SERVICE_ACCOUNT_KEY is the service account JSON (server-side Admin SDK)
+	// FIREBASE_API_KEY is the Web API key (client-side Web SDK) - kept for backward compatibility
+	firebaseServiceAccount := os.Getenv("FIREBASE_SERVICE_ACCOUNT_KEY")
+	if firebaseServiceAccount == "" {
+		// Fallback to FIREBASE_API_KEY if it looks like JSON (starts with {)
+		firebaseAPIKey := os.Getenv("FIREBASE_API_KEY")
+		if firebaseAPIKey != "" && strings.HasPrefix(strings.TrimSpace(firebaseAPIKey), "{") {
+			firebaseServiceAccount = firebaseAPIKey
+		} else if enableAuth {
+			// If auth is enabled but no service account found, disable auth
+			log.Printf("⚠️  FIREBASE_SERVICE_ACCOUNT_KEY not found and FIREBASE_API_KEY is not a service account JSON")
+			log.Printf("   Disabling authentication (add FIREBASE_SERVICE_ACCOUNT_KEY to enable)")
+			enableAuth = false
+		}
+	}
+
+	mainAppURL := fmt.Sprintf("%s://%s", scheme, mainDomain)
 
 	authConfig := auth.Config{
 		Enabled:         enableAuth,
 		RequireAuth:     requireAuth,
 		ProjectID:       firebaseProjectID,
-		CredentialsJSON: firebaseAPIKey,
+		CredentialsJSON: firebaseServiceAccount,
+		MainAppURL:      mainAppURL,
 	}
 
 	authValidator, err := auth.NewTokenValidator(authConfig)
@@ -258,7 +278,7 @@ func main() {
 	homeData.AuthEnabled = enableAuth
 	homeData.AuthRequired = requireAuth
 	homeData.FirebaseProjectID = firebaseProjectID
-	homeData.MainAppURL = fmt.Sprintf("%s://%s", scheme, mainDomain)
+	homeData.MainAppURL = mainAppURL
 
 	// Create router with auth middleware
 	mux := http.NewServeMux()
@@ -269,7 +289,7 @@ func main() {
 	})
 
 	mux.HandleFunc("/mitre-attack", func(w http.ResponseWriter, r *http.Request) {
-		serveMITREPage(w, r)
+		serveMITREPage(w, r, homeData, authValidator)
 	})
 
 	// Serve static assets from docs directory (for mitre-attack-visual.html)
@@ -278,7 +298,7 @@ func main() {
 	})
 
 	mux.HandleFunc("/threat-model", func(w http.ResponseWriter, r *http.Request) {
-		serveThreatModelPage(w, r)
+		serveThreatModelPage(w, r, homeData, authValidator)
 	})
 
 	mux.HandleFunc("/lab-01-writeup", func(w http.ResponseWriter, r *http.Request) {
@@ -333,6 +353,86 @@ func main() {
 }
 
 func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, validator *auth.TokenValidator) {
+	// Detect if accessed via proxy (127.0.0.1:8081 or localhost:8081)
+	// When using gcloud run services proxy, Traefik may not forward the original Host header
+	// We check multiple sources: Host header, X-Forwarded-Host, and X-Forwarded-For (for localhost)
+	host := r.Host
+	forwardedHost := r.Header.Get("X-Forwarded-Host")
+	forwardedFor := r.Header.Get("X-Forwarded-For")
+
+	// Debug logging (only in staging/local, not production)
+	environment := os.Getenv("ENVIRONMENT")
+	if environment == "stg" || environment == "local" {
+		log.Printf("🔍 Proxy detection - Host: %s, X-Forwarded-Host: %s, X-Forwarded-For: %s", host, forwardedHost, forwardedFor)
+	}
+
+	// Check if accessed via proxy:
+	// When using gcloud run services proxy, the flow is:
+	// Browser -> Proxy (127.0.0.1:8081) -> Traefik -> home-index
+	//
+	// What we see in logs:
+	// - Host: home-index-stg-xxxxx-uc.a.run.app (Cloud Run hostname)
+	// - X-Forwarded-Host: traefik-stg-xxxxx-uc.a.run.app (Traefik's hostname)
+	// - X-Forwarded-For: 169.254.169.126 (Cloud Run internal IP, not 127.0.0.1)
+	//
+	// Detection: If X-Forwarded-Host contains "traefik" and we're in staging,
+	// we're behind Traefik. Since the proxy is the only way to access staging locally,
+	// we can use relative URLs when behind Traefik in staging.
+
+	// Check if we're behind Traefik (X-Forwarded-Host contains traefik)
+	isBehindTraefik := strings.Contains(strings.ToLower(forwardedHost), "traefik")
+
+	// In staging, if we're behind Traefik, use relative URLs (proxy access)
+	// In production, always use absolute URLs for SEO
+	useRelativeURLs := false
+	if environment == "stg" && isBehindTraefik {
+		useRelativeURLs = true
+	}
+
+	// Also check for direct proxy access (for local testing)
+	isLocalProxy := strings.Contains(forwardedFor, "127.0.0.1") || strings.Contains(forwardedFor, "localhost")
+	isProxyHost := host == "127.0.0.1:8081" || host == "localhost:8081" ||
+		strings.HasSuffix(host, ":8081")
+	isForwardedProxyHost := forwardedHost == "127.0.0.1:8081" || forwardedHost == "localhost:8081" ||
+		strings.HasSuffix(forwardedHost, ":8081")
+
+	// Use relative URLs if any proxy detection matches
+	useRelativeURLs = useRelativeURLs || isLocalProxy || isProxyHost || isForwardedProxyHost
+
+	if environment == "stg" || environment == "local" {
+		log.Printf("🔍 Proxy detection result - isProxyHost: %v, isForwardedProxyHost: %v, isLocalProxy: %v, useRelativeURLs: %v", isProxyHost, isForwardedProxyHost, isLocalProxy, useRelativeURLs)
+	}
+
+	// Get user info if authenticated
+	userInfo := auth.GetUserInfo(r)
+	if userInfo != nil {
+		data.UserEmail = userInfo.Email
+		data.UserID = userInfo.UserID
+	}
+
+	// Create a copy of data to modify URLs if needed
+	pageData := data
+	if useRelativeURLs {
+		// Use relative URLs for navigation when accessed via proxy
+		pageData.MITREURL = "/mitre-attack"
+		pageData.ThreatModelURL = "/threat-model"
+		// Create a copy of Labs slice to avoid modifying the original
+		labsCopy := make([]Lab, len(data.Labs))
+		copy(labsCopy, data.Labs)
+		pageData.Labs = labsCopy
+		// Update lab writeup URLs to be relative
+		for i := range pageData.Labs {
+			switch pageData.Labs[i].ID {
+			case "lab1-basic-magecart":
+				pageData.Labs[i].WriteupURL = "/lab-01-writeup"
+			case "lab2-dom-skimming":
+				pageData.Labs[i].WriteupURL = "/lab-02-writeup"
+			case "lab3-extension-hijacking":
+				pageData.Labs[i].WriteupURL = "/lab-03-writeup"
+			}
+		}
+	}
+
 	tmpl := `
 <!DOCTYPE html>
 <html lang="en">
@@ -460,6 +560,54 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
             background: var(--gradient-1);
             color: var(--text-primary);
             border-color: transparent;
+        }
+
+        .auth-buttons {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .auth-btn {
+            padding: 10px 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            font-size: 14px;
+        }
+
+        .auth-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .auth-btn.login-btn {
+            background: var(--gradient-1);
+            color: var(--text-primary);
+            border-color: transparent;
+        }
+
+        .auth-btn.logout-btn {
+            background: rgba(255, 107, 107, 0.2);
+            color: var(--accent-red);
+            border-color: var(--accent-red);
+        }
+
+        .auth-btn.logout-btn:hover {
+            background: rgba(255, 107, 107, 0.3);
+        }
+
+        .user-email {
+            color: var(--text-secondary);
+            font-size: 14px;
+            padding: 0 10px;
         }
 
         /* Hero Section */
@@ -725,6 +873,13 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
                     <a href="/" class="nav-tab active">Home</a>
                     <a href="{{.MITREURL}}" class="nav-tab">MITRE ATT&CK</a>
                     <a href="{{.ThreatModelURL}}" class="nav-tab">Threat Model</a>
+                    {{if .AuthEnabled}}
+                    <div id="auth-buttons" class="auth-buttons">
+                        <button id="login-btn" class="auth-btn login-btn" style="display: none;">Login</button>
+                        <button id="logout-btn" class="auth-btn logout-btn" style="display: none;">Logout</button>
+                        <span id="user-email" class="user-email" style="display: none;"></span>
+                    </div>
+                    {{end}}
                 </nav>
             </div>
         </div>
@@ -801,9 +956,77 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
                 firebaseProjectID: '{{.FirebaseProjectID}}'
             });
         }
+
+        // Update auth buttons based on auth state
+        function updateAuthButtons() {
+            const loginBtn = document.getElementById('login-btn');
+            const logoutBtn = document.getElementById('logout-btn');
+            const userEmail = document.getElementById('user-email');
+
+            if (!loginBtn || !logoutBtn) return;
+
+            // Check if user is authenticated
+            fetch('/api/auth/user')
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    }
+                    throw new Error('Not authenticated');
+                })
+                .then(data => {
+                    if (data.authenticated && data.user) {
+                        // User is logged in
+                        loginBtn.style.display = 'none';
+                        logoutBtn.style.display = 'block';
+                        if (userEmail) {
+                            userEmail.textContent = data.user.email;
+                            userEmail.style.display = 'inline';
+                        }
+                    } else {
+                        // User is not logged in
+                        loginBtn.style.display = 'block';
+                        logoutBtn.style.display = 'none';
+                        if (userEmail) {
+                            userEmail.style.display = 'none';
+                        }
+                    }
+                })
+                .catch(() => {
+                    // Not authenticated
+                    loginBtn.style.display = 'block';
+                    logoutBtn.style.display = 'none';
+                    if (userEmail) {
+                        userEmail.style.display = 'none';
+                    }
+                });
+        }
+
+        // Login button handler
+        document.addEventListener('DOMContentLoaded', function() {
+            updateAuthButtons();
+
+            const loginBtn = document.getElementById('login-btn');
+            const logoutBtn = document.getElementById('logout-btn');
+
+            if (loginBtn) {
+                loginBtn.addEventListener('click', function() {
+                    const redirectUrl = encodeURIComponent(window.location.href);
+                    window.location.href = '{{.MainAppURL}}/sign-in?redirect=' + redirectUrl;
+                });
+            }
+
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function() {
+                    sessionStorage.removeItem('firebase_token');
+                    updateAuthButtons();
+                    // Reload to clear any protected content
+                    window.location.reload();
+                });
+            }
+        });
     </script>
     {{end}}
-    
+
     <script>
         // Add smooth scrolling for anchor links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
@@ -835,14 +1058,14 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	err = t.Execute(w, data)
+	err = t.Execute(w, pageData)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
 
-func serveMITREPage(w http.ResponseWriter, r *http.Request) {
+func serveMITREPage(w http.ResponseWriter, r *http.Request, homeData HomePageData, validator *auth.TokenValidator) {
 	// Try multiple paths for local development and container environments
 	paths := []string{
 		"/app/docs/mitre-attack-visual.html",        // Container path
@@ -868,20 +1091,60 @@ func serveMITREPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get user info if authenticated
+	userInfo := auth.GetUserInfo(r)
+	if userInfo != nil {
+		homeData.UserEmail = userInfo.Email
+		homeData.UserID = userInfo.UserID
+	}
+
+	// Inject auth buttons into the HTML
+	htmlStr := string(mitreHTML)
+	htmlStr = injectAuthButtons(htmlStr, homeData)
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write(mitreHTML)
+	w.Write([]byte(htmlStr))
 }
 
-func serveThreatModelPage(w http.ResponseWriter, r *http.Request) {
-	// Read the Interactive Threat Model HTML file
-	threatModelHTML, err := os.ReadFile("/app/docs/interactive-threat-model.html")
+func serveThreatModelPage(w http.ResponseWriter, r *http.Request, homeData HomePageData, validator *auth.TokenValidator) {
+	// Try multiple paths for local development and container environments
+	paths := []string{
+		"/app/docs/interactive-threat-model.html",        // Container path
+		"../../docs/interactive-threat-model.html",        // Local dev from service directory
+		"docs/interactive-threat-model.html",              // Local dev from root
+		"../docs/interactive-threat-model.html",           // Alternative local path
+	}
+
+	var threatModelHTML []byte
+	var err error
+
+	for _, path := range paths {
+		threatModelHTML, err = os.ReadFile(path)
+		if err == nil {
+			log.Printf("Served Threat Model page from: %s", path)
+			break
+		}
+	}
+
 	if err != nil {
+		log.Printf("Failed to read Threat Model page from all paths: %v", err)
 		http.Error(w, "Threat model page not found", http.StatusNotFound)
 		return
 	}
 
+	// Get user info if authenticated
+	userInfo := auth.GetUserInfo(r)
+	if userInfo != nil {
+		homeData.UserEmail = userInfo.Email
+		homeData.UserID = userInfo.UserID
+	}
+
+	// Inject auth buttons into the HTML
+	htmlStr := string(threatModelHTML)
+	htmlStr = injectAuthButtons(htmlStr, homeData)
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write(threatModelHTML)
+	w.Write([]byte(htmlStr))
 }
 
 // serveDocsFile serves static files from the docs directory
@@ -1006,6 +1269,24 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, labUR
 		}
 	}
 
+	// Get user info if authenticated
+	userInfo := auth.GetUserInfo(r)
+	if userInfo != nil {
+		homeData.UserEmail = userInfo.Email
+		homeData.UserID = userInfo.UserID
+	}
+
+	// Build auth buttons HTML if enabled
+	authButtonsHTML := ""
+	if homeData.AuthEnabled {
+		authButtonsHTML = fmt.Sprintf(`
+            <div id="auth-buttons" class="auth-buttons" style="display: flex; align-items: center; gap: 10px; margin-left: auto;">
+                <button id="login-btn" class="auth-btn login-btn" style="display: none; padding: 8px 16px; background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">Login</button>
+                <button id="logout-btn" class="auth-btn logout-btn" style="display: none; padding: 8px 16px; background: rgba(255, 107, 107, 0.2); color: #ff6b6b; border: 1px solid #ff6b6b; border-radius: 4px; cursor: pointer; font-weight: 500;">Logout</button>
+                <span id="user-email" class="user-email" style="display: none; color: white; font-size: 14px; padding: 0 10px;"></span>
+            </div>`, homeData.MainAppURL)
+	}
+
 	// Build auth scripts if enabled
 	authScripts := ""
 	if homeData.AuthEnabled {
@@ -1021,7 +1302,75 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, labUR
                 firebaseProjectID: '%s'
             });
         }
-    </script>`, homeData.AuthRequired, homeData.MainAppURL, homeData.FirebaseProjectID)
+
+        // Update auth buttons based on auth state
+        function updateAuthButtons() {
+            const loginBtn = document.getElementById('login-btn');
+            const logoutBtn = document.getElementById('logout-btn');
+            const userEmail = document.getElementById('user-email');
+
+            if (!loginBtn || !logoutBtn) return;
+
+            // Check if user is authenticated
+            fetch('/api/auth/user')
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    }
+                    throw new Error('Not authenticated');
+                })
+                .then(data => {
+                    if (data.authenticated && data.user) {
+                        // User is logged in
+                        loginBtn.style.display = 'none';
+                        logoutBtn.style.display = 'block';
+                        if (userEmail) {
+                            userEmail.textContent = data.user.email;
+                            userEmail.style.display = 'inline';
+                        }
+                    } else {
+                        // User is not logged in
+                        loginBtn.style.display = 'block';
+                        logoutBtn.style.display = 'none';
+                        if (userEmail) {
+                            userEmail.style.display = 'none';
+                        }
+                    }
+                })
+                .catch(() => {
+                    // Not authenticated
+                    loginBtn.style.display = 'block';
+                    logoutBtn.style.display = 'none';
+                    if (userEmail) {
+                        userEmail.style.display = 'none';
+                    }
+                });
+        }
+
+        // Login button handler
+        document.addEventListener('DOMContentLoaded', function() {
+            updateAuthButtons();
+
+            const loginBtn = document.getElementById('login-btn');
+            const logoutBtn = document.getElementById('logout-btn');
+
+            if (loginBtn) {
+                loginBtn.addEventListener('click', function() {
+                    const redirectUrl = encodeURIComponent(window.location.href);
+                    window.location.href = '%s/sign-in?redirect=' + redirectUrl;
+                });
+            }
+
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function() {
+                    sessionStorage.removeItem('firebase_token');
+                    updateAuthButtons();
+                    // Reload to clear any protected content
+                    window.location.reload();
+                });
+            }
+        });
+    </script>`, homeData.AuthRequired, homeData.MainAppURL, homeData.FirebaseProjectID, homeData.MainAppURL)
 	}
 
 	// Create HTML page
@@ -1053,6 +1402,13 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, labUR
         }
         .nav {
             margin-top: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .nav > div {
+            display: flex;
+            gap: 1rem;
         }
         .nav a {
             color: white;
@@ -1162,11 +1518,14 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, labUR
 <body>
     <div class="header">
         <h1>Lab Writeup</h1>
-        <div class="nav">
-            <a href="/">🏠 Home</a>
-            <a href="%s">← Back to Lab</a>
-            <a href="%s">MITRE ATT&CK</a>
-            <a href="%s">Threat Model</a>
+        <div class="nav" style="display: flex; align-items: center; justify-content: space-between;">
+            <div>
+                <a href="/">🏠 Home</a>
+                <a href="%s">← Back to Lab</a>
+                <a href="%s">MITRE ATT&CK</a>
+                <a href="%s">Threat Model</a>
+            </div>
+            %s
         </div>
     </div>
     <div class="container">
@@ -1180,7 +1539,7 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, labUR
         });
     </script>
 </body>
-</html>`, labID, labBackURL, homeData.MITREURL, homeData.ThreatModelURL, template.HTML(htmlContent), authScripts)
+</html>`, labID, labBackURL, homeData.MITREURL, homeData.ThreatModelURL, authButtonsHTML, template.HTML(htmlContent), authScripts)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(html))
@@ -1312,6 +1671,173 @@ func serveAuthUser(w http.ResponseWriter, r *http.Request, validator *auth.Token
 	})
 }
 
+// injectAuthButtons injects auth buttons and scripts into HTML pages
+func injectAuthButtons(html string, homeData HomePageData) string {
+	if !homeData.AuthEnabled {
+		return html
+	}
+
+	// Create auth buttons HTML
+	authButtonsHTML := fmt.Sprintf(`
+		<div id="auth-buttons" class="auth-buttons" style="display: flex; align-items: center; gap: 10px; margin-left: 20px;">
+			<button id="login-btn" class="auth-btn login-btn" style="display: none; padding: 10px 20px; background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;">Login</button>
+			<button id="logout-btn" class="auth-btn logout-btn" style="display: none; padding: 10px 20px; background: rgba(255, 107, 107, 0.2); color: #ff6b6b; border: 1px solid #ff6b6b; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;">Logout</button>
+			<span id="user-email" class="user-email" style="display: none; color: #b8c5db; font-size: 14px; padding: 0 10px;"></span>
+		</div>
+	`)
+
+	// Create auth scripts
+	authScripts := fmt.Sprintf(`
+		<script src="/static/js/auth.js"></script>
+		<script>
+			// Initialize auth check
+			if (typeof initLabsAuth === 'function') {
+				initLabsAuth({
+					authRequired: %t,
+					mainAppURL: '%s',
+					firebaseProjectID: '%s'
+				});
+			}
+
+			// Update auth buttons based on auth state
+			function updateAuthButtons() {
+				const loginBtn = document.getElementById('login-btn');
+				const logoutBtn = document.getElementById('logout-btn');
+				const userEmail = document.getElementById('user-email');
+
+				if (!loginBtn || !logoutBtn) return;
+
+				// Check if user is authenticated
+				fetch('/api/auth/user')
+					.then(response => {
+						if (response.ok) {
+							return response.json();
+						}
+						throw new Error('Not authenticated');
+					})
+					.then(data => {
+						if (data.authenticated && data.user) {
+							// User is logged in
+							loginBtn.style.display = 'none';
+							logoutBtn.style.display = 'block';
+							if (userEmail) {
+								userEmail.textContent = data.user.email;
+								userEmail.style.display = 'inline';
+							}
+						} else {
+							// User is not logged in
+							loginBtn.style.display = 'block';
+							logoutBtn.style.display = 'none';
+							if (userEmail) {
+								userEmail.style.display = 'none';
+							}
+						}
+					})
+					.catch(() => {
+						// Not authenticated
+						loginBtn.style.display = 'block';
+						logoutBtn.style.display = 'none';
+						if (userEmail) {
+							userEmail.style.display = 'none';
+						}
+					});
+			}
+
+			// Login button handler
+			document.addEventListener('DOMContentLoaded', function() {
+				updateAuthButtons();
+
+				const loginBtn = document.getElementById('login-btn');
+				const logoutBtn = document.getElementById('logout-btn');
+
+				if (loginBtn) {
+					loginBtn.addEventListener('click', function() {
+						const redirectUrl = encodeURIComponent(window.location.href);
+						window.location.href = '%s/sign-in?redirect=' + redirectUrl;
+					});
+				}
+
+				if (logoutBtn) {
+					logoutBtn.addEventListener('click', function() {
+						sessionStorage.removeItem('firebase_token');
+						updateAuthButtons();
+						// Reload to clear any protected content
+						window.location.reload();
+					});
+				}
+			});
+		</script>
+	`, homeData.AuthRequired, homeData.MainAppURL, homeData.FirebaseProjectID, homeData.MainAppURL)
+
+	// Try to inject buttons into header/nav elements
+	// Look for common header patterns
+	patterns := []struct {
+		find    string
+		replace string
+		description string
+	}{
+		{
+			// Pattern 1: MITRE page - inject into header-top div
+			find:    `<div class="header-top">`,
+			replace: `<div class="header-top" style="display: flex; justify-content: space-between; align-items: center;">` + authButtonsHTML,
+			description: "MITRE header-top",
+		},
+		{
+			// Pattern 2: Threat model - inject into flex container with back button
+			find:    `<div style="display: flex; align-items: center; gap: 20px; margin-top: 10px">`,
+			replace: `<div style="display: flex; align-items: center; gap: 20px; margin-top: 10px; justify-content: space-between;">` + authButtonsHTML,
+			description: "Threat model flex container",
+		},
+		{
+			// Pattern 2b: Threat model fallback - inject after h1
+			find:    `</h1>`,
+			replace: `</h1>` + authButtonsHTML,
+			description: "Threat model h1 fallback",
+		},
+		{
+			// Pattern 3: Look for </nav> and inject before it
+			find:    `</nav>`,
+			replace: authButtonsHTML + `</nav>`,
+			description: "nav closing tag",
+		},
+		{
+			// Pattern 4: Look for header closing tag
+			find:    `</header>`,
+			replace: authButtonsHTML + `</header>`,
+			description: "header closing tag",
+		},
+		{
+			// Pattern 5: Look for navigation container
+			find:    `<div class="nav">`,
+			replace: `<div class="nav">` + authButtonsHTML,
+			description: "nav div",
+		},
+	}
+
+	injected := false
+	for _, pattern := range patterns {
+		if strings.Contains(html, pattern.find) {
+			html = strings.Replace(html, pattern.find, pattern.replace, 1)
+			log.Printf("✅ Injected auth buttons using pattern: %s", pattern.description)
+			injected = true
+			break
+		}
+	}
+
+	if !injected {
+		log.Printf("⚠️ Could not find injection point for auth buttons")
+	}
+
+	// Inject scripts before </body>
+	if strings.Contains(html, "</body>") {
+		html = strings.Replace(html, "</body>", authScripts+"</body>", 1)
+	} else if strings.Contains(html, "</html>") {
+		html = strings.Replace(html, "</html>", authScripts+"</html>", 1)
+	}
+
+	return html
+}
+
 // serveAuthJS serves the client-side Firebase Auth integration script
 func serveAuthJS(w http.ResponseWriter, r *http.Request, homeData HomePageData) {
 	if !homeData.AuthEnabled {
@@ -1322,25 +1848,25 @@ func serveAuthJS(w http.ResponseWriter, r *http.Request, homeData HomePageData) 
 	script := `// E-Skimming Labs Auth Integration
 (function() {
     'use strict';
-    
+
     // Check for token in URL (from redirect)
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
-    
+
     if (token) {
         // Store token and remove from URL
         sessionStorage.setItem('firebase_token', token);
         const newUrl = window.location.pathname + (window.location.search.replace(/[?&]token=[^&]*/, '').replace(/^&/, '?') || '');
         window.history.replaceState({}, '', newUrl);
     }
-    
+
     // Function to initialize auth
     window.initLabsAuth = function(config) {
         const { authRequired, mainAppURL, firebaseProjectID } = config;
-        
+
         // Check for token in sessionStorage
         const storedToken = sessionStorage.getItem('firebase_token');
-        
+
         if (storedToken) {
             // Validate token with server
             fetch('/api/auth/validate', {
@@ -1376,7 +1902,7 @@ func serveAuthJS(w http.ResponseWriter, r *http.Request, homeData HomePageData) 
                 redirectToSignIn(mainAppURL);
             }
         }
-        
+
         // Listen for postMessage from main app (for SSO)
         window.addEventListener('message', function(event) {
             // Verify origin matches main app domain
@@ -1384,7 +1910,7 @@ func serveAuthJS(w http.ResponseWriter, r *http.Request, homeData HomePageData) 
             if (!event.origin.includes(mainAppOrigin.split('/')[0])) {
                 return;
             }
-            
+
             if (event.data && event.data.type === 'FIREBASE_TOKEN' && event.data.token) {
                 sessionStorage.setItem('firebase_token', event.data.token);
                 // Validate the token
@@ -1408,13 +1934,13 @@ func serveAuthJS(w http.ResponseWriter, r *http.Request, homeData HomePageData) 
                 });
             }
         });
-        
+
         // Request token from parent window (if in iframe) or opener (if opened from main app)
         if (window.parent !== window) {
             window.parent.postMessage({ type: 'REQUEST_FIREBASE_TOKEN' }, '*');
         }
     };
-    
+
     function redirectToSignIn(mainAppURL) {
         const redirectUrl = encodeURIComponent(window.location.href);
         window.location.href = mainAppURL + '/sign-in?redirect=' + redirectUrl;

@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -20,8 +21,26 @@ const (
 func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Skip auth for health check and static assets
-			if r.URL.Path == "/health" || strings.HasPrefix(r.URL.Path, "/static/") {
+			// Skip auth for public pages: home, mitre-attack, threat-model
+			// Also skip health check, static assets, and auth API endpoints
+			publicPaths := []string{
+				"/",
+				"/mitre-attack",
+				"/threat-model",
+				"/health",
+				"/api/auth", // All auth API endpoints (sign-in, validate, etc.)
+				"/api/labs", // Labs listing API (public)
+			}
+
+			isPublicPath := false
+			for _, path := range publicPaths {
+				if r.URL.Path == path || strings.HasPrefix(r.URL.Path, path+"/") {
+					isPublicPath = true
+					break
+				}
+			}
+
+			if isPublicPath || strings.HasPrefix(r.URL.Path, "/static/") {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -41,7 +60,7 @@ func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 				if validator.IsRequired() {
 					// Auth required but validation failed
 					log.Printf("❌ Authentication required but failed: %v", err)
-					respondAuthError(w, http.StatusUnauthorized, "Authentication required")
+					respondAuthError(w, r, http.StatusUnauthorized, "Authentication required", validator.GetMainAppURL())
 					return
 				}
 				// Auth optional, continue without user info
@@ -53,7 +72,7 @@ func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 			// If auth is required but no token provided
 			if validator.IsRequired() && token == "" {
 				log.Printf("❌ Authentication required but no token provided")
-				respondAuthError(w, http.StatusUnauthorized, "Authentication required")
+				respondAuthError(w, r, http.StatusUnauthorized, "Authentication required", validator.GetMainAppURL())
 				return
 			}
 
@@ -105,7 +124,23 @@ func GetUserInfo(r *http.Request) *TokenInfo {
 }
 
 // respondAuthError sends an authentication error response
-func respondAuthError(w http.ResponseWriter, statusCode int, message string) {
+// For browser requests, redirects to sign-in page
+// For API requests, returns JSON error
+func respondAuthError(w http.ResponseWriter, r *http.Request, statusCode int, message string, mainAppURL string) {
+	// Check if this is a browser request (has Accept: text/html)
+	acceptHeader := r.Header.Get("Accept")
+	isBrowserRequest := strings.Contains(acceptHeader, "text/html") ||
+		acceptHeader == "" ||
+		strings.Contains(acceptHeader, "*/*")
+
+	if isBrowserRequest && mainAppURL != "" {
+		// Redirect browser requests to sign-in page
+		redirectURL := fmt.Sprintf("%s/sign-in?redirect=%s", mainAppURL, r.URL.String())
+		http.Redirect(w, r, redirectURL, http.StatusFound)
+		return
+	}
+
+	// Return JSON for API requests
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	json.NewEncoder(w).Encode(map[string]interface{}{
@@ -114,4 +149,3 @@ func respondAuthError(w http.ResponseWriter, statusCode int, message string) {
 		"signInUrl": "/api/auth/sign-in-url",
 	})
 }
-

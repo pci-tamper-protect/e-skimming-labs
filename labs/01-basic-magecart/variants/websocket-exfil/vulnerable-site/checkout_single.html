@@ -345,7 +345,7 @@
         <p style="margin-top: 1rem; color: #856404">
           <strong>Educational Note:</strong> Your payment data was also sent to the attacker's C2
           server. Check
-          <a href="http://localhost:3000/stolen" target="_blank">the C2 dashboard</a> to see the
+          <a href="#" class="c2-dashboard-link" target="_blank">the C2 dashboard</a> to see the
           stolen data.
         </p>
       </div>
@@ -355,11 +355,11 @@
     <!-- This file was modified by the attacker on August 21, 2018 at 22:58 BST
          They used compromised admin credentials to access the server
          and appended their malicious code to the bottom of checkout.js
-         
+
          The file contains:
          - Lines 1-250: Original legitimate checkout code
          - Lines 251+: Malicious skimmer code (appended by attacker)
-         
+
          This is the MOST REALISTIC attack scenario!
     -->
     <script src="js/checkout-compromised.js"></script>
@@ -385,6 +385,30 @@
       document.getElementById('cvv').addEventListener('input', function (e) {
         e.target.value = e.target.value.replace(/\D/g, '')
       })
+
+      // Environment-aware URL configuration with uniform path-based routing
+      ;(function () {
+        const hostname = window.location.hostname
+
+        // Determine base URL based on environment
+        let baseUrl
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+          baseUrl = 'http://localhost:8080'
+        } else if (hostname.includes('stg.pcioasis.com') || hostname.includes('staging')) {
+          baseUrl = 'https://labs.stg.pcioasis.com'
+        } else if (hostname.includes('pcioasis.com') && !hostname.includes('stg')) {
+          baseUrl = 'https://labs.pcioasis.com'
+        } else {
+          baseUrl = window.location.origin
+        }
+
+        const c2Url = baseUrl + '/lab1/c2'
+
+        const c2DashboardLinks = document.querySelectorAll('.c2-dashboard-link')
+        c2DashboardLinks.forEach(link => {
+          link.href = c2Url
+        })
+      })()
     </script>
   </body>
 </html>
