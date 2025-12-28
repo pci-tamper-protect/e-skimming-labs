@@ -48,7 +48,10 @@ services:
       - LAB1_DOMAIN=localhost:8080/lab1
       - LAB2_DOMAIN=localhost:8080/lab2
       - LAB3_DOMAIN=localhost:8080/lab3
-      - MAIN_DOMAIN=pcioasis.com
+      # MAIN_DOMAIN is determined automatically based on ENVIRONMENT:
+      # - local: uses DOMAIN (localhost:8080)
+      # - stg: labs.stg.pcioasis.com
+      # - prd: labs.pcioasis.com
       - LABS_PROJECT_ID=labs-prd
       # Auth configuration - set FIREBASE_API_KEY to enable auth
       # Use docker-compose.auth.yml override for full auth setup
@@ -102,7 +105,7 @@ services:
       - "traefik.http.routers.home-seo.rule=PathPrefix(`/api/seo`)"
       - "traefik.http.routers.home-seo.priority=500"
       - "traefik.http.routers.home-seo.entrypoints=web"
-      - "traefik.http.routers.home-seo.middlewares=strip-seo-prefix"
+      - "traefik.http.routers.home-seo.middlewares=strip-seo-prefix@file"
       - "traefik.http.services.home-seo.loadbalancer.server.port=8080"
 
   # Analytics Service - Lab progress tracking
@@ -130,7 +133,7 @@ services:
       - "traefik.http.routers.labs-analytics.rule=PathPrefix(`/api/analytics`)"
       - "traefik.http.routers.labs-analytics.priority=500"
       - "traefik.http.routers.labs-analytics.entrypoints=web"
-      - "traefik.http.routers.labs-analytics.middlewares=strip-analytics-prefix"
+      - "traefik.http.routers.labs-analytics.middlewares=strip-analytics-prefix@file"
       - "traefik.http.services.labs-analytics.loadbalancer.server.port=8080"
 
   # =============================================================================
@@ -151,15 +154,21 @@ services:
       - ./labs/01-basic-magecart/vulnerable-site:/usr/share/nginx/html:ro
     depends_on:
       - traefik
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:80/']
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
     labels:
       - "lab=lab1-basic-magecart"
       - "component=vulnerable-site"
       - "traefik.enable=true"
-      - "traefik.http.routers.lab1-main.rule=PathPrefix(`/lab1`)"
-      - "traefik.http.routers.lab1-main.priority=200"
-      - "traefik.http.routers.lab1-main.entrypoints=web"
-      - "traefik.http.routers.lab1-main.middlewares=strip-lab1-prefix"
-      - "traefik.http.services.lab1-vulnerable-site.loadbalancer.server.port=80"
+      - "traefik.http.routers.lab1.rule=PathPrefix(`/lab1`)"
+      - "traefik.http.routers.lab1.priority=200"
+      - "traefik.http.routers.lab1.entrypoints=web"
+      - "traefik.http.routers.lab1.middlewares=lab1-auth-check@file,strip-lab1-prefix@file"
+      - "traefik.http.services.lab1.loadbalancer.server.port=80"
 
   # Lab 1 - C2 Server (Data Collection)
   lab1-c2-server:
@@ -181,7 +190,7 @@ services:
       - "traefik.http.routers.lab1-c2.rule=PathPrefix(`/lab1/c2`)"
       - "traefik.http.routers.lab1-c2.priority=300"
       - "traefik.http.routers.lab1-c2.entrypoints=web"
-      - "traefik.http.routers.lab1-c2.middlewares=strip-lab1-c2-prefix"
+      - "traefik.http.routers.lab1-c2.middlewares=lab1-auth-check@file,strip-lab1-c2-prefix@file"
       - "traefik.http.services.lab1-c2-server.loadbalancer.server.port=3000"
 
   # =============================================================================
@@ -203,7 +212,7 @@ services:
       - "traefik.http.routers.lab2-main.rule=PathPrefix(`/lab2`)"
       - "traefik.http.routers.lab2-main.priority=200"
       - "traefik.http.routers.lab2-main.entrypoints=web"
-      - "traefik.http.routers.lab2-main.middlewares=strip-lab2-prefix"
+      - "traefik.http.routers.lab2-main.middlewares=lab2-auth-check@file,strip-lab2-prefix@file"
       - "traefik.http.services.lab2-vulnerable-site.loadbalancer.server.port=80"
 
   # Lab 2 - C2 Server (DOM Skimming Data Collection)
@@ -228,7 +237,7 @@ services:
       - "traefik.http.routers.lab2-c2.rule=PathPrefix(`/lab2/c2`)"
       - "traefik.http.routers.lab2-c2.priority=300"
       - "traefik.http.routers.lab2-c2.entrypoints=web"
-      - "traefik.http.routers.lab2-c2.middlewares=strip-lab2-c2-prefix"
+      - "traefik.http.routers.lab2-c2.middlewares=lab2-auth-check@file,strip-lab2-c2-prefix@file"
       - "traefik.http.services.lab2-c2-server.loadbalancer.server.port=3000"
 
   # =============================================================================
@@ -250,7 +259,7 @@ services:
       - "traefik.http.routers.lab3-main.rule=PathPrefix(`/lab3`)"
       - "traefik.http.routers.lab3-main.priority=200"
       - "traefik.http.routers.lab3-main.entrypoints=web"
-      - "traefik.http.routers.lab3-main.middlewares=strip-lab3-prefix"
+      - "traefik.http.routers.lab3-main.middlewares=lab3-auth-check@file,strip-lab3-prefix@file"
       - "traefik.http.services.lab3-vulnerable-site.loadbalancer.server.port=80"
 
   # Lab 3 - Extension Data Server
@@ -273,7 +282,7 @@ services:
       - "traefik.http.routers.lab3-extension.rule=PathPrefix(`/lab3/extension`)"
       - "traefik.http.routers.lab3-extension.priority=300"
       - "traefik.http.routers.lab3-extension.entrypoints=web"
-      - "traefik.http.routers.lab3-extension.middlewares=strip-lab3-extension-prefix"
+      - "traefik.http.routers.lab3-extension.middlewares=lab3-auth-check@file,strip-lab3-extension-prefix@file"
       - "traefik.http.services.lab3-extension-server.loadbalancer.server.port=3000"
 
   # =============================================================================
@@ -300,7 +309,7 @@ services:
       - "traefik.http.routers.lab1-event-listener.rule=PathPrefix(`/lab1/variants/event-listener`)"
       - "traefik.http.routers.lab1-event-listener.priority=400"
       - "traefik.http.routers.lab1-event-listener.entrypoints=web"
-      - "traefik.http.routers.lab1-event-listener.middlewares=strip-lab1-event-listener-prefix"
+      - "traefik.http.routers.lab1-event-listener.middlewares=lab1-auth-check@file,strip-lab1-event-listener-prefix@file"
       - "traefik.http.services.lab1-event-listener-variant.loadbalancer.server.port=80"
 
   # Lab 1 Variant - Obfuscated Base64 Variant
@@ -323,7 +332,7 @@ services:
       - "traefik.http.routers.lab1-obfuscated.rule=PathPrefix(`/lab1/variants/obfuscated`)"
       - "traefik.http.routers.lab1-obfuscated.priority=400"
       - "traefik.http.routers.lab1-obfuscated.entrypoints=web"
-      - "traefik.http.routers.lab1-obfuscated.middlewares=strip-lab1-obfuscated-prefix"
+      - "traefik.http.routers.lab1-obfuscated.middlewares=lab1-auth-check@file,strip-lab1-obfuscated-prefix@file"
       - "traefik.http.services.lab1-obfuscated-variant.loadbalancer.server.port=80"
 
   # Lab 1 Variant - WebSocket Exfiltration
@@ -346,7 +355,7 @@ services:
       - "traefik.http.routers.lab1-websocket.rule=PathPrefix(`/lab1/variants/websocket`)"
       - "traefik.http.routers.lab1-websocket.priority=400"
       - "traefik.http.routers.lab1-websocket.entrypoints=web"
-      - "traefik.http.routers.lab1-websocket.middlewares=strip-lab1-websocket-prefix"
+      - "traefik.http.routers.lab1-websocket.middlewares=lab1-auth-check@file,strip-lab1-websocket-prefix@file"
       - "traefik.http.services.lab1-websocket-variant.loadbalancer.server.port=80"
 
 # =============================================================================

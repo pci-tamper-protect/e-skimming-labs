@@ -28,13 +28,23 @@ func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 				"/mitre-attack",
 				"/threat-model",
 				"/health",
-				"/api/auth", // All auth API endpoints (sign-in, validate, etc.)
-				"/api/labs", // Labs listing API (public)
+				"/sign-in",   // Sign-in page (public)
+				"/sign-up",   // Sign-up page (public)
+				"/api/auth",  // All auth API endpoints (sign-in, validate, etc.)
+				"/api/labs",  // Labs listing API (public)
 			}
+
+			// Normalize path (remove trailing slashes except for root)
+			normalizedPath := r.URL.Path
+			if normalizedPath != "/" && strings.HasSuffix(normalizedPath, "/") {
+				normalizedPath = strings.TrimSuffix(normalizedPath, "/")
+			}
+			// Handle double slashes
+			normalizedPath = strings.ReplaceAll(normalizedPath, "//", "/")
 
 			isPublicPath := false
 			for _, path := range publicPaths {
-				if r.URL.Path == path || strings.HasPrefix(r.URL.Path, path+"/") {
+				if normalizedPath == path || strings.HasPrefix(normalizedPath, path+"/") {
 					isPublicPath = true
 					break
 				}

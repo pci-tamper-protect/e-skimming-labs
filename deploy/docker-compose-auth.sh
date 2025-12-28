@@ -29,39 +29,61 @@ if ! command -v dotenvx &> /dev/null; then
     exit 1
 fi
 
-echo "🔓 Decrypting .env.stg and extracting environment variables..."
+echo "🔓 Decrypting .env.stg and running docker-compose with authentication..."
 
-# Set decryption key
-export DOTENV_PRIVATE_KEY="$(cat .env.keys.stg)"
+# Decrypt .env.stg to a temporary file and source it
+# This ensures all encrypted values are properly decrypted
+TEMP_ENV=$(mktemp)
+trap "rm -f $TEMP_ENV" EXIT
 
-# Extract environment variables from encrypted .env.stg
-# Using dotenvx run to decrypt and extract specific vars
-# Use a subshell to capture only the variable value, filtering out dotenvx output
-FIREBASE_SERVICE_ACCOUNT_KEY=$(dotenvx run --env-file=.env.stg -- sh -c 'printenv FIREBASE_SERVICE_ACCOUNT_KEY' 2>/dev/null | tail -1 || echo "")
-FIREBASE_API_KEY=$(dotenvx run --env-file=.env.stg -- sh -c 'printenv FIREBASE_API_KEY' 2>/dev/null | tail -1 || echo "")
-FIREBASE_PROJECT_ID=$(dotenvx run --env-file=.env.stg -- sh -c 'printenv FIREBASE_PROJECT_ID' 2>/dev/null | tail -1 || echo "ui-firebase-pcioasis-stg")
+# Use dotenvx decrypt with explicit key file
+dotenvx decrypt --env-file=.env.stg --env-keys-file=.env.keys.stg --stdout > "$TEMP_ENV" 2>/dev/null || {
+    echo "❌ Error: Failed to decrypt .env.stg"
+    echo "   Check that .env.keys.stg contains the correct private key"
+    rm -f "$TEMP_ENV"
+    exit 1
+}
 
-# Export for docker-compose
-export FIREBASE_SERVICE_ACCOUNT_KEY
-export FIREBASE_API_KEY
-export FIREBASE_PROJECT_ID
+# Source the decrypted file to export all variables
+# Parse the file and export variables, handling JSON values correctly
+set -a  # Automatically export all variables
+while IFS= read -r line || [ -n "$line" ]; do
+    # Skip comments and empty lines
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+    [[ -z "${line// }" ]] && continue
+    # Skip dotenvx metadata lines
+    [[ "$line" =~ ^DOTENV_ ]] && [[ ! "$line" =~ ^FIREBASE_ ]] && continue
 
-# Set defaults
+    # Extract key and value
+    if [[ "$line" =~ ^([^=]+)=(.*)$ ]]; then
+        key="${BASH_REMATCH[1]}"
+        value="${BASH_REMATCH[2]}"
+
+        # Remove surrounding quotes if present
+        if [[ "$value" =~ ^\"(.*)\"$ ]]; then
+            value="${BASH_REMATCH[1]}"
+        fi
+
+        # Export the variable
+        export "$key=$value"
+    fi
+done < "$TEMP_ENV"
+set +a
+
+# Set defaults for auth flags (these can be overridden)
 export ENABLE_AUTH=${ENABLE_AUTH:-true}
 export REQUIRE_AUTH=${REQUIRE_AUTH:-true}
 
-if [ -z "$FIREBASE_SERVICE_ACCOUNT_KEY" ]; then
-    echo "⚠️  Warning: FIREBASE_SERVICE_ACCOUNT_KEY not found in .env.stg"
-    echo "   Auth will be disabled (service account JSON required for token validation)"
-    export ENABLE_AUTH=false
-fi
+# Clean up temp file
+rm -f "$TEMP_ENV"
+trap - EXIT
 
-echo "✅ Environment variables loaded:"
-echo "   FIREBASE_PROJECT_ID: $FIREBASE_PROJECT_ID"
+echo "✅ Decrypted environment variables loaded"
+echo "   FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-not set}"
 echo "   ENABLE_AUTH: $ENABLE_AUTH"
 echo "   REQUIRE_AUTH: $REQUIRE_AUTH"
 if [ -n "$FIREBASE_SERVICE_ACCOUNT_KEY" ]; then
-    echo "   FIREBASE_SERVICE_ACCOUNT_KEY: [set]"
+    echo "   FIREBASE_SERVICE_ACCOUNT_KEY: [set, ${#FIREBASE_SERVICE_ACCOUNT_KEY} chars]"
 else
     echo "   FIREBASE_SERVICE_ACCOUNT_KEY: [not set]"
 fi
@@ -72,6 +94,6 @@ else
 fi
 echo ""
 
-# Run docker-compose with both files
+# Run docker-compose with decrypted environment variables
 echo "🚀 Starting docker-compose with authentication..."
 docker-compose -f docker-compose.yml -f docker-compose.auth.yml "$@"

@@ -20,8 +20,10 @@ providers:
   # Docker provider for local development
   docker:
     exposedByDefault: false  # Only expose services with traefik.enable=true label
-    network: labs-network    # Use the labs network for service discovery
+    network: e-skimming-labs-network    # Use the labs network for service discovery (Docker Compose adds project prefix)
     watch: true              # Watch for container changes
+    # Note: Traefik filters unhealthy/starting containers by default
+    # Containers must pass their health check before Traefik creates routes
 
   # File provider for static configuration and overrides
   file:

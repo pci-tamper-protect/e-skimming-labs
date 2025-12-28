@@ -123,6 +123,24 @@ func main() {
 	if labsDomain == "" {
 		labsDomain = "labs.pcioasis.com"
 	}
+
+	// Determine MAIN_DOMAIN based on environment if not explicitly set
+	if mainDomain == "" {
+		switch environment {
+		case "local":
+			// For local, use the DOMAIN (localhost:8080) for sign-in
+			mainDomain = domain
+		case "stg":
+			// For staging, use labs.stg.pcioasis.com
+			mainDomain = "labs.stg.pcioasis.com"
+		case "prd":
+			// For production, use labs.pcioasis.com
+			mainDomain = "labs.pcioasis.com"
+		default:
+			// Default to production domain
+			mainDomain = "labs.pcioasis.com"
+		}
+	}
 	if lab1Domain == "" {
 		lab1Domain = labsDomain
 	}
@@ -132,9 +150,7 @@ func main() {
 	if lab3Domain == "" {
 		lab3Domain = labsDomain
 	}
-	if mainDomain == "" {
-		mainDomain = "pcioasis.com"
-	}
+	// MAIN_DOMAIN is set above based on environment if not explicitly provided
 	// Default to empty - should be set via environment variable
 	// This allows staging to use labs-stg and production to use labs-prd
 	if labsProjectID == "" {
@@ -257,6 +273,13 @@ func main() {
 			log.Printf("   Disabling authentication (add FIREBASE_SERVICE_ACCOUNT_KEY to enable)")
 			enableAuth = false
 		}
+	} else if strings.HasPrefix(strings.TrimSpace(firebaseServiceAccount), "encrypted:") {
+		// Value is still encrypted (dotenvx decryption failed)
+		log.Printf("⚠️  FIREBASE_SERVICE_ACCOUNT_KEY appears to be encrypted (starts with 'encrypted:')")
+		log.Printf("   This usually means dotenvx decryption failed. Disabling authentication.")
+		log.Printf("   To fix: Ensure DOTENV_PRIVATE_KEY_STG is set correctly when running docker-compose")
+		enableAuth = false
+		firebaseServiceAccount = "" // Clear the encrypted value
 	}
 
 	mainAppURL := fmt.Sprintf("%s://%s", scheme, mainDomain)
@@ -331,6 +354,87 @@ func main() {
 		serveAuthUser(w, r, authValidator)
 	})
 
+	// Auth check endpoint for Traefik ForwardAuth middleware
+	// Returns 200 if authenticated, 302 redirect to sign-in for browser requests, 401 for API requests
+	mux.HandleFunc("/api/auth/check", func(w http.ResponseWriter, r *http.Request) {
+		// This endpoint is called by Traefik ForwardAuth middleware
+		// It should check authentication and return appropriate status
+		if !authValidator.IsEnabled() {
+			// Auth disabled, allow access
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		
+		// Extract token from request
+		authHeader := r.Header.Get("Authorization")
+		var token string
+		if authHeader != "" {
+			parts := strings.SplitN(authHeader, " ", 2)
+			if len(parts) == 2 && strings.ToLower(parts[0]) == "bearer" {
+				token = parts[1]
+			}
+		}
+		// Also check cookie
+		if token == "" {
+			cookie, err := r.Cookie("firebase_token")
+			if err == nil && cookie.Value != "" {
+				token = cookie.Value
+			}
+		}
+		// Also check query parameter
+		if token == "" {
+			token = r.URL.Query().Get("token")
+		}
+		
+		// Check if this is a browser request
+		acceptHeader := r.Header.Get("Accept")
+		isBrowserRequest := strings.Contains(acceptHeader, "text/html") ||
+			acceptHeader == "" ||
+			strings.Contains(acceptHeader, "*/*")
+		
+		// Get original request URI from Traefik headers
+		originalURI := r.Header.Get("X-Forwarded-Uri")
+		if originalURI == "" {
+			// Fallback to request path
+			originalURI = r.URL.Path
+			if r.URL.RawQuery != "" {
+				originalURI += "?" + r.URL.RawQuery
+			}
+		}
+		
+		if token == "" {
+			// No token provided
+			if isBrowserRequest {
+				// Redirect browser requests to sign-in
+				redirectURL := fmt.Sprintf("%s/sign-in?redirect=%s", homeData.MainAppURL, originalURI)
+				http.Redirect(w, r, redirectURL, http.StatusFound)
+				return
+			}
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Header().Set("X-Auth-Error", "No token provided")
+			return
+		}
+		
+		// Validate token
+		userInfo, err := authValidator.ValidateToken(r.Context(), token)
+		if err != nil || userInfo == nil {
+			if isBrowserRequest {
+				// Redirect browser requests to sign-in
+				redirectURL := fmt.Sprintf("%s/sign-in?redirect=%s", homeData.MainAppURL, originalURI)
+				http.Redirect(w, r, redirectURL, http.StatusFound)
+				return
+			}
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Header().Set("X-Auth-Error", "Invalid token")
+			return
+		}
+		
+		// Authenticated - add user info to headers for downstream services
+		w.Header().Set("X-User-Id", userInfo.UserID)
+		w.Header().Set("X-User-Email", userInfo.Email)
+		w.WriteHeader(http.StatusOK)
+	})
+
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
@@ -343,6 +447,15 @@ func main() {
 
 	mux.HandleFunc("/static/js/auth-check.js", func(w http.ResponseWriter, r *http.Request) {
 		serveAuthCheckJS(w, r)
+	})
+
+	// Sign-in and sign-up pages (public, no auth required)
+	mux.HandleFunc("/sign-in", func(w http.ResponseWriter, r *http.Request) {
+		serveSignInPage(w, r, homeData)
+	})
+
+	mux.HandleFunc("/sign-up", func(w http.ResponseWriter, r *http.Request) {
+		serveSignUpPage(w, r, homeData)
 	})
 
 	// Apply auth middleware to all routes
@@ -948,10 +1061,10 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
     <!-- Auth Integration Script -->
     <script src="/static/js/auth.js"></script>
     <script>
-        // Initialize auth check
+        // Initialize auth check (authRequired is always false for home page - it's public)
         if (typeof initLabsAuth === 'function') {
             initLabsAuth({
-                authRequired: {{.AuthRequired}},
+                authRequired: false,
                 mainAppURL: '{{.MainAppURL}}',
                 firebaseProjectID: '{{.FirebaseProjectID}}'
             });
@@ -1098,9 +1211,9 @@ func serveMITREPage(w http.ResponseWriter, r *http.Request, homeData HomePageDat
 		homeData.UserID = userInfo.UserID
 	}
 
-	// Inject auth buttons into the HTML
+	// Inject auth buttons into the HTML (MITRE ATT&CK is public, so authRequired=false)
 	htmlStr := string(mitreHTML)
-	htmlStr = injectAuthButtons(htmlStr, homeData)
+	htmlStr = injectAuthButtons(htmlStr, homeData, false)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(htmlStr))
@@ -1139,9 +1252,9 @@ func serveThreatModelPage(w http.ResponseWriter, r *http.Request, homeData HomeP
 		homeData.UserID = userInfo.UserID
 	}
 
-	// Inject auth buttons into the HTML
+	// Inject auth buttons into the HTML (Threat Model is public, so authRequired=false)
 	htmlStr := string(threatModelHTML)
-	htmlStr = injectAuthButtons(htmlStr, homeData)
+	htmlStr = injectAuthButtons(htmlStr, homeData, false)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(htmlStr))
@@ -1290,14 +1403,16 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, labUR
 	// Build auth scripts if enabled
 	authScripts := ""
 	if homeData.AuthEnabled {
+		// For home page, auth is never required (it's public)
+		// Only show login/logout buttons, don't enforce authentication
 		authScripts = fmt.Sprintf(`
     <!-- Auth Integration Script -->
     <script src="/static/js/auth.js"></script>
     <script>
-        // Initialize auth check
+        // Initialize auth check (authRequired is always false for home page)
         if (typeof initLabsAuth === 'function') {
             initLabsAuth({
-                authRequired: %t,
+                authRequired: false,
                 mainAppURL: '%s',
                 firebaseProjectID: '%s'
             });
@@ -1672,7 +1787,8 @@ func serveAuthUser(w http.ResponseWriter, r *http.Request, validator *auth.Token
 }
 
 // injectAuthButtons injects auth buttons and scripts into HTML pages
-func injectAuthButtons(html string, homeData HomePageData) string {
+// authRequired indicates whether the page requires authentication (false for public pages like home, mitre-attack, threat-model)
+func injectAuthButtons(html string, homeData HomePageData, authRequired bool) string {
 	if !homeData.AuthEnabled {
 		return html
 	}
@@ -1767,7 +1883,7 @@ func injectAuthButtons(html string, homeData HomePageData) string {
 				}
 			});
 		</script>
-	`, homeData.AuthRequired, homeData.MainAppURL, homeData.FirebaseProjectID, homeData.MainAppURL)
+	`, authRequired, homeData.MainAppURL, homeData.FirebaseProjectID, homeData.MainAppURL)
 
 	// Try to inject buttons into header/nav elements
 	// Look for common header patterns
@@ -2003,4 +2119,528 @@ func serveLabsAPI(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(labs)
+}
+
+// serveSignInPage serves the sign-in page with Firebase Authentication
+func serveSignInPage(w http.ResponseWriter, r *http.Request, homeData HomePageData) {
+	if !homeData.AuthEnabled {
+		http.Error(w, "Authentication is not enabled", http.StatusNotFound)
+		return
+	}
+
+	// Get redirect URL from query parameter
+	redirectURL := r.URL.Query().Get("redirect")
+	if redirectURL == "" {
+		redirectURL = "/"
+	}
+
+	// Get Firebase config from environment
+	firebaseAPIKey := os.Getenv("FIREBASE_API_KEY")
+	firebaseAuthDomain := os.Getenv("FIREBASE_AUTH_DOMAIN")
+	if firebaseAuthDomain == "" && homeData.FirebaseProjectID != "" {
+		firebaseAuthDomain = fmt.Sprintf("%s.firebaseapp.com", homeData.FirebaseProjectID)
+	}
+
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In - E-Skimming Labs</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .signin-container {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            max-width: 400px;
+            width: 100%%;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        input {
+            width: 100%%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            width: 100%%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .error {
+            color: #e74c3c;
+            font-size: 14px;
+            margin-top: 10px;
+            display: none;
+        }
+        .error.show {
+            display: block;
+        }
+        .divider {
+            text-align: center;
+            margin: 20px 0;
+            color: #999;
+            font-size: 14px;
+            position: relative;
+        }
+        .divider::before,
+        .divider::after {
+            content: '';
+            position: absolute;
+            top: 50%%;
+            width: 40%%;
+            height: 1px;
+            background: #ddd;
+        }
+        .divider::before {
+            left: 0;
+        }
+        .divider::after {
+            right: 0;
+        }
+        .google-btn {
+            background: white;
+            color: #333;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .google-btn:hover {
+            background: #f5f5f5;
+        }
+        .signup-link {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #666;
+        }
+        .signup-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .signup-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="signin-container">
+        <h1>Sign In</h1>
+        <p class="subtitle">Access E-Skimming Labs</p>
+
+        <form id="signin-form">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required autocomplete="email">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required autocomplete="current-password">
+            </div>
+            <div class="error" id="error"></div>
+            <button type="submit" id="submit-btn">Sign In</button>
+        </form>
+
+        <div class="divider">or</div>
+
+        <button class="google-btn" id="google-btn">
+            <svg width="18" height="18" viewBox="0 0 18 18">
+                <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
+                <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.96-2.184l-2.908-2.258c-.806.54-1.837.86-3.052.86-2.347 0-4.337-1.584-5.046-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
+                <path fill="#FBBC05" d="M3.954 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.348 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.997-3.332z"/>
+                <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.954 7.293C4.663 5.163 6.653 3.58 9 3.58z"/>
+            </svg>
+            Sign in with Google
+        </button>
+
+        <div class="signup-link">
+            Don't have an account? <a href="/sign-up?redirect=%s">Sign up</a>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script>
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: '%s',
+            authDomain: '%s',
+            projectId: '%s'
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // Handle form submission
+        document.getElementById('signin-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const submitBtn = document.getElementById('submit-btn');
+            const errorDiv = document.getElementById('error');
+
+            submitBtn.disabled = true;
+            errorDiv.classList.remove('show');
+            errorDiv.textContent = '';
+
+            try {
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                const token = await userCredential.user.getIdToken();
+
+                // Redirect with token
+                const redirectUrl = '%s';
+                window.location.href = redirectUrl + (redirectUrl.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
+            } catch (error) {
+                errorDiv.textContent = error.message || 'Sign in failed. Please try again.';
+                errorDiv.classList.add('show');
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Handle Google sign-in
+        document.getElementById('google-btn').addEventListener('click', async () => {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            const submitBtn = document.getElementById('google-btn');
+            const errorDiv = document.getElementById('error');
+
+            submitBtn.disabled = true;
+            errorDiv.classList.remove('show');
+            errorDiv.textContent = '';
+
+            try {
+                const result = await auth.signInWithPopup(provider);
+                const token = await result.user.getIdToken();
+
+                // Redirect with token
+                const redirectUrl = '%s';
+                window.location.href = redirectUrl + (redirectUrl.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
+            } catch (error) {
+                errorDiv.textContent = error.message || 'Google sign in failed. Please try again.';
+                errorDiv.classList.add('show');
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>`, redirectURL, firebaseAPIKey, firebaseAuthDomain, homeData.FirebaseProjectID, redirectURL, redirectURL)
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write([]byte(html))
+}
+
+// serveSignUpPage serves the sign-up page with Firebase Authentication
+func serveSignUpPage(w http.ResponseWriter, r *http.Request, homeData HomePageData) {
+	if !homeData.AuthEnabled {
+		http.Error(w, "Authentication is not enabled", http.StatusNotFound)
+		return
+	}
+
+	// Get redirect URL from query parameter
+	redirectURL := r.URL.Query().Get("redirect")
+	if redirectURL == "" {
+		redirectURL = "/"
+	}
+
+	// Get Firebase config from environment
+	firebaseAPIKey := os.Getenv("FIREBASE_API_KEY")
+	firebaseAuthDomain := os.Getenv("FIREBASE_AUTH_DOMAIN")
+	if firebaseAuthDomain == "" && homeData.FirebaseProjectID != "" {
+		firebaseAuthDomain = fmt.Sprintf("%s.firebaseapp.com", homeData.FirebaseProjectID)
+	}
+
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - E-Skimming Labs</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .signup-container {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            max-width: 400px;
+            width: 100%%;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        input {
+            width: 100%%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            width: 100%%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .error {
+            color: #e74c3c;
+            font-size: 14px;
+            margin-top: 10px;
+            display: none;
+        }
+        .error.show {
+            display: block;
+        }
+        .divider {
+            text-align: center;
+            margin: 20px 0;
+            color: #999;
+            font-size: 14px;
+            position: relative;
+        }
+        .divider::before,
+        .divider::after {
+            content: '';
+            position: absolute;
+            top: 50%%;
+            width: 40%%;
+            height: 1px;
+            background: #ddd;
+        }
+        .divider::before {
+            left: 0;
+        }
+        .divider::after {
+            right: 0;
+        }
+        .google-btn {
+            background: white;
+            color: #333;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .google-btn:hover {
+            background: #f5f5f5;
+        }
+        .signin-link {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #666;
+        }
+        .signin-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .signin-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="signup-container">
+        <h1>Sign Up</h1>
+        <p class="subtitle">Create your E-Skimming Labs account</p>
+
+        <form id="signup-form">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required autocomplete="email">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required autocomplete="new-password" minlength="6">
+            </div>
+            <div class="error" id="error"></div>
+            <button type="submit" id="submit-btn">Sign Up</button>
+        </form>
+
+        <div class="divider">or</div>
+
+        <button class="google-btn" id="google-btn">
+            <svg width="18" height="18" viewBox="0 0 18 18">
+                <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
+                <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.96-2.184l-2.908-2.258c-.806.54-1.837.86-3.052.86-2.347 0-4.337-1.584-5.046-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
+                <path fill="#FBBC05" d="M3.954 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.348 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.997-3.332z"/>
+                <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.954 7.293C4.663 5.163 6.653 3.58 9 3.58z"/>
+            </svg>
+            Sign up with Google
+        </button>
+
+        <div class="signin-link">
+            Already have an account? <a href="/sign-in?redirect=%s">Sign in</a>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script>
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: '%s',
+            authDomain: '%s',
+            projectId: '%s'
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // Handle form submission
+        document.getElementById('signup-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const submitBtn = document.getElementById('submit-btn');
+            const errorDiv = document.getElementById('error');
+
+            submitBtn.disabled = true;
+            errorDiv.classList.remove('show');
+            errorDiv.textContent = '';
+
+            try {
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                const token = await userCredential.user.getIdToken();
+
+                // Redirect with token
+                const redirectUrl = '%s';
+                window.location.href = redirectUrl + (redirectUrl.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
+            } catch (error) {
+                errorDiv.textContent = error.message || 'Sign up failed. Please try again.';
+                errorDiv.classList.add('show');
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Handle Google sign-up
+        document.getElementById('google-btn').addEventListener('click', async () => {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            const submitBtn = document.getElementById('google-btn');
+            const errorDiv = document.getElementById('error');
+
+            submitBtn.disabled = true;
+            errorDiv.classList.remove('show');
+            errorDiv.textContent = '';
+
+            try {
+                const result = await auth.signInWithPopup(provider);
+                const token = await result.user.getIdToken();
+
+                // Redirect with token
+                const redirectUrl = '%s';
+                window.location.href = redirectUrl + (redirectUrl.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
+            } catch (error) {
+                errorDiv.textContent = error.message || 'Google sign up failed. Please try again.';
+                errorDiv.classList.add('show');
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>`, redirectURL, firebaseAPIKey, firebaseAuthDomain, homeData.FirebaseProjectID, redirectURL, redirectURL)
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write([]byte(html))
 }
