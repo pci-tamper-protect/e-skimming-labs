@@ -364,7 +364,7 @@ func main() {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		
+
 		// Extract token from request
 		authHeader := r.Header.Get("Authorization")
 		var token string
@@ -385,13 +385,13 @@ func main() {
 		if token == "" {
 			token = r.URL.Query().Get("token")
 		}
-		
+
 		// Check if this is a browser request
 		acceptHeader := r.Header.Get("Accept")
 		isBrowserRequest := strings.Contains(acceptHeader, "text/html") ||
 			acceptHeader == "" ||
 			strings.Contains(acceptHeader, "*/*")
-		
+
 		// Get original request URI from Traefik headers
 		originalURI := r.Header.Get("X-Forwarded-Uri")
 		if originalURI == "" {
@@ -401,7 +401,7 @@ func main() {
 				originalURI += "?" + r.URL.RawQuery
 			}
 		}
-		
+
 		if token == "" {
 			// No token provided
 			if isBrowserRequest {
@@ -414,7 +414,7 @@ func main() {
 			w.Header().Set("X-Auth-Error", "No token provided")
 			return
 		}
-		
+
 		// Validate token
 		userInfo, err := authValidator.ValidateToken(r.Context(), token)
 		if err != nil || userInfo == nil {
@@ -428,7 +428,7 @@ func main() {
 			w.Header().Set("X-Auth-Error", "Invalid token")
 			return
 		}
-		
+
 		// Authenticated - add user info to headers for downstream services
 		w.Header().Set("X-User-Id", userInfo.UserID)
 		w.Header().Set("X-User-Email", userInfo.Email)
@@ -2326,6 +2326,22 @@ func serveSignInPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
 
+        // Check for email verification error or email parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const emailParam = urlParams.get('email');
+        const errorParam = urlParams.get('error');
+
+        if (emailParam) {
+            document.getElementById('email').value = emailParam;
+        }
+
+        if (errorParam === 'email_not_verified') {
+            const errorDiv = document.getElementById('error');
+            errorDiv.style.color = '#e74c3c';
+            errorDiv.textContent = 'Please verify your email address before signing in. Check your inbox for the verification email.';
+            errorDiv.classList.add('show');
+        }
+
         // Handle form submission
         document.getElementById('signin-form').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -2340,12 +2356,25 @@ func serveSignInPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
 
             try {
                 const userCredential = await auth.signInWithEmailAndPassword(email, password);
+
+                // Check if email is verified
+                if (!userCredential.user.emailVerified) {
+                    // Send verification email again
+                    await userCredential.user.sendEmailVerification();
+                    errorDiv.style.color = '#e74c3c';
+                    errorDiv.textContent = 'Please verify your email address. A new verification email has been sent to your inbox.';
+                    errorDiv.classList.add('show');
+                    submitBtn.disabled = false;
+                    return;
+                }
+
                 const token = await userCredential.user.getIdToken();
 
                 // Redirect with token
                 const redirectUrl = '%s';
                 window.location.href = redirectUrl + (redirectUrl.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
             } catch (error) {
+                errorDiv.style.color = '#e74c3c';
                 errorDiv.textContent = error.message || 'Sign in failed. Please try again.';
                 errorDiv.classList.add('show');
                 submitBtn.disabled = false;
@@ -2602,12 +2631,22 @@ func serveSignUpPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
 
             try {
                 const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-                const token = await userCredential.user.getIdToken();
 
-                // Redirect with token
-                const redirectUrl = '%s';
-                window.location.href = redirectUrl + (redirectUrl.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
+                // Send email verification
+                await userCredential.user.sendEmailVerification();
+
+                // Show success message
+                errorDiv.style.color = '#27ae60';
+                errorDiv.textContent = 'Account created! Please check your email to verify your account before signing in.';
+                errorDiv.classList.add('show');
+
+                // Redirect to sign-in page after 3 seconds
+                setTimeout(() => {
+                    const redirectUrl = '%s';
+                    window.location.href = '/sign-in?redirect=' + encodeURIComponent(redirectUrl) + '&email=' + encodeURIComponent(email);
+                }, 3000);
             } catch (error) {
+                errorDiv.style.color = '#e74c3c';
                 errorDiv.textContent = error.message || 'Sign up failed. Please try again.';
                 errorDiv.classList.add('show');
                 submitBtn.disabled = false;

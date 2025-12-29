@@ -23,153 +23,11 @@ resource "google_project_iam_member" "traefik_artifact_registry_reader" {
   member  = "serviceAccount:${google_service_account.traefik.email}"
 }
 
-# Traefik Cloud Run Service
-# Note: Service is deployed by GitHub Actions workflow, Terraform only manages IAM and domain mapping
-# Keep in state to prevent destruction, but ignore all changes (managed by GitHub Actions)
-resource "google_cloud_run_v2_service" "traefik" {
-  count    = 1  # Always keep in state to prevent destruction
+# Data source to reference Traefik service (managed by GitHub Actions)
+data "google_cloud_run_v2_service" "traefik" {
   name     = "traefik-${var.environment}"
   location = var.region
   project  = local.labs_project_id
-
-  # Protect staging from accidental deletion
-  deletion_protection = var.environment == "stg" ? true : false
-
-  template {
-    service_account = google_service_account.traefik.email
-
-    # Scale configuration
-    scaling {
-      min_instance_count = var.environment == "prd" ? 1 : 0  # Keep 1 instance warm in production
-      max_instance_count = var.environment == "prd" ? 10 : 3
-    }
-
-    containers {
-      # Image will be built and pushed by GitHub Actions
-      image = "${var.region}-docker.pkg.dev/${local.labs_project_id}/e-skimming-labs/traefik:latest"
-
-      ports {
-        name           = "http1"
-        container_port = 8080
-      }
-
-      # Environment variables for backend service URLs
-      env {
-        name  = "ENVIRONMENT"
-        value = var.environment
-      }
-
-      env {
-        name  = "DOMAIN"
-        value = var.environment == "prd" ? "labs.pcioasis.com" : "labs.stg.pcioasis.com"
-      }
-
-      # Home services (from labs-home project)
-      env {
-        name  = "HOME_INDEX_URL"
-        value = "https://home-index-${var.environment}-${data.google_project.home_project.number}.a.run.app"
-      }
-
-      env {
-        name  = "SEO_URL"
-        value = "https://home-seo-${var.environment}-${data.google_project.home_project.number}.a.run.app"
-      }
-
-      # Analytics service (from labs project)
-      env {
-        name  = "ANALYTICS_URL"
-        value = google_cloud_run_v2_service.analytics_service[0].uri
-      }
-
-      # Lab service URLs (to be deployed separately)
-      # These will be populated by the lab deployment workflows
-      env {
-        name  = "LAB1_URL"
-        value = "https://lab1-${var.environment}-${data.google_project.labs_project.number}.a.run.app"
-      }
-
-      env {
-        name  = "LAB1_C2_URL"
-        value = "https://lab1-c2-${var.environment}-${data.google_project.labs_project.number}.a.run.app"
-      }
-
-      env {
-        name  = "LAB2_URL"
-        value = "https://lab2-${var.environment}-${data.google_project.labs_project.number}.a.run.app"
-      }
-
-      env {
-        name  = "LAB2_C2_URL"
-        value = "https://lab2-c2-${var.environment}-${data.google_project.labs_project.number}.a.run.app"
-      }
-
-      env {
-        name  = "LAB3_URL"
-        value = "https://lab3-${var.environment}-${data.google_project.labs_project.number}.a.run.app"
-      }
-
-      env {
-        name  = "LAB3_EXTENSION_URL"
-        value = "https://lab3-extension-${var.environment}-${data.google_project.labs_project.number}.a.run.app"
-      }
-
-      # Resource limits
-      resources {
-        limits = {
-          cpu    = "1"
-          memory = "512Mi"
-        }
-        cpu_idle = true  # Scale to zero when idle in staging
-      }
-
-      # Startup probe
-      startup_probe {
-        http_get {
-          path = "/ping"
-        }
-        initial_delay_seconds = 5
-        timeout_seconds       = 3
-        period_seconds        = 3
-        failure_threshold     = 5
-      }
-
-      # Liveness probe
-      liveness_probe {
-        http_get {
-          path = "/ping"
-        }
-        initial_delay_seconds = 10
-        timeout_seconds       = 3
-        period_seconds        = 10
-        failure_threshold     = 3
-      }
-    }
-
-    # VPC connector for accessing internal services (if needed)
-    # vpc_access {
-    #   connector = var.vpc_connector
-    #   egress    = "PRIVATE_RANGES_ONLY"
-    # }
-  }
-
-  traffic {
-    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
-    percent = 100
-  }
-
-  depends_on = [
-    google_artifact_registry_repository.labs_repo,
-    google_service_account.traefik,
-    google_project_iam_member.traefik_invoker,
-    google_project_iam_member.traefik_artifact_registry_reader
-  ]
-
-  # Let GitHub Actions workflow manage the service configuration
-  # Terraform only needs the service to exist for IAM bindings and domain mapping
-  # Ignore all changes since GitHub Actions manages the actual deployment
-  lifecycle {
-    ignore_changes = all  # Ignore all changes - service is fully managed by GitHub Actions
-  }
 }
 
 # Data sources to get project numbers for constructing URLs
@@ -184,9 +42,9 @@ data "google_project" "home_project" {
 # Public access for production, restricted for staging
 resource "google_cloud_run_v2_service_iam_member" "traefik_public" {
   count    = var.environment == "prd" ? 1 : 0
-  location = google_cloud_run_v2_service.traefik[0].location
-  project  = google_cloud_run_v2_service.traefik[0].project
-  name     = google_cloud_run_v2_service.traefik[0].name
+  location = data.google_cloud_run_v2_service.traefik.location
+  project  = data.google_cloud_run_v2_service.traefik.project
+  name     = data.google_cloud_run_v2_service.traefik.name
   role     = "roles/run.invoker"
   member   = "allUsers"
 }
@@ -199,15 +57,16 @@ resource "google_cloud_run_v2_service_iam_member" "traefik_stg_group_access" {
     "group:core-eng@pcioasis.com"
   ]) : toset([])
 
-  location = google_cloud_run_v2_service.traefik[0].location
-  project  = google_cloud_run_v2_service.traefik[0].project
-  name     = google_cloud_run_v2_service.traefik[0].name
+  location = data.google_cloud_run_v2_service.traefik.location
+  project  = data.google_cloud_run_v2_service.traefik.project
+  name     = data.google_cloud_run_v2_service.traefik.name
   role     = "roles/run.invoker"
   member   = each.value
 }
 
 # Domain mapping for Traefik service
 # Managed in terraform-labs since Traefik service lives here
+# NOTE: Domain mapping may be managed manually or by GitHub Actions
 resource "google_cloud_run_domain_mapping" "traefik_domain" {
   count = 1
 
@@ -220,7 +79,7 @@ resource "google_cloud_run_domain_mapping" "traefik_domain" {
   }
 
   spec {
-    route_name = google_cloud_run_v2_service.traefik[0].name
+    route_name = data.google_cloud_run_v2_service.traefik.name
   }
 
   # Ignore changes to allow manual management if needed
@@ -229,14 +88,14 @@ resource "google_cloud_run_domain_mapping" "traefik_domain" {
   }
 
   depends_on = [
-    google_cloud_run_v2_service.traefik
+    data.google_cloud_run_v2_service.traefik
   ]
 }
 
 # Output Traefik service URL
 output "traefik_url" {
-  description = "URL of the Traefik reverse proxy service"
-  value       = try(google_cloud_run_v2_service.traefik[0].uri, "not deployed")
+  description = "URL of the Traefik reverse proxy service (from data source, service managed by GitHub Actions)"
+  value       = try(data.google_cloud_run_v2_service.traefik.uri, "Service not deployed yet")
 }
 
 output "traefik_domain" {

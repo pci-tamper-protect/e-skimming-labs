@@ -26,13 +26,13 @@ output "storage_bucket_assets" {
 }
 
 output "seo_service_url" {
-  description = "The SEO service URL"
-  value       = var.deploy_services ? google_cloud_run_v2_service.home_seo_service[0].uri : "Service not deployed yet"
+  description = "The SEO service URL (from data source, service managed by GitHub Actions)"
+  value       = try(data.google_cloud_run_v2_service.home_seo_service[0].uri, "Service not deployed yet")
 }
 
 output "index_service_url" {
-  description = "The Index service URL"
-  value       = var.deploy_services ? google_cloud_run_v2_service.home_index_service[0].uri : "Service not deployed yet"
+  description = "The Index service URL (from data source, service managed by GitHub Actions)"
+  value       = try(data.google_cloud_run_v2_service.home_index_service[0].uri, "Service not deployed yet")
 }
 
 output "home_runtime_service_account" {

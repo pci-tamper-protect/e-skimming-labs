@@ -116,7 +116,8 @@ resource "google_project_iam_member" "fbase_adm_sdk_runtime_roles" {
   for_each = toset([
     "roles/logging.logWriter",
     "roles/monitoring.metricWriter",
-    "roles/iam.serviceAccountUser"  # Allow service account to act as itself
+    "roles/iam.serviceAccountUser",  # Allow service account to act as itself
+    "roles/secretmanager.secretAccessor"  # Access Secret Manager secrets (e.g., DOTENVX_KEY_STG)
   ])
 
   project = local.home_project_id

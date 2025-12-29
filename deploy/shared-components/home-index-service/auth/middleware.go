@@ -86,11 +86,34 @@ func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 				return
 			}
 
+			// Check email verification if user info is available
+			if userInfo != nil && validator.IsRequired() && !userInfo.EmailVerified {
+				log.Printf("❌ Email not verified for user: %s", userInfo.Email)
+				// For browser requests, redirect to sign-in with a message
+				acceptHeader := r.Header.Get("Accept")
+				isBrowserRequest := strings.Contains(acceptHeader, "text/html") ||
+					acceptHeader == "" ||
+					strings.Contains(acceptHeader, "*/*")
+				if isBrowserRequest {
+					redirectURL := fmt.Sprintf("%s/sign-in?error=email_not_verified&email=%s", validator.GetMainAppURL(), userInfo.Email)
+					http.Redirect(w, r, redirectURL, http.StatusFound)
+					return
+				}
+				// For API requests, return 403
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusForbidden)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error":   "email_not_verified",
+					"message": "Email verification required",
+				})
+				return
+			}
+
 			// Add user info to request context
 			if userInfo != nil {
 				ctx := context.WithValue(r.Context(), UserInfoKey, userInfo)
 				r = r.WithContext(ctx)
-				log.Printf("✅ Request authenticated (user: %s, email: %s)", userInfo.UserID, userInfo.Email)
+				log.Printf("✅ Request authenticated (user: %s, email: %s, verified: %v)", userInfo.UserID, userInfo.Email, userInfo.EmailVerified)
 			}
 
 			next.ServeHTTP(w, r)

@@ -124,15 +124,13 @@ resource "google_project_iam_member" "labs_seo_roles" {
   member  = "serviceAccount:${google_service_account.labs_seo.email}"
 }
 
-# Create service account keys for GitHub Actions
-resource "google_service_account_key" "labs_deploy_key" {
-  service_account_id = google_service_account.labs_deploy.name
-  public_key_type    = "TYPE_X509_PEM_FILE"
-}
-
-# Output the service account key for GitHub Secrets
-output "labs_deploy_key" {
-  description = "Service account key for GitHub Actions deployment"
-  value       = base64decode(google_service_account_key.labs_deploy_key.private_key)
-  sensitive   = true
-}
+# NOTE: Service account keys are NOT managed by Terraform
+# They are created via gcloud commands and scripts
+# See TERRAFORM_SCOPE.md for architectural details
+#
+# To create a key for labs_deploy service account:
+#   gcloud iam service-accounts keys create /tmp/labs-deploy-key.json \
+#     --iam-account=labs-deploy-sa@labs-${var.environment}.iam.gserviceaccount.com \
+#     --project=labs-${var.environment}
+#
+# Then use create-or-rotate-service-account-key.sh to encrypt and store in .env files

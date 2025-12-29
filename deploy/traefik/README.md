@@ -164,7 +164,33 @@ docker build -f Dockerfile.cloudrun -t traefik-cloudrun .
 
 ### Deploy to Cloud Run
 
-This is handled by Terraform. See `deploy/terraform-*/traefik.tf` for configuration.
+Traefik can be deployed manually using the deployment script:
+
+```bash
+cd deploy/traefik
+./deploy.sh [stg|prd]
+```
+
+This script will:
+1. Build and push the Docker image (if it doesn't exist)
+2. Deploy Traefik to Cloud Run with proper configuration
+3. Set up environment variables for backend service URLs
+
+**Note:** Terraform manages IAM bindings, but the initial service deployment is done via this script or `gcloud` commands.
+
+**Alternative:** You can also deploy manually using `gcloud run deploy` after building the image:
+
+```bash
+# Build and push image
+./build-and-push.sh prd
+
+# Deploy manually
+gcloud run deploy traefik-prd \
+  --image=us-central1-docker.pkg.dev/labs-prd/e-skimming-labs/traefik:latest \
+  --region=us-central1 \
+  --project=labs-prd \
+  --service-account=traefik-prd@labs-prd.iam.gserviceaccount.com
+```
 
 ## Environment Variables
 

@@ -210,3 +210,75 @@ gcloud iam service-accounts describe labs-auth-validator@ui-firebase-pcioasis-st
 **Helper Script:** `../../pcioasis-ops/secrets/copy-service-account-to-env.sh`
 
 **Encryption:** Use `dotenvx-converter.py` to encrypt after adding
+
+## Secret Manager Access
+
+The Firebase Admin SDK runtime service account needs access to Secret Manager to read the `DOTENVX_KEY_STG` secret (used for decrypting `.env.stg` in Cloud Run).
+
+**Terraform automatically grants this permission:** `deploy/terraform-home/service-accounts.tf`
+
+```terraform
+resource "google_project_iam_member" "fbase_adm_sdk_runtime_roles" {
+  for_each = toset([
+    "roles/logging.logWriter",
+    "roles/monitoring.metricWriter",
+    "roles/iam.serviceAccountUser",
+    "roles/secretmanager.secretAccessor"  # Access Secret Manager secrets
+  ])
+  # ...
+}
+```
+
+**Error if missing:**
+```
+Error: Permission denied on secret: projects/.../secrets/DOTENVX_KEY_STG/versions/latest
+for Revision service account fbase-adm-sdk-runtime@labs-home-stg.iam.gserviceaccount.com.
+The service account used must be granted the 'Secret Manager Secret Accessor' role
+```
+
+**Fix:** Apply Terraform to grant the permission:
+```bash
+cd deploy/terraform-home
+terraform apply -var="environment=stg" -var="deploy_services=true"
+```
+
+Or manually add it:
+```bash
+gcloud secrets add-iam-policy-binding DOTENVX_KEY_STG \
+  --member="serviceAccount:fbase-adm-sdk-runtime@labs-home-stg.iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor" \
+  --project=labs-home-stg
+```
+
+## Email Verification
+
+**Sign-up now requires email verification.** When users sign up:
+
+1. **Account is created** in Firebase
+2. **Verification email is automatically sent** to the user
+3. **User must verify email** before accessing protected routes
+4. **Sign-in checks verification status** and prevents access if not verified
+
+**Implementation Details:**
+- Sign-up page sends verification email: `userCredential.user.sendEmailVerification()`
+- Sign-in page checks verification: `if (!userCredential.user.emailVerified)`
+- Auth middleware enforces verification: Checks `EmailVerified` from token claims
+- Unverified users are redirected to sign-in with error message
+
+**Protected Routes Requiring Verification:**
+- `/lab1/*` and `/lab1/c2` (protected by Traefik ForwardAuth)
+- `/lab2/*` and `/lab2/c2` (protected by Traefik ForwardAuth)
+- `/lab3/*` and `/lab3/extension` (protected by Traefik ForwardAuth)
+- `/lab-01-writeup`, `/lab-02-writeup`, `/lab-03-writeup` (protected by Go middleware)
+
+**Public Routes (No Verification Required):**
+- `/` - Home page
+- `/mitre-attack` - MITRE ATT&CK Matrix
+- `/threat-model` - Threat Model page
+
+**See:** `docs/AUTHENTICATION_ARCHITECTURE.md` for complete authentication flow
+
+## Related Documentation
+
+- `docs/AUTHENTICATION_ARCHITECTURE.md` - Complete authentication architecture, Traefik ForwardAuth, and email verification flow
+- `deploy/terraform-home/PRODUCTION_DEPLOYMENT.md` - Production deployment guide with import instructions and common error fixes
