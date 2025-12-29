@@ -19,6 +19,7 @@
 - Create feature branches for changes
 - Create PRs to main branch
 - Don't push directly to main (branch protection enabled)
+- **NEVER push commits automatically** - always let the user add, commit, and push changes themselves
 
 ## Configuration vs Secrets
 - Configuration values (project IDs, regions, URLs) should be in config.yml or hardcoded in workflows
