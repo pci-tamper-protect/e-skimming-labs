@@ -169,9 +169,11 @@ http:
       priority: 200
       middlewares:$(if [ -n "$LAB1_TOKEN" ]; then echo "
         - forwarded-headers
+        - lab1-auth-check
         - lab1-auth
         - strip-lab1-prefix"; else echo "
         - forwarded-headers
+        - lab1-auth-check
         - strip-lab1-prefix"; fi)
       entryPoints:
         - web
@@ -197,9 +199,11 @@ http:
       priority: 200
       middlewares:$(if [ -n "$LAB2_TOKEN" ]; then echo "
         - forwarded-headers
+        - lab2-auth-check
         - lab2-auth
         - strip-lab2-prefix"; else echo "
         - forwarded-headers
+        - lab2-auth-check
         - strip-lab2-prefix"; fi)
       entryPoints:
         - web
@@ -225,9 +229,11 @@ http:
       priority: 200
       middlewares:$(if [ -n "$LAB3_TOKEN" ]; then echo "
         - forwarded-headers
+        - lab3-auth-check
         - lab3-auth
         - strip-lab3-prefix"; else echo "
         - forwarded-headers
+        - lab3-auth-check
         - strip-lab3-prefix"; fi)
       entryPoints:
         - web
@@ -366,6 +372,40 @@ fi)
       stripPrefix:
         prefixes:
           - "/lab3/extension"
+
+    # User authentication check middlewares (forwardAuth)
+    lab1-auth-check:
+      forwardAuth:
+        address: "${HOME_INDEX_URL:-http://localhost:8080}/api/auth/check"
+        authResponseHeaders:
+          - "X-User-Id"
+          - "X-User-Email"
+        authRequestHeaders:
+          - "Authorization"
+          - "Cookie"
+        trustForwardHeader: true
+
+    lab2-auth-check:
+      forwardAuth:
+        address: "${HOME_INDEX_URL:-http://localhost:8080}/api/auth/check"
+        authResponseHeaders:
+          - "X-User-Id"
+          - "X-User-Email"
+        authRequestHeaders:
+          - "Authorization"
+          - "Cookie"
+        trustForwardHeader: true
+
+    lab3-auth-check:
+      forwardAuth:
+        address: "${HOME_INDEX_URL:-http://localhost:8080}/api/auth/check"
+        authResponseHeaders:
+          - "X-User-Id"
+          - "X-User-Email"
+        authRequestHeaders:
+          - "Authorization"
+          - "Cookie"
+        trustForwardHeader: true
 
   services:
     home-index:

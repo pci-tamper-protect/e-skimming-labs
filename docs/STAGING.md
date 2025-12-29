@@ -18,9 +18,44 @@ The staging environment is a pre-production deployment used for:
 
 ## 🔐 Access & Authentication
 
-### Browser Access
+### Proxy Access (Required - Staging is Non-Public)
 
-Staging requires Google IAM authentication. To access in your browser:
+**⚠️ IMPORTANT:** Staging environment requires proxy access. You cannot access it directly via browser due to IAM authentication.
+
+1. **Start the proxy:**
+   ```bash
+   gcloud run services proxy traefik-stg \
+     --region=us-central1 \
+     --project=labs-stg \
+     --port=8081
+   ```
+
+2. **Access via proxy in your browser:**
+   - Navigate to: `http://127.0.0.1:8081`
+   - The proxy handles authentication automatically
+   - No Google sign-in required
+
+**Why use the proxy?**
+- Staging is non-public and requires IAM authentication
+- Proxy handles authentication automatically
+- Faster iteration during development
+- Works with relative URLs
+
+**Important:** After deploying changes to Traefik or home-index-service, **you must restart the proxy** to see the changes:
+```bash
+# Stop the proxy (Ctrl+C or kill the process)
+pkill -f "gcloud run services proxy"
+
+# Restart it
+gcloud run services proxy traefik-stg \
+  --region=us-central1 \
+  --project=labs-stg \
+  --port=8081
+```
+
+### Direct Browser Access (Not Recommended - Requires IAM)
+
+If you need to access staging directly (not recommended):
 
 1. **Sign in to Google** with your authorized account:
    - Go to: https://myaccount.google.com
@@ -39,59 +74,13 @@ Staging requires Google IAM authentication. To access in your browser:
    - Clear browser cache/cookies for `labs.stg.pcioasis.com`
    - Try incognito/private browsing mode
 
-### Proxy Access (Recommended for Development)
-
-For local development and testing, use the `gcloud run services proxy` command:
-
-```bash
-# Start the proxy (handles authentication automatically)
-gcloud run services proxy traefik-stg \
-  --region=us-central1 \
-  --project=labs-stg \
-  --port=8081
-```
-
-**Access via proxy:**
-- ✅ `http://127.0.0.1:8081` (always works)
-- ⚠️ `http://localhost:8081` (may give 404 due to IPv6/IPv4 mismatch)
-
-**Why use the proxy?**
-- No browser authentication required
-- Faster iteration during development
-- Works with relative URLs (see below)
-
-**Important:** After deploying changes to Traefik or home-index-service, **you must restart the proxy** to see the changes:
-
-```bash
-# Stop the proxy (Ctrl+C or kill the process)
-pkill -f "gcloud run services proxy"
-
-# Restart it
-gcloud run services proxy traefik-stg \
-  --region=us-central1 \
-  --project=labs-stg \
-  --port=8081
-```
+**Note:** Direct access is not recommended. Use the proxy instead (see above).
 
 ---
 
 ## 🧪 Manual Testing
 
-### Testing via Browser (Direct Domain Access)
-
-1. **Sign in to Google** (see [Access & Authentication](#-access--authentication) above)
-2. **Navigate to staging:**
-   ```
-   https://labs.stg.pcioasis.com
-   ```
-3. **Test navigation:**
-   - Home page loads correctly
-   - Click "MITRE ATT&CK" → should go to `/mitre-attack`
-   - Click "Threat Model" → should go to `/threat-model`
-   - Click lab links → should navigate to lab pages
-   - Test "Back to Labs" buttons on lab pages
-
-### Testing via Proxy (Recommended)
+### Testing via Proxy (Required - Staging is Non-Public)
 
 1. **Start the proxy:**
    ```bash
@@ -101,15 +90,19 @@ gcloud run services proxy traefik-stg \
      --port=8081
    ```
 
-2. **Access via proxy:**
+2. **Open your browser and navigate to:**
    ```
    http://127.0.0.1:8081
    ```
 
 3. **Test navigation:**
+   - Home page loads correctly
+   - Click "MITRE ATT&CK" → should go to `/mitre-attack`
+   - Click "Threat Model" → should go to `/threat-model`
+   - Click lab links → should navigate to lab pages
+   - Test "Back to Labs" buttons on lab pages
    - All links should use relative URLs (stay within proxy)
    - Navigation should work without browser authentication
-   - Test all lab pages and C2 dashboards
 
 4. **After deploying changes:**
    - **Restart the proxy** (see [Important Note](#-important-restart-proxy-after-changes))

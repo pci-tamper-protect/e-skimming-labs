@@ -79,13 +79,13 @@ jobs:
           echo "🧪 Testing against: $ENV environment"
 
       - name: Authenticate to Google Cloud (for proxy)
-        if: steps.test-env.outputs.environment == 'stg' && env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        if: steps.test-env.outputs.environment == 'stg'
         uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ env.LABS_GCP_SA_KEY }}
 
       - name: Set up Cloud SDK (for proxy)
-        if: steps.test-env.outputs.environment == 'stg' && env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        if: steps.test-env.outputs.environment == 'stg'
         uses: google-github-actions/setup-gcloud@v3
 
       - name: Load proxy configuration from .env.stg
@@ -107,10 +107,19 @@ jobs:
           echo "🔗 Proxy config from .env.stg: $PROXY_HOST:$PROXY_PORT"
 
       - name: Start gcloud proxy for staging tests
-        if: steps.test-env.outputs.environment == 'stg' && env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        if: steps.test-env.outputs.environment == 'stg'
         id: start-proxy
         run: |
           echo "🔗 Starting gcloud proxy for staging tests..."
+          echo "⚠️  Staging environment requires proxy access (non-public)"
+
+          # Verify service account key is available
+          if [ -z "${{ env.LABS_GCP_SA_KEY }}" ] || [ "${{ env.LABS_GCP_SA_KEY }}" == "null" ]; then
+            echo "❌ Error: LABS_GCP_SA_KEY is not set. Cannot start proxy for staging tests."
+            echo "   Please ensure GCP_LABS_SA_KEY_STG or GCP_LABS_SA_KEY secret is configured."
+            exit 1
+          fi
+
           PROXY_PORT="${{ steps.proxy-config.outputs.proxy_port }}"
           PROXY_HOST="${{ steps.proxy-config.outputs.proxy_host }}"
 

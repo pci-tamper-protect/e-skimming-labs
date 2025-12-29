@@ -25,9 +25,9 @@ gcloud auth configure-docker ${HOME_GAR_LOCATION}-docker.pkg.dev
 
 # Build the Docker image (from repo root, Dockerfile is in service directory)
 echo "🏗️  Building Docker image..."
-# Get the repo root (two levels up from this script)
+# Get the repo root (three levels up from this script)
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 cd "$REPO_ROOT"
 
 echo "   Script directory: $SCRIPT_DIR"

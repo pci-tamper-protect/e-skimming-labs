@@ -54,7 +54,9 @@
       "Bash(bash:*)",
       "Bash(docker exec lab1-attacker-c2 wget -q -O- http://localhost:3000/)",
       "Bash(docker exec e-skimming-labs-traefik wget -q -O- http://lab1-c2-server:3000/stolen)",
-      "Bash(docker exec e-skimming-labs-home-seo wget -q -O- http://localhost:8080/)"
+      "Bash(docker exec e-skimming-labs-home-seo wget -q -O- http://localhost:8080/)",
+      "Bash(./deploy/shared-components/home-index-service/deploy-stg.sh:*)",
+      "Bash(./deploy.sh:*)"
     ],
     "deny": [],
     "ask": []

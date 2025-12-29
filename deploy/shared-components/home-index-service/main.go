@@ -365,6 +365,31 @@ func main() {
 			return
 		}
 
+		// Detect if accessed via proxy (same logic as serveHomePage)
+		host := r.Host
+		forwardedHost := r.Header.Get("X-Forwarded-Host")
+		forwardedFor := r.Header.Get("X-Forwarded-For")
+		environment := os.Getenv("ENVIRONMENT")
+
+		// Check if we're behind Traefik (X-Forwarded-Host contains traefik)
+		isBehindTraefik := strings.Contains(strings.ToLower(forwardedHost), "traefik")
+
+		// In staging, if we're behind Traefik, use relative URLs (proxy access)
+		useRelativeURLs := false
+		if environment == "stg" && isBehindTraefik {
+			useRelativeURLs = true
+		}
+
+		// Also check for direct proxy access (for local testing)
+		isLocalProxy := strings.Contains(forwardedFor, "127.0.0.1") || strings.Contains(forwardedFor, "localhost")
+		isProxyHost := host == "127.0.0.1:8081" || host == "localhost:8081" ||
+			strings.HasSuffix(host, ":8081")
+		isForwardedProxyHost := forwardedHost == "127.0.0.1:8081" || forwardedHost == "localhost:8081" ||
+			strings.HasSuffix(forwardedHost, ":8081")
+
+		// Use relative URLs if any proxy detection matches
+		useRelativeURLs = useRelativeURLs || isLocalProxy || isProxyHost || isForwardedProxyHost
+
 		// Extract token from request
 		authHeader := r.Header.Get("Authorization")
 		var token string
@@ -406,7 +431,14 @@ func main() {
 			// No token provided
 			if isBrowserRequest {
 				// Redirect browser requests to sign-in
-				redirectURL := fmt.Sprintf("%s/sign-in?redirect=%s", homeData.MainAppURL, originalURI)
+				var redirectURL string
+				if useRelativeURLs {
+					// Use relative URL for proxy access
+					redirectURL = fmt.Sprintf("/sign-in?redirect=%s", originalURI)
+				} else {
+					// Use absolute URL for direct access
+					redirectURL = fmt.Sprintf("%s/sign-in?redirect=%s", homeData.MainAppURL, originalURI)
+				}
 				http.Redirect(w, r, redirectURL, http.StatusFound)
 				return
 			}
@@ -420,7 +452,14 @@ func main() {
 		if err != nil || userInfo == nil {
 			if isBrowserRequest {
 				// Redirect browser requests to sign-in
-				redirectURL := fmt.Sprintf("%s/sign-in?redirect=%s", homeData.MainAppURL, originalURI)
+				var redirectURL string
+				if useRelativeURLs {
+					// Use relative URL for proxy access
+					redirectURL = fmt.Sprintf("/sign-in?redirect=%s", originalURI)
+				} else {
+					// Use absolute URL for direct access
+					redirectURL = fmt.Sprintf("%s/sign-in?redirect=%s", homeData.MainAppURL, originalURI)
+				}
 				http.Redirect(w, r, redirectURL, http.StatusFound)
 				return
 			}
@@ -533,14 +572,17 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
 		labsCopy := make([]Lab, len(data.Labs))
 		copy(labsCopy, data.Labs)
 		pageData.Labs = labsCopy
-		// Update lab writeup URLs to be relative
+		// Update lab URLs and writeup URLs to be relative
 		for i := range pageData.Labs {
 			switch pageData.Labs[i].ID {
 			case "lab1-basic-magecart":
+				pageData.Labs[i].URL = "/lab1"
 				pageData.Labs[i].WriteupURL = "/lab-01-writeup"
 			case "lab2-dom-skimming":
+				pageData.Labs[i].URL = "/lab2"
 				pageData.Labs[i].WriteupURL = "/lab-02-writeup"
 			case "lab3-extension-hijacking":
+				pageData.Labs[i].URL = "/lab3"
 				pageData.Labs[i].WriteupURL = "/lab-03-writeup"
 			}
 		}
