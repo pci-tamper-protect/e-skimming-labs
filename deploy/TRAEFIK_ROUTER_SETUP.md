@@ -85,7 +85,8 @@ gcloud run deploy traefik-stg \
   --region=us-central1 \
   --project=labs-stg \
   --service-account=traefik-stg@labs-stg.iam.gserviceaccount.com \
-  --port=8080
+  --port=8080 \
+  --labels="environment=stg,component=traefik,project=e-skimming-labs,service-type=router"
 
 # Or use Terraform (recommended)
 cd ../terraform-labs

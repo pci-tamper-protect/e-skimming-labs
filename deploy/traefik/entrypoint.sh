@@ -94,17 +94,77 @@ else
   LAB3_EXTENSION_TOKEN=""
 fi
 
-# Remove static routes.yml if it exists (for local dev only, conflicts with generated config)
-if [ -f "/etc/traefik/dynamic/routes.yml" ]; then
-  echo "⚠️  Removing static routes.yml (conflicts with generated cloudrun-services.yml)"
-  rm /etc/traefik/dynamic/routes.yml
+# Keep routes.yml for middleware definitions (middlewares are referenced with @file)
+# Only remove it if we're generating from labels (which will create a new routes.yml)
+if [ "${ENVIRONMENT}" != "local" ] && [ -f "/app/generate-routes-from-labels.sh" ]; then
+  # Will be handled by label generation
+  echo "ℹ️  routes.yml will be generated/merged by label-based generation"
+else
+  # For local dev, keep routes.yml for middleware definitions
+  echo "ℹ️  Using routes.yml for middleware definitions (local development)"
 fi
 
-# Generate dynamic configuration from environment variables
+# Try to generate routes from Cloud Run service labels first (if script exists and we're in Cloud Run)
+if [ "${ENVIRONMENT}" != "local" ] && [ -f "/app/generate-routes-from-labels.sh" ]; then
+  echo "🔍 Attempting to generate routes from Cloud Run service labels..."
+  echo "   This will query Cloud Run services and extract Traefik labels"
+  echo "   to generate routers and services automatically."
+  echo ""
+
+  if /app/generate-routes-from-labels.sh /etc/traefik/dynamic/routes.yml 2>&1; then
+    # Check if routes.yml was created and has content
+    if [ -f "/etc/traefik/dynamic/routes.yml" ] && [ -s "/etc/traefik/dynamic/routes.yml" ]; then
+      # Check if it has routers (not just empty file)
+      if grep -q "^  routers:" /etc/traefik/dynamic/routes.yml && grep -q "^    [a-z]" /etc/traefik/dynamic/routes.yml; then
+        echo ""
+        echo "✅ Successfully generated routes from Cloud Run service labels"
+        echo "   Routers and services were auto-discovered from service labels"
+        echo "   Middlewares are defined in /etc/traefik/dynamic/routes.yml"
+        echo ""
+        # Merge middlewares from routes.yml (middlewares only file) into the generated file
+        if [ -f "/etc/traefik/dynamic/routes.yml" ] && grep -q "^  middlewares:" /etc/traefik/dynamic/routes.yml; then
+          echo "📋 Merging middlewares from routes.yml..."
+          # Append middlewares section if not already present
+          if ! grep -q "^  middlewares:" /etc/traefik/dynamic/routes.yml; then
+            echo "" >> /etc/traefik/dynamic/routes.yml
+            echo "  middlewares:" >> /etc/traefik/dynamic/routes.yml
+          fi
+          # Extract middlewares from the original routes.yml and append
+          sed -n '/^  middlewares:/,$p' /etc/traefik/dynamic/routes.yml >> /etc/traefik/dynamic/routes.yml || true
+        fi
+        echo ""
+        # Skip the environment variable-based generation
+        exec "$@"
+      else
+        echo "⚠️  Generated routes.yml is empty or has no routers, falling back to environment variables"
+      fi
+    else
+      echo "⚠️  Label-based generation did not create routes.yml, falling back to environment variables"
+    fi
+  else
+    echo "⚠️  Label-based generation failed, falling back to environment variables"
+  fi
+  echo ""
+fi
+
+# Fallback: Generate dynamic configuration from environment variables
+# This is only used for local development or when label-based generation fails
+# For Cloud Run, label-based generation should always work
+if [ "${ENVIRONMENT}" = "local" ]; then
+  echo "📋 Using environment variable-based configuration (local development)"
+  echo ""
+else
+  echo "⚠️  WARNING: Falling back to environment variable-based configuration"
+  echo "   This should not happen in Cloud Run - label-based generation should work"
+  echo "   If you see this, check that services have Traefik labels"
+  echo ""
+fi
+
 cat > /etc/traefik/dynamic/cloudrun-services.yml <<EOF
 # Auto-generated Cloud Run service configuration
 # Generated at: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
 # Environment: ${ENVIRONMENT:-local}
+# NOTE: For Cloud Run, routes should be generated from service labels, not env vars
 
 http:
   routers:
@@ -115,8 +175,10 @@ http:
       priority: 1
       middlewares:$(if [ -n "$HOME_INDEX_TOKEN" ]; then echo "
         - forwarded-headers
-        - home-index-auth"; else echo "
-        - forwarded-headers"; fi)
+        - home-index-auth
+        - retry-cold-start@file"; else echo "
+        - forwarded-headers
+        - retry-cold-start@file"; fi)
       entryPoints:
         - web
 
@@ -128,9 +190,11 @@ http:
       middlewares:$(if [ -n "$SEO_TOKEN" ]; then echo "
         - forwarded-headers
         - home-seo-auth
-        - strip-seo-prefix"; else echo "
+        - strip-seo-prefix
+        - retry-cold-start@file"; else echo "
         - forwarded-headers
-        - strip-seo-prefix"; fi)
+        - strip-seo-prefix
+        - retry-cold-start@file"; fi)
       entryPoints:
         - web
 
@@ -142,9 +206,11 @@ http:
       middlewares:$(if [ -n "$ANALYTICS_TOKEN" ]; then echo "
         - forwarded-headers
         - labs-analytics-auth
-        - strip-analytics-prefix"; else echo "
+        - strip-analytics-prefix
+        - retry-cold-start@file"; else echo "
         - forwarded-headers
-        - strip-analytics-prefix"; fi)
+        - strip-analytics-prefix
+        - retry-cold-start@file"; fi)
       entryPoints:
         - web
 
@@ -156,9 +222,11 @@ http:
       middlewares:$(if [ -n "$LAB1_C2_TOKEN" ]; then echo "
         - forwarded-headers
         - lab1-c2-auth
-        - strip-lab1-c2-prefix"; else echo "
+        - strip-lab1-c2-prefix
+        - retry-cold-start@file"; else echo "
         - forwarded-headers
-        - strip-lab1-c2-prefix"; fi)
+        - strip-lab1-c2-prefix
+        - retry-cold-start@file"; fi)
       entryPoints:
         - web
 
@@ -171,10 +239,12 @@ http:
         - forwarded-headers
         - lab1-auth-check
         - lab1-auth
-        - strip-lab1-prefix"; else echo "
+        - strip-lab1-prefix
+        - retry-cold-start@file"; else echo "
         - forwarded-headers
         - lab1-auth-check
-        - strip-lab1-prefix"; fi)
+        - strip-lab1-prefix
+        - retry-cold-start@file"; fi)
       entryPoints:
         - web
 
@@ -186,9 +256,11 @@ http:
       middlewares:$(if [ -n "$LAB2_C2_TOKEN" ]; then echo "
         - forwarded-headers
         - lab2-c2-auth
-        - strip-lab2-c2-prefix"; else echo "
+        - strip-lab2-c2-prefix
+        - retry-cold-start@file"; else echo "
         - forwarded-headers
-        - strip-lab2-c2-prefix"; fi)
+        - strip-lab2-c2-prefix
+        - retry-cold-start@file"; fi)
       entryPoints:
         - web
 
@@ -201,10 +273,12 @@ http:
         - forwarded-headers
         - lab2-auth-check
         - lab2-auth
-        - strip-lab2-prefix"; else echo "
+        - strip-lab2-prefix
+        - retry-cold-start@file"; else echo "
         - forwarded-headers
         - lab2-auth-check
-        - strip-lab2-prefix"; fi)
+        - strip-lab2-prefix
+        - retry-cold-start@file"; fi)
       entryPoints:
         - web
 
@@ -216,9 +290,11 @@ http:
       middlewares:$(if [ -n "$LAB3_EXTENSION_TOKEN" ]; then echo "
         - forwarded-headers
         - lab3-extension-auth
-        - strip-lab3-extension-prefix"; else echo "
+        - strip-lab3-extension-prefix
+        - retry-cold-start@file"; else echo "
         - forwarded-headers
-        - strip-lab3-extension-prefix"; fi)
+        - strip-lab3-extension-prefix
+        - retry-cold-start@file"; fi)
       entryPoints:
         - web
 
@@ -231,10 +307,12 @@ http:
         - forwarded-headers
         - lab3-auth-check
         - lab3-auth
-        - strip-lab3-prefix"; else echo "
+        - strip-lab3-prefix
+        - retry-cold-start@file"; else echo "
         - forwarded-headers
         - lab3-auth-check
-        - strip-lab3-prefix"; fi)
+        - strip-lab3-prefix
+        - retry-cold-start@file"; fi)
       entryPoints:
         - web
 
@@ -247,8 +325,7 @@ http:
         # Forward X-Forwarded-For so backend can detect proxy access
         # This allows home-index to use relative URLs when accessed via proxy
         # The gcloud proxy sets X-Forwarded-For with 127.0.0.1
-        forwardedForHeader: "X-Forwarded-For"
-        forwardedHostHeader: "X-Forwarded-Host"
+        # Note: Traefik v3.0 automatically forwards X-Forwarded-For and X-Forwarded-Host headers
 
     # Authentication middlewares (add identity tokens for Cloud Run services)
 $(if [ -n "$HOME_INDEX_TOKEN" ]; then
@@ -331,7 +408,6 @@ $(if [ -n "$LAB3_EXTENSION_TOKEN" ]; then
         customRequestHeaders:
           Authorization: \"Bearer ${TOKEN_ESC}\""
 fi)
-
     # Strip prefixes
     strip-seo-prefix:
       stripPrefix:
@@ -373,10 +449,15 @@ fi)
         prefixes:
           - "/lab3/extension"
 
+    # Retry middleware for handling cold starts
+    retry-cold-start:
+      retry:
+        attempts: 3
+
     # User authentication check middlewares (forwardAuth)
     lab1-auth-check:
       forwardAuth:
-        address: "${HOME_INDEX_URL:-http://localhost:8080}/api/auth/check"
+        address: "${HOME_INDEX_URL:-http://home-index:8080}/api/auth/check"
         authResponseHeaders:
           - "X-User-Id"
           - "X-User-Email"
@@ -387,7 +468,7 @@ fi)
 
     lab2-auth-check:
       forwardAuth:
-        address: "${HOME_INDEX_URL:-http://localhost:8080}/api/auth/check"
+        address: "${HOME_INDEX_URL:-http://home-index:8080}/api/auth/check"
         authResponseHeaders:
           - "X-User-Id"
           - "X-User-Email"
@@ -398,7 +479,7 @@ fi)
 
     lab3-auth-check:
       forwardAuth:
-        address: "${HOME_INDEX_URL:-http://localhost:8080}/api/auth/check"
+        address: "${HOME_INDEX_URL:-http://home-index:8080}/api/auth/check"
         authResponseHeaders:
           - "X-User-Id"
           - "X-User-Email"
@@ -411,55 +492,55 @@ fi)
     home-index:
       loadBalancer:
         servers:
-          - url: "${HOME_INDEX_URL:-http://localhost:8080}"
+          - url: "${HOME_INDEX_URL:-http://home-index:8080}"
         passHostHeader: false
 
     home-seo:
       loadBalancer:
         servers:
-          - url: "${SEO_URL:-http://localhost:8080}"
+          - url: "${SEO_URL:-http://home-seo:8080}"
         passHostHeader: false
 
     labs-analytics:
       loadBalancer:
         servers:
-          - url: "${ANALYTICS_URL:-http://localhost:8080}"
+          - url: "${ANALYTICS_URL:-http://labs-analytics:8080}"
         passHostHeader: false
 
     lab1-vulnerable-site:
       loadBalancer:
         servers:
-          - url: "${LAB1_URL:-http://localhost:80}"
+          - url: "${LAB1_URL:-http://lab1-vulnerable-site:8080}"
         passHostHeader: false
 
     lab1-c2-server:
       loadBalancer:
         servers:
-          - url: "${LAB1_C2_URL:-http://localhost:3000}"
+          - url: "${LAB1_C2_URL:-http://lab1-c2-server:8080}"
         passHostHeader: false
 
     lab2-vulnerable-site:
       loadBalancer:
         servers:
-          - url: "${LAB2_URL:-http://localhost:80}"
+          - url: "${LAB2_URL:-http://lab2-vulnerable-site:8080}"
         passHostHeader: false
 
     lab2-c2-server:
       loadBalancer:
         servers:
-          - url: "${LAB2_C2_URL:-http://localhost:3000}"
+          - url: "${LAB2_C2_URL:-http://lab2-c2-server:8080}"
         passHostHeader: false
 
     lab3-vulnerable-site:
       loadBalancer:
         servers:
-          - url: "${LAB3_URL:-http://localhost:80}"
+          - url: "${LAB3_URL:-http://lab3-vulnerable-site:8080}"
         passHostHeader: false
 
     lab3-extension-server:
       loadBalancer:
         servers:
-          - url: "${LAB3_EXTENSION_URL:-http://localhost:3000}"
+          - url: "${LAB3_EXTENSION_URL:-http://lab3-extension-server:8080}"
         passHostHeader: false
 EOF
 
@@ -504,19 +585,53 @@ echo "Auth Middlewares Created:"
 [ -n "$LAB3_EXTENSION_TOKEN" ] && echo "  ✅ lab3-extension-auth" || echo "  ⚪ lab3-extension-auth (no token)"
 echo ""
 echo "Backend Services:"
-echo "  HOME_INDEX_URL: ${HOME_INDEX_URL:-http://localhost:8080}"
-echo "  SEO_URL: ${SEO_URL:-http://localhost:8080}"
-echo "  ANALYTICS_URL: ${ANALYTICS_URL:-http://localhost:8080}"
-echo "  LAB1_URL: ${LAB1_URL:-http://localhost:80}"
-echo "  LAB1_C2_URL: ${LAB1_C2_URL:-http://localhost:3000}"
-echo "  LAB2_URL: ${LAB2_URL:-http://localhost:80}"
-echo "  LAB2_C2_URL: ${LAB2_C2_URL:-http://localhost:3000}"
-echo "  LAB3_URL: ${LAB3_URL:-http://localhost:80}"
-echo "  LAB3_EXTENSION_URL: ${LAB3_EXTENSION_URL:-http://localhost:3000}"
+echo "  HOME_INDEX_URL: ${HOME_INDEX_URL:-http://home-index:8080 (default for local)}"
+echo "  SEO_URL: ${SEO_URL:-http://home-seo:8080 (default for local)}"
+echo "  ANALYTICS_URL: ${ANALYTICS_URL:-http://labs-analytics:8080 (default for local)}"
+echo "  LAB1_URL: ${LAB1_URL:-http://lab1-vulnerable-site:8080 (default for local)}"
+echo "  LAB1_C2_URL: ${LAB1_C2_URL:-http://lab1-c2-server:8080 (default for local)}"
+echo "  LAB2_URL: ${LAB2_URL:-http://lab2-vulnerable-site:8080 (default for local)}"
+echo "  LAB2_C2_URL: ${LAB2_C2_URL:-http://lab2-c2-server:8080 (default for local)}"
+echo "  LAB3_URL: ${LAB3_URL:-http://lab3-vulnerable-site:8080 (default for local)}"
+echo "  LAB3_EXTENSION_URL: ${LAB3_EXTENSION_URL:-http://lab3-extension-server:8080 (default for local)}"
 echo ""
 echo "📝 Generated config file location: /etc/traefik/dynamic/cloudrun-services.yml"
 echo "   To inspect: cat /etc/traefik/dynamic/cloudrun-services.yml | grep -A 10 'home-index-auth'"
 echo ""
+echo "🔍 ForwardAuth Middlewares in Generated Config:"
+grep -A 10 "auth-check:" /etc/traefik/dynamic/cloudrun-services.yml || echo "  ⚠️  No ForwardAuth middlewares found!"
+echo ""
+
+# Start periodic route refresh in background
+# First minute: refresh every 5 seconds (catches services deployed right after Traefik starts)
+# After first minute: refresh every 5 minutes (normal operation)
+# This keeps routes up-to-date when new services are deployed
+if [ "${ENVIRONMENT}" != "local" ] && [ -f "/app/generate-routes-from-labels.sh" ] && [ -f "/app/refresh-routes.sh" ]; then
+  echo "🔄 Starting periodic route refresh..."
+  echo "   First minute: every 5 seconds (fast discovery)"
+  echo "   After first minute: every 5 minutes (normal operation)"
+  (
+    START_TIME=$(date +%s)
+    FAST_REFRESH_END=$((START_TIME + 60))  # First 60 seconds
+
+    while true; do
+      CURRENT_TIME=$(date +%s)
+
+      if [ $CURRENT_TIME -lt $FAST_REFRESH_END ]; then
+        # Fast refresh: every 5 seconds for first minute
+        sleep 5
+      else
+        # Normal refresh: every 5 minutes after first minute
+        sleep 300
+      fi
+
+      /app/refresh-routes.sh /etc/traefik/dynamic/routes.yml /tmp/traefik-refresh.log 2>&1 || true
+    done
+  ) &
+  REFRESH_PID=$!
+  echo "   Background refresh PID: ${REFRESH_PID}"
+  echo ""
+fi
 
 # Start Traefik with all arguments passed to this script
 exec "$@"

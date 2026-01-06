@@ -359,6 +359,9 @@ func main() {
 	mux.HandleFunc("/api/auth/check", func(w http.ResponseWriter, r *http.Request) {
 		// This endpoint is called by Traefik ForwardAuth middleware
 		// It should check authentication and return appropriate status
+		log.Printf("🔍 /api/auth/check called - Host: %s, X-Forwarded-Host: %s, X-Forwarded-For: %s",
+			r.Host, r.Header.Get("X-Forwarded-Host"), r.Header.Get("X-Forwarded-For"))
+
 		if !authValidator.IsEnabled() {
 			// Auth disabled, allow access
 			w.WriteHeader(http.StatusOK)
@@ -374,9 +377,10 @@ func main() {
 		// Check if we're behind Traefik (X-Forwarded-Host contains traefik)
 		isBehindTraefik := strings.Contains(strings.ToLower(forwardedHost), "traefik")
 
-		// In staging, if we're behind Traefik, use relative URLs (proxy access)
+		// In staging or local, if we're behind Traefik, use relative URLs (Traefik uses path-based routing)
+		// In local environment with Traefik, always use relative paths (no host-based routing)
 		useRelativeURLs := false
-		if environment == "stg" && isBehindTraefik {
+		if (environment == "stg" || environment == "local") && isBehindTraefik {
 			useRelativeURLs = true
 		}
 
@@ -387,8 +391,31 @@ func main() {
 		isForwardedProxyHost := forwardedHost == "127.0.0.1:8081" || forwardedHost == "localhost:8081" ||
 			strings.HasSuffix(forwardedHost, ":8081")
 
-		// Use relative URLs if any proxy detection matches
-		useRelativeURLs = useRelativeURLs || isLocalProxy || isProxyHost || isForwardedProxyHost
+		// Use relative URLs if any proxy detection matches or in local environment
+		// In local environment with Traefik, always use relative paths (no host-based routing)
+		// ALWAYS use relative URLs in local environment (Traefik uses path-based routing, not host-based)
+		if environment == "local" {
+			useRelativeURLs = true
+			log.Printf("🔗 Force using relative URLs in local environment")
+		} else {
+			useRelativeURLs = useRelativeURLs || isLocalProxy || isProxyHost || isForwardedProxyHost
+		}
+
+		log.Printf("🔍 useRelativeURLs: %v (env:%s, isBehindTraefik:%v, isLocalProxy:%v, isProxyHost:%v, isForwardedProxyHost:%v)",
+			useRelativeURLs, environment, isBehindTraefik, isLocalProxy, isProxyHost, isForwardedProxyHost)
+
+		// Bypass authentication for proxy access (local testing)
+		// User is already authenticated to gcloud when using proxy
+		log.Printf("🔍 Bypass check - env:%s, isProxy:%v, isFwdProxy:%v, isLocal:%v, isBehindTraefik:%v",
+			environment, isProxyHost, isForwardedProxyHost, isLocalProxy, isBehindTraefik)
+
+		if environment == "stg" && (isProxyHost || isForwardedProxyHost || isLocalProxy || isBehindTraefik) {
+			log.Printf("🔓 Bypassing auth for proxy access (Host: %s, Forwarded-Host: %s, Forwarded-For: %s)", host, forwardedHost, forwardedFor)
+			w.Header().Set("X-User-Id", "proxy-user")
+			w.Header().Set("X-User-Email", "proxy@test.local")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
 
 		// Extract token from request
 		authHeader := r.Header.Get("Authorization")
@@ -433,13 +460,30 @@ func main() {
 				// Redirect browser requests to sign-in
 				var redirectURL string
 				if useRelativeURLs {
-					// Use relative URL for proxy access
+					// Use relative URL for proxy access (local environment)
+					// Must set Location header manually to avoid http.Redirect converting to absolute URL
 					redirectURL = fmt.Sprintf("/sign-in?redirect=%s", originalURI)
 				} else {
-					// Use absolute URL for direct access
-					redirectURL = fmt.Sprintf("%s/sign-in?redirect=%s", homeData.MainAppURL, originalURI)
+					// Use absolute URL for direct access (staging/production)
+					scheme := "http"
+					if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+						scheme = "https"
+					}
+					// Use X-Forwarded-Host (from Traefik) to get the correct client-facing hostname
+					redirectHost := r.Header.Get("X-Forwarded-Host")
+					if redirectHost == "" {
+						// In local environment, default to localhost:8080, never use r.Host (internal Docker hostname)
+						if environment == "local" {
+							redirectHost = "localhost:8080"
+						} else {
+							redirectHost = r.Host
+						}
+					}
+					redirectURL = fmt.Sprintf("%s://%s/sign-in?redirect=%s", scheme, redirectHost, originalURI)
 				}
-				http.Redirect(w, r, redirectURL, http.StatusFound)
+				log.Printf("🔗 Redirecting to: %s (useRelative: %v, Host: %s, X-Forwarded-Host: %s)", redirectURL, useRelativeURLs, r.Host, r.Header.Get("X-Forwarded-Host"))
+				w.Header().Set("Location", redirectURL)
+				w.WriteHeader(http.StatusFound)
 				return
 			}
 			w.WriteHeader(http.StatusUnauthorized)
@@ -454,13 +498,30 @@ func main() {
 				// Redirect browser requests to sign-in
 				var redirectURL string
 				if useRelativeURLs {
-					// Use relative URL for proxy access
+					// Use relative URL for proxy access (local environment)
+					// Must set Location header manually to avoid http.Redirect converting to absolute URL
 					redirectURL = fmt.Sprintf("/sign-in?redirect=%s", originalURI)
 				} else {
-					// Use absolute URL for direct access
-					redirectURL = fmt.Sprintf("%s/sign-in?redirect=%s", homeData.MainAppURL, originalURI)
+					// Use absolute URL for direct access (staging/production)
+					scheme := "http"
+					if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+						scheme = "https"
+					}
+					// Use X-Forwarded-Host (from Traefik) to get the correct client-facing hostname
+					redirectHost := r.Header.Get("X-Forwarded-Host")
+					if redirectHost == "" {
+						// In local environment, default to localhost:8080, never use r.Host (internal Docker hostname)
+						if environment == "local" {
+							redirectHost = "localhost:8080"
+						} else {
+							redirectHost = r.Host
+						}
+					}
+					redirectURL = fmt.Sprintf("%s://%s/sign-in?redirect=%s", scheme, redirectHost, originalURI)
 				}
-				http.Redirect(w, r, redirectURL, http.StatusFound)
+				log.Printf("🔗 Redirecting to: %s (useRelative: %v, Host: %s, X-Forwarded-Host: %s)", redirectURL, useRelativeURLs, r.Host, r.Header.Get("X-Forwarded-Host"))
+				w.Header().Set("Location", redirectURL)
+				w.WriteHeader(http.StatusFound)
 				return
 			}
 			w.WriteHeader(http.StatusUnauthorized)
@@ -534,10 +595,10 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
 	// Check if we're behind Traefik (X-Forwarded-Host contains traefik)
 	isBehindTraefik := strings.Contains(strings.ToLower(forwardedHost), "traefik")
 
-	// In staging, if we're behind Traefik, use relative URLs (proxy access)
+	// In staging or local, if we're behind Traefik, use relative URLs (Traefik uses path-based routing)
 	// In production, always use absolute URLs for SEO
 	useRelativeURLs := false
-	if environment == "stg" && isBehindTraefik {
+	if (environment == "stg" || environment == "local") && isBehindTraefik {
 		useRelativeURLs = true
 	}
 
@@ -548,8 +609,9 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
 	isForwardedProxyHost := forwardedHost == "127.0.0.1:8081" || forwardedHost == "localhost:8081" ||
 		strings.HasSuffix(forwardedHost, ":8081")
 
-	// Use relative URLs if any proxy detection matches
-	useRelativeURLs = useRelativeURLs || isLocalProxy || isProxyHost || isForwardedProxyHost
+	// Use relative URLs if any proxy detection matches or in local environment
+	// In local environment with Traefik, always use relative paths (no host-based routing)
+	useRelativeURLs = useRelativeURLs || isLocalProxy || isProxyHost || isForwardedProxyHost || environment == "local"
 
 	if environment == "stg" || environment == "local" {
 		log.Printf("🔍 Proxy detection result - isProxyHost: %v, isForwardedProxyHost: %v, isLocalProxy: %v, useRelativeURLs: %v", isProxyHost, isForwardedProxyHost, isLocalProxy, useRelativeURLs)
@@ -568,6 +630,10 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
 		// Use relative URLs for navigation when accessed via proxy
 		pageData.MITREURL = "/mitre-attack"
 		pageData.ThreatModelURL = "/threat-model"
+		// Set MainAppURL to empty string to use relative paths in templates
+		// When MainAppURL is empty, {{.MainAppURL}}/sign-in becomes /sign-in
+		pageData.MainAppURL = ""
+		log.Printf("🔗 Using relative URLs - MainAppURL set to empty string")
 		// Create a copy of Labs slice to avoid modifying the original
 		labsCopy := make([]Lab, len(data.Labs))
 		copy(labsCopy, data.Labs)
@@ -586,6 +652,8 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
 				pageData.Labs[i].WriteupURL = "/lab-03-writeup"
 			}
 		}
+	} else {
+		log.Printf("🔗 Using absolute URLs - MainAppURL: %s", pageData.MainAppURL)
 	}
 
 	tmpl := `
@@ -1121,7 +1189,16 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
             if (!loginBtn || !logoutBtn) return;
 
             // Check if user is authenticated
-            fetch('/api/auth/user')
+            // Get token from sessionStorage or cookie
+            const token = sessionStorage.getItem('firebase_token') || document.cookie.split('; ').find(row => row.startsWith('firebase_token='))?.split('=')[1] || '';
+            const headers = {};
+            if (token) {
+                headers['Authorization'] = 'Bearer ' + token;
+            }
+            fetch('/api/auth/user', {
+                credentials: 'include',
+                headers: headers
+            })
                 .then(response => {
                     if (response.ok) {
                         return response.json();
@@ -1173,6 +1250,8 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
             if (logoutBtn) {
                 logoutBtn.addEventListener('click', function() {
                     sessionStorage.removeItem('firebase_token');
+                    // Clear cookie
+                    document.cookie = 'firebase_token=; path=/; max-age=0';
                     updateAuthButtons();
                     // Reload to clear any protected content
                     window.location.reload();
@@ -1445,89 +1524,96 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, labUR
 	// Build auth scripts if enabled
 	authScripts := ""
 	if homeData.AuthEnabled {
-		// For home page, auth is never required (it's public)
-		// Only show login/logout buttons, don't enforce authentication
 		authScripts = fmt.Sprintf(`
-    <!-- Auth Integration Script -->
-    <script src="/static/js/auth.js"></script>
-    <script>
-        // Initialize auth check (authRequired is always false for home page)
-        if (typeof initLabsAuth === 'function') {
-            initLabsAuth({
-                authRequired: false,
-                mainAppURL: '%s',
-                firebaseProjectID: '%s'
-            });
-        }
+		<script src="/static/js/auth.js"></script>
+		<script>
+			// Initialize auth check
+			if (typeof initLabsAuth === 'function') {
+				initLabsAuth({
+					authRequired: %t,
+					mainAppURL: '%s',
+					firebaseProjectID: '%s'
+				});
+			}
 
-        // Update auth buttons based on auth state
-        function updateAuthButtons() {
-            const loginBtn = document.getElementById('login-btn');
-            const logoutBtn = document.getElementById('logout-btn');
-            const userEmail = document.getElementById('user-email');
+			// Update auth buttons based on auth state
+			function updateAuthButtons() {
+				const loginBtn = document.getElementById('login-btn');
+				const logoutBtn = document.getElementById('logout-btn');
+				const userEmail = document.getElementById('user-email');
 
-            if (!loginBtn || !logoutBtn) return;
+				if (!loginBtn || !logoutBtn) return;
 
-            // Check if user is authenticated
-            fetch('/api/auth/user')
-                .then(response => {
-                    if (response.ok) {
-                        return response.json();
-                    }
-                    throw new Error('Not authenticated');
-                })
-                .then(data => {
-                    if (data.authenticated && data.user) {
-                        // User is logged in
-                        loginBtn.style.display = 'none';
-                        logoutBtn.style.display = 'block';
-                        if (userEmail) {
-                            userEmail.textContent = data.user.email;
-                            userEmail.style.display = 'inline';
-                        }
-                    } else {
-                        // User is not logged in
-                        loginBtn.style.display = 'block';
-                        logoutBtn.style.display = 'none';
-                        if (userEmail) {
-                            userEmail.style.display = 'none';
-                        }
-                    }
-                })
-                .catch(() => {
-                    // Not authenticated
-                    loginBtn.style.display = 'block';
-                    logoutBtn.style.display = 'none';
-                    if (userEmail) {
-                        userEmail.style.display = 'none';
-                    }
-                });
-        }
+				// Check if user is authenticated
+				// Get token from sessionStorage or cookie
+				const token = sessionStorage.getItem('firebase_token') || document.cookie.split('; ').find(row => row.startsWith('firebase_token='))?.split('=')[1] || '';
+				const headers = {};
+				if (token) {
+					headers['Authorization'] = 'Bearer ' + token;
+				}
+				fetch('/api/auth/user', {
+					credentials: 'include',
+					headers: headers
+				})
+					.then(response => {
+						if (response.ok) {
+							return response.json();
+						}
+						throw new Error('Not authenticated');
+					})
+					.then(data => {
+						if (data.authenticated && data.user) {
+							// User is logged in
+							loginBtn.style.display = 'none';
+							logoutBtn.style.display = 'block';
+							if (userEmail) {
+								userEmail.textContent = data.user.email;
+								userEmail.style.display = 'inline';
+							}
+						} else {
+							// User is not logged in
+							loginBtn.style.display = 'block';
+							logoutBtn.style.display = 'none';
+							if (userEmail) {
+								userEmail.style.display = 'none';
+							}
+						}
+					})
+					.catch(() => {
+						// Not authenticated
+						loginBtn.style.display = 'block';
+						logoutBtn.style.display = 'none';
+						if (userEmail) {
+							userEmail.style.display = 'none';
+						}
+					});
+			}
 
-        // Login button handler
-        document.addEventListener('DOMContentLoaded', function() {
-            updateAuthButtons();
+			// Login button handler
+			document.addEventListener('DOMContentLoaded', function() {
+				updateAuthButtons();
 
-            const loginBtn = document.getElementById('login-btn');
-            const logoutBtn = document.getElementById('logout-btn');
+				const loginBtn = document.getElementById('login-btn');
+				const logoutBtn = document.getElementById('logout-btn');
 
-            if (loginBtn) {
-                loginBtn.addEventListener('click', function() {
-                    const redirectUrl = encodeURIComponent(window.location.href);
-                    window.location.href = '%s/sign-in?redirect=' + redirectUrl;
-                });
-            }
+				if (loginBtn) {
+					loginBtn.addEventListener('click', function() {
+						const redirectUrl = encodeURIComponent(window.location.href);
+						window.location.href = '%s/sign-in?redirect=' + redirectUrl;
+					});
+				}
 
-            if (logoutBtn) {
-                logoutBtn.addEventListener('click', function() {
-                    sessionStorage.removeItem('firebase_token');
-                    updateAuthButtons();
-                    // Reload to clear any protected content
-                    window.location.reload();
-                });
-            }
-        });
-    </script>`, homeData.AuthRequired, homeData.MainAppURL, homeData.FirebaseProjectID, homeData.MainAppURL)
+				if (logoutBtn) {
+					logoutBtn.addEventListener('click', function() {
+						sessionStorage.removeItem('firebase_token');
+						updateAuthButtons();
+						// Reload to clear any protected content
+						window.location.reload();
+					});
+				}
+			});
+		</script>
+		`, homeData.AuthRequired, homeData.MainAppURL, homeData.FirebaseProjectID, homeData.MainAppURL)
 	}
 
 	// Create HTML page
@@ -1798,7 +1884,40 @@ func serveAuthValidate(w http.ResponseWriter, r *http.Request, validator *auth.T
 
 // serveAuthSignInURL returns the sign-in URL for the main app
 func serveAuthSignInURL(w http.ResponseWriter, r *http.Request, homeData HomePageData) {
-	signInURL := fmt.Sprintf("%s/sign-in?redirect=%s", homeData.MainAppURL, r.URL.Query().Get("redirect"))
+	// Detect if we should use relative URLs (same logic as serveHomePage and /api/auth/check)
+	host := r.Host
+	forwardedHost := r.Header.Get("X-Forwarded-Host")
+	forwardedFor := r.Header.Get("X-Forwarded-For")
+	environment := os.Getenv("ENVIRONMENT")
+
+	// Check if we're behind Traefik
+	isBehindTraefik := strings.Contains(strings.ToLower(forwardedHost), "traefik")
+
+	// Check for proxy access
+	isLocalProxy := strings.Contains(forwardedFor, "127.0.0.1") || strings.Contains(forwardedFor, "localhost")
+	isProxyHost := host == "127.0.0.1:8081" || host == "localhost:8081" ||
+		strings.HasSuffix(host, ":8081")
+	isForwardedProxyHost := forwardedHost == "127.0.0.1:8081" || forwardedHost == "localhost:8081" ||
+		strings.HasSuffix(forwardedHost, ":8081")
+
+	// Use relative URLs if behind Traefik in staging/local, or any proxy detection, or in local environment
+	// In local environment with Traefik, always use relative paths (no host-based routing)
+	useRelativeURLs := false
+	if (environment == "stg" || environment == "local") && isBehindTraefik {
+		useRelativeURLs = true
+	}
+	useRelativeURLs = useRelativeURLs || isLocalProxy || isProxyHost || isForwardedProxyHost || environment == "local"
+
+	redirectParam := r.URL.Query().Get("redirect")
+	var signInURL string
+	if useRelativeURLs {
+		// Use relative path for Traefik/local routing
+		signInURL = fmt.Sprintf("/sign-in?redirect=%s", redirectParam)
+	} else {
+		// Use absolute URL
+		signInURL = fmt.Sprintf("%s/sign-in?redirect=%s", homeData.MainAppURL, redirectParam)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"signInUrl": signInURL,
@@ -1806,15 +1925,35 @@ func serveAuthSignInURL(w http.ResponseWriter, r *http.Request, homeData HomePag
 }
 
 // serveAuthUser returns current user information if authenticated
+// This endpoint is public (bypasses auth middleware) but validates token to return user info
 func serveAuthUser(w http.ResponseWriter, r *http.Request, validator *auth.TokenValidator) {
+	// First try to get user info from context (if request went through auth middleware)
 	userInfo := auth.GetUserInfo(r)
+
+	// If not in context, extract and validate token directly (for public endpoint)
 	if userInfo == nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"authenticated": false,
-		})
-		return
+		// Extract token from request
+		token := extractTokenFromRequest(r)
+		if token == "" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"authenticated": false,
+			})
+			return
+		}
+
+		// Validate token
+		var err error
+		userInfo, err = validator.ValidateToken(r.Context(), token)
+		if err != nil || userInfo == nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"authenticated": false,
+			})
+			return
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -1826,6 +1965,32 @@ func serveAuthUser(w http.ResponseWriter, r *http.Request, validator *auth.Token
 			"emailVerified": userInfo.EmailVerified,
 		},
 	})
+}
+
+// extractTokenFromRequest extracts token from Authorization header, cookie, or query parameter
+func extractTokenFromRequest(r *http.Request) string {
+	// 1. Check Authorization header (Bearer token)
+	authHeader := r.Header.Get("Authorization")
+	if authHeader != "" {
+		parts := strings.SplitN(authHeader, " ", 2)
+		if len(parts) == 2 && strings.ToLower(parts[0]) == "bearer" {
+			return parts[1]
+		}
+	}
+
+	// 2. Check cookie (for client-side token passing)
+	cookie, err := r.Cookie("firebase_token")
+	if err == nil && cookie.Value != "" {
+		return cookie.Value
+	}
+
+	// 3. Check query parameter (for initial redirects)
+	token := r.URL.Query().Get("token")
+	if token != "" {
+		return token
+	}
+
+	return ""
 }
 
 // injectAuthButtons injects auth buttons and scripts into HTML pages
@@ -1866,7 +2031,16 @@ func injectAuthButtons(html string, homeData HomePageData, authRequired bool) st
 				if (!loginBtn || !logoutBtn) return;
 
 				// Check if user is authenticated
-				fetch('/api/auth/user')
+				// Get token from sessionStorage or cookie
+				const token = sessionStorage.getItem('firebase_token') || document.cookie.split('; ').find(row => row.startsWith('firebase_token='))?.split('=')[1] || '';
+				const headers = {};
+				if (token) {
+					headers['Authorization'] = 'Bearer ' + token;
+				}
+				fetch('/api/auth/user', {
+					credentials: 'include',
+					headers: headers
+				})
 					.then(response => {
 						if (response.ok) {
 							return response.json();
@@ -2012,10 +2186,15 @@ func serveAuthJS(w http.ResponseWriter, r *http.Request, homeData HomePageData) 
     const token = urlParams.get('token');
 
     if (token) {
-        // Store token and remove from URL
+        // Store token in both sessionStorage (for client-side) and cookie (for server-side)
         sessionStorage.setItem('firebase_token', token);
+        // Set cookie that will be sent with all requests
+        // Cookie expires in 1 hour (3600 seconds)
+        document.cookie = 'firebase_token=' + encodeURIComponent(token) + '; path=/; max-age=3600; SameSite=Lax';
+        // Remove token from URL for security
         const newUrl = window.location.pathname + (window.location.search.replace(/[?&]token=[^&]*/, '').replace(/^&/, '?') || '');
         window.history.replaceState({}, '', newUrl);
+        console.log('✅ Token extracted from URL and stored in cookie');
     }
 
     // Function to initialize auth
@@ -2042,6 +2221,8 @@ func serveAuthJS(w http.ResponseWriter, r *http.Request, homeData HomePageData) 
                 } else {
                     // Token invalid, clear it
                     sessionStorage.removeItem('firebase_token');
+                    // Clear cookie
+                    document.cookie = 'firebase_token=; path=/; max-age=0';
                     if (authRequired) {
                         redirectToSignIn(mainAppURL);
                     }
@@ -2115,7 +2296,16 @@ func serveAuthCheckJS(w http.ResponseWriter, r *http.Request) {
 // Simple auth check
 (async function() {
     try {
-        const response = await fetch('/api/auth/user');
+        // Get token from sessionStorage or cookie
+        const token = sessionStorage.getItem('firebase_token') || document.cookie.split('; ').find(row => row.startsWith('firebase_token='))?.split('=')[1] || '';
+        const headers = {};
+        if (token) {
+            headers['Authorization'] = 'Bearer ' + token;
+        }
+        const response = await fetch('/api/auth/user', {
+            credentials: 'include',
+            headers: headers
+        });
         const data = await response.json();
         if (data.authenticated) {
             console.log('✅ User authenticated:', data.user.email);
@@ -2165,7 +2355,24 @@ func serveLabsAPI(w http.ResponseWriter, r *http.Request) {
 
 // serveSignInPage serves the sign-in page with Firebase Authentication
 func serveSignInPage(w http.ResponseWriter, r *http.Request, homeData HomePageData) {
+	// Log sign-in page access with client details
+	clientIP := r.Header.Get("X-Forwarded-For")
+	if clientIP == "" {
+		clientIP = r.RemoteAddr
+	}
+	userAgent := r.Header.Get("User-Agent")
+	errorParam := r.URL.Query().Get("error")
+	emailParam := r.URL.Query().Get("email")
+
+	if errorParam != "" {
+		log.Printf("🔐 Sign-in page accessed with error [ip=%s, error=%s, email=%s, user-agent=%s]",
+			clientIP, errorParam, emailParam, userAgent)
+	} else {
+		log.Printf("🔐 Sign-in page accessed [ip=%s, user-agent=%s]", clientIP, userAgent)
+	}
+
 	if !homeData.AuthEnabled {
+		log.Printf("❌ Sign-in attempted but authentication is disabled [ip=%s]", clientIP)
 		http.Error(w, "Authentication is not enabled", http.StatusNotFound)
 		return
 	}
@@ -2175,6 +2382,8 @@ func serveSignInPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
 	if redirectURL == "" {
 		redirectURL = "/"
 	}
+
+	log.Printf("🔐 Sign-in page rendered [ip=%s, redirect=%s]", clientIP, redirectURL)
 
 	// Get Firebase config from environment
 	firebaseAPIKey := os.Getenv("FIREBASE_API_KEY")
@@ -2188,6 +2397,8 @@ func serveSignInPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
+    <meta http-equiv="Cross-Origin-Embedder-Policy" content="unsafe-none">
     <title>Sign In - E-Skimming Labs</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -2384,6 +2595,26 @@ func serveSignInPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
             errorDiv.classList.add('show');
         }
 
+        // Enhanced logging function
+        const logError = function(message, error) {
+            const timestamp = new Date().toISOString();
+            const logMessage = '[' + timestamp + '] ' + message;
+            console.error(logMessage, error);
+            // Also log to page for visibility
+            const logDiv = document.createElement('div');
+            logDiv.style.cssText = 'position:fixed;top:10px;right:10px;background:#ff4444;color:white;padding:10px;border-radius:5px;z-index:10000;max-width:400px;font-size:12px;';
+            logDiv.textContent = logMessage + (error ? ': ' + error.message : '');
+            document.body.appendChild(logDiv);
+            // Keep for 10 seconds
+            setTimeout(function() { logDiv.remove(); }, 10000);
+        };
+
+        const logInfo = function(message, data) {
+            const timestamp = new Date().toISOString();
+            const logMessage = '[' + timestamp + '] ' + message;
+            console.log(logMessage, data || '');
+        };
+
         // Handle form submission
         document.getElementById('signin-form').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -2392,15 +2623,20 @@ func serveSignInPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
             const submitBtn = document.getElementById('submit-btn');
             const errorDiv = document.getElementById('error');
 
+            logInfo('🔐 Starting email/password sign-in', { email: email.substring(0, 3) + '***' });
+
             submitBtn.disabled = true;
             errorDiv.classList.remove('show');
             errorDiv.textContent = '';
 
             try {
+                logInfo('🔐 Calling auth.signInWithEmailAndPassword...');
                 const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                logInfo('✅ Email sign-in successful', { email: userCredential.user.email });
 
                 // Check if email is verified
                 if (!userCredential.user.emailVerified) {
+                    logInfo('⚠️ Email not verified, sending verification email...');
                     // Send verification email again
                     await userCredential.user.sendEmailVerification();
                     errorDiv.style.color = '#e74c3c';
@@ -2410,39 +2646,148 @@ func serveSignInPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
                     return;
                 }
 
+                logInfo('🔐 Getting ID token...');
                 const token = await userCredential.user.getIdToken();
+                logInfo('✅ Token obtained', {
+                    tokenLength: token ? token.length : 0,
+                    tokenPrefix: token ? token.substring(0, 20) + '...' : 'none'
+                });
 
-                // Redirect with token
-                const redirectUrl = '%s';
-                window.location.href = redirectUrl + (redirectUrl.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
+                // Redirect with token - use client-side origin to avoid container hostname issues
+                const redirectPath = '%s';
+                const redirectUrl = window.location.origin + redirectPath;
+                const finalUrl = redirectUrl + (redirectUrl.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
+                logInfo('🔐 Redirecting to', { finalUrl });
+                window.location.href = finalUrl;
             } catch (error) {
+                logError('❌ Email sign-in error', error);
+                const errorMessage = error.message || 'Sign in failed. Please try again.';
+                const errorCode = error.code || 'unknown';
+
                 errorDiv.style.color = '#e74c3c';
-                errorDiv.textContent = error.message || 'Sign in failed. Please try again.';
+                errorDiv.textContent = errorMessage + ' (Code: ' + errorCode + ')';
                 errorDiv.classList.add('show');
                 submitBtn.disabled = false;
             }
         });
 
-        // Handle Google sign-in
+        // Handle Google sign-in with comprehensive logging
         document.getElementById('google-btn').addEventListener('click', async () => {
             const provider = new firebase.auth.GoogleAuthProvider();
             const submitBtn = document.getElementById('google-btn');
             const errorDiv = document.getElementById('error');
+
+            // Enhanced logging that persists
+            const logError = (message, error) => {
+                const timestamp = new Date().toISOString();
+                const logMessage = '[' + timestamp + '] ' + message;
+                console.error(logMessage, error);
+                // Also log to page for visibility
+                const logDiv = document.createElement('div');
+                logDiv.style.cssText = 'position:fixed;top:10px;right:10px;background:#ff4444;color:white;padding:10px;border-radius:5px;z-index:10000;max-width:400px;font-size:12px;';
+                logDiv.textContent = logMessage + (error ? ': ' + error.message : '');
+                document.body.appendChild(logDiv);
+                // Keep for 10 seconds
+                setTimeout(function() { logDiv.remove(); }, 10000);
+            };
+
+            const logInfo = (message, data) => {
+                const timestamp = new Date().toISOString();
+                const logMessage = '[' + timestamp + '] ' + message;
+                console.log(logMessage, data || '');
+            };
+
+            logInfo('🔐 Starting Google sign-in', {
+                origin: window.location.origin,
+                userAgent: navigator.userAgent,
+                isInIframe: window !== window.top
+            });
 
             submitBtn.disabled = true;
             errorDiv.classList.remove('show');
             errorDiv.textContent = '';
 
             try {
-                const result = await auth.signInWithPopup(provider);
-                const token = await result.user.getIdToken();
+                logInfo('🔐 Calling auth.signInWithPopup...', {
+                    providerId: provider.providerId,
+                    origin: window.location.origin,
+                    referrer: document.referrer
+                });
 
-                // Redirect with token
-                const redirectUrl = '%s';
-                window.location.href = redirectUrl + (redirectUrl.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
+                // Add global error handlers to catch COOP errors
+                const errorHandler = function(event) {
+                    logError('❌ Global error in popup flow', {
+                        type: event.type,
+                        message: event.message || event.reason,
+                        filename: event.filename,
+                        lineno: event.lineno,
+                        colno: event.colno,
+                        error: event.error ? event.error.toString() : 'none'
+                    });
+                };
+                const rejectionHandler = function(event) {
+                    logError('❌ Unhandled promise rejection in popup flow', {
+                        reason: event.reason ? event.reason.toString() : 'unknown',
+                        promise: event.promise
+                    });
+                };
+                window.addEventListener('error', errorHandler);
+                window.addEventListener('unhandledrejection', rejectionHandler);
+
+                const result = await auth.signInWithPopup(provider);
+
+                // Remove error handlers after success
+                window.removeEventListener('error', errorHandler);
+                window.removeEventListener('unhandledrejection', rejectionHandler);
+
+                logInfo('✅ Popup sign-in successful', {
+                    user: result.user ? result.user.email : 'no user',
+                    hasCredential: !!result.credential,
+                    credentialProvider: result.credential ? result.credential.providerId : 'none'
+                });
+
+                logInfo('🔐 Getting ID token...');
+                const token = await result.user.getIdToken();
+                logInfo('✅ Token obtained', {
+                    tokenLength: token ? token.length : 0,
+                    tokenPrefix: token ? token.substring(0, 20) + '...' : 'none'
+                });
+
+                // Redirect with token - use client-side origin to avoid container hostname issues
+                const redirectPath = '%s';
+                const redirectUrl = window.location.origin + redirectPath;
+                const finalUrl = redirectUrl + (redirectUrl.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
+                logInfo('🔐 Redirecting to', { finalUrl });
+                window.location.href = finalUrl;
             } catch (error) {
-                errorDiv.textContent = error.message || 'Google sign in failed. Please try again.';
+                logError('❌ Google sign-in error', error);
+                const errorMessage = error.message || 'Google sign in failed. Please try again.';
+                const errorCode = error.code || 'unknown';
+
+                // Enhanced error display
+                errorDiv.style.color = '#e74c3c';
+                errorDiv.textContent = errorMessage + ' (Code: ' + errorCode + ')';
                 errorDiv.classList.add('show');
+
+                // Log specific error types
+                if (error.code === 'auth/popup-closed-by-user') {
+                    logError('❌ User closed popup window', error);
+                } else if (error.code === 'auth/popup-blocked') {
+                    logError('❌ Popup blocked by browser', error);
+                } else if (error.code === 'auth/network-request-failed') {
+                    logError('❌ Network error during sign-in', error);
+                } else if (error.code === 'auth/account-exists-with-different-credential') {
+                    logError('❌ Account exists with different credential', error);
+                } else {
+                    // Log full error details for unknown errors
+                    logError('❌ Unknown Google sign-in error', {
+                        code: error.code,
+                        message: error.message,
+                        stack: error.stack,
+                        name: error.name
+                    });
+                }
+
                 submitBtn.disabled = false;
             }
         });
@@ -2451,12 +2796,27 @@ func serveSignInPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
 </html>`, redirectURL, firebaseAPIKey, firebaseAuthDomain, homeData.FirebaseProjectID, redirectURL, redirectURL)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	// Allow cross-origin popups for Firebase authentication
+	// Cross-Origin-Opener-Policy: same-origin-allow-popups allows popups to communicate back
+	w.Header().Set("Cross-Origin-Opener-Policy", "same-origin-allow-popups")
+	w.Header().Set("Cross-Origin-Embedder-Policy", "unsafe-none")
+	log.Printf("🔐 Sign-in page response headers set [redirect=%s, COOP=same-origin-allow-popups]", redirectURL)
 	w.Write([]byte(html))
 }
 
 // serveSignUpPage serves the sign-up page with Firebase Authentication
 func serveSignUpPage(w http.ResponseWriter, r *http.Request, homeData HomePageData) {
+	// Log sign-up page access with client details
+	clientIP := r.Header.Get("X-Forwarded-For")
+	if clientIP == "" {
+		clientIP = r.RemoteAddr
+	}
+	userAgent := r.Header.Get("User-Agent")
+
+	log.Printf("📝 Sign-up page accessed [ip=%s, user-agent=%s]", clientIP, userAgent)
+
 	if !homeData.AuthEnabled {
+		log.Printf("❌ Sign-up attempted but authentication is disabled [ip=%s]", clientIP)
 		http.Error(w, "Authentication is not enabled", http.StatusNotFound)
 		return
 	}
@@ -2466,6 +2826,8 @@ func serveSignUpPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
 	if redirectURL == "" {
 		redirectURL = "/"
 	}
+
+	log.Printf("📝 Sign-up page rendered [ip=%s, redirect=%s]", clientIP, redirectURL)
 
 	// Get Firebase config from environment
 	firebaseAPIKey := os.Getenv("FIREBASE_API_KEY")
@@ -2684,8 +3046,8 @@ func serveSignUpPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
 
                 // Redirect to sign-in page after 3 seconds
                 setTimeout(() => {
-                    const redirectUrl = '%s';
-                    window.location.href = '/sign-in?redirect=' + encodeURIComponent(redirectUrl) + '&email=' + encodeURIComponent(email);
+                    const redirectPath = '%s';
+                    window.location.href = '/sign-in?redirect=' + encodeURIComponent(redirectPath) + '&email=' + encodeURIComponent(email);
                 }, 3000);
             } catch (error) {
                 errorDiv.style.color = '#e74c3c';
@@ -2709,8 +3071,9 @@ func serveSignUpPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
                 const result = await auth.signInWithPopup(provider);
                 const token = await result.user.getIdToken();
 
-                // Redirect with token
-                const redirectUrl = '%s';
+                // Redirect with token - use client-side origin to avoid container hostname issues
+                const redirectPath = '%s';
+                const redirectUrl = window.location.origin + redirectPath;
                 window.location.href = redirectUrl + (redirectUrl.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
             } catch (error) {
                 errorDiv.textContent = error.message || 'Google sign up failed. Please try again.';
@@ -2723,5 +3086,10 @@ func serveSignUpPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
 </html>`, redirectURL, firebaseAPIKey, firebaseAuthDomain, homeData.FirebaseProjectID, redirectURL, redirectURL)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	// Allow cross-origin popups for Firebase authentication
+	// Cross-Origin-Opener-Policy: same-origin-allow-popups allows popups to communicate back
+	w.Header().Set("Cross-Origin-Opener-Policy", "same-origin-allow-popups")
+	w.Header().Set("Cross-Origin-Embedder-Policy", "unsafe-none")
+	log.Printf("🔐 Sign-up page response headers set [redirect=%s, COOP=same-origin-allow-popups]", redirectURL)
 	w.Write([]byte(html))
 }

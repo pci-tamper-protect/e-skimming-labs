@@ -49,18 +49,24 @@ HOME_INDEX_URL="https://home-index-${ENVIRONMENT}-${HOME_PROJECT_NUMBER}.us-cent
 SEO_URL="https://home-seo-${ENVIRONMENT}-${HOME_PROJECT_NUMBER}.us-central1.run.app"
 ANALYTICS_URL="https://labs-analytics-${ENVIRONMENT}-${LABS_PROJECT_NUMBER}.us-central1.run.app"
 
-# Lab service URLs (using project number format)
-LAB1_URL="https://lab1-${ENVIRONMENT}-${LABS_PROJECT_NUMBER}.us-central1.run.app"
-LAB1_C2_URL="https://lab1-c2-${ENVIRONMENT}-${LABS_PROJECT_NUMBER}.us-central1.run.app"
-LAB2_URL="https://lab2-${ENVIRONMENT}-${LABS_PROJECT_NUMBER}.us-central1.run.app"
-LAB2_C2_URL="https://lab2-c2-${ENVIRONMENT}-${LABS_PROJECT_NUMBER}.us-central1.run.app"
-LAB3_URL="https://lab3-${ENVIRONMENT}-${LABS_PROJECT_NUMBER}.us-central1.run.app"
-LAB3_EXTENSION_URL="https://lab3-extension-${ENVIRONMENT}-${LABS_PROJECT_NUMBER}.us-central1.run.app"
+# Lab service URLs (query actual service URLs from Cloud Run)
+LAB1_URL=$(gcloud run services describe "lab-01-basic-magecart-${ENVIRONMENT}" --region="${REGION}" --project="${PROJECT_ID}" --format="value(status.url)" 2>/dev/null || echo "")
+LAB1_C2_URL=$(gcloud run services describe "lab1-c2-${ENVIRONMENT}" --region="${REGION}" --project="${PROJECT_ID}" --format="value(status.url)" 2>/dev/null || echo "")
+LAB2_URL=$(gcloud run services describe "lab-02-dom-skimming-${ENVIRONMENT}" --region="${REGION}" --project="${PROJECT_ID}" --format="value(status.url)" 2>/dev/null || echo "")
+LAB2_C2_URL=$(gcloud run services describe "lab2-c2-${ENVIRONMENT}" --region="${REGION}" --project="${PROJECT_ID}" --format="value(status.url)" 2>/dev/null || echo "")
+LAB3_URL=$(gcloud run services describe "lab-03-extension-hijacking-${ENVIRONMENT}" --region="${REGION}" --project="${PROJECT_ID}" --format="value(status.url)" 2>/dev/null || echo "")
+LAB3_EXTENSION_URL=$(gcloud run services describe "lab3-extension-${ENVIRONMENT}" --region="${REGION}" --project="${PROJECT_ID}" --format="value(status.url)" 2>/dev/null || echo "")
 
 echo "📋 Service URLs:"
 echo "   HOME_INDEX_URL: ${HOME_INDEX_URL}"
 echo "   SEO_URL: ${SEO_URL}"
 echo "   ANALYTICS_URL: ${ANALYTICS_URL}"
+echo "   LAB1_URL: ${LAB1_URL}"
+echo "   LAB1_C2_URL: ${LAB1_C2_URL}"
+echo "   LAB2_URL: ${LAB2_URL}"
+echo "   LAB2_C2_URL: ${LAB2_C2_URL}"
+echo "   LAB3_URL: ${LAB3_URL}"
+echo "   LAB3_EXTENSION_URL: ${LAB3_EXTENSION_URL}"
 echo ""
 
 # Check if service account exists
@@ -87,7 +93,7 @@ gcloud run deploy "${SERVICE_NAME}" \
   --port=8080 \
   --memory=512Mi \
   --cpu=1 \
-  --min-instances=$([ "$ENVIRONMENT" = "prd" ] && echo "1" || echo "0") \
+  --min-instances=1 \
   --max-instances=$([ "$ENVIRONMENT" = "prd" ] && echo "10" || echo "3") \
   --set-env-vars="ENVIRONMENT=${ENVIRONMENT}" \
   --set-env-vars="DOMAIN=${DOMAIN}" \
@@ -102,7 +108,8 @@ gcloud run deploy "${SERVICE_NAME}" \
   --set-env-vars="LAB3_EXTENSION_URL=${LAB3_EXTENSION_URL}" \
   --timeout=300 \
   --concurrency=80 \
-  --cpu-throttling
+  --cpu-throttling \
+  --labels="environment=${ENVIRONMENT},component=traefik,project=e-skimming-labs,service-type=router"
 
 echo ""
 echo "✅ Traefik deployed successfully!"

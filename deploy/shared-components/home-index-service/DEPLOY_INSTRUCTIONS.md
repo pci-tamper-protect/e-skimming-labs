@@ -59,6 +59,7 @@ gcloud run deploy home-index-stg \
   --cpu=1 \
   --min-instances=0 \
   --max-instances=5 \
+  --labels="environment=stg,component=index,project=e-skimming-labs-home,service-type=service" \
   --set-env-vars="HOME_PROJECT_ID=labs-home-stg,ENVIRONMENT=stg,DOMAIN=labs.stg.pcioasis.com,LABS_DOMAIN=labs.stg.pcioasis.com,MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=labs-stg,LAB1_URL=https://lab-01-basic-magecart-stg-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-stg-mmwwcfi5za-uc.a.run.app/banking.html,LAB3_URL=https://lab-03-extension-hijacking-stg-mmwwcfi5za-uc.a.run.app/index.html" \
   --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
   --labels="environment=stg,component=index,project=e-skimming-labs-home"

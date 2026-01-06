@@ -189,7 +189,8 @@ gcloud run deploy traefik-prd \
   --image=us-central1-docker.pkg.dev/labs-prd/e-skimming-labs/traefik:latest \
   --region=us-central1 \
   --project=labs-prd \
-  --service-account=traefik-prd@labs-prd.iam.gserviceaccount.com
+  --service-account=traefik-prd@labs-prd.iam.gserviceaccount.com \
+  --labels="environment=prd,component=traefik,project=e-skimming-labs,service-type=router"
 ```
 
 ## Environment Variables
@@ -354,6 +355,22 @@ http:
         - strip-lab1-prefix
         - lab-rate-limit
 ```
+
+## Testing Route Generation
+
+Before deploying to Cloud Run, you can test route generation locally using mock Cloud Run service data:
+
+```bash
+./deploy/traefik/test-route-generation.sh
+```
+
+This test:
+- Creates mock Cloud Run service JSON (simulating `gcloud run services describe`)
+- Generates routes.yml from mock labels
+- Validates YAML syntax and router/service structure
+- No Docker or Cloud Run required - pure logic testing
+
+See [TEST-ROUTE-GENERATION.md](./TEST-ROUTE-GENERATION.md) for details.
 
 ## Further Reading
 

@@ -14,7 +14,7 @@ This document outlines the design for implementing Traefik as a unified reverse 
    - No unified domain structure
 
 2. **Privacy Concerns**
-   - Don't want Google/Cloudflare to access lab content
+   - Don't want Google/Cloudflare to access lab content (want private services)
    - Need end-to-end control of routing
 
 3. **Developer Experience**
@@ -289,28 +289,6 @@ ENVIRONMENT=prd
 DOMAIN=labs.pcioasis.com
 ```
 
-## Migration Strategy
-
-### Phase 1: Local Development (Week 1)
-1. ✅ Create Traefik configuration files
-2. ✅ Update docker-compose.yml with Traefik service
-3. ✅ Add labels to all services
-4. ✅ Test path-based routing locally
-5. ✅ Update documentation
-
-### Phase 2: Cloud Run Integration (Week 2)
-1. ✅ Create Traefik Dockerfile for Cloud Run
-2. ✅ Create Terraform configuration for Traefik service
-3. ✅ Deploy to staging environment
-4. ✅ Test end-to-end routing
-5. ✅ Configure DNS and SSL
-
-### Phase 3: Production Deployment (Week 3)
-1. ✅ Deploy to production
-2. ✅ Monitor and validate
-3. ✅ Migrate DNS
-4. ✅ Deprecate old service URLs
-
 ## Security Considerations
 
 ### Authentication & Authorization
@@ -393,11 +371,30 @@ http:
 3. **Cloudflare Workers**: Privacy concerns, vendor lock-in
 4. **Envoy**: More complex, steeper learning curve
 
-## Next Steps
+## Troubleshooting
 
-1. Review and approve architecture
-2. Create proof-of-concept for local development
-3. Test with Lab 1 only
-4. Expand to all labs
-5. Deploy to staging
-6. Production rollout
+### Common Issues
+
+**404 Not Found**
+- Check Traefik dashboard: `http://localhost:8081/dashboard/`
+- Verify service is running: `docker-compose ps`
+- Check service labels in `docker-compose.yml`
+- Restart Traefik: `docker-compose restart traefik`
+
+**502 Bad Gateway**
+- Check if backend service is running
+- View backend logs: `docker-compose logs <service-name>`
+- Verify service port matches Traefik configuration
+
+**Static Assets Not Loading**
+- Check if `stripPrefix` middleware is correctly configured
+- Verify paths in HTML are relative (not absolute)
+- Check browser console for errors
+
+For Cloud Run deployment issues, see [TRAEFIK_ROUTER_SETUP.md](../deploy/TRAEFIK_ROUTER_SETUP.md).
+
+## Related Documentation
+
+- **[Quick Start Guide](./TRAEFIK-QUICKSTART.md)** - Get running in 5 minutes
+- **[Router Setup Guide](../deploy/TRAEFIK_ROUTER_SETUP.md)** - Cloud Run deployment details
+- **[Traefik Config README](../deploy/traefik/README.md)** - Configuration details

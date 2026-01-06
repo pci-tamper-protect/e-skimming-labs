@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -51,9 +52,12 @@ func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 			}
 
 			if isPublicPath || strings.HasPrefix(r.URL.Path, "/static/") {
+				log.Printf("🔓 Skipping auth for public path: %s (normalized: %s)", r.URL.Path, normalizedPath)
 				next.ServeHTTP(w, r)
 				return
 			}
+
+			log.Printf("🔒 Auth middleware checking: %s (normalized: %s)", r.URL.Path, normalizedPath)
 
 			// If auth is disabled, proceed without validation
 			if !validator.IsEnabled() {
@@ -95,7 +99,17 @@ func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 					acceptHeader == "" ||
 					strings.Contains(acceptHeader, "*/*")
 				if isBrowserRequest {
-					redirectURL := fmt.Sprintf("%s/sign-in?error=email_not_verified&email=%s", validator.GetMainAppURL(), userInfo.Email)
+					// Use X-Forwarded-Host if available (when behind proxy like Traefik),
+					// otherwise use request's Host header to avoid container hostname issues
+					scheme := "http"
+					if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+						scheme = "https"
+					}
+					host := r.Header.Get("X-Forwarded-Host")
+					if host == "" {
+						host = r.Host
+					}
+					redirectURL := fmt.Sprintf("%s://%s/sign-in?error=email_not_verified&email=%s", scheme, host, userInfo.Email)
 					http.Redirect(w, r, redirectURL, http.StatusFound)
 					return
 				}
@@ -168,7 +182,23 @@ func respondAuthError(w http.ResponseWriter, r *http.Request, statusCode int, me
 
 	if isBrowserRequest && mainAppURL != "" {
 		// Redirect browser requests to sign-in page
-		redirectURL := fmt.Sprintf("%s/sign-in?redirect=%s", mainAppURL, r.URL.String())
+		// Use X-Forwarded-Host if available (when behind proxy like Traefik),
+		// otherwise use request's Host header to avoid container hostname issues
+		scheme := "http"
+		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+			scheme = "https"
+		}
+		host := r.Header.Get("X-Forwarded-Host")
+		if host == "" {
+			// In local environment, default to localhost:8080, never use r.Host (internal Docker hostname)
+			environment := os.Getenv("ENVIRONMENT")
+			if environment == "local" {
+				host = "localhost:8080"
+			} else {
+				host = r.Host
+			}
+		}
+		redirectURL := fmt.Sprintf("%s://%s/sign-in?redirect=%s", scheme, host, r.URL.String())
 		http.Redirect(w, r, redirectURL, http.StatusFound)
 		return
 	}

@@ -37,8 +37,11 @@ services:
       # Mount dotenvx key for local development (matches Cloud Run mount path)
       - ./.env.keys.stg:/etc/secrets/dotenvx-key:ro
 
-  # Analytics Service - Add dotenvx key mount (if needed for future auth)
+  # Analytics Service - Add Firebase credentials for Firestore
   labs-analytics:
+    environment:
+      # Firebase service account JSON (for Firestore access)
+      - FIREBASE_SERVICE_ACCOUNT_KEY=${FIREBASE_SERVICE_ACCOUNT_KEY:-}
     volumes:
       # Mount dotenvx key for local development (matches Cloud Run mount path)
       - ./.env.keys.stg:/etc/secrets/dotenvx-key:ro

@@ -70,7 +70,7 @@ gcloud run deploy home-index-${ENVIRONMENT} \
   --max-instances=5 \
   --set-env-vars="HOME_PROJECT_ID=${HOME_PROJECT_ID},ENVIRONMENT=${ENVIRONMENT},DOMAIN=${DOMAIN_PREFIX},LABS_DOMAIN=${DOMAIN_PREFIX},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${LABS_PROJECT_ID},LAB1_URL=https://lab-01-basic-magecart-${ENVIRONMENT}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${ENVIRONMENT}-mmwwcfi5za-uc.a.run.app/banking.html,LAB3_URL=https://lab-03-extension-hijacking-${ENVIRONMENT}-mmwwcfi5za-uc.a.run.app/index.html" \
   --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
-  --labels="environment=${ENVIRONMENT},component=index,project=e-skimming-labs-home"
+  --labels="environment=${ENVIRONMENT},component=index,project=e-skimming-labs-home,service-type=service"
 
 # Grant access to developer groups
 echo "👥 Granting access to developer groups..."

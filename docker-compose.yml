@@ -77,6 +77,12 @@ services:
       - "traefik.http.routers.home-index.priority=1"
       - "traefik.http.routers.home-index.entrypoints=web"
       - "traefik.http.services.home-index.loadbalancer.server.port=8080"
+      # Sign-in route with COOP headers for Firebase popup
+      - "traefik.http.routers.home-index-signin.rule=Path(`/sign-in`) || Path(`/sign-up`)"
+      - "traefik.http.routers.home-index-signin.priority=100"
+      - "traefik.http.routers.home-index-signin.entrypoints=web"
+      - "traefik.http.routers.home-index-signin.middlewares=signin-headers@file"
+      - "traefik.http.routers.home-index-signin.service=home-index"
 
   # SEO Service - Cross-domain SEO integration
   home-seo:
@@ -164,6 +170,13 @@ services:
       - "lab=lab1-basic-magecart"
       - "component=vulnerable-site"
       - "traefik.enable=true"
+      # Static files router (no auth, higher priority) - matches common static paths
+      - "traefik.http.routers.lab1-static.rule=PathPrefix(`/lab1/css/`) || PathPrefix(`/lab1/js/`) || PathPrefix(`/lab1/images/`) || PathPrefix(`/lab1/img/`) || PathPrefix(`/lab1/static/`) || PathPrefix(`/lab1/assets/`)"
+      - "traefik.http.routers.lab1-static.priority=250"
+      - "traefik.http.routers.lab1-static.entrypoints=web"
+      - "traefik.http.routers.lab1-static.middlewares=strip-lab1-prefix@file"
+      - "traefik.http.routers.lab1-static.service=lab1"
+      # Main router (with auth, lower priority)
       - "traefik.http.routers.lab1.rule=PathPrefix(`/lab1`)"
       - "traefik.http.routers.lab1.priority=200"
       - "traefik.http.routers.lab1.entrypoints=web"
@@ -209,6 +222,13 @@ services:
       - "lab=lab2-dom-skimming"
       - "component=vulnerable-site"
       - "traefik.enable=true"
+      # Static files router (no auth, higher priority) - matches common static paths
+      - "traefik.http.routers.lab2-static.rule=PathPrefix(`/lab2/css/`) || PathPrefix(`/lab2/js/`) || PathPrefix(`/lab2/images/`) || PathPrefix(`/lab2/img/`) || PathPrefix(`/lab2/static/`) || PathPrefix(`/lab2/assets/`)"
+      - "traefik.http.routers.lab2-static.priority=250"
+      - "traefik.http.routers.lab2-static.entrypoints=web"
+      - "traefik.http.routers.lab2-static.middlewares=strip-lab2-prefix@file"
+      - "traefik.http.routers.lab2-static.service=lab2-vulnerable-site"
+      # Main router (with auth, lower priority)
       - "traefik.http.routers.lab2-main.rule=PathPrefix(`/lab2`)"
       - "traefik.http.routers.lab2-main.priority=200"
       - "traefik.http.routers.lab2-main.entrypoints=web"
@@ -252,10 +272,23 @@ services:
       - labs-network
     depends_on:
       - traefik
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:80/']
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
     labels:
       - "lab=lab3-extension-hijacking"
       - "component=vulnerable-site"
       - "traefik.enable=true"
+      # Static files router (no auth, higher priority) - matches common static paths
+      - "traefik.http.routers.lab3-static.rule=PathPrefix(`/lab3/css/`) || PathPrefix(`/lab3/js/`) || PathPrefix(`/lab3/images/`) || PathPrefix(`/lab3/img/`) || PathPrefix(`/lab3/static/`) || PathPrefix(`/lab3/assets/`)"
+      - "traefik.http.routers.lab3-static.priority=250"
+      - "traefik.http.routers.lab3-static.entrypoints=web"
+      - "traefik.http.routers.lab3-static.middlewares=strip-lab3-prefix@file"
+      - "traefik.http.routers.lab3-static.service=lab3-vulnerable-site"
+      # Main router (with auth, lower priority)
       - "traefik.http.routers.lab3-main.rule=PathPrefix(`/lab3`)"
       - "traefik.http.routers.lab3-main.priority=200"
       - "traefik.http.routers.lab3-main.entrypoints=web"

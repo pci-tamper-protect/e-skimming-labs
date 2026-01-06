@@ -189,6 +189,8 @@ jobs:
     # Skip deployment for Dependabot PRs (secrets not available)
     # Only deploy if home components changed or force keyword detected
     if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && needs.setup.outputs.deploy_home == 'true'
+    # Specify environment to access environment-level secrets (if GCP_SA_KEY_STG is stored as environment secret)
+    environment: ${{ needs.setup.outputs.environment }}
     env:
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
@@ -456,7 +458,7 @@ jobs:
               --max-instances=5 \
               --set-env-vars="PROJECT_ID=${{ env.HOME_PROJECT_ID }},HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }}" \
               --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
-              --labels="environment=${{ needs.setup.outputs.environment }},component=seo,project=e-skimming-labs-home"
+              --labels="environment=${{ needs.setup.outputs.environment }},component=seo,project=e-skimming-labs-home,traefik.enable=true,traefik.http.routers.home-seo.rule=PathPrefix(\`/api/seo\`),traefik.http.routers.home-seo.priority=500,traefik.http.routers.home-seo.entrypoints=web,traefik.http.routers.home-seo.middlewares=strip-seo-prefix@file,traefik.http.services.home-seo.loadbalancer.server.port=8080"
 
             # Grant access to developer groups for staging (Terraform will also manage this)
             echo "Granting access to developer groups for staging SEO service..."
@@ -483,7 +485,7 @@ jobs:
               --max-instances=5 \
               --set-env-vars="PROJECT_ID=${{ env.HOME_PROJECT_ID }},HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }}" \
               --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_PRD:latest \
-              --labels="environment=${{ needs.setup.outputs.environment }},component=seo,project=e-skimming-labs-home"
+              --labels="environment=${{ needs.setup.outputs.environment }},component=seo,project=e-skimming-labs-home,traefik.enable=true,traefik.http.routers.home-seo.rule=PathPrefix(\`/api/seo\`),traefik.http.routers.home-seo.priority=500,traefik.http.routers.home-seo.entrypoints=web,traefik.http.routers.home-seo.middlewares=strip-seo-prefix@file,traefik.http.services.home-seo.loadbalancer.server.port=8080"
           fi
 
       - name: Deploy Index Service to Cloud Run
@@ -505,7 +507,7 @@ jobs:
               --max-instances=5 \
               --set-env-vars="HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/banking.html,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/index.html,ENABLE_AUTH=true,REQUIRE_AUTH=true,FIREBASE_PROJECT_ID=ui-firebase-pcioasis-${{ needs.setup.outputs.environment }}" \
               --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
-              --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs-home"
+              --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs-home,traefik.enable=true,traefik.http.routers.home-index.rule=PathPrefix(\`/\`),traefik.http.routers.home-index.priority=1,traefik.http.routers.home-index.entrypoints=web,traefik.http.routers.home-index.middlewares=forwarded-headers@file,traefik.http.services.home-index.loadbalancer.server.port=8080,traefik.http.routers.home-index-signin.rule=Path(\`/sign-in\`) || Path(\`/sign-up\`),traefik.http.routers.home-index-signin.priority=100,traefik.http.routers.home-index-signin.entrypoints=web,traefik.http.routers.home-index-signin.middlewares=signin-headers@file,traefik.http.routers.home-index-signin.service=home-index"
 
             # Grant access to developer groups for staging (Terraform will also manage this)
             echo "Granting access to developer groups for staging Index service..."
@@ -532,7 +534,7 @@ jobs:
               --max-instances=5 \
               --set-env-vars="HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/banking.html,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/index.html,ENABLE_AUTH=true,REQUIRE_AUTH=true,FIREBASE_PROJECT_ID=ui-firebase-pcioasis-${{ needs.setup.outputs.environment }}" \
               --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_PRD:latest \
-              --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs-home"
+              --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs-home,traefik.enable=true,traefik.http.routers.home-index.rule=PathPrefix(\`/\`),traefik.http.routers.home-index.priority=1,traefik.http.routers.home-index.entrypoints=web,traefik.http.routers.home-index.middlewares=forwarded-headers@file,traefik.http.services.home-index.loadbalancer.server.port=8080,traefik.http.routers.home-index-signin.rule=Path(\`/sign-in\`) || Path(\`/sign-up\`),traefik.http.routers.home-index-signin.priority=100,traefik.http.routers.home-index-signin.entrypoints=web,traefik.http.routers.home-index-signin.middlewares=signin-headers@file,traefik.http.routers.home-index-signin.service=home-index"
           fi
 
   deploy-labs-components:
@@ -541,12 +543,14 @@ jobs:
     # Skip deployment for Dependabot PRs (secrets not available)
     # Only deploy if labs components changed or force keyword detected
     if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && needs.setup.outputs.deploy_labs == 'true'
+    # Specify environment to access environment-level secrets (if GCP_SA_KEY_STG is stored as environment secret)
+    environment: ${{ needs.setup.outputs.environment }}
     env:
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
       # Use environment-specific secrets - fallback to generic secret
       # Note: GitHub Actions treats missing secrets as empty strings, so we check for non-empty
-      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
+      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_SA_KEY_PRD) || secrets.GCP_SA_KEY }}
 
     steps:
       - name: Checkout code
@@ -569,11 +573,11 @@ jobs:
           echo ""
           echo "📋 Secret selection info:"
           if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
-            echo "   Expected secret: GCP_LABS_SA_KEY_STG"
-            echo "   Fallback secret: GCP_LABS_SA_KEY (if STG not set)"
+            echo "   Expected secret: GCP_SA_KEY_STG"
+            echo "   Fallback secret: GCP_SA_KEY (if STG not set)"
           else
-            echo "   Expected secret: GCP_LABS_SA_KEY_PRD"
-            echo "   Fallback secret: GCP_LABS_SA_KEY (if PRD not set)"
+            echo "   Expected secret: GCP_SA_KEY_PRD"
+            echo "   Fallback secret: GCP_SA_KEY (if PRD not set)"
           fi
           echo ""
 
@@ -602,10 +606,10 @@ jobs:
             echo ""
             echo "   2. Update the GitHub secret:"
             if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
-              echo "      gh secret set GCP_LABS_SA_KEY_STG --body \"\$(cat /tmp/labs-deploy-key.json)\" \\"
+              echo "      gh secret set GCP_SA_KEY_STG --body \"\$(cat /tmp/labs-deploy-key.json)\" \\"
               echo "        --repo pci-tamper-protect/e-skimming-labs"
             else
-              echo "      gh secret set GCP_LABS_SA_KEY_PRD --body \"\$(cat /tmp/labs-deploy-key.json)\" \\"
+              echo "      gh secret set GCP_SA_KEY_PRD --body \"\$(cat /tmp/labs-deploy-key.json)\" \\"
               echo "        --repo pci-tamper-protect/e-skimming-labs"
             fi
             echo ""
@@ -765,7 +769,7 @@ jobs:
               --max-instances=5 \
               --set-env-vars="PROJECT_ID=${{ env.LABS_PROJECT_ID }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},FIRESTORE_DATABASE=(default)" \
               --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
-              --labels="environment=${{ needs.setup.outputs.environment }},component=analytics,project=e-skimming-labs"
+              --labels="environment=${{ needs.setup.outputs.environment }},component=analytics,project=e-skimming-labs,traefik.enable=true,traefik.http.routers.labs-analytics.rule=PathPrefix(\`/api/analytics\`),traefik.http.routers.labs-analytics.priority=500,traefik.http.routers.labs-analytics.entrypoints=web,traefik.http.routers.labs-analytics.middlewares=strip-analytics-prefix@file,traefik.http.services.labs-analytics.loadbalancer.server.port=8080"
 
             # Grant access to developer groups for staging (Terraform will also manage this)
             echo "Granting access to developer groups for staging Analytics service..."
@@ -792,7 +796,7 @@ jobs:
               --max-instances=5 \
               --set-env-vars="PROJECT_ID=${{ env.LABS_PROJECT_ID }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},FIRESTORE_DATABASE=(default)" \
               --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_PRD:latest \
-              --labels="environment=${{ needs.setup.outputs.environment }},component=analytics,project=e-skimming-labs"
+              --labels="environment=${{ needs.setup.outputs.environment }},component=analytics,project=e-skimming-labs,traefik.enable=true,traefik.http.routers.labs-analytics.rule=PathPrefix(\`/api/analytics\`),traefik.http.routers.labs-analytics.priority=500,traefik.http.routers.labs-analytics.entrypoints=web,traefik.http.routers.labs-analytics.middlewares=strip-analytics-prefix@file,traefik.http.services.labs-analytics.loadbalancer.server.port=8080"
           fi
 
   deploy-labs:
@@ -801,12 +805,14 @@ jobs:
     # Skip deployment for Dependabot PRs (secrets not available)
     # Only deploy if labs components changed or force keyword detected
     if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && needs.setup.outputs.deploy_labs == 'true'
+    # Specify environment to access environment-level secrets (if GCP_SA_KEY_STG is stored as environment secret)
+    environment: ${{ needs.setup.outputs.environment }}
     env:
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
       # Use environment-specific secrets - fallback to generic secret
       # Note: GitHub Actions treats missing secrets as empty strings, so we check for non-empty
-      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
+      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_SA_KEY_PRD) || secrets.GCP_SA_KEY }}
     strategy:
       matrix:
         lab: ${{ fromJson(needs.setup.outputs.labs) }}
@@ -938,6 +944,19 @@ jobs:
           # For staging: Use --no-allow-unauthenticated to restrict access (IAM groups will be added via Terraform)
           # For production: Use --allow-unauthenticated for public access
           if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
+            # Extract lab number from matrix.lab (01-basic-magecart -> 1, 02-dom-skimming -> 2, 03-extension-hijacking -> 3)
+            LAB_NUM=$(echo "${{ matrix.lab }}" | sed 's/^0*//' | cut -d'-' -f1)
+            # Build Traefik labels based on lab number
+            if [[ "$LAB_NUM" == "1" ]]; then
+              TRAEFIK_LABELS="traefik.enable=true,traefik.http.routers.lab1-static.rule=PathPrefix(\`/lab1/css/\`) || PathPrefix(\`/lab1/js/\`) || PathPrefix(\`/lab1/images/\`) || PathPrefix(\`/lab1/img/\`) || PathPrefix(\`/lab1/static/\`) || PathPrefix(\`/lab1/assets/\`),traefik.http.routers.lab1-static.priority=250,traefik.http.routers.lab1-static.entrypoints=web,traefik.http.routers.lab1-static.middlewares=strip-lab1-prefix@file,traefik.http.routers.lab1-static.service=lab1,traefik.http.routers.lab1.rule=PathPrefix(\`/lab1\`),traefik.http.routers.lab1.priority=200,traefik.http.routers.lab1.entrypoints=web,traefik.http.routers.lab1.middlewares=lab1-auth-check@file,strip-lab1-prefix@file,traefik.http.services.lab1.loadbalancer.server.port=8080"
+            elif [[ "$LAB_NUM" == "2" ]]; then
+              TRAEFIK_LABELS="traefik.enable=true,traefik.http.routers.lab2-static.rule=PathPrefix(\`/lab2/css/\`) || PathPrefix(\`/lab2/js/\`) || PathPrefix(\`/lab2/images/\`) || PathPrefix(\`/lab2/img/\`) || PathPrefix(\`/lab2/static/\`) || PathPrefix(\`/lab2/assets/\`),traefik.http.routers.lab2-static.priority=250,traefik.http.routers.lab2-static.entrypoints=web,traefik.http.routers.lab2-static.middlewares=strip-lab2-prefix@file,traefik.http.routers.lab2-static.service=lab2-vulnerable-site,traefik.http.routers.lab2-main.rule=PathPrefix(\`/lab2\`),traefik.http.routers.lab2-main.priority=200,traefik.http.routers.lab2-main.entrypoints=web,traefik.http.routers.lab2-main.middlewares=lab2-auth-check@file,strip-lab2-prefix@file,traefik.http.services.lab2-vulnerable-site.loadbalancer.server.port=8080"
+            elif [[ "$LAB_NUM" == "3" ]]; then
+              TRAEFIK_LABELS="traefik.enable=true,traefik.http.routers.lab3-static.rule=PathPrefix(\`/lab3/css/\`) || PathPrefix(\`/lab3/js/\`) || PathPrefix(\`/lab3/images/\`) || PathPrefix(\`/lab3/img/\`) || PathPrefix(\`/lab3/static/\`) || PathPrefix(\`/lab3/assets/\`),traefik.http.routers.lab3-static.priority=250,traefik.http.routers.lab3-static.entrypoints=web,traefik.http.routers.lab3-static.middlewares=strip-lab3-prefix@file,traefik.http.routers.lab3-static.service=lab3-vulnerable-site,traefik.http.routers.lab3-main.rule=PathPrefix(\`/lab3\`),traefik.http.routers.lab3-main.priority=200,traefik.http.routers.lab3-main.entrypoints=web,traefik.http.routers.lab3-main.middlewares=lab3-auth-check@file,strip-lab3-prefix@file,traefik.http.services.lab3-vulnerable-site.loadbalancer.server.port=8080"
+            else
+              TRAEFIK_LABELS="traefik.enable=true"
+            fi
+
             gcloud run deploy lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
               --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }} \
               --region=${{ env.LABS_GAR_LOCATION }} \
@@ -951,7 +970,7 @@ jobs:
               --max-instances=10 \
               --set-env-vars="LAB_NAME=${{ matrix.lab }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},HOME_URL=https://${{ needs.setup.outputs.domain_prefix }},C2_URL=https://lab-${{ matrix.lab }}-c2-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app" \
               --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
-              --labels="environment=${{ needs.setup.outputs.environment }},lab=${{ matrix.lab }},project=e-skimming-labs"
+              --labels="environment=${{ needs.setup.outputs.environment }},lab=${{ matrix.lab }},project=e-skimming-labs,${TRAEFIK_LABELS}"
 
             # Grant access to developer groups for staging
             echo "Granting access to developer groups for staging lab..."
@@ -965,6 +984,19 @@ jobs:
               --member="group:core-eng@pcioasis.com" \
               --role="roles/run.invoker"
           else
+            # Extract lab number from matrix.lab (01-basic-magecart -> 1, 02-dom-skimming -> 2, 03-extension-hijacking -> 3)
+            LAB_NUM=$(echo "${{ matrix.lab }}" | sed 's/^0*//' | cut -d'-' -f1)
+            # Build Traefik labels based on lab number
+            if [[ "$LAB_NUM" == "1" ]]; then
+              TRAEFIK_LABELS="traefik.enable=true,traefik.http.routers.lab1-static.rule=PathPrefix(\`/lab1/css/\`) || PathPrefix(\`/lab1/js/\`) || PathPrefix(\`/lab1/images/\`) || PathPrefix(\`/lab1/img/\`) || PathPrefix(\`/lab1/static/\`) || PathPrefix(\`/lab1/assets/\`),traefik.http.routers.lab1-static.priority=250,traefik.http.routers.lab1-static.entrypoints=web,traefik.http.routers.lab1-static.middlewares=strip-lab1-prefix@file,traefik.http.routers.lab1-static.service=lab1,traefik.http.routers.lab1.rule=PathPrefix(\`/lab1\`),traefik.http.routers.lab1.priority=200,traefik.http.routers.lab1.entrypoints=web,traefik.http.routers.lab1.middlewares=lab1-auth-check@file,strip-lab1-prefix@file,traefik.http.services.lab1.loadbalancer.server.port=8080"
+            elif [[ "$LAB_NUM" == "2" ]]; then
+              TRAEFIK_LABELS="traefik.enable=true,traefik.http.routers.lab2-static.rule=PathPrefix(\`/lab2/css/\`) || PathPrefix(\`/lab2/js/\`) || PathPrefix(\`/lab2/images/\`) || PathPrefix(\`/lab2/img/\`) || PathPrefix(\`/lab2/static/\`) || PathPrefix(\`/lab2/assets/\`),traefik.http.routers.lab2-static.priority=250,traefik.http.routers.lab2-static.entrypoints=web,traefik.http.routers.lab2-static.middlewares=strip-lab2-prefix@file,traefik.http.routers.lab2-static.service=lab2-vulnerable-site,traefik.http.routers.lab2-main.rule=PathPrefix(\`/lab2\`),traefik.http.routers.lab2-main.priority=200,traefik.http.routers.lab2-main.entrypoints=web,traefik.http.routers.lab2-main.middlewares=lab2-auth-check@file,strip-lab2-prefix@file,traefik.http.services.lab2-vulnerable-site.loadbalancer.server.port=8080"
+            elif [[ "$LAB_NUM" == "3" ]]; then
+              TRAEFIK_LABELS="traefik.enable=true,traefik.http.routers.lab3-static.rule=PathPrefix(\`/lab3/css/\`) || PathPrefix(\`/lab3/js/\`) || PathPrefix(\`/lab3/images/\`) || PathPrefix(\`/lab3/img/\`) || PathPrefix(\`/lab3/static/\`) || PathPrefix(\`/lab3/assets/\`),traefik.http.routers.lab3-static.priority=250,traefik.http.routers.lab3-static.entrypoints=web,traefik.http.routers.lab3-static.middlewares=strip-lab3-prefix@file,traefik.http.routers.lab3-static.service=lab3-vulnerable-site,traefik.http.routers.lab3-main.rule=PathPrefix(\`/lab3\`),traefik.http.routers.lab3-main.priority=200,traefik.http.routers.lab3-main.entrypoints=web,traefik.http.routers.lab3-main.middlewares=lab3-auth-check@file,strip-lab3-prefix@file,traefik.http.services.lab3-vulnerable-site.loadbalancer.server.port=8080"
+            else
+              TRAEFIK_LABELS="traefik.enable=true"
+            fi
+
             gcloud run deploy lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
               --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }} \
               --region=${{ env.LABS_GAR_LOCATION }} \
@@ -978,7 +1010,7 @@ jobs:
               --max-instances=10 \
               --set-env-vars="LAB_NAME=${{ matrix.lab }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},HOME_URL=https://${{ needs.setup.outputs.domain_prefix }},C2_URL=https://lab-${{ matrix.lab }}-c2-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app" \
               --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_PRD:latest \
-              --labels="environment=${{ needs.setup.outputs.environment }},lab=${{ matrix.lab }},project=e-skimming-labs"
+              --labels="environment=${{ needs.setup.outputs.environment }},lab=${{ matrix.lab }},project=e-skimming-labs,${TRAEFIK_LABELS}"
           fi
 
       - name: Configure custom domain mapping
@@ -1004,12 +1036,14 @@ jobs:
     # Skip deployment for Dependabot PRs (secrets not available)
     # Only deploy if labs components changed or force keyword detected (index is part of labs)
     if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && needs.setup.outputs.deploy_labs == 'true'
+    # Specify environment to access environment-level secrets (if GCP_SA_KEY_STG is stored as environment secret)
+    environment: ${{ needs.setup.outputs.environment }}
     env:
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
       # Use environment-specific secrets - fallback to generic secret
       # Note: GitHub Actions treats missing secrets as empty strings, so we check for non-empty
-      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
+      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_SA_KEY_PRD) || secrets.GCP_SA_KEY }}
 
     steps:
       - name: Checkout code
@@ -1189,11 +1223,13 @@ jobs:
     needs: [setup, deploy-labs, deploy-home-components, deploy-labs-components]
     runs-on: ubuntu-latest
     if: always()
+    # Specify environment to access environment-level secrets (if GCP_SA_KEY_STG is stored as environment secret)
+    environment: ${{ needs.setup.outputs.environment }}
     env:
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
       ENVIRONMENT: ${{ needs.setup.outputs.environment }}
-      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
+      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_SA_KEY_PRD) || secrets.GCP_SA_KEY }}
     outputs:
       deployment_success: ${{ steps.check-deployment.outputs.success }}
 
@@ -1336,11 +1372,13 @@ jobs:
     runs-on: ubuntu-latest
     # Run e2e tests after successful deployment on push events or PRs against stg
     if: (github.event_name == 'push' || (github.event_name == 'pull_request' && needs.setup.outputs.environment == 'stg')) && needs.notify-deployment.outputs.deployment_success == 'true'
+    # Specify environment to access environment-level secrets (if GCP_SA_KEY_STG is stored as environment secret)
+    environment: ${{ needs.setup.outputs.environment }}
     env:
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
       # Use environment-specific secrets for proxy authentication
-      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
+      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_SA_KEY_PRD) || secrets.GCP_SA_KEY }}
     # Use matrix strategy to shard tests across multiple parallel jobs
     # GitHub Enterprise supports up to 256 matrix jobs, but we'll use 4 shards for optimal performance
     strategy:

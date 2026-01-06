@@ -89,6 +89,22 @@ RUN mkdir -p ./docs/labs && \
 # This will fail if catalog-info.yaml is not present - ensure it's generated in CI/CD
 COPY catalog-info.yaml ./catalog-info.yaml
 
+# Copy entrypoint script
+COPY deploy/shared-components/home-index-service/entrypoint.sh ./entrypoint.sh
+
+# Copy environment files for encrypted Firebase credentials
+# These files contain dotenvx-encrypted values that will be decrypted at runtime
+# using the DOTENVX_KEY mounted from Secret Manager
+COPY .env.stg ./.env.stg
+
+# Install dotenvx for decrypting environment variables at runtime
+# Install as root before switching to appuser
+USER root
+RUN apk add --no-cache curl && \
+    curl -sfS https://dotenvx.sh/install.sh | sh && \
+    apk del curl && \
+    chmod +x ./entrypoint.sh
+
 # Set ownership (alpine-base already has appuser)
 RUN chown -R appuser:appuser /app
 USER appuser
@@ -100,5 +116,6 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
-# Run the application
-CMD ["./main"]
+# Run the application via entrypoint script
+# The entrypoint creates the .env symlink and runs with dotenvx
+CMD ["./entrypoint.sh"]

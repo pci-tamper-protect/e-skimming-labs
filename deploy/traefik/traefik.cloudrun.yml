@@ -6,10 +6,7 @@ entryPoints:
   web:
     address: ":8080"  # Cloud Run uses port 8080
     # No HTTP to HTTPS redirect as Cloud Run handles HTTPS termination
-    http:
-      # Add forwarded headers for proper client IP
-      middlewares:
-        - forwarded-headers@file
+    # Note: forwarded-headers middleware is applied per-router, not at entrypoint level
 
   # Dashboard/API endpoint for monitoring
   traefik:

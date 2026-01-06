@@ -117,6 +117,13 @@ http:
           X-XSS-Protection: "1; mode=block"
         sslRedirect: false  # Set to true for production
 
+    # Sign-in page headers - Allow cross-origin popups for Firebase authentication
+    signin-headers:
+      headers:
+        customResponseHeaders:
+          Cross-Origin-Opener-Policy: "same-origin-allow-popups"
+          Cross-Origin-Embedder-Policy: "unsafe-none"
+
     # Rate limiting (optional, can be enabled per route)
     rate-limit:
       rateLimit:
@@ -124,7 +131,16 @@ http:
         burst: 50
         period: 1m
 
-  # Services are discovered automatically via Docker provider in local development
-  # Service definitions are only needed for Cloud Run (file provider only)
-  # For local development, Docker labels on containers define the services
-  # See docker-compose.yml for service label definitions
+    # Retry middleware for handling cold starts
+    # Retries failed requests with exponential backoff
+    # Supports Cloud Run services that scale to zero
+    retry-cold-start:
+      retry:
+        attempts: 3
+
+  # Services and routers are generated from:
+  # - Docker labels (local development via Docker provider)
+  # - Cloud Run service labels (Cloud Run via generate-routes-from-labels.sh)
+  #
+  # This file only contains middlewares.
+  # Routers and services are auto-discovered from labels.
