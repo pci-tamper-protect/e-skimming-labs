@@ -128,11 +128,11 @@ while IFS='|' read -r service_name project_id; do
     continue
   fi
 
-  # Check if traefik.enable=true
-  traefik_enable=$(echo "$service_json" | jq -r '.spec.template.metadata.labels["traefik.enable"] // "false"' 2>/dev/null || echo "false")
+  # Check if traefik_enable=true (using underscore for GCP label compatibility)
+  traefik_enable=$(echo "$service_json" | jq -r '.spec.template.metadata.labels["traefik_enable"] // "false"' 2>/dev/null || echo "false")
 
   if [ "$traefik_enable" != "true" ]; then
-    echo "    ⚪ traefik.enable=${traefik_enable}, skipping" >&2
+    echo "    ⚪ traefik_enable=${traefik_enable}, skipping" >&2
     continue
   fi
 
@@ -148,8 +148,8 @@ while IFS='|' read -r service_name project_id; do
   # Extract all labels
   labels_json=$(echo "$service_json" | jq -r '.spec.template.metadata.labels // {}' 2>/dev/null || echo "{}")
 
-  # Extract router labels (traefik.http.routers.*)
-  router_keys=$(echo "$labels_json" | jq -r 'keys[] | select(startswith("traefik.http.routers."))' 2>/dev/null || echo "")
+  # Extract router labels (traefik_http_routers_* - using underscore for GCP label compatibility)
+  router_keys=$(echo "$labels_json" | jq -r 'keys[] | select(startswith("traefik_http_routers_"))' 2>/dev/null || echo "")
 
   if [ -z "$router_keys" ]; then
     echo "    ⚠️  No router labels found" >&2
@@ -157,9 +157,12 @@ while IFS='|' read -r service_name project_id; do
   fi
 
   # Group routers by router name
+  # Format: traefik_http_routers_<router-name>_<property>
   declare -A routers
   while IFS= read -r key; do
-    if [[ "$key" =~ ^traefik\.http\.routers\.([^.]+)\.(.+)$ ]]; then
+    # Match pattern: traefik_http_routers_<router-name>_<property>
+    # Router name can contain dashes, property is the last segment after final underscore
+    if [[ "$key" =~ ^traefik_http_routers_(.+)_(.+)$ ]]; then
       router_name="${BASH_REMATCH[1]}"
       property="${BASH_REMATCH[2]}"
       value=$(echo "$labels_json" | jq -r ".[\"${key}\"]" 2>/dev/null || echo "")
@@ -212,7 +215,8 @@ ROUTER_EOF
   done
 
   # Generate service definition
-  service_port=$(echo "$labels_json" | jq -r '.["traefik.http.services.'"${service_name}"'.loadbalancer.server.port"] // "8080"' 2>/dev/null || echo "8080")
+  # Format: traefik_http_services_<service-name>_loadbalancer_server_port
+  service_port=$(echo "$labels_json" | jq -r '.["traefik_http_services_'${service_name}'_loadbalancer_server_port"] // "8080"' 2>/dev/null || echo "8080")
 
   # Check if service already defined
   if [ -z "${processed_services[$service_name_from_label]}" ]; then
