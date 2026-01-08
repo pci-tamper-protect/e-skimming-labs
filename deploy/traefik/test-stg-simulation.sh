@@ -38,55 +38,55 @@ SERVICES=$(docker ps --filter "label=traefik.enable=true" --format "{{.Names}}" 
 
 for service_name in $SERVICES; do
   echo "  📋 Processing: ${service_name}" >&2
-  
+
   # Get service IP (simulating Cloud Run URL)
   SERVICE_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$service_name" 2>/dev/null || echo "")
   if [ -z "$SERVICE_IP" ]; then
     echo "    ⚠️  Could not get IP for ${service_name}" >&2
     continue
   fi
-  
+
   # Get all Traefik labels
   LABELS=$(docker inspect -f '{{range $key, $value := .Config.Labels}}{{printf "%s=%s\n" $key $value}}{{end}}' "$service_name" 2>/dev/null || echo "")
-  
+
   if ! echo "$LABELS" | grep -q "traefik.enable=true"; then
     continue
   fi
-  
+
   # Extract router labels
   ROUTER_KEYS=$(echo "$LABELS" | grep "^traefik\.http\.routers\." || true)
-  
+
   if [ -z "$ROUTER_KEYS" ]; then
     continue
   fi
-  
+
   # Group by router name
   declare -A routers
   while IFS='=' read -r key value; do
     if [[ "$key" =~ ^traefik\.http\.routers\.([^.]+)\.(.+)$ ]]; then
       router_name="${BASH_REMATCH[1]}"
       property="${BASH_REMATCH[2]}"
-      
+
       if [ -z "${routers[$router_name]}" ]; then
         routers[$router_name]=""
       fi
       routers[$router_name]+="${property}=${value}"$'\n'
     fi
   done <<< "$ROUTER_KEYS"
-  
+
   # Generate router configs
   for router_name in "${!routers[@]}"; do
     config="${routers[$router_name]}"
-    
+
     rule=$(echo "$config" | grep "^rule=" | cut -d'=' -f2- || echo "")
     priority=$(echo "$config" | grep "^priority=" | cut -d'=' -f2 || echo "1")
     entrypoints=$(echo "$config" | grep "^entrypoints=" | cut -d'=' -f2 || echo "web")
     middlewares=$(echo "$config" | grep "^middlewares=" | cut -d'=' -f2 || echo "")
     service=$(echo "$config" | grep "^service=" | cut -d'=' -f2 || echo "$service_name")
-    
+
     # Get port from service label or default
     port=$(echo "$LABELS" | grep "^traefik\.http\.services\.${service}\.loadbalancer\.server\.port=" | cut -d'=' -f2 || echo "80")
-    
+
     cat >> "$OUTPUT_FILE" <<ROUTER_EOF
     ${router_name}:
       rule: ${rule}
@@ -95,7 +95,7 @@ for service_name in $SERVICES; do
       entryPoints:
         - ${entrypoints}
 ROUTER_EOF
-    
+
     if [ -n "$middlewares" ]; then
       echo "      middlewares:" >> "$OUTPUT_FILE"
       IFS=',' read -ra MW_ARRAY <<< "$middlewares"
@@ -104,7 +104,7 @@ ROUTER_EOF
         echo "        - ${mw_clean}" >> "$OUTPUT_FILE"
       done
     fi
-    
+
     # Add service definition
     cat >> "$OUTPUT_FILE" <<SERVICE_EOF
 
@@ -116,7 +116,7 @@ ROUTER_EOF
         passHostHeader: false
 SERVICE_EOF
   done
-  
+
   unset routers
   declare -A routers
 done
@@ -230,4 +230,3 @@ else
   echo "   - Check routes.yml: docker exec e-skimming-labs-traefik-stg-sim cat /etc/traefik/dynamic/routes.yml"
   exit 1
 fi
-

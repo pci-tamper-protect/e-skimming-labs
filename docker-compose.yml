@@ -1,5 +1,9 @@
 version: '3.8'
 
+# Docker Compose automatically loads .env file from project root
+# For Firebase auth, use: ./deploy/docker-compose-auth.sh up
+# Or set FIREBASE_* environment variables before running docker-compose
+
 services:
   # =============================================================================
   # TRAEFIK REVERSE PROXY - Single Entry Point
@@ -20,10 +24,8 @@ services:
       - labs-network
     labels:
       - "traefik.enable=true"
-      # Dashboard router
-      - "traefik.http.routers.dashboard.rule=PathPrefix(`/dashboard`) || PathPrefix(`/api`)"
-      - "traefik.http.routers.dashboard.service=api@internal"
-      - "traefik.http.routers.dashboard.entrypoints=traefik"
+      # Dashboard is accessible directly on port 8081 (mapped to Traefik's internal port 8080)
+      # No router needed - dashboard is served directly by Traefik API
     healthcheck:
       test: ['CMD', 'traefik', 'healthcheck', '--ping']
       interval: 10s
@@ -53,12 +55,15 @@ services:
       # - stg: labs.stg.pcioasis.com
       # - prd: labs.pcioasis.com
       - LABS_PROJECT_ID=labs-prd
-      # Auth configuration - set FIREBASE_API_KEY to enable auth
-      # Use docker-compose.auth.yml override for full auth setup
+      # Auth configuration - automatically loads from .env.stg if available
+      # Run: ./docker-compose.local.sh up (auto-decrypts .env.stg)
+      # Or: ./deploy/docker-compose-auth.sh up (manual)
+      # Or: export FIREBASE_* vars before running docker-compose
       - ENABLE_AUTH=${ENABLE_AUTH:-false}
       - REQUIRE_AUTH=${REQUIRE_AUTH:-false}
       - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-}
       - FIREBASE_API_KEY=${FIREBASE_API_KEY:-}
+      - FIREBASE_SERVICE_ACCOUNT_KEY=${FIREBASE_SERVICE_ACCOUNT_KEY:-}
     networks:
       - labs-network
     depends_on:
@@ -74,7 +79,7 @@ services:
       # Traefik configuration via labels (overrides dynamic config)
       - "traefik.enable=true"
       - "traefik.http.routers.home-index.rule=PathPrefix(`/`)"
-      - "traefik.http.routers.home-index.priority=1"
+      - "traefik.http.routers.home-index.priority=50"
       - "traefik.http.routers.home-index.entrypoints=web"
       - "traefik.http.services.home-index.loadbalancer.server.port=8080"
       # Sign-in route with COOP headers for Firebase popup
@@ -106,6 +111,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 10s
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.home-seo.rule=PathPrefix(`/api/seo`)"
@@ -125,6 +131,8 @@ services:
       - PROJECT_ID=labs-prd
       - ENVIRONMENT=local
       - FIRESTORE_DATABASE=(default)
+      # Firebase credentials for Firestore (auto-loaded from .env.stg if available)
+      - FIREBASE_SERVICE_ACCOUNT_KEY=${FIREBASE_SERVICE_ACCOUNT_KEY:-}
     networks:
       - labs-network
     depends_on:
@@ -134,6 +142,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 10s
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.labs-analytics.rule=PathPrefix(`/api/analytics`)"
@@ -334,6 +343,12 @@ services:
       - ./labs/01-basic-magecart/variants/event-listener-variant/vulnerable-site:/usr/share/nginx/html:ro
     depends_on:
       - traefik
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:80/']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     labels:
       - "lab=lab1-basic-magecart"
       - "variant=event-listener"
@@ -357,6 +372,12 @@ services:
       - ./labs/01-basic-magecart/variants/obfuscated-base64/vulnerable-site:/usr/share/nginx/html:ro
     depends_on:
       - traefik
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:80/']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     labels:
       - "lab=lab1-basic-magecart"
       - "variant=obfuscated-base64"
@@ -380,6 +401,12 @@ services:
       - ./labs/01-basic-magecart/variants/websocket-exfil/vulnerable-site:/usr/share/nginx/html:ro
     depends_on:
       - traefik
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:80/']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     labels:
       - "lab=lab1-basic-magecart"
       - "variant=websocket-exfil"

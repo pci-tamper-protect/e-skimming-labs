@@ -29,10 +29,12 @@ func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 				"/mitre-attack",
 				"/threat-model",
 				"/health",
-				"/sign-in",   // Sign-in page (public)
-				"/sign-up",   // Sign-up page (public)
-				"/api/auth",  // All auth API endpoints (sign-in, validate, etc.)
-				"/api/labs",  // Labs listing API (public)
+				"/status",     // Startup status page (public)
+				"/sign-in",    // Sign-in page (public)
+				"/sign-up",    // Sign-up page (public)
+				"/api/auth",   // All auth API endpoints (sign-in, validate, etc.)
+				"/api/labs",   // Labs listing API (public)
+				"/api/status", // Status API endpoint (public)
 			}
 
 			// Normalize path (remove trailing slashes except for root)
@@ -189,14 +191,18 @@ func respondAuthError(w http.ResponseWriter, r *http.Request, statusCode int, me
 			scheme = "https"
 		}
 		host := r.Header.Get("X-Forwarded-Host")
+		environment := os.Getenv("ENVIRONMENT")
 		if host == "" {
-			// In local environment, default to localhost:8080, never use r.Host (internal Docker hostname)
-			environment := os.Getenv("ENVIRONMENT")
+			// In local environment, always use localhost:8080, never use r.Host (internal Docker hostname)
 			if environment == "local" {
-				host = "localhost:8080"
+				host = "127.0.0.1:8080"
 			} else {
 				host = r.Host
 			}
+		} else if environment == "local" {
+			// Even if X-Forwarded-Host is set, in local environment ensure we use 127.0.0.1:8080
+			// X-Forwarded-Host might be set to internal hostname by Traefik
+			host = "127.0.0.1:8080"
 		}
 		redirectURL := fmt.Sprintf("%s://%s/sign-in?redirect=%s", scheme, host, r.URL.String())
 		http.Redirect(w, r, redirectURL, http.StatusFound)

@@ -33,11 +33,11 @@ providers:
 # API and Dashboard
 api:
   dashboard: true
-  insecure: false  # Dashboard requires authentication
+  insecure: true  # Dashboard accessible without auth (local development only)
 
 # Logging
 log:
-  level: INFO
+  level: DEBUG  # Enable DEBUG logging to see ForwardAuth middleware behavior
   format: json
 
 # Access logs
