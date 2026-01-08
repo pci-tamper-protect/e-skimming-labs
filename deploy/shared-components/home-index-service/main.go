@@ -415,7 +415,12 @@ func main() {
 		environment := os.Getenv("ENVIRONMENT")
 
 		// Check if we're behind Traefik (X-Forwarded-Host contains traefik)
-		isBehindTraefik := strings.Contains(strings.ToLower(forwardedHost), "traefik")
+		// Detect if we're behind Traefik by checking:
+		// 1. X-Forwarded-Host contains "traefik" (local development)
+		// 2. Host matches LABS_DOMAIN (staging/production via Traefik)
+		// 3. X-Forwarded-Host matches LABS_DOMAIN (staging/production via Traefik)
+		isBehindTraefik := strings.Contains(strings.ToLower(forwardedHost), "traefik") ||
+			(labsDomain != "" && (host == labsDomain || forwardedHost == labsDomain || strings.HasSuffix(host, labsDomain) || strings.HasSuffix(forwardedHost, labsDomain)))
 
 		// In staging or local, if we're behind Traefik, use relative URLs (Traefik uses path-based routing)
 		// In local environment with Traefik, always use relative paths (no host-based routing)
@@ -750,7 +755,12 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
 	// we can use relative URLs when behind Traefik in staging.
 
 	// Check if we're behind Traefik (X-Forwarded-Host contains traefik)
-	isBehindTraefik := strings.Contains(strings.ToLower(forwardedHost), "traefik")
+	// Detect if we're behind Traefik by checking:
+	// 1. X-Forwarded-Host contains "traefik" (local development)
+	// 2. Host matches LABS_DOMAIN (staging/production via Traefik)
+	// 3. X-Forwarded-Host matches LABS_DOMAIN (staging/production via Traefik)
+	isBehindTraefik := strings.Contains(strings.ToLower(forwardedHost), "traefik") ||
+		(labsDomain != "" && (host == labsDomain || forwardedHost == labsDomain || strings.HasSuffix(host, labsDomain) || strings.HasSuffix(forwardedHost, labsDomain)))
 
 	// In staging or local, if we're behind Traefik, use relative URLs (Traefik uses path-based routing)
 	// In production, always use absolute URLs for SEO
@@ -2046,9 +2056,17 @@ func serveAuthSignInURL(w http.ResponseWriter, r *http.Request, homeData HomePag
 	forwardedHost := r.Header.Get("X-Forwarded-Host")
 	forwardedFor := r.Header.Get("X-Forwarded-For")
 	environment := os.Getenv("ENVIRONMENT")
+	labsDomain := os.Getenv("LABS_DOMAIN")
+	if labsDomain == "" {
+		labsDomain = "labs.pcioasis.com"
+	}
 
-	// Check if we're behind Traefik
-	isBehindTraefik := strings.Contains(strings.ToLower(forwardedHost), "traefik")
+	// Detect if we're behind Traefik by checking:
+	// 1. X-Forwarded-Host contains "traefik" (local development)
+	// 2. Host matches LABS_DOMAIN (staging/production via Traefik)
+	// 3. X-Forwarded-Host matches LABS_DOMAIN (staging/production via Traefik)
+	isBehindTraefik := strings.Contains(strings.ToLower(forwardedHost), "traefik") ||
+		(labsDomain != "" && (host == labsDomain || forwardedHost == labsDomain || strings.HasSuffix(host, labsDomain) || strings.HasSuffix(forwardedHost, labsDomain)))
 
 	// Check for proxy access
 	isLocalProxy := strings.Contains(forwardedFor, "127.0.0.1") || strings.Contains(forwardedFor, "localhost")
