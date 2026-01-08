@@ -17,6 +17,7 @@ type TokenValidator struct {
 	authClient     *auth.Client
 	enabled        bool
 	requireAuth    bool
+	mainAppURL     string
 	cache          map[string]*TokenInfo
 	cacheExpiry    time.Duration
 	lastCacheClean time.Time
@@ -37,6 +38,7 @@ type Config struct {
 	RequireAuth     bool
 	ProjectID       string
 	CredentialsJSON string  // Service account JSON as string (from FIREBASE_API_KEY env var)
+	MainAppURL      string  // Main app URL for redirects (e.g., https://app.pcioasis.com)
 }
 
 // NewTokenValidator creates a new token validator instance
@@ -84,6 +86,7 @@ func NewTokenValidator(config Config) (*TokenValidator, error) {
 		authClient:     authClient,
 		enabled:        config.Enabled,
 		requireAuth:    config.RequireAuth,
+		mainAppURL:     config.MainAppURL,
 		cache:          make(map[string]*TokenInfo),
 		cacheExpiry:    5 * time.Minute, // Cache tokens for 5 minutes
 		lastCacheClean: time.Now(),
@@ -180,3 +183,7 @@ func (tv *TokenValidator) GetProjectID() string {
 	return tv.projectID
 }
 
+// GetMainAppURL returns the main app URL for redirects
+func (tv *TokenValidator) GetMainAppURL() string {
+	return tv.mainAppURL
+}

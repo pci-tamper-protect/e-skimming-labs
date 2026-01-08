@@ -7,36 +7,38 @@ set -e
 
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Get repo root (one level up from deploy/)
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Source environment configuration
+# Source environment configuration from repo root
 # Check for .env file first (whether it's a file or symlink)
-if [ -f "$SCRIPT_DIR/.env" ]; then
+if [ -f "$REPO_ROOT/.env" ]; then
     # Determine which file .env points to for informative message
-    if [ -L "$SCRIPT_DIR/.env" ]; then
-        TARGET=$(readlink "$SCRIPT_DIR/.env")
+    if [ -L "$REPO_ROOT/.env" ]; then
+        TARGET=$(readlink "$REPO_ROOT/.env")
         echo "📋 Using .env -> $TARGET"
     else
         echo "📋 Using .env"
     fi
-    source "$SCRIPT_DIR/.env"
+    source "$REPO_ROOT/.env"
 # Fallback to .env.prd or .env.stg if .env doesn't exist
-elif [ -f "$SCRIPT_DIR/.env.prd" ]; then
-    echo "📋 Using .env.prd (create symlink: ln -s .env.prd .env)"
-    source "$SCRIPT_DIR/.env.prd"
-elif [ -f "$SCRIPT_DIR/.env.stg" ]; then
-    echo "📋 Using .env.stg (create symlink: ln -s .env.stg .env)"
-    source "$SCRIPT_DIR/.env.stg"
+elif [ -f "$REPO_ROOT/.env.prd" ]; then
+    echo "📋 Using .env.prd from repo root (create symlink: ln -s .env.prd .env)"
+    source "$REPO_ROOT/.env.prd"
+elif [ -f "$REPO_ROOT/.env.stg" ]; then
+    echo "📋 Using .env.stg from repo root (create symlink: ln -s .env.stg .env)"
+    source "$REPO_ROOT/.env.stg"
 else
-    echo "❌ .env file not found in $SCRIPT_DIR"
+    echo "❌ .env file not found in repo root: $REPO_ROOT"
     echo ""
-    echo "Please create a .env file with the following variables:"
+    echo "Please create a .env file in the repo root with the following variables:"
     echo "  HOME_PROJECT_ID=labs-home-prd"
     echo "  HOME_REGION=us-central1"
     echo ""
     echo "You can either:"
-    echo "  1. Create .env.prd or .env.stg with your values"
-    echo "  2. Create a symlink: ln -s .env.prd .env (or ln -s .env.stg .env)"
-    echo "  3. Or create .env directly"
+    echo "  1. Create .env.prd or .env.stg in repo root with your values"
+    echo "  2. Create a symlink in repo root: ln -s .env.prd .env (or ln -s .env.stg .env)"
+    echo "  3. Or create .env directly in repo root"
     exit 1
 fi
 
@@ -107,7 +109,7 @@ if [ -z "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
         echo ""
         read -p "Press Enter after you've set up ADC, or Ctrl+C to cancel..."
         echo ""
-        
+
         # Verify ADC is now working
         if ! gcloud auth application-default print-access-token &>/dev/null; then
             echo "❌ Application Default Credentials still not configured."
@@ -201,12 +203,18 @@ echo ""
 echo "✅ Home page infrastructure deployed successfully!"
 echo ""
 echo "📋 Next steps:"
-echo "1. Get the service account key for GitHub Actions:"
-echo "   terraform output -raw home_deploy_key"
+echo "1. Create the service account key for GitHub Actions (NOT managed by Terraform):"
+echo "   gcloud iam service-accounts keys create /tmp/home-deploy-key.json \\"
+echo "     --iam-account=home-deploy-sa@${PROJECT_ID}.iam.gserviceaccount.com \\"
+echo "     --project=${PROJECT_ID}"
 echo ""
 echo "2. Add the following secrets to your GitHub repository:"
 echo "   - GCP_HOME_PROJECT_ID: $PROJECT_ID"
 echo "   - GCP_HOME_SA_KEY: [Use the service account key from step 1]"
+echo ""
+echo "   Then add to GitHub secrets:"
+echo "   gh secret set GCP_HOME_SA_KEY --body \"\$(cat /tmp/home-deploy-key.json | base64)\""
+echo "   rm /tmp/home-deploy-key.json"
 echo "   - GAR_HOME_LOCATION: $REGION"
 echo "   - REPOSITORY_HOME: e-skimming-labs-home"
 echo ""

@@ -3,8 +3,10 @@ package auth
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -20,11 +22,44 @@ const (
 func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Skip auth for health check and static assets
-			if r.URL.Path == "/health" || strings.HasPrefix(r.URL.Path, "/static/") {
+			// Skip auth for public pages: home, mitre-attack, threat-model
+			// Also skip health check, static assets, and auth API endpoints
+			publicPaths := []string{
+				"/",
+				"/mitre-attack",
+				"/threat-model",
+				"/health",
+				"/status",     // Startup status page (public)
+				"/sign-in",    // Sign-in page (public)
+				"/sign-up",    // Sign-up page (public)
+				"/api/auth",   // All auth API endpoints (sign-in, validate, etc.)
+				"/api/labs",   // Labs listing API (public)
+				"/api/status", // Status API endpoint (public)
+			}
+
+			// Normalize path (remove trailing slashes except for root)
+			normalizedPath := r.URL.Path
+			if normalizedPath != "/" && strings.HasSuffix(normalizedPath, "/") {
+				normalizedPath = strings.TrimSuffix(normalizedPath, "/")
+			}
+			// Handle double slashes
+			normalizedPath = strings.ReplaceAll(normalizedPath, "//", "/")
+
+			isPublicPath := false
+			for _, path := range publicPaths {
+				if normalizedPath == path || strings.HasPrefix(normalizedPath, path+"/") {
+					isPublicPath = true
+					break
+				}
+			}
+
+			if isPublicPath || strings.HasPrefix(r.URL.Path, "/static/") {
+				log.Printf("🔓 Skipping auth for public path: %s (normalized: %s)", r.URL.Path, normalizedPath)
 				next.ServeHTTP(w, r)
 				return
 			}
+
+			log.Printf("🔒 Auth middleware checking: %s (normalized: %s)", r.URL.Path, normalizedPath)
 
 			// If auth is disabled, proceed without validation
 			if !validator.IsEnabled() {
@@ -41,7 +76,7 @@ func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 				if validator.IsRequired() {
 					// Auth required but validation failed
 					log.Printf("❌ Authentication required but failed: %v", err)
-					respondAuthError(w, http.StatusUnauthorized, "Authentication required")
+					respondAuthError(w, r, http.StatusUnauthorized, "Authentication required", validator.GetMainAppURL())
 					return
 				}
 				// Auth optional, continue without user info
@@ -53,7 +88,40 @@ func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 			// If auth is required but no token provided
 			if validator.IsRequired() && token == "" {
 				log.Printf("❌ Authentication required but no token provided")
-				respondAuthError(w, http.StatusUnauthorized, "Authentication required")
+				respondAuthError(w, r, http.StatusUnauthorized, "Authentication required", validator.GetMainAppURL())
+				return
+			}
+
+			// Check email verification if user info is available
+			if userInfo != nil && validator.IsRequired() && !userInfo.EmailVerified {
+				log.Printf("❌ Email not verified for user: %s", userInfo.Email)
+				// For browser requests, redirect to sign-in with a message
+				acceptHeader := r.Header.Get("Accept")
+				isBrowserRequest := strings.Contains(acceptHeader, "text/html") ||
+					acceptHeader == "" ||
+					strings.Contains(acceptHeader, "*/*")
+				if isBrowserRequest {
+					// Use X-Forwarded-Host if available (when behind proxy like Traefik),
+					// otherwise use request's Host header to avoid container hostname issues
+					scheme := "http"
+					if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+						scheme = "https"
+					}
+					host := r.Header.Get("X-Forwarded-Host")
+					if host == "" {
+						host = r.Host
+					}
+					redirectURL := fmt.Sprintf("%s://%s/sign-in?error=email_not_verified&email=%s", scheme, host, userInfo.Email)
+					http.Redirect(w, r, redirectURL, http.StatusFound)
+					return
+				}
+				// For API requests, return 403
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusForbidden)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error":   "email_not_verified",
+					"message": "Email verification required",
+				})
 				return
 			}
 
@@ -61,7 +129,7 @@ func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 			if userInfo != nil {
 				ctx := context.WithValue(r.Context(), UserInfoKey, userInfo)
 				r = r.WithContext(ctx)
-				log.Printf("✅ Request authenticated (user: %s, email: %s)", userInfo.UserID, userInfo.Email)
+				log.Printf("✅ Request authenticated (user: %s, email: %s, verified: %v)", userInfo.UserID, userInfo.Email, userInfo.EmailVerified)
 			}
 
 			next.ServeHTTP(w, r)
@@ -105,7 +173,43 @@ func GetUserInfo(r *http.Request) *TokenInfo {
 }
 
 // respondAuthError sends an authentication error response
-func respondAuthError(w http.ResponseWriter, statusCode int, message string) {
+// For browser requests, redirects to sign-in page
+// For API requests, returns JSON error
+func respondAuthError(w http.ResponseWriter, r *http.Request, statusCode int, message string, mainAppURL string) {
+	// Check if this is a browser request (has Accept: text/html)
+	acceptHeader := r.Header.Get("Accept")
+	isBrowserRequest := strings.Contains(acceptHeader, "text/html") ||
+		acceptHeader == "" ||
+		strings.Contains(acceptHeader, "*/*")
+
+	if isBrowserRequest && mainAppURL != "" {
+		// Redirect browser requests to sign-in page
+		// Use X-Forwarded-Host if available (when behind proxy like Traefik),
+		// otherwise use request's Host header to avoid container hostname issues
+		scheme := "http"
+		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+			scheme = "https"
+		}
+		host := r.Header.Get("X-Forwarded-Host")
+		environment := os.Getenv("ENVIRONMENT")
+		if host == "" {
+			// In local environment, always use localhost:8080, never use r.Host (internal Docker hostname)
+			if environment == "local" {
+				host = "127.0.0.1:8080"
+			} else {
+				host = r.Host
+			}
+		} else if environment == "local" {
+			// Even if X-Forwarded-Host is set, in local environment ensure we use 127.0.0.1:8080
+			// X-Forwarded-Host might be set to internal hostname by Traefik
+			host = "127.0.0.1:8080"
+		}
+		redirectURL := fmt.Sprintf("%s://%s/sign-in?redirect=%s", scheme, host, r.URL.String())
+		http.Redirect(w, r, redirectURL, http.StatusFound)
+		return
+	}
+
+	// Return JSON for API requests
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	json.NewEncoder(w).Encode(map[string]interface{}{
@@ -114,4 +218,3 @@ func respondAuthError(w http.ResponseWriter, statusCode int, message string) {
 		"signInUrl": "/api/auth/sign-in-url",
 	})
 }
-

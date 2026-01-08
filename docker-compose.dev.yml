@@ -1,0 +1,58 @@
+# Development override for hot-reload
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+# Or: ./docker-compose.local.sh -f docker-compose.dev.yml up
+
+version: '3.8'
+
+services:
+  # =============================================================================
+  # HOME-INDEX SERVICE - Go with Air for hot-reload
+  # =============================================================================
+  home-index:
+    build:
+      context: .
+      dockerfile: deploy/shared-components/home-index-service/Dockerfile.dev
+    volumes:
+      # Mount source code for hot-reload (read-write for go.mod changes)
+      - ./deploy/shared-components/home-index-service:/app/src:rw
+      # Mount docs for writeup pages (templates read from here)
+      - ./docs:/app/docs:ro
+      # Mount labs for README files (templates read from here)
+      - ./labs:/app/labs:ro
+      # Mount catalog-info.yaml (used by service)
+      - ./catalog-info.yaml:/app/catalog-info.yaml:ro
+      # Mount .env.stg if it exists (for dotenvx)
+      - ./.env.stg:/app/.env.stg:ro
+      # Exclude build artifacts and cache from volume
+      - /app/src/tmp
+      - /app/src/vendor
+      - /app/tmp/go-cache
+      - /app/tmp/go-mod-cache
+    environment:
+      # Enable Air debug mode
+      - AIR_DEBUG=true
+      # Watch for changes
+      - AIR_WATCH=true
+      # Set Go cache directories to tmp (not in mounted volume)
+      - GOCACHE=/tmp/go-cache
+      - GOMODCACHE=/tmp/go-mod-cache
+    # Override command to use Air instead of direct binary
+    command: ["air", "-c", "/app/.air.toml"]
+
+  # =============================================================================
+  # LAB 1 C2 SERVER - Node.js with nodemon for hot-reload
+  # =============================================================================
+  lab1-c2-server:
+    build:
+      context: ./labs/01-basic-magecart/malicious-code/c2-server
+      dockerfile: Dockerfile.dev
+    volumes:
+      # Mount source code for hot-reload
+      - ./labs/01-basic-magecart/malicious-code/c2-server:/app:rw
+      # Exclude node_modules from volume (use container's installed version)
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+    # Override command to use nodemon instead of node
+    command: ["nodemon", "server.js"]

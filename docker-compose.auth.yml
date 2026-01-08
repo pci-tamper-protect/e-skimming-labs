@@ -1,7 +1,7 @@
 version: '3.8'
 
 # Override file for authenticated local development
-# Usage: 
+# Usage:
 #   Use the helper script: ./deploy/docker-compose-auth.sh up
 #   This script decrypts .env.stg (in project root) using dotenvx and sets FIREBASE_API_KEY
 #
@@ -17,14 +17,15 @@ services:
   home-index:
     environment:
       # Firebase authentication - REQUIRED for auth to work
-      # Set FIREBASE_API_KEY before running docker-compose, or uncomment and set below:
+      # FIREBASE_SERVICE_ACCOUNT_KEY: Service account JSON (server-side Admin SDK) - for token validation
+      # FIREBASE_API_KEY: Web API key (client-side Web SDK) - for sign-in page
+      - FIREBASE_SERVICE_ACCOUNT_KEY=${FIREBASE_SERVICE_ACCOUNT_KEY:-}
       - FIREBASE_API_KEY=${FIREBASE_API_KEY:-}
-      # Alternative: Uncomment and set directly (not recommended for production):
-      # - FIREBASE_API_KEY={"type":"service_account","project_id":"..."}
       - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-ui-firebase-pcioasis-stg}
       # Enable auth if FIREBASE_API_KEY is set (auto-detected by service)
       - ENABLE_AUTH=${ENABLE_AUTH:-true}
-      - REQUIRE_AUTH=${REQUIRE_AUTH:-false}
+      # Require auth for lab writeups (home, mitre-attack, threat-model remain public)
+      - REQUIRE_AUTH=${REQUIRE_AUTH:-true}
     volumes:
       # Mount dotenvx key for local development (matches Cloud Run mount path)
       # Note: Currently not used for local dev, but kept for consistency
@@ -36,9 +37,11 @@ services:
       # Mount dotenvx key for local development (matches Cloud Run mount path)
       - ./.env.keys.stg:/etc/secrets/dotenvx-key:ro
 
-  # Analytics Service - Add dotenvx key mount (if needed for future auth)
+  # Analytics Service - Add Firebase credentials for Firestore
   labs-analytics:
+    environment:
+      # Firebase service account JSON (for Firestore access)
+      - FIREBASE_SERVICE_ACCOUNT_KEY=${FIREBASE_SERVICE_ACCOUNT_KEY:-}
     volumes:
       # Mount dotenvx key for local development (matches Cloud Run mount path)
       - ./.env.keys.stg:/etc/secrets/dotenvx-key:ro
-

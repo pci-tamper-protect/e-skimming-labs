@@ -1,0 +1,186 @@
+version: '3.8'
+
+# Staging Simulation - Tests Traefik route generation without Cloud Run
+# This simulates the staging environment to test:
+# 1. Label-based route generation
+# 2. File provider configuration (like Cloud Run)
+# 3. Route discovery and middleware application
+#
+# Usage:
+#   docker-compose -f docker-compose.stg-simulation.yml up -d
+#   ./deploy/traefik/test-stg-simulation.sh
+
+services:
+  # Traefik - Configured like Cloud Run (file provider only, no Docker socket)
+  traefik-stg-sim:
+    image: traefik:v3.0
+    container_name: e-skimming-labs-traefik-stg-sim
+    restart: unless-stopped
+    ports:
+      - '8080:8080'      # Main HTTP entry point
+      - '8081:8081'      # Traefik dashboard
+    volumes:
+      # Use Cloud Run config (file provider only)
+      - ./deploy/traefik/traefik.cloudrun.yml:/etc/traefik/traefik.yml:ro
+      - ./deploy/traefik/dynamic:/etc/traefik/dynamic:ro
+      # Mount scripts for testing
+      - ./deploy/traefik/generate-routes-from-labels.sh:/app/generate-routes-from-labels.sh:ro
+      - ./deploy/traefik/entrypoint.sh:/entrypoint.sh:ro
+      - ./deploy/traefik/test-stg-simulation.sh:/app/test-stg-simulation.sh:ro
+      # Mount Docker socket for querying services (testing only)
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - ENVIRONMENT=stg-simulation
+      - DOMAIN=localhost:8080
+      - LABS_PROJECT_ID=labs-stg
+      - HOME_PROJECT_ID=labs-home-stg
+      - REGION=us-central1
+    networks:
+      - labs-network
+    command: ["/entrypoint.sh", "traefik"]
+    healthcheck:
+      test: ['CMD', 'traefik', 'healthcheck', '--ping']
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # Mock Home Index Service - Simulates home-index-stg
+  mock-home-index:
+    image: nginx:alpine
+    container_name: mock-home-index
+    networks:
+      - labs-network
+    volumes:
+      - ./deploy/traefik/test-fixtures/mock-home-index.html:/usr/share/nginx/html/index.html:ro
+    environment:
+      - NGINX_HOST=localhost
+    labels:
+      - "environment=stg"
+      - "component=index"
+      - "project=e-skimming-labs-home"
+      - "traefik.enable=true"
+      - "traefik.http.routers.home-index.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.home-index.priority=1"
+      - "traefik.http.routers.home-index.entrypoints=web"
+      - "traefik.http.routers.home-index.middlewares=forwarded-headers@file,retry-cold-start@file"
+      - "traefik.http.services.home-index.loadbalancer.server.port=80"
+      - "traefik.http.routers.home-index-signin.rule=Path(`/sign-in`) || Path(`/sign-up`)"
+      - "traefik.http.routers.home-index-signin.priority=100"
+      - "traefik.http.routers.home-index-signin.entrypoints=web"
+      - "traefik.http.routers.home-index-signin.middlewares=signin-headers@file,retry-cold-start@file"
+      - "traefik.http.routers.home-index-signin.service=home-index"
+
+  # Mock SEO Service - Simulates home-seo-stg
+  mock-home-seo:
+    image: nginx:alpine
+    container_name: mock-home-seo
+    networks:
+      - labs-network
+    volumes:
+      - ./deploy/traefik/test-fixtures/mock-seo.json:/usr/share/nginx/html/api/seo:ro
+    labels:
+      - "environment=stg"
+      - "component=seo"
+      - "project=e-skimming-labs-home"
+      - "traefik.enable=true"
+      - "traefik.http.routers.home-seo.rule=PathPrefix(`/api/seo`)"
+      - "traefik.http.routers.home-seo.priority=500"
+      - "traefik.http.routers.home-seo.entrypoints=web"
+      - "traefik.http.routers.home-seo.middlewares=strip-seo-prefix@file,retry-cold-start@file"
+      - "traefik.http.services.home-seo.loadbalancer.server.port=80"
+
+  # Mock Analytics Service - Simulates labs-analytics-stg
+  mock-labs-analytics:
+    image: nginx:alpine
+    container_name: mock-labs-analytics
+    networks:
+      - labs-network
+    volumes:
+      - ./deploy/traefik/test-fixtures/mock-analytics.json:/usr/share/nginx/html/api/analytics:ro
+    labels:
+      - "environment=stg"
+      - "component=analytics"
+      - "project=e-skimming-labs"
+      - "traefik.enable=true"
+      - "traefik.http.routers.labs-analytics.rule=PathPrefix(`/api/analytics`)"
+      - "traefik.http.routers.labs-analytics.priority=500"
+      - "traefik.http.routers.labs-analytics.entrypoints=web"
+      - "traefik.http.routers.labs-analytics.middlewares=strip-analytics-prefix@file,retry-cold-start@file"
+      - "traefik.http.services.labs-analytics.loadbalancer.server.port=80"
+
+  # Mock Lab 1 - Simulates lab-01-basic-magecart-stg
+  mock-lab1:
+    image: nginx:alpine
+    container_name: mock-lab1
+    networks:
+      - labs-network
+    volumes:
+      - ./deploy/traefik/test-fixtures/mock-lab1.html:/usr/share/nginx/html/index.html:ro
+    labels:
+      - "environment=stg"
+      - "lab=01-basic-magecart"
+      - "project=e-skimming-labs"
+      - "traefik.enable=true"
+      - "traefik.http.routers.lab1-static.rule=PathPrefix(`/lab1/css/`) || PathPrefix(`/lab1/js/`) || PathPrefix(`/lab1/images/`) || PathPrefix(`/lab1/img/`) || PathPrefix(`/lab1/static/`) || PathPrefix(`/lab1/assets/`)"
+      - "traefik.http.routers.lab1-static.priority=250"
+      - "traefik.http.routers.lab1-static.entrypoints=web"
+      - "traefik.http.routers.lab1-static.middlewares=strip-lab1-prefix@file,retry-cold-start@file"
+      - "traefik.http.routers.lab1-static.service=lab1"
+      - "traefik.http.routers.lab1.rule=PathPrefix(`/lab1`)"
+      - "traefik.http.routers.lab1.priority=200"
+      - "traefik.http.routers.lab1.entrypoints=web"
+      - "traefik.http.routers.lab1.middlewares=lab1-auth-check@file,strip-lab1-prefix@file,retry-cold-start@file"
+      - "traefik.http.services.lab1.loadbalancer.server.port=80"
+
+  # Mock Lab 2 - Simulates lab-02-dom-skimming-stg
+  mock-lab2:
+    image: nginx:alpine
+    container_name: mock-lab2
+    networks:
+      - labs-network
+    volumes:
+      - ./deploy/traefik/test-fixtures/mock-lab2.html:/usr/share/nginx/html/banking.html:ro
+    labels:
+      - "environment=stg"
+      - "lab=02-dom-skimming"
+      - "project=e-skimming-labs"
+      - "traefik.enable=true"
+      - "traefik.http.routers.lab2-static.rule=PathPrefix(`/lab2/css/`) || PathPrefix(`/lab2/js/`) || PathPrefix(`/lab2/images/`) || PathPrefix(`/lab2/img/`) || PathPrefix(`/lab2/static/`) || PathPrefix(`/lab2/assets/`)"
+      - "traefik.http.routers.lab2-static.priority=250"
+      - "traefik.http.routers.lab2-static.entrypoints=web"
+      - "traefik.http.routers.lab2-static.middlewares=strip-lab2-prefix@file,retry-cold-start@file"
+      - "traefik.http.routers.lab2-static.service=lab2-vulnerable-site"
+      - "traefik.http.routers.lab2-main.rule=PathPrefix(`/lab2`)"
+      - "traefik.http.routers.lab2-main.priority=200"
+      - "traefik.http.routers.lab2-main.entrypoints=web"
+      - "traefik.http.routers.lab2-main.middlewares=lab2-auth-check@file,strip-lab2-prefix@file,retry-cold-start@file"
+      - "traefik.http.services.lab2-vulnerable-site.loadbalancer.server.port=80"
+
+  # Mock Lab 3 - Simulates lab-03-extension-hijacking-stg
+  mock-lab3:
+    image: nginx:alpine
+    container_name: mock-lab3
+    networks:
+      - labs-network
+    volumes:
+      - ./deploy/traefik/test-fixtures/mock-lab3.html:/usr/share/nginx/html/index.html:ro
+    labels:
+      - "environment=stg"
+      - "lab=03-extension-hijacking"
+      - "project=e-skimming-labs"
+      - "traefik.enable=true"
+      - "traefik.http.routers.lab3-static.rule=PathPrefix(`/lab3/css/`) || PathPrefix(`/lab3/js/`) || PathPrefix(`/lab3/images/`) || PathPrefix(`/lab3/img/`) || PathPrefix(`/lab3/static/`) || PathPrefix(`/lab3/assets/`)"
+      - "traefik.http.routers.lab3-static.priority=250"
+      - "traefik.http.routers.lab3-static.entrypoints=web"
+      - "traefik.http.routers.lab3-static.middlewares=strip-lab3-prefix@file,retry-cold-start@file"
+      - "traefik.http.routers.lab3-static.service=lab3-vulnerable-site"
+      - "traefik.http.routers.lab3-main.rule=PathPrefix(`/lab3`)"
+      - "traefik.http.routers.lab3-main.priority=200"
+      - "traefik.http.routers.lab3-main.entrypoints=web"
+      - "traefik.http.routers.lab3-main.middlewares=lab3-auth-check@file,strip-lab3-prefix@file,retry-cold-start@file"
+      - "traefik.http.services.lab3-vulnerable-site.loadbalancer.server.port=80"
+
+networks:
+  labs-network:
+    driver: bridge
+

@@ -7,26 +7,28 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Get repo root (one level up from deploy/)
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Source environment configuration
-if [ -f "$SCRIPT_DIR/.env" ]; then
-    if [ -L "$SCRIPT_DIR/.env" ]; then
-        TARGET=$(readlink "$SCRIPT_DIR/.env")
+# Source environment configuration from repo root
+if [ -f "$REPO_ROOT/.env" ]; then
+    if [ -L "$REPO_ROOT/.env" ]; then
+        TARGET=$(readlink "$REPO_ROOT/.env")
         echo "📋 Using .env -> $TARGET"
     else
         echo "📋 Using .env"
     fi
-    source "$SCRIPT_DIR/.env"
-elif [ -f "$SCRIPT_DIR/.env.prd" ]; then
-    echo "📋 Using .env.prd (create symlink: ln -s .env.prd .env)"
-    source "$SCRIPT_DIR/.env.prd"
-elif [ -f "$SCRIPT_DIR/.env.stg" ]; then
-    echo "📋 Using .env.stg (create symlink: ln -s .env.stg .env)"
-    source "$SCRIPT_DIR/.env.stg"
+    source "$REPO_ROOT/.env"
+elif [ -f "$REPO_ROOT/.env.prd" ]; then
+    echo "📋 Using .env.prd from repo root (create symlink: ln -s .env.prd .env)"
+    source "$REPO_ROOT/.env.prd"
+elif [ -f "$REPO_ROOT/.env.stg" ]; then
+    echo "📋 Using .env.stg from repo root (create symlink: ln -s .env.stg .env)"
+    source "$REPO_ROOT/.env.stg"
 else
-    echo "❌ .env file not found in $SCRIPT_DIR"
+    echo "❌ .env file not found in repo root: $REPO_ROOT"
     echo ""
-    echo "Please create a .env file:"
+    echo "Please create a .env file in repo root:"
     echo "  ln -s .env.stg .env  # for staging"
     echo "  ln -s .env.prd .env  # for production"
     exit 1
@@ -114,22 +116,21 @@ elif [ "$TERRAFORM_CMD" = "plan" ] || [ "$TERRAFORM_CMD" = "apply" ]; then
         BACKEND_CONFIG="backend-${ENVIRONMENT}.conf"
         terraform init -backend-config="$BACKEND_CONFIG"
     fi
-    
+
     # Add common variables if not already provided
     # Note: project_id and labs_project_id are calculated from environment in all terraform configs
     # Note: region defaults to us-central1, so we don't need to pass it
     VAR_ARGS=(
         "-var=environment=$ENVIRONMENT"
     )
-    
+
     # Add deploy_services for terraform-labs and terraform-home
     if [ "$TERRAFORM_DIR" = "terraform-labs" ] || [ "$TERRAFORM_DIR" = "terraform-home" ]; then
         VAR_ARGS+=("-var=deploy_services=true")
     fi
-    
+
     terraform "$TERRAFORM_CMD" "${VAR_ARGS[@]}" "$@"
 else
     # For other commands, just pass through
     terraform "$TERRAFORM_CMD" "$@"
 fi
-

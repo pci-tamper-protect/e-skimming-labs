@@ -1,0 +1,42 @@
+# Traefik Dockerfile for Google Cloud Run
+# This Dockerfile creates a Traefik image that routes to Cloud Run backend services
+
+FROM traefik:v3.0
+
+# Install curl, bash, and jq for health checks, entrypoint, and label parsing
+USER root
+RUN apk add --no-cache curl ca-certificates bash jq
+
+# Copy Traefik configuration
+COPY traefik.cloudrun.yml /etc/traefik/traefik.yml
+COPY dynamic/ /etc/traefik/dynamic/
+
+# Copy entrypoint script that generates dynamic config from env vars
+COPY entrypoint.sh /entrypoint.sh
+# Copy script to generate routes from Cloud Run service labels
+COPY generate-routes-from-labels.sh /app/generate-routes-from-labels.sh
+# Copy script to refresh routes periodically
+COPY refresh-routes.sh /app/refresh-routes.sh
+RUN chmod +x /entrypoint.sh /app/generate-routes-from-labels.sh /app/refresh-routes.sh && \
+    ls -la /entrypoint.sh /app/generate-routes-from-labels.sh /app/refresh-routes.sh && \
+    test -f /entrypoint.sh && \
+    test -x /entrypoint.sh && \
+    test -f /app/generate-routes-from-labels.sh && \
+    test -x /app/generate-routes-from-labels.sh && \
+    test -f /app/refresh-routes.sh && \
+    test -x /app/refresh-routes.sh && \
+    echo "✅ entrypoint.sh, generate-routes-from-labels.sh, and refresh-routes.sh copied and made executable"
+
+# Switch back to traefik user
+USER traefik
+
+# Expose ports
+EXPOSE 80 443 8080
+
+# Health check
+HEALTHCHECK --interval=10s --timeout=3s --retries=3 \
+    CMD traefik healthcheck --ping || exit 1
+
+# Use custom entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["traefik"]

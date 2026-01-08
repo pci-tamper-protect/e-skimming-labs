@@ -343,34 +343,30 @@
       // Auto-refresh every 5 seconds
       setInterval(loadData, 5000)
 
-      // Environment-aware URL configuration
+      // Environment-aware URL configuration with uniform path-based routing
       ;(function () {
         const hostname = window.location.hostname
-        let labUrl = 'http://localhost:9001'
-        let homeUrl = 'http://localhost:3000'
 
-        // Check if we're in staging
-        if (hostname.includes('stg.pcioasis.com') || hostname.includes('staging')) {
-          labUrl = 'https://labs.stg.pcioasis.com/01-basic-magecart'
-          homeUrl = 'https://labs.stg.pcioasis.com'
+        // Determine base URL based on environment
+        let baseUrl
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+          // Local development - use port 8080 (Traefik)
+          baseUrl = 'http://localhost:8080'
+        } else if (hostname.includes('stg.pcioasis.com') || hostname.includes('staging')) {
+          // Staging environment
+          baseUrl = 'https://labs.stg.pcioasis.com'
+        } else if (hostname.includes('pcioasis.com') && !hostname.includes('stg')) {
+          // Production environment
+          baseUrl = 'https://labs.pcioasis.com'
+        } else {
+          // Fallback: use current origin
+          baseUrl = window.location.origin
         }
-        // Check if we're in production
-        else if (hostname.includes('pcioasis.com') && !hostname.includes('stg')) {
-          labUrl = 'https://labs.pcioasis.com/01-basic-magecart'
-          homeUrl = 'https://labs.pcioasis.com'
-        }
-        // Check if we're in Cloud Run
-        else if (hostname.includes('run.app')) {
-          const baseUrl = window.location.origin
-          // Lab 1 has both vulnerable site and C2 in same container
-          // C2 is accessible at /stolen, lab is at root
-          labUrl = baseUrl.replace('/stolen', '').replace('/api/stolen', '')
-          homeUrl = baseUrl.replace('/01-basic-magecart-c2', '').replace('/stolen', '').replace('/api/stolen', '')
-          // Try to extract home URL from hostname
-          if (hostname.includes('lab-01-basic-magecart')) {
-            homeUrl = 'https://labs.pcioasis.com'
-          }
-        }
+
+        // Uniform path-based routing (works across all environments)
+        // Use /lab1/index.html to ensure CSS and other assets load correctly
+        const labUrl = baseUrl + '/lab1/index.html'
+        const homeUrl = baseUrl + '/'
 
         const backButton = document.getElementById('back-button')
         const homeButton = document.getElementById('home-button')

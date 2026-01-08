@@ -484,14 +484,15 @@ cat .env.stg | grep GITHUB_TOKEN
    ./dotenvx-converter.py .env.stg --env stg --secret-patterns "TOKEN,PRIVATE,SENSITIVE"
    ```
 
-## Integration with Existing Secrets Management
+## Secrets Management
 
-This tool complements the existing YAML-based secrets management in this repository:
+This repository uses **dotenvx** for all secrets management:
 
-- **YAML secrets** (`secrets.prd.yml`, `secrets.stg.yml`): For GCP Secret Manager and GitHub Secrets
-- **dotenvx converter**: For local `.env` files and dotenvx-based deployments
+- **`.env.stg`** and **`.env.prd`**: Encrypted environment files for staging and production
+- **`.env.hashes.stg`** and **`.env.hashes.prd`**: SHA256 hashes for secret verification and audit trails
+- **`.env.keys.stg`** and **`.env.keys.prd`**: Encryption keys (committed to git for team access)
 
-Both use SHA256 hashing for secret verification and audit trails.
+All secrets are managed through `.env` files using dotenvx encryption.
 
 ## Troubleshooting
 
@@ -517,9 +518,8 @@ Ensure your `.env` file follows the standard format:
 
 ## Related Tools
 
-- `update-secret-hashes.py` - Updates hashes for YAML-based secrets
-- `setup-secrets.sh` - Initial secrets setup
-- `github/add-client-github-secrets.sh` - GitHub secrets management
+- `copy-service-account-to-env.py` - Helper for adding service account keys to `.env` files
+- `create-or-rotate-service-account-key.sh` - Complete workflow for service account key setup and rotation
 
 ## References
 

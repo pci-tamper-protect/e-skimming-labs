@@ -19,8 +19,9 @@ terraform {
 
 # Calculate project IDs from environment
 locals {
-  home_project_id = "labs-home-${var.environment}"
-  labs_project_id = "labs-${var.environment}"
+  home_project_id    = "labs-home-${var.environment}"
+  labs_project_id    = "labs-${var.environment}"
+  firebase_project_id = "ui-firebase-pcioasis-${var.environment}"
 }
 
 provider "google" {
