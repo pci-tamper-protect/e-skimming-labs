@@ -4,7 +4,25 @@
 set -euo pipefail
 
 ENVIRONMENT="${1:-stg}"
-PROXY_PORT="${2:-8080}"
+
+# Load STG_PROXY_PORT from .env.stg for staging, otherwise use provided port or default
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+if [ "$ENVIRONMENT" = "stg" ] && [ -f "$PROJECT_ROOT/.env.stg" ]; then
+  # Source .env.stg and extract STG_PROXY_PORT
+  if command -v dotenvx &> /dev/null && [ -f "$PROJECT_ROOT/.env.keys.stg" ]; then
+    STG_PROXY_PORT=$(cd "$PROJECT_ROOT" && dotenvx run -f .env.stg -fk .env.keys.stg -- sh -c 'echo "$STG_PROXY_PORT"' 2>/dev/null | tail -n 1 | tr -d '\n\r' | xargs || echo "")
+  else
+    # Fallback: try to extract without dotenvx (may fail if encrypted)
+    STG_PROXY_PORT=$(grep "^STG_PROXY_PORT=" "$PROJECT_ROOT/.env.stg" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | xargs || echo "")
+  fi
+  # Use command line argument, then STG_PROXY_PORT from .env.stg, then default to 8082
+  PROXY_PORT="${2:-${STG_PROXY_PORT:-8082}}"
+else
+  # For non-staging environments, use provided port or default to 8080
+  PROXY_PORT="${2:-8080}"
+fi
 
 echo "🔄 Restarting proxy for $ENVIRONMENT environment"
 echo ""

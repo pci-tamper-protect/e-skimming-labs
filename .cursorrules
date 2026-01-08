@@ -1,5 +1,62 @@
 # Cursor Rules for e-skimming-labs
 
+## Traefik Design Principles **IMPORTANT, CRITICAL**
+
+When working with Traefik or planning features related to routing, service discovery, or reverse proxy functionality, follow these core principles:
+
+### 1. Routing/Environment Logic by Traefik, Not by Services
+- **Services should NEVER detect environments or construct URLs based on hostname**
+- **Services should use relative paths only** - Traefik handles all routing
+- **No environment detection in containers** - no `window.location.hostname` checks, no conditional URL construction
+- **Use `<base href>` tags** for path resolution in HTML
+- **Let Traefik strip prefixes** - services receive clean paths
+
+### 2. Automatic Service Discovery
+- Traefik should discover services automatically via labels or file-based configuration
+- Prefer dynamic configuration over static configuration
+- Use Traefik's service discovery mechanisms (Docker, Kubernetes, file provider, etc.)
+
+### 3. Hot Reloading
+- Traefik configuration should support hot reloading without service restarts
+- Use file-based dynamic configuration for routes, middlewares, and services
+- Changes to routing should take effect immediately without downtime
+
+### 4. Modularity & Extensibility
+- Use Traefik middlewares for cross-cutting concerns (auth, headers, rate limiting, etc.)
+- Keep routing logic in Traefik configuration, not in application code
+- Services should be simple and focused on business logic
+
+### 5. High Availability & Failover
+- Configure health checks for all services
+- Use Traefik's load balancing and failover capabilities
+- Ensure services can be restarted without affecting routing
+
+## Plugin & Tool Selection
+
+**Before building new Traefik-related features or tools:**
+
+1. **Check Traefik Labs Organization First**
+   - Search: https://github.com/orgs/traefik/repositories?type=all
+   - Look for official or community-maintained solutions
+
+2. **Check Plugin Catalog**
+   - Browse: https://plugins.traefik.io/plugins
+   - Search for existing plugins that solve the problem
+
+3. **Evaluation Criteria**
+   - If there's at least one well-maintained and highly-rated option, prefer using it
+   - If multiple options exist, analyze:
+     - Maintenance status (recent commits, active maintainers)
+     - Community adoption (stars, forks, issues)
+     - Documentation quality
+     - Compatibility with current Traefik version
+     - Fit for current project needs
+
+4. **Contribution Over Building New**
+   - If a plugin exists but needs improvements, contribute to it rather than building new
+   - Submit PRs, report issues, improve documentation
+   - Only build new if no suitable option exists
+
 ## Data Structure Changes
 - **ALWAYS ASK** before changing key names in YAML or JSON files
 - Key names may have dependencies across multiple repositories

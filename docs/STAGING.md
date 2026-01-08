@@ -24,14 +24,18 @@ The staging environment is a pre-production deployment used for:
 
 1. **Start the proxy:**
    ```bash
+   # Using the helper script (recommended - reads STG_PROXY_PORT from .env.stg)
+   ./deploy/traefik/proxy-traefik-stg.sh
+   
+   # Or manually (default port is 8082 to avoid conflicts with local dev)
    gcloud run services proxy traefik-stg \
      --region=us-central1 \
      --project=labs-stg \
-     --port=8081
+     --port=8082
    ```
 
 2. **Access via proxy in your browser:**
-   - Navigate to: `http://127.0.0.1:8081`
+   - Navigate to: `http://127.0.0.1:8082` (or the port specified in `STG_PROXY_PORT` in `.env.stg`)
    - The proxy handles authentication automatically
    - No Google sign-in required
 
@@ -46,11 +50,14 @@ The staging environment is a pre-production deployment used for:
 # Stop the proxy (Ctrl+C or kill the process)
 pkill -f "gcloud run services proxy"
 
-# Restart it
+# Restart it (using helper script or manually)
+./deploy/traefik/proxy-traefik-stg.sh
+
+# Or manually:
 gcloud run services proxy traefik-stg \
   --region=us-central1 \
   --project=labs-stg \
-  --port=8081
+  --port=8082
 ```
 
 ### Direct Browser Access (Not Recommended - Requires IAM)
@@ -84,16 +91,21 @@ If you need to access staging directly (not recommended):
 
 1. **Start the proxy:**
    ```bash
+   # Using the helper script (recommended)
+   ./deploy/traefik/proxy-traefik-stg.sh
+   
+   # Or manually:
    gcloud run services proxy traefik-stg \
      --region=us-central1 \
      --project=labs-stg \
-     --port=8081
+     --port=8082
    ```
 
 2. **Open your browser and navigate to:**
    ```
-   http://127.0.0.1:8081
+   http://127.0.0.1:8082
    ```
+   (Or the port specified in `STG_PROXY_PORT` in `.env.stg`)
 
 3. **Test navigation:**
    - Home page loads correctly
@@ -269,12 +281,16 @@ The `gcloud run services proxy` command creates a local proxy connection to the 
 ### How to Restart
 
 ```bash
-# Method 1: Stop and restart
+# Method 1: Stop and restart (using helper script)
+pkill -f "gcloud run services proxy"
+./deploy/traefik/proxy-traefik-stg.sh
+
+# Or manually:
 pkill -f "gcloud run services proxy"
 gcloud run services proxy traefik-stg \
   --region=us-central1 \
   --project=labs-stg \
-  --port=8081
+  --port=8082
 
 # Method 2: Use Ctrl+C if running in foreground
 # Then restart with the same command
@@ -317,17 +333,19 @@ After restarting:
 
 ### Proxy URLs (when proxy is running)
 
+**Note:** The default proxy port is **8082** (configurable via `STG_PROXY_PORT` in `.env.stg`) to avoid conflicts with local development (8080) and Traefik dashboard (8081).
+
 | Service | Proxy URL | Description |
 |---------|-----------|-------------|
-| **Home Index** | `http://127.0.0.1:8081/` | Main landing page |
-| **MITRE ATT&CK** | `http://127.0.0.1:8081/mitre-attack` | MITRE matrix |
-| **Threat Model** | `http://127.0.0.1:8081/threat-model` | Threat model visualization |
-| **Lab 1** | `http://127.0.0.1:8081/lab1` | Basic Magecart Attack |
-| **Lab 1 C2** | `http://127.0.0.1:8081/lab1/c2` | Lab 1 C2 dashboard |
-| **Lab 2** | `http://127.0.0.1:8081/lab2` | DOM-Based Skimming |
-| **Lab 2 C2** | `http://127.0.0.1:8081/lab2/c2` | Lab 2 C2 dashboard |
-| **Lab 3** | `http://127.0.0.1:8081/lab3` | Extension Hijacking |
-| **Lab 3 C2** | `http://127.0.0.1:8081/lab3/extension` | Lab 3 C2 dashboard |
+| **Home Index** | `http://127.0.0.1:8082/` | Main landing page |
+| **MITRE ATT&CK** | `http://127.0.0.1:8082/mitre-attack` | MITRE matrix |
+| **Threat Model** | `http://127.0.0.1:8082/threat-model` | Threat model visualization |
+| **Lab 1** | `http://127.0.0.1:8082/lab1` | Basic Magecart Attack |
+| **Lab 1 C2** | `http://127.0.0.1:8082/lab1/c2` | Lab 1 C2 dashboard |
+| **Lab 2** | `http://127.0.0.1:8082/lab2` | DOM-Based Skimming |
+| **Lab 2 C2** | `http://127.0.0.1:8082/lab2/c2` | Lab 2 C2 dashboard |
+| **Lab 3** | `http://127.0.0.1:8082/lab3` | Extension Hijacking |
+| **Lab 3 C2** | `http://127.0.0.1:8082/lab3/extension` | Lab 3 C2 dashboard |
 
 ---
 
@@ -335,7 +353,7 @@ After restarting:
 
 ### Proxy Issues
 
-**`localhost:8081` gives 404 but `127.0.0.1:8081` works:**
+**`localhost:8082` gives 404 but `127.0.0.1:8082` works:**
 - This is an IPv6/IPv4 mismatch issue
 - Use `127.0.0.1:8081` instead
 - Or install `socat` and use the enhanced proxy script:

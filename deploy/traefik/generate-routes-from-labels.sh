@@ -162,6 +162,18 @@ while IFS='|' read -r service_name project_id; do
 
   echo "    ✅ Found Traefik-enabled service: ${service_url}" >&2
 
+  # Get identity token for auth BEFORE processing routers (so we can add auth middleware to routers)
+  # Format: traefik_http_services_<service-name>_loadbalancer_server_port
+  # We need to determine the service name from labels first, but for now try to get token for the service URL
+  # The token will be used when we create the service definition and can be added to routers
+  service_token=$(get_identity_token "$service_url")
+  if [ -n "$service_token" ] && [[ "$service_token" =~ ^eyJ ]]; then
+    echo "    🔑 Identity token fetched for service (${#service_token} chars)" >&2
+  else
+    echo "    ⚠️  No identity token available (service may be public or token fetch failed)" >&2
+    service_token=""
+  fi
+
   # Extract all labels
   labels_json=$(echo "$service_json" | jq -r '.spec.template.metadata.labels // {}' 2>/dev/null || echo "{}")
 
@@ -212,6 +224,22 @@ while IFS='|' read -r service_name project_id; do
     middlewares=$(echo "$config" | grep "^middlewares=" | cut -d'=' -f2 || echo "")
     service_name_from_label=$(echo "$config" | grep "^service=" | cut -d'=' -f2 || echo "${service_name}")
 
+    # If we have a token for this service, add the auth middleware to routers that use this service
+    # The auth middleware name is <service-name>-auth
+    if [ -n "$service_token" ] && [ -n "$service_name_from_label" ]; then
+      auth_middleware_name="${service_name_from_label}-auth"
+      # Add auth middleware if not already in the list
+      if [ -n "$middlewares" ]; then
+        # Check if auth middleware is already in the list
+        if [[ ! "$middlewares" =~ ${auth_middleware_name} ]]; then
+          middlewares="${middlewares},${auth_middleware_name}"
+        fi
+      else
+        # No middlewares yet, add auth middleware
+        middlewares="${auth_middleware_name}"
+      fi
+    fi
+
     # Generate router YAML
     cat >> "$OUTPUT_FILE" <<ROUTER_EOF
     ${router_name}:
@@ -256,8 +284,11 @@ ROUTER_EOF
   if [ -z "${processed_services[$service_name_from_label]}" ]; then
     processed_services[$service_name_from_label]=1
 
-    # Get identity token for auth
-    token=$(get_identity_token "$service_url")
+    # Use the token we already fetched (or fetch again if not available)
+    token="${service_token}"
+    if [ -z "$token" ]; then
+      token=$(get_identity_token "$service_url")
+    fi
 
     # Add service definition
     cat >> "$OUTPUT_FILE" <<SERVICE_EOF
