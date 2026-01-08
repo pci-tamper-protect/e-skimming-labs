@@ -39,7 +39,7 @@ echo ""
 get_service_url() {
   local service_name=$1
   local project_id=$2
-  
+
   gcloud run services describe "$service_name" \
     --region="$REGION" \
     --project="$project_id" \
@@ -104,7 +104,7 @@ echo ""
 HOSTS_ENTRIES="# Multi-service proxy entries for $ENVIRONMENT
 # All services use port $PROXY_PORT
 # Generated: $(date)
-# 
+#
 # IMPORTANT: These domains MUST match what's in the proxy routing table!
 # If services are redeployed, restart the proxy and update /etc/hosts
 "
@@ -176,10 +176,10 @@ def rewrite_urls(content, content_type, local_domain, proxy_port):
     """Rewrite URLs in HTML/JS/CSS to use local domains"""
     if not content_type or 'text/html' not in content_type:
         return content
-    
+
     try:
         text = content.decode('utf-8', errors='ignore')
-        
+
         # Rewrite https://*.run.app URLs to http://*.local:PORT
         # Pattern: https://domain.run.app/path -> http://domain.local:PORT/path
         # Also handles .a.run.app domains
@@ -190,21 +190,21 @@ def rewrite_urls(content, content_type, local_domain, proxy_port):
             # Replace .run.app or .a.run.app with .local
             local_domain_new = domain.replace('.a.run.app', '.a.local').replace('.run.app', '.local')
             return f'http://{local_domain_new}:{proxy_port}{path}'
-        
+
         # Match https://domain.run.app/path or https://domain.a.run.app/path
         text = re.sub(
             r'https://([a-zA-Z0-9.-]+\.(a\.)?run\.app)([^\s"\'<>]*)?',
             replace_url,
             text
         )
-        
+
         # Also rewrite http://*.run.app (though less common)
         text = re.sub(
             r'http://([a-zA-Z0-9.-]+\.(a\.)?run\.app)([^\s"\'<>]*)?',
             replace_url,
             text
         )
-        
+
         return text.encode('utf-8')
     except Exception as e:
         print(f"[WARN] URL rewriting failed: {e}", file=sys.stderr, flush=True)
@@ -213,30 +213,30 @@ def rewrite_urls(content, content_type, local_domain, proxy_port):
 class MultiServiceProxyHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         self.proxy_request()
-    
+
     def do_POST(self):
         self.proxy_request()
-    
+
     def do_PUT(self):
         self.proxy_request()
-    
+
     def do_DELETE(self):
         self.proxy_request()
-    
+
     def do_PATCH(self):
         self.proxy_request()
-    
+
     def proxy_request(self):
         host_header = self.headers.get('Host', '')
         host = host_header.split(':')[0]  # Remove port if present
         path = self.path
-        
+
         # Debug logging
         print(f"[DEBUG] Host header: {host_header}, extracted host: {host}", flush=True)
-        
+
         # Find target URL based on Host header
         target_url = ROUTING.get(host)
-        
+
         if not target_url:
             print(f"[ERROR] No route found for host: '{host}'", file=sys.stderr, flush=True)
             print(f"[DEBUG] Host header was: '{host_header}'", file=sys.stderr, flush=True)
@@ -270,26 +270,26 @@ class MultiServiceProxyHandler(http.server.BaseHTTPRequestHandler):
                 if not target_url:
                     self.send_error(404, f"No route for host: {host}. Restart proxy to discover new services.")
                     return
-        
+
         # Build full target URL
         full_target = target_url.rstrip('/') + path
         if path == '/':
             full_target = target_url
-        
+
         print(f"[REQUEST] {self.command} {host}{path} -> {full_target}", flush=True)
-        
+
         token = get_auth_token()
         if not token:
             self.send_error(500, "Failed to get auth token")
             return
-        
+
         try:
             req = urllib.request.Request(full_target)
             for header, value in self.headers.items():
                 if header.lower() not in ['host', 'connection', 'content-length', 'transfer-encoding']:
                     req.add_header(header, value)
             req.add_header('Authorization', f'Bearer {token}')
-            
+
             request_body = None
             if self.command in ['POST', 'PUT', 'PATCH']:
                 content_length = int(self.headers.get('Content-Length', 0))
@@ -297,33 +297,33 @@ class MultiServiceProxyHandler(http.server.BaseHTTPRequestHandler):
                     request_body = self.rfile.read(content_length)
                     req.add_header('Content-Length', str(len(request_body)))
                     req.data = request_body
-            
+
             with urllib.request.urlopen(req, timeout=30) as response:
                 status_code = response.getcode()
                 content_type = response.headers.get('Content-Type', '')
-                
+
                 print(f"[RESPONSE] {status_code} from {full_target}", flush=True)
-                
+
                 # Read response body
                 response_body = response.read()
-                
+
                 # Rewrite URLs in HTML content
                 if 'text/html' in content_type:
                     response_body = rewrite_urls(response_body, content_type, host, PORT)
-                
+
                 # Send response
                 self.send_response(status_code)
-                
+
                 # Copy headers
                 for header, value in response.headers.items():
                     if header.lower() not in ['connection', 'transfer-encoding', 'content-encoding', 'content-length']:
                         self.send_header(header, value)
-                
+
                 self.send_header('Content-Length', str(len(response_body)))
                 self.end_headers()
                 self.wfile.write(response_body)
                 self.wfile.flush()
-                
+
         except urllib.error.HTTPError as e:
             print(f"[HTTP_ERROR] {e.code} {e.reason} from {full_target}", flush=True)
             self.send_response(e.code)
@@ -339,7 +339,7 @@ class MultiServiceProxyHandler(http.server.BaseHTTPRequestHandler):
             print(f"[ERROR] Proxy error: {str(e)}", file=sys.stderr, flush=True)
             print(f"[TRACEBACK] {traceback.format_exc()}", file=sys.stderr, flush=True)
             self.send_error(500, f"Proxy error: {str(e)}")
-    
+
     def log_message(self, format, *args):
         pass  # We handle logging ourselves
 
@@ -347,9 +347,9 @@ if __name__ == '__main__':
     if not ROUTING:
         print("[ERROR] No services configured", file=sys.stderr, flush=True)
         sys.exit(1)
-    
+
     socketserver.TCPServer.allow_reuse_address = True
-    
+
     try:
         with socketserver.TCPServer(("", PORT), MultiServiceProxyHandler) as httpd:
             print(f"✅ Multi-service proxy running on port {PORT}", flush=True)
@@ -386,4 +386,3 @@ echo ""
 # Set environment variables and run proxy
 export PROXY_PORT="$PROXY_PORT"
 python3 "$PROXY_SCRIPT"
-

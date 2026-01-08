@@ -2,14 +2,45 @@
 # Entrypoint script for Traefik on Cloud Run
 # Generates dynamic configuration from environment variables
 
-set -e
+# Don't use set -e initially - we want to see where failures occur
+# set -e
 
-echo "🚀 Starting Traefik for Cloud Run..."
-echo "Environment: ${ENVIRONMENT:-local}"
-echo "Domain: ${DOMAIN:-localhost}"
+# Write directly to Cloud Run logs via /proc/1/fd/1 (container's stdout)
+# This ensures logs are captured even if stderr redirection doesn't work
+LOG_FD=/proc/1/fd/1
+if [ ! -w "$LOG_FD" ]; then
+  # Fallback to stderr
+  LOG_FD=/proc/1/fd/2
+fi
+
+# Function to log with timestamp
+log() {
+  echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] $*" >&2
+  # Also try writing directly to container stdout
+  echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] $*" > "$LOG_FD" 2>/dev/null || true
+}
+
+# Ensure all output goes to stderr so Cloud Run captures it
+exec 1>&2
+
+# Add error handler to log failures
+trap 'log "ERROR: Script failed at line $LINENO"; exit 1' ERR
+
+log "🚀 Starting Traefik for Cloud Run..."
+log "Environment: ${ENVIRONMENT:-local}"
+log "Domain: ${DOMAIN:-localhost}"
+log "DEBUG: Script started"
+log "DEBUG: Current user: $(whoami)"
+log "DEBUG: Working directory: $(pwd)"
+log "DEBUG: PATH: ${PATH}"
 
 # Create dynamic config directory if it doesn't exist
-mkdir -p /etc/traefik/dynamic
+log "DEBUG: Creating /etc/traefik/dynamic directory..."
+mkdir -p /etc/traefik/dynamic || {
+  log "ERROR: Failed to create /etc/traefik/dynamic"
+  exit 1
+}
+log "DEBUG: Directory created successfully"
 
 # Function to get identity token from metadata server for a service URL
 get_identity_token() {
@@ -54,9 +85,9 @@ get_identity_token() {
 }
 
 # Fetch identity tokens for all backend services (only in Cloud Run, not local)
-echo "🔍 Debug: ENVIRONMENT=${ENVIRONMENT}, HOME_INDEX_URL=${HOME_INDEX_URL}"
+log "🔍 Debug: ENVIRONMENT=${ENVIRONMENT}, HOME_INDEX_URL=${HOME_INDEX_URL}"
 if [ "${ENVIRONMENT}" != "local" ] && [ -n "${HOME_INDEX_URL}" ] && [[ "${HOME_INDEX_URL}" != http://localhost* ]]; then
-  echo "🔐 Fetching identity tokens for backend services..."
+  log "🔐 Fetching identity tokens for backend services..."
 
   HOME_INDEX_TOKEN=$(get_identity_token "${HOME_INDEX_URL}")
   SEO_TOKEN=$(get_identity_token "${SEO_URL}")
@@ -105,22 +136,44 @@ else
 fi
 
 # Try to generate routes from Cloud Run service labels first (if script exists and we're in Cloud Run)
+log "🔍 DEBUG: Checking conditions for label-based route generation..."
+log "   ENVIRONMENT=${ENVIRONMENT:-<not set>}"
+log "   ENVIRONMENT != local: $([ "${ENVIRONMENT}" != "local" ] && echo "true" || echo "false")"
+log "   Script exists: $([ -f "/app/generate-routes-from-labels.sh" ] && echo "true" || echo "false")"
+if [ -f "/app/generate-routes-from-labels.sh" ]; then
+  log "   Script permissions: $(ls -l /app/generate-routes-from-labels.sh | awk '{print $1, $3, $4}')"
+fi
+log ""
+
 if [ "${ENVIRONMENT}" != "local" ] && [ -f "/app/generate-routes-from-labels.sh" ]; then
-  echo "🔍 Attempting to generate routes from Cloud Run service labels..."
-  echo "   This will query Cloud Run services and extract Traefik labels"
-  echo "   to generate routers and services automatically."
-  echo ""
+  log "🔍 Attempting to generate routes from Cloud Run service labels..."
+  log "   This will query Cloud Run services and extract Traefik labels"
+  log "   to generate routers and services automatically."
+  log "   DEBUG: Calling /app/generate-routes-from-labels.sh /etc/traefik/dynamic/routes.yml"
+  log ""
 
   if /app/generate-routes-from-labels.sh /etc/traefik/dynamic/routes.yml 2>&1; then
+    GENERATION_EXIT=$?
+    log "   DEBUG: Generation script exited with code: ${GENERATION_EXIT}"
     # Check if routes.yml was created and has content
+    log "   DEBUG: Checking if routes.yml was created..."
+    log "   DEBUG: File exists: $([ -f "/etc/traefik/dynamic/routes.yml" ] && echo "yes" || echo "no")"
+    if [ -f "/etc/traefik/dynamic/routes.yml" ]; then
+      log "   DEBUG: File size: $(wc -c < /etc/traefik/dynamic/routes.yml) bytes"
+      log "   DEBUG: File non-empty: $([ -s "/etc/traefik/dynamic/routes.yml" ] && echo "yes" || echo "no")"
+      log "   DEBUG: Has routers line: $(grep -q "^  routers:" /etc/traefik/dynamic/routes.yml && echo "yes" || echo "no")"
+      log "   DEBUG: Has router entries: $(grep -q "^    [a-z]" /etc/traefik/dynamic/routes.yml && echo "yes" || echo "no")"
+    fi
+    log ""
+
     if [ -f "/etc/traefik/dynamic/routes.yml" ] && [ -s "/etc/traefik/dynamic/routes.yml" ]; then
       # Check if it has routers (not just empty file)
       if grep -q "^  routers:" /etc/traefik/dynamic/routes.yml && grep -q "^    [a-z]" /etc/traefik/dynamic/routes.yml; then
-        echo ""
-        echo "✅ Successfully generated routes from Cloud Run service labels"
-        echo "   Routers and services were auto-discovered from service labels"
-        echo "   Middlewares are defined in /etc/traefik/dynamic/routes.yml"
-        echo ""
+        log ""
+        log "✅ Successfully generated routes from Cloud Run service labels"
+        log "   Routers and services were auto-discovered from service labels"
+        log "   Middlewares are defined in /etc/traefik/dynamic/routes.yml"
+        log ""
         # Merge middlewares from routes.yml (middlewares only file) into the generated file
         if [ -f "/etc/traefik/dynamic/routes.yml" ] && grep -q "^  middlewares:" /etc/traefik/dynamic/routes.yml; then
           echo "📋 Merging middlewares from routes.yml..."
@@ -136,28 +189,44 @@ if [ "${ENVIRONMENT}" != "local" ] && [ -f "/app/generate-routes-from-labels.sh"
         # Skip the environment variable-based generation
         exec "$@"
       else
-        echo "⚠️  Generated routes.yml is empty or has no routers, falling back to environment variables"
+        log "⚠️  Generated routes.yml is empty or has no routers, falling back to environment variables"
+        log "   DEBUG: File contents preview:"
+        head -20 /etc/traefik/dynamic/routes.yml 2>/dev/null | sed 's/^/      /' | while read line; do log "   $line"; done || log "      (could not read file)"
       fi
     else
-      echo "⚠️  Label-based generation did not create routes.yml, falling back to environment variables"
+      log "⚠️  Label-based generation did not create routes.yml, falling back to environment variables"
+      log "   DEBUG: /etc/traefik/dynamic/routes.yml does not exist or is empty"
     fi
   else
-    echo "⚠️  Label-based generation failed, falling back to environment variables"
+    GENERATION_EXIT=$?
+    log "⚠️  Label-based generation failed (exit code: ${GENERATION_EXIT}), falling back to environment variables"
+    log "   DEBUG: Check logs above for generation script errors"
   fi
-  echo ""
+  log ""
+else
+  log "⚠️  DEBUG: Label-based generation skipped because:"
+  if [ "${ENVIRONMENT}" = "local" ]; then
+    log "   - ENVIRONMENT is 'local' (label-based generation only runs in Cloud Run)"
+  fi
+  if [ ! -f "/app/generate-routes-from-labels.sh" ]; then
+    log "   - /app/generate-routes-from-labels.sh does not exist"
+    log "   DEBUG: Checking /app directory contents:"
+    ls -la /app/ 2>&1 | sed 's/^/      /' | while read line; do log "   $line"; done || log "      (could not list /app)"
+  fi
+  log ""
 fi
 
 # Fallback: Generate dynamic configuration from environment variables
 # This is only used for local development or when label-based generation fails
 # For Cloud Run, label-based generation should always work
 if [ "${ENVIRONMENT}" = "local" ]; then
-  echo "📋 Using environment variable-based configuration (local development)"
-  echo ""
+  echo "📋 Using environment variable-based configuration (local development)" >&2
+  echo "" >&2
 else
-  echo "⚠️  WARNING: Falling back to environment variable-based configuration"
-  echo "   This should not happen in Cloud Run - label-based generation should work"
-  echo "   If you see this, check that services have Traefik labels"
-  echo ""
+  echo "⚠️  WARNING: Falling back to environment variable-based configuration" >&2
+  echo "   This should not happen in Cloud Run - label-based generation should work" >&2
+  echo "   If you see this, check that services have Traefik labels" >&2
+  echo "" >&2
 fi
 
 cat > /etc/traefik/dynamic/cloudrun-services.yml <<EOF
@@ -544,72 +613,72 @@ fi)
         passHostHeader: false
 EOF
 
-echo "✅ Generated Cloud Run service configuration"
-echo ""
+echo "✅ Generated Cloud Run service configuration" >&2
+echo "" >&2
 
 # Validate YAML syntax
 if command -v yq &> /dev/null || command -v python3 &> /dev/null; then
-  echo "🔍 Validating generated YAML configuration..."
+  echo "🔍 Validating generated YAML configuration..." >&2
   if python3 -c "import yaml; yaml.safe_load(open('/etc/traefik/dynamic/cloudrun-services.yml'))" 2>/dev/null; then
-    echo "  ✅ YAML syntax is valid"
+    echo "  ✅ YAML syntax is valid" >&2
   else
-    echo "  ⚠️  YAML validation failed (non-critical, Traefik will validate on load)"
+    echo "  ⚠️  YAML validation failed (non-critical, Traefik will validate on load)" >&2
   fi
 fi
 
 # Show a snippet of the home-index-auth middleware if it exists
 if [ -n "$HOME_INDEX_TOKEN" ]; then
-  echo ""
-  echo "📋 home-index-auth middleware snippet:"
-  grep -A 5 "home-index-auth:" /etc/traefik/dynamic/cloudrun-services.yml | head -6 || echo "  ⚠️  Could not read middleware from config file"
+  echo "" >&2
+  echo "📋 home-index-auth middleware snippet:" >&2
+  grep -A 5 "home-index-auth:" /etc/traefik/dynamic/cloudrun-services.yml | head -6 >&2 || echo "  ⚠️  Could not read middleware from config file" >&2
 fi
 
-echo ""
-echo "Router Middleware Configuration:"
+echo "" >&2
+echo "Router Middleware Configuration:" >&2
 if [ -n "$HOME_INDEX_TOKEN" ]; then
-  echo "  ✅ home-index router (PathPrefix /) → [forwarded-headers, home-index-auth]"
-  echo "     This applies to: /, /mitre-attack, /threat-model, and all home-index paths"
+  echo "  ✅ home-index router (PathPrefix /) → [forwarded-headers, home-index-auth]" >&2
+  echo "     This applies to: /, /mitre-attack, /threat-model, and all home-index paths" >&2
 else
-  echo "  ⚪ home-index router (PathPrefix /) → [forwarded-headers] (no auth - token missing)"
+  echo "  ⚪ home-index router (PathPrefix /) → [forwarded-headers] (no auth - token missing)" >&2
 fi
-echo ""
-echo "Auth Middlewares Created:"
-[ -n "$HOME_INDEX_TOKEN" ] && echo "  ✅ home-index-auth" || echo "  ⚪ home-index-auth (no token)"
-[ -n "$SEO_TOKEN" ] && echo "  ✅ home-seo-auth" || echo "  ⚪ home-seo-auth (no token)"
-[ -n "$ANALYTICS_TOKEN" ] && echo "  ✅ labs-analytics-auth" || echo "  ⚪ labs-analytics-auth (no token)"
-[ -n "$LAB1_TOKEN" ] && echo "  ✅ lab1-auth" || echo "  ⚪ lab1-auth (no token)"
-[ -n "$LAB1_C2_TOKEN" ] && echo "  ✅ lab1-c2-auth" || echo "  ⚪ lab1-c2-auth (no token)"
-[ -n "$LAB2_TOKEN" ] && echo "  ✅ lab2-auth" || echo "  ⚪ lab2-auth (no token)"
-[ -n "$LAB2_C2_TOKEN" ] && echo "  ✅ lab2-c2-auth" || echo "  ⚪ lab2-c2-auth (no token)"
-[ -n "$LAB3_TOKEN" ] && echo "  ✅ lab3-auth" || echo "  ⚪ lab3-auth (no token)"
-[ -n "$LAB3_EXTENSION_TOKEN" ] && echo "  ✅ lab3-extension-auth" || echo "  ⚪ lab3-extension-auth (no token)"
-echo ""
-echo "Backend Services:"
-echo "  HOME_INDEX_URL: ${HOME_INDEX_URL:-http://home-index:8080 (default for local)}"
-echo "  SEO_URL: ${SEO_URL:-http://home-seo:8080 (default for local)}"
-echo "  ANALYTICS_URL: ${ANALYTICS_URL:-http://labs-analytics:8080 (default for local)}"
-echo "  LAB1_URL: ${LAB1_URL:-http://lab1-vulnerable-site:8080 (default for local)}"
-echo "  LAB1_C2_URL: ${LAB1_C2_URL:-http://lab1-c2-server:8080 (default for local)}"
-echo "  LAB2_URL: ${LAB2_URL:-http://lab2-vulnerable-site:8080 (default for local)}"
-echo "  LAB2_C2_URL: ${LAB2_C2_URL:-http://lab2-c2-server:8080 (default for local)}"
-echo "  LAB3_URL: ${LAB3_URL:-http://lab3-vulnerable-site:8080 (default for local)}"
-echo "  LAB3_EXTENSION_URL: ${LAB3_EXTENSION_URL:-http://lab3-extension-server:8080 (default for local)}"
-echo ""
-echo "📝 Generated config file location: /etc/traefik/dynamic/cloudrun-services.yml"
-echo "   To inspect: cat /etc/traefik/dynamic/cloudrun-services.yml | grep -A 10 'home-index-auth'"
-echo ""
-echo "🔍 ForwardAuth Middlewares in Generated Config:"
-grep -A 10 "auth-check:" /etc/traefik/dynamic/cloudrun-services.yml || echo "  ⚠️  No ForwardAuth middlewares found!"
-echo ""
+echo "" >&2
+echo "Auth Middlewares Created:" >&2
+[ -n "$HOME_INDEX_TOKEN" ] && echo "  ✅ home-index-auth" >&2 || echo "  ⚪ home-index-auth (no token)" >&2
+[ -n "$SEO_TOKEN" ] && echo "  ✅ home-seo-auth" >&2 || echo "  ⚪ home-seo-auth (no token)" >&2
+[ -n "$ANALYTICS_TOKEN" ] && echo "  ✅ labs-analytics-auth" >&2 || echo "  ⚪ labs-analytics-auth (no token)" >&2
+[ -n "$LAB1_TOKEN" ] && echo "  ✅ lab1-auth" >&2 || echo "  ⚪ lab1-auth (no token)" >&2
+[ -n "$LAB1_C2_TOKEN" ] && echo "  ✅ lab1-c2-auth" >&2 || echo "  ⚪ lab1-c2-auth (no token)" >&2
+[ -n "$LAB2_TOKEN" ] && echo "  ✅ lab2-auth" >&2 || echo "  ⚪ lab2-auth (no token)" >&2
+[ -n "$LAB2_C2_TOKEN" ] && echo "  ✅ lab2-c2-auth" >&2 || echo "  ⚪ lab2-c2-auth (no token)" >&2
+[ -n "$LAB3_TOKEN" ] && echo "  ✅ lab3-auth" >&2 || echo "  ⚪ lab3-auth (no token)" >&2
+[ -n "$LAB3_EXTENSION_TOKEN" ] && echo "  ✅ lab3-extension-auth" >&2 || echo "  ⚪ lab3-extension-auth (no token)" >&2
+echo "" >&2
+echo "Backend Services:" >&2
+echo "  HOME_INDEX_URL: ${HOME_INDEX_URL:-http://home-index:8080 (default for local)}" >&2
+echo "  SEO_URL: ${SEO_URL:-http://home-seo:8080 (default for local)}" >&2
+echo "  ANALYTICS_URL: ${ANALYTICS_URL:-http://labs-analytics:8080 (default for local)}" >&2
+echo "  LAB1_URL: ${LAB1_URL:-http://lab1-vulnerable-site:8080 (default for local)}" >&2
+echo "  LAB1_C2_URL: ${LAB1_C2_URL:-http://lab1-c2-server:8080 (default for local)}" >&2
+echo "  LAB2_URL: ${LAB2_URL:-http://lab2-vulnerable-site:8080 (default for local)}" >&2
+echo "  LAB2_C2_URL: ${LAB2_C2_URL:-http://lab2-c2-server:8080 (default for local)}" >&2
+echo "  LAB3_URL: ${LAB3_URL:-http://lab3-vulnerable-site:8080 (default for local)}" >&2
+echo "  LAB3_EXTENSION_URL: ${LAB3_EXTENSION_URL:-http://lab3-extension-server:8080 (default for local)}" >&2
+echo "" >&2
+echo "📝 Generated config file location: /etc/traefik/dynamic/cloudrun-services.yml" >&2
+echo "   To inspect: cat /etc/traefik/dynamic/cloudrun-services.yml | grep -A 10 'home-index-auth'" >&2
+echo "" >&2
+echo "🔍 ForwardAuth Middlewares in Generated Config:" >&2
+grep -A 10 "auth-check:" /etc/traefik/dynamic/cloudrun-services.yml >&2 || echo "  ⚠️  No ForwardAuth middlewares found!" >&2
+echo "" >&2
 
 # Start periodic route refresh in background
 # First minute: refresh every 5 seconds (catches services deployed right after Traefik starts)
 # After first minute: refresh every 5 minutes (normal operation)
 # This keeps routes up-to-date when new services are deployed
 if [ "${ENVIRONMENT}" != "local" ] && [ -f "/app/generate-routes-from-labels.sh" ] && [ -f "/app/refresh-routes.sh" ]; then
-  echo "🔄 Starting periodic route refresh..."
-  echo "   First minute: every 5 seconds (fast discovery)"
-  echo "   After first minute: every 5 minutes (normal operation)"
+  echo "🔄 Starting periodic route refresh..." >&2
+  echo "   First minute: every 5 seconds (fast discovery)" >&2
+  echo "   After first minute: every 5 minutes (normal operation)" >&2
   (
     START_TIME=$(date +%s)
     FAST_REFRESH_END=$((START_TIME + 60))  # First 60 seconds
@@ -629,9 +698,12 @@ if [ "${ENVIRONMENT}" != "local" ] && [ -f "/app/generate-routes-from-labels.sh"
     done
   ) &
   REFRESH_PID=$!
-  echo "   Background refresh PID: ${REFRESH_PID}"
-  echo ""
+  echo "   Background refresh PID: ${REFRESH_PID}" >&2
+  echo "" >&2
 fi
 
 # Start Traefik with all arguments passed to this script
+log "DEBUG: About to exec Traefik with args: $@"
+log "DEBUG: Current time: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+log "DEBUG: Entrypoint script completed, starting Traefik..."
 exec "$@"

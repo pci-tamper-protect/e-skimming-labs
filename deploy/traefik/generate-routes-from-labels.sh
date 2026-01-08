@@ -3,7 +3,11 @@
 # This script queries Cloud Run services and extracts Traefik routing labels
 # to generate a routes.yml file that matches docker-compose.yml behavior
 
-set -e
+# Don't use set -e - we want to see where failures occur
+# set -e
+
+# Redirect all output to stderr so Cloud Run captures it
+exec 1>&2
 
 ENVIRONMENT="${ENVIRONMENT:-stg}"
 PROJECT_ID="${LABS_PROJECT_ID:-labs-${ENVIRONMENT}}"
@@ -17,6 +21,14 @@ echo "   Labs Project: ${PROJECT_ID}"
 echo "   Home Project: ${HOME_PROJECT_ID}"
 echo "   Region: ${REGION}"
 echo "   Output: ${OUTPUT_FILE}"
+echo ""
+echo "   DEBUG: Script started at $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+echo "   DEBUG: Current user: $(whoami)"
+echo "   DEBUG: Working directory: $(pwd)"
+echo "   DEBUG: gcloud available: $(command -v gcloud >/dev/null && echo "yes" || echo "no")"
+echo "   DEBUG: jq available: $(command -v jq >/dev/null && echo "yes" || echo "no")"
+echo "   DEBUG: Output directory exists: $([ -d "$(dirname "$OUTPUT_FILE")" ] && echo "yes" || echo "no")"
+echo "   DEBUG: Output directory writable: $([ -w "$(dirname "$OUTPUT_FILE")" ] && echo "yes" || echo "no")"
 echo ""
 
 # Create output directory
@@ -73,16 +85,28 @@ ROUTES_EOF
 
 # Query services and extract Traefik labels
 # For each service with traefik.enable=true, extract router and service config
-echo "🔍 Querying Cloud Run services for Traefik labels..."
+echo "🔍 Querying Cloud Run services for Traefik labels..." >&2
+echo "   DEBUG: About to query gcloud for services..." >&2
+echo "   DEBUG: Will check projects: ${PROJECT_ID} and ${HOME_PROJECT_ID}" >&2
+echo "" >&2
 
 # Get all services from both projects
 ALL_SERVICES=""
 
 if [ -n "$HOME_PROJECT_ID" ]; then
+  echo "   DEBUG: Querying home project: ${HOME_PROJECT_ID}" >&2
   HOME_SERVICES=$(gcloud run services list \
     --region="${REGION}" \
     --project="${HOME_PROJECT_ID}" \
-    --format="value(name)" 2>/dev/null || echo "")
+    --format="value(name)" 2>&1)
+  HOME_SERVICES_EXIT=$?
+  echo "   DEBUG: Home services query exit code: ${HOME_SERVICES_EXIT}" >&2
+  if [ $HOME_SERVICES_EXIT -ne 0 ]; then
+    echo "   ⚠️  Warning: Failed to query home project services: ${HOME_SERVICES:0:200}" >&2
+    HOME_SERVICES=""
+  else
+    echo "   DEBUG: Found $(echo "$HOME_SERVICES" | grep -c . || echo "0") services in home project" >&2
+  fi
   while IFS= read -r svc; do
     if [ -n "$svc" ]; then
       ALL_SERVICES+="${svc}|${HOME_PROJECT_ID}"$'\n'
@@ -91,16 +115,28 @@ if [ -n "$HOME_PROJECT_ID" ]; then
 fi
 
 if [ -n "$PROJECT_ID" ]; then
+  echo "   DEBUG: Querying labs project: ${PROJECT_ID}" >&2
   LABS_SERVICES=$(gcloud run services list \
     --region="${REGION}" \
     --project="${PROJECT_ID}" \
-    --format="value(name)" 2>/dev/null || echo "")
+    --format="value(name)" 2>&1)
+  LABS_SERVICES_EXIT=$?
+  echo "   DEBUG: Labs services query exit code: ${LABS_SERVICES_EXIT}" >&2
+  if [ $LABS_SERVICES_EXIT -ne 0 ]; then
+    echo "   ⚠️  Warning: Failed to query labs project services: ${LABS_SERVICES:0:200}" >&2
+    LABS_SERVICES=""
+  else
+    echo "   DEBUG: Found $(echo "$LABS_SERVICES" | grep -c . || echo "0") services in labs project" >&2
+  fi
   while IFS= read -r svc; do
     if [ -n "$svc" ]; then
       ALL_SERVICES+="${svc}|${PROJECT_ID}"$'\n'
     fi
   done <<< "$LABS_SERVICES"
 fi
+
+echo "   DEBUG: Total services to check: $(echo "$ALL_SERVICES" | grep -c . || echo "0")" >&2
+echo "" >&2
 
 # Process each service
 declare -A processed_services
@@ -147,11 +183,14 @@ while IFS='|' read -r service_name project_id; do
 
   # Check if traefik_enable=true (using underscore for GCP label compatibility)
   traefik_enable=$(echo "$service_json" | jq -r '.spec.template.metadata.labels["traefik_enable"] // "false"' 2>/dev/null || echo "false")
+  echo "    DEBUG: Service ${service_name} traefik_enable=${traefik_enable}" >&2
 
   if [ "$traefik_enable" != "true" ]; then
     echo "    ⚪ traefik_enable=${traefik_enable}, skipping" >&2
     continue
   fi
+
+  echo "    ✅ Service ${service_name} has traefik_enable=true, processing..." >&2
 
   # Get service URL
   service_url=$(echo "$service_json" | jq -r '.status.url // ""' 2>/dev/null || echo "")
@@ -179,9 +218,12 @@ while IFS='|' read -r service_name project_id; do
 
   # Extract router labels (traefik_http_routers_* - using underscore for GCP label compatibility)
   router_keys=$(echo "$labels_json" | jq -r 'keys[] | select(startswith("traefik_http_routers_"))' 2>/dev/null || echo "")
+  router_count=$(echo "$router_keys" | grep -c . || echo "0")
+  echo "    DEBUG: Found ${router_count} router label(s)" >&2
 
   if [ -z "$router_keys" ]; then
     echo "    ⚠️  No router labels found" >&2
+    echo "    DEBUG: Available labels: $(echo "$labels_json" | jq -r 'keys[] | select(startswith("traefik_"))' | head -5 | tr '\n' ',' || echo "none")" >&2
     continue
   fi
 
@@ -231,8 +273,14 @@ while IFS='|' read -r service_name project_id; do
       # Add auth middleware if not already in the list
       if [ -n "$middlewares" ]; then
         # Check if auth middleware is already in the list
+        # Support both semicolon and comma separators (semicolon preferred for GCP)
+        if [[ "$middlewares" == *";"* ]]; then
+          SEP=";"
+        else
+          SEP=","
+        fi
         if [[ ! "$middlewares" =~ ${auth_middleware_name} ]]; then
-          middlewares="${middlewares},${auth_middleware_name}"
+          middlewares="${middlewares}${SEP}${auth_middleware_name}"
         fi
       else
         # No middlewares yet, add auth middleware
@@ -253,7 +301,13 @@ ROUTER_EOF
     # Add middlewares if present
     if [ -n "$middlewares" ]; then
       echo "      middlewares:" >> "$OUTPUT_FILE"
-      IFS=',' read -ra MW_ARRAY <<< "$middlewares"
+      # Split on semicolon (GCP doesn't allow commas in label values)
+      # Fallback to comma for backward compatibility
+      if [[ "$middlewares" == *";"* ]]; then
+        IFS=';' read -ra MW_ARRAY <<< "$middlewares"
+      else
+        IFS=',' read -ra MW_ARRAY <<< "$middlewares"
+      fi
       for mw in "${MW_ARRAY[@]}"; do
         # Convert -file back to @file (GCP labels use -file instead of @file for compatibility)
         # Trim whitespace and convert -file suffix to @file
