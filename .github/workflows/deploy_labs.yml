@@ -1034,8 +1034,8 @@ jobs:
     needs: [setup, deploy-labs, deploy-home-components]
     runs-on: ubuntu-latest
     # Skip deployment for Dependabot PRs (secrets not available)
-    # Only deploy if labs components changed or force keyword detected (index is part of labs)
-    if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && needs.setup.outputs.deploy_labs == 'true'
+    # Only deploy if home components changed or force keyword detected (index is part of home)
+    if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && needs.setup.outputs.deploy_home == 'true'
     # Specify environment to access environment-level secrets (if GCP_SA_KEY_STG is stored as environment secret)
     environment: ${{ needs.setup.outputs.environment }}
     env:
@@ -1219,8 +1219,135 @@ jobs:
           # For now, we use direct Cloud Run URLs
           echo "Index service deployed at: https://labs-index-${{ needs.setup.outputs.environment }}-hash.a.run.app"
 
+  deploy-traefik:
+    needs: [setup, deploy-labs, deploy-home-components, deploy-labs-components, deploy-index]
+    runs-on: ubuntu-latest
+    # Skip deployment for Dependabot PRs (secrets not available)
+    # Deploy Traefik if any components changed (Traefik routes to all services)
+    if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && (needs.setup.outputs.deploy_home == 'true' || needs.setup.outputs.deploy_labs == 'true')
+    # Specify environment to access environment-level secrets
+    environment: ${{ needs.setup.outputs.environment }}
+    env:
+      LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
+      HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
+      # Use environment-specific secrets - fallback to generic secret
+      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_SA_KEY_PRD) || secrets.GCP_SA_KEY }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Authenticate to Google Cloud (Labs Project)
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ env.LABS_GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Configure Docker to use gcloud as credential helper
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        run: |
+          gcloud auth configure-docker ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev
+          # Also configure cross-project access for golden images
+          gcloud auth configure-docker us-central1-docker.pkg.dev
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Check if Traefik image exists
+        id: check-traefik-image
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        run: |
+          IMAGE="${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/traefik:${{ github.sha }}"
+          if gcloud artifacts docker images describe "$IMAGE" --project="${{ env.LABS_PROJECT_ID }}" --location="${{ env.LABS_GAR_LOCATION }}" &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Image already exists: $IMAGE"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  Image not found, will build: $IMAGE"
+          fi
+
+      - name: Build Traefik container
+        if: steps.check-traefik-image.outputs.exists != 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: deploy/traefik
+          file: deploy/traefik/Dockerfile.cloudrun
+          push: false
+          tags: |
+            ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/traefik:${{ github.sha }}
+            ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/traefik:latest
+          cache-from: type=gha,scope=traefik
+          cache-to: type=gha,mode=max,scope=traefik
+          load: true
+
+      - name: Push Traefik container to Artifact Registry
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null && steps.check-traefik-image.outputs.exists != 'true'
+        run: |
+          IMAGE_BASE="${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/traefik"
+          IMAGE_SHA="${IMAGE_BASE}:${{ github.sha }}"
+          IMAGE_LATEST="${IMAGE_BASE}:latest"
+
+          docker push "$IMAGE_SHA" || {
+            echo "❌ Failed to push Traefik image with SHA tag"
+            exit 1
+          }
+          docker push "$IMAGE_LATEST" || {
+            echo "❌ Failed to push Traefik image with latest tag"
+            exit 1
+          }
+
+      - name: Deploy Traefik to Cloud Run
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        run: |
+          # Traefik needs to access all services, so it needs appropriate permissions
+          if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
+            gcloud run deploy traefik-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/traefik:${{ github.sha }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --platform=managed \
+              --no-allow-unauthenticated \
+              --service-account=traefik-${{ needs.setup.outputs.environment }}@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=80 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=1 \
+              --max-instances=5 \
+              --set-env-vars="ENVIRONMENT=${{ needs.setup.outputs.environment }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }}" \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=traefik,project=e-skimming-labs"
+
+            # Grant access to developer groups for staging
+            echo "Granting access to developer groups for staging Traefik service..."
+            gcloud run services add-iam-policy-binding traefik-${{ needs.setup.outputs.environment }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --member="group:2025-interns@pcioasis.com" \
+              --role="roles/run.invoker"
+
+            gcloud run services add-iam-policy-binding traefik-${{ needs.setup.outputs.environment }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --member="group:core-eng@pcioasis.com" \
+              --role="roles/run.invoker"
+          else
+            gcloud run deploy traefik-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/traefik:${{ github.sha }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --platform=managed \
+              --allow-unauthenticated \
+              --service-account=traefik-${{ needs.setup.outputs.environment }}@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=80 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=1 \
+              --max-instances=5 \
+              --set-env-vars="ENVIRONMENT=${{ needs.setup.outputs.environment }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }}" \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=traefik,project=e-skimming-labs"
+          fi
+
   notify-deployment:
-    needs: [setup, deploy-labs, deploy-home-components, deploy-labs-components]
+    needs: [setup, deploy-labs, deploy-home-components, deploy-labs-components, deploy-index, deploy-traefik]
     runs-on: ubuntu-latest
     if: always()
     # Specify environment to access environment-level secrets (if GCP_SA_KEY_STG is stored as environment secret)
