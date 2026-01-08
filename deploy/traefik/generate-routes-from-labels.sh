@@ -37,6 +37,7 @@ RULE_MAP["lab2-static"]="PathPrefix(\`/lab2/css/\`) || PathPrefix(\`/lab2/js/\`)
 RULE_MAP["lab2-c2"]="PathPrefix(\`/lab2/c2\`)"
 RULE_MAP["lab3"]="PathPrefix(\`/lab3\`)"
 RULE_MAP["lab3-static"]="PathPrefix(\`/lab3/css/\`) || PathPrefix(\`/lab3/js/\`) || PathPrefix(\`/lab3/images/\`) || PathPrefix(\`/lab3/img/\`) || PathPrefix(\`/lab3/static/\`) || PathPrefix(\`/lab3/assets/\`)"
+RULE_MAP["lab3-extension"]="PathPrefix(\`/lab3/extension\`)"
 
 # Function to get identity token for a service URL
 get_identity_token() {
