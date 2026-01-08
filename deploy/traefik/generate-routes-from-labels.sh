@@ -179,7 +179,17 @@ while IFS='|' read -r service_name project_id; do
     config="${routers[$router_name]}"
 
     # Extract properties
-    rule=$(echo "$config" | grep "^rule=" | cut -d'=' -f2- | sed "s/^'//; s/'$//" || echo "")
+    # Rule may be hex-encoded (for GCP label compatibility - only lowercase allowed) or plain text
+    rule_raw=$(echo "$config" | grep "^rule=" | cut -d'=' -f2- | sed "s/^'//; s/'$//" || echo "")
+    rule_hex=$(echo "$config" | grep "^rule_hex=" | cut -d'=' -f2- | sed "s/^'//; s/'$//" || echo "")
+
+    # Decode hex if present, otherwise use raw value
+    if [ -n "$rule_hex" ]; then
+      rule=$(echo "$rule_hex" | xxd -r -p 2>/dev/null || echo "$rule_hex")
+    else
+      rule="$rule_raw"
+    fi
+
     priority=$(echo "$config" | grep "^priority=" | cut -d'=' -f2 || echo "1")
     entrypoints=$(echo "$config" | grep "^entrypoints=" | cut -d'=' -f2 || echo "web")
     middlewares=$(echo "$config" | grep "^middlewares=" | cut -d'=' -f2 || echo "")
