@@ -67,9 +67,9 @@ if ! gcloud artifacts docker images describe "${IMAGE_URI}" --project="${HOME_PR
 fi
 
 # Test the labels string (this is what we're testing)
-# Note: Traefik rule values must be hex-encoded for GCP labels (GCP only allows lowercase letters, numbers, underscores, dashes)
-# Hex-encoded: PathPrefix(`/api/seo`) = 5061746850726566697828602f6170692f73656f6029
-LABELS="environment=${ENVIRONMENT},component=seo,project=e-skimming-labs-home,traefik_enable=true,traefik_http_routers_home-seo_rule_hex=5061746850726566697828602f6170692f73656f6029,traefik_http_routers_home-seo_priority=500,traefik_http_routers_home-seo_entrypoints=web,traefik_http_routers_home-seo_middlewares=strip-seo-prefix-file,traefik_http_services_home-seo_loadbalancer_server_port=8080"
+# Note: Traefik rule values use short identifiers (rule_id) to stay within GCP's 63 character limit
+# The generate-routes-from-labels.sh script maps these identifiers to actual Traefik rules
+LABELS="environment=${ENVIRONMENT},component=seo,project=e-skimming-labs-home,traefik_enable=true,traefik_http_routers_home-seo_rule_id=home-seo,traefik_http_routers_home-seo_priority=500,traefik_http_routers_home-seo_entrypoints=web,traefik_http_routers_home-seo_middlewares=strip-seo-prefix-file,traefik_http_services_home-seo_loadbalancer_server_port=8080"
 
 echo "🏷️  Testing label format..."
 echo "   Labels: ${LABELS}"

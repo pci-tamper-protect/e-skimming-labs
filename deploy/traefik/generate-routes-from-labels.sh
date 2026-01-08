@@ -22,6 +22,20 @@ echo ""
 # Create output directory
 mkdir -p "$(dirname "$OUTPUT_FILE")"
 
+# Rule identifier to actual rule mapping
+# This allows us to use short identifiers in GCP labels (63 char limit)
+declare -A RULE_MAP
+RULE_MAP["home-index-root"]="PathPrefix(\`/\`)"
+RULE_MAP["home-index-signin"]="Path(\`/sign-in\`) || Path(\`/sign-up\`)"
+RULE_MAP["home-seo"]="PathPrefix(\`/api/seo\`)"
+RULE_MAP["labs-analytics"]="PathPrefix(\`/api/analytics\`)"
+RULE_MAP["lab1"]="PathPrefix(\`/lab1\`)"
+RULE_MAP["lab1-static"]="PathPrefix(\`/lab1/css/\`) || PathPrefix(\`/lab1/js/\`) || PathPrefix(\`/lab1/images/\`) || PathPrefix(\`/lab1/img/\`) || PathPrefix(\`/lab1/static/\`) || PathPrefix(\`/lab1/assets/\`)"
+RULE_MAP["lab2"]="PathPrefix(\`/lab2\`)"
+RULE_MAP["lab2-static"]="PathPrefix(\`/lab2/css/\`) || PathPrefix(\`/lab2/js/\`) || PathPrefix(\`/lab2/images/\`) || PathPrefix(\`/lab2/img/\`) || PathPrefix(\`/lab2/static/\`) || PathPrefix(\`/lab2/assets/\`)"
+RULE_MAP["lab3"]="PathPrefix(\`/lab3\`)"
+RULE_MAP["lab3-static"]="PathPrefix(\`/lab3/css/\`) || PathPrefix(\`/lab3/js/\`) || PathPrefix(\`/lab3/images/\`) || PathPrefix(\`/lab3/img/\`) || PathPrefix(\`/lab3/static/\`) || PathPrefix(\`/lab3/assets/\`)"
+
 # Function to get identity token for a service URL
 get_identity_token() {
   local service_url=$1
@@ -179,13 +193,13 @@ while IFS='|' read -r service_name project_id; do
     config="${routers[$router_name]}"
 
     # Extract properties
-    # Rule may be hex-encoded (for GCP label compatibility - only lowercase allowed) or plain text
+    # Rule may be a short identifier (mapped via RULE_MAP) or plain text
     rule_raw=$(echo "$config" | grep "^rule=" | cut -d'=' -f2- | sed "s/^'//; s/'$//" || echo "")
-    rule_hex=$(echo "$config" | grep "^rule_hex=" | cut -d'=' -f2- | sed "s/^'//; s/'$//" || echo "")
+    rule_id=$(echo "$config" | grep "^rule_id=" | cut -d'=' -f2- | sed "s/^'//; s/'$//" || echo "")
 
-    # Decode hex if present, otherwise use raw value
-    if [ -n "$rule_hex" ]; then
-      rule=$(echo "$rule_hex" | xxd -r -p 2>/dev/null || echo "$rule_hex")
+    # Look up rule by identifier if present, otherwise use raw value
+    if [ -n "$rule_id" ] && [ -n "${RULE_MAP[$rule_id]}" ]; then
+      rule="${RULE_MAP[$rule_id]}"
     else
       rule="$rule_raw"
     fi
