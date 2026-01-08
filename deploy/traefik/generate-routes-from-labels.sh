@@ -200,7 +200,14 @@ ROUTER_EOF
       echo "      middlewares:" >> "$OUTPUT_FILE"
       IFS=',' read -ra MW_ARRAY <<< "$middlewares"
       for mw in "${MW_ARRAY[@]}"; do
-        mw_clean=$(echo "$mw" | sed 's/@file$//' | xargs)
+        # Convert -file back to @file (GCP labels use -file instead of @file for compatibility)
+        # Trim whitespace and convert -file suffix to @file
+        mw_trimmed=$(echo "$mw" | xargs)
+        if [[ "$mw_trimmed" =~ -file$ ]]; then
+          mw_clean="${mw_trimmed%-file}@file"
+        else
+          mw_clean="$mw_trimmed"
+        fi
         echo "        - ${mw_clean}" >> "$OUTPUT_FILE"
       done
       # Add retry middleware for cold start support (unless already present)
