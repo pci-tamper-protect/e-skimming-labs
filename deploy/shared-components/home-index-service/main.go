@@ -1648,32 +1648,74 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, labUR
 	htmlContent = highlightAttackLines(htmlContent)
 
 	// Determine lab URL for "Back to Lab" button
-	labBackURL := labURL
-	if labBackURL == "" {
-		// Fallback: construct URL based on lab ID and environment
-		hostname := r.Host
-		isLocal := hostname == "localhost:3000" || hostname == "127.0.0.1:3000" || hostname == "localhost" || hostname == "127.0.0.1"
+	// Use same Traefik detection logic as serveHomePage
+	host := r.Host
+	forwardedHost := r.Header.Get("X-Forwarded-Host")
+	forwardedFor := r.Header.Get("X-Forwarded-For")
+	environment := os.Getenv("ENVIRONMENT")
+	labsDomain := os.Getenv("LABS_DOMAIN")
+	if labsDomain == "" {
+		labsDomain = "labs.pcioasis.com"
+	}
 
+	// Detect if we're behind Traefik (same logic as serveHomePage)
+	isBehindTraefik := strings.Contains(strings.ToLower(forwardedHost), "traefik") ||
+		(labsDomain != "" && (host == labsDomain || forwardedHost == labsDomain || strings.HasSuffix(host, labsDomain) || strings.HasSuffix(forwardedHost, labsDomain)))
+
+	// Check for proxy access
+	isLocalProxy := strings.Contains(forwardedFor, "127.0.0.1") || strings.Contains(forwardedFor, "localhost")
+	isProxyHost := host == "127.0.0.1:8081" || host == "localhost:8081" ||
+		strings.HasSuffix(host, ":8081")
+	isForwardedProxyHost := forwardedHost == "127.0.0.1:8081" || forwardedHost == "localhost:8081" ||
+		strings.HasSuffix(forwardedHost, ":8081")
+
+	// Use relative URLs if behind Traefik in staging/local, or any proxy detection, or in local environment
+	useRelativeURLs := false
+	if (environment == "stg" || environment == "local") && isBehindTraefik {
+		useRelativeURLs = true
+	}
+	useRelativeURLs = useRelativeURLs || isLocalProxy || isProxyHost || isForwardedProxyHost || environment == "local"
+
+	labBackURL := labURL
+	if labBackURL == "" || useRelativeURLs {
+		// Use relative paths when behind Traefik
 		switch labID {
 		case "01-basic-magecart":
-			if isLocal {
-				labBackURL = "http://localhost:9001/"
-			} else {
-				labBackURL = "https://lab-01-basic-magecart-prd-mmwwcfi5za-uc.a.run.app/"
+			if useRelativeURLs {
+				labBackURL = "/lab1"
+			} else if labBackURL == "" {
+				// Fallback: construct absolute URL based on environment
+				hostname := r.Host
+				isLocal := hostname == "localhost:3000" || hostname == "127.0.0.1:3000" || hostname == "localhost" || hostname == "127.0.0.1"
+				if isLocal {
+					labBackURL = "http://localhost:9001/"
+				} else {
+					labBackURL = "https://lab-01-basic-magecart-prd-mmwwcfi5za-uc.a.run.app/"
+				}
 			}
 		case "02-dom-skimming":
-			// Lab 2 uses banking.html as the main page
-			if isLocal {
-				labBackURL = "http://localhost:9003/banking.html"
-			} else {
-				labBackURL = "https://lab-02-dom-skimming-prd-mmwwcfi5za-uc.a.run.app/banking.html"
+			if useRelativeURLs {
+				labBackURL = "/lab2"
+			} else if labBackURL == "" {
+				hostname := r.Host
+				isLocal := hostname == "localhost:3000" || hostname == "127.0.0.1:3000" || hostname == "localhost" || hostname == "127.0.0.1"
+				if isLocal {
+					labBackURL = "http://localhost:9003/banking.html"
+				} else {
+					labBackURL = "https://lab-02-dom-skimming-prd-mmwwcfi5za-uc.a.run.app/banking.html"
+				}
 			}
 		case "03-extension-hijacking":
-			// Lab 3 uses index.html as the main page
-			if isLocal {
-				labBackURL = "http://localhost:9005/index.html"
-			} else {
-				labBackURL = "https://lab-03-extension-hijacking-prd-207478017187.us-central1.run.app/index.html"
+			if useRelativeURLs {
+				labBackURL = "/lab3"
+			} else if labBackURL == "" {
+				hostname := r.Host
+				isLocal := hostname == "localhost:3000" || hostname == "127.0.0.1:3000" || hostname == "localhost" || hostname == "127.0.0.1"
+				if isLocal {
+					labBackURL = "http://localhost:9005/index.html"
+				} else {
+					labBackURL = "https://lab-03-extension-hijacking-prd-207478017187.us-central1.run.app/index.html"
+				}
 			}
 		}
 	}
@@ -1688,12 +1730,12 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, labUR
 	// Build auth buttons HTML if enabled
 	authButtonsHTML := ""
 	if homeData.AuthEnabled {
-		authButtonsHTML = fmt.Sprintf(`
+		authButtonsHTML = `
             <div id="auth-buttons" class="auth-buttons" style="display: flex; align-items: center; gap: 10px; margin-left: auto;">
-                <button id="login-btn" class="auth-btn login-btn" style="display: none; padding: 8px 16px; background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">Login</button>
+                <button id="login-btn" class="auth-btn login-btn" style="display: none; padding: 8px 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">Login</button>
                 <button id="logout-btn" class="auth-btn logout-btn" style="display: none; padding: 8px 16px; background: rgba(255, 107, 107, 0.2); color: #ff6b6b; border: 1px solid #ff6b6b; border-radius: 4px; cursor: pointer; font-weight: 500;">Logout</button>
                 <span id="user-email" class="user-email" style="display: none; color: white; font-size: 14px; padding: 0 10px;"></span>
-            </div>`, homeData.MainAppURL)
+            </div>`
 	}
 
 	// Build auth scripts if enabled
