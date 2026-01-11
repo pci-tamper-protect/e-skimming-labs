@@ -9,6 +9,9 @@
 # Redirect all output to stderr so Cloud Run captures it
 exec 1>&2
 
+# Log script startup - this log is used by debug scripts to verify execution
+echo "🚀 Starting generate-routes-from-labels.sh at $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >&2
+
 ENVIRONMENT="${ENVIRONMENT:-stg}"
 PROJECT_ID="${LABS_PROJECT_ID:-labs-${ENVIRONMENT}}"
 HOME_PROJECT_ID="${HOME_PROJECT_ID:-labs-home-${ENVIRONMENT}}"
@@ -25,7 +28,7 @@ echo ""
 echo "   DEBUG: Script started at $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 echo "   DEBUG: Current user: $(whoami)"
 echo "   DEBUG: Working directory: $(pwd)"
-echo "   DEBUG: gcloud available: $(command -v gcloud >/dev/null && echo "yes" || echo "no")"
+echo "   DEBUG: Using Cloud Run Admin API REST endpoints (gcloud not needed)"
 echo "   DEBUG: jq available: $(command -v jq >/dev/null && echo "yes" || echo "no")"
 echo "   DEBUG: Output directory exists: $([ -d "$(dirname "$OUTPUT_FILE")" ] && echo "yes" || echo "no")"
 echo "   DEBUG: Output directory writable: $([ -w "$(dirname "$OUTPUT_FILE")" ] && echo "yes" || echo "no")"
@@ -51,6 +54,14 @@ RULE_MAP["lab3"]="PathPrefix(\`/lab3\`)"
 RULE_MAP["lab3-static"]="PathPrefix(\`/lab3/css/\`) || PathPrefix(\`/lab3/js/\`) || PathPrefix(\`/lab3/images/\`) || PathPrefix(\`/lab3/img/\`) || PathPrefix(\`/lab3/static/\`) || PathPrefix(\`/lab3/assets/\`)"
 RULE_MAP["lab3-extension"]="PathPrefix(\`/lab3/extension\`)"
 
+# Function to get access token for Cloud Run Admin API
+get_access_token() {
+  local token=$(curl -s -f -H "Metadata-Flavor: Google" \
+    "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token?scopes=https://www.googleapis.com/auth/cloud-platform" 2>&1 | \
+    jq -r '.access_token' 2>/dev/null || echo "")
+  echo "$token"
+}
+
 # Function to get identity token for a service URL
 get_identity_token() {
   local service_url=$1
@@ -61,11 +72,22 @@ get_identity_token() {
 
   local encoded_audience=$(echo -n "$service_url" | sed 's/:/%3A/g; s/\//%2F/g')
   local metadata_url="http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=${encoded_audience}"
-  local token=$(curl -s -f -H "Metadata-Flavor: Google" "$metadata_url" 2>/dev/null || echo "")
 
-  if [[ "$token" =~ ^eyJ ]]; then
+  # Try to fetch token (works for both public and private Cloud Run services)
+  # The metadata server can generate tokens for any service URL
+  local token=$(curl -s -f -H "Metadata-Flavor: Google" "$metadata_url" 2>&1)
+  local curl_exit=$?
+
+  # Check if we got a valid JWT token
+  if [ $curl_exit -eq 0 ] && [[ "$token" =~ ^eyJ ]]; then
     echo "$token"
   else
+    # Log error for debugging (but don't fail - middleware will still be created)
+    if [ $curl_exit -ne 0 ]; then
+      echo "    DEBUG: Token fetch failed with exit code $curl_exit for ${service_url}" >&2
+    elif [ -n "$token" ] && [[ ! "$token" =~ ^eyJ ]]; then
+      echo "    DEBUG: Token response doesn't look valid: ${token:0:100}" >&2
+    fi
     echo ""
   fi
 }
@@ -81,92 +103,189 @@ cat > "$OUTPUT_FILE" <<ROUTES_EOF
 
 http:
   routers:
+    # Traefik API and Dashboard routers (high priority to match before application routes)
+    # These routes expose Traefik's internal API and dashboard on port 8080
+    # Based on: https://community.traefik.io/t/serving-traefiks-internal-dashboard-behind-traefik-itself/3457/7
+    # API: /api/http/*, /api/rawdata/*, /api/overview, etc.
+    # Dashboard: /dashboard/
+    traefik-api:
+      rule: "PathPrefix(\`/api/http\`) || PathPrefix(\`/api/rawdata\`) || PathPrefix(\`/api/overview\`) || Path(\`/api/version\`)"
+      service: api@internal
+      priority: 1000  # High priority to match before application /api/* routes (seo=500, analytics=500)
+      entryPoints:
+        - web
+    traefik-dashboard:
+      rule: "PathPrefix(\`/dashboard\`)"
+      service: api@internal
+      priority: 1000  # High priority
+      entryPoints:
+        - web
 ROUTES_EOF
 
 # Query services and extract Traefik labels
 # For each service with traefik.enable=true, extract router and service config
 echo "🔍 Querying Cloud Run services for Traefik labels..." >&2
-echo "   DEBUG: About to query gcloud for services..." >&2
+echo "   DEBUG: Using Cloud Run Admin API REST endpoints (gcloud not available in container)" >&2
 echo "   DEBUG: Will check projects: ${PROJECT_ID} and ${HOME_PROJECT_ID}" >&2
 echo "" >&2
 
-# Get all services from both projects
+# Get access token for Cloud Run Admin API
+echo "   DEBUG: Fetching access token for Cloud Run Admin API..." >&2
+ACCESS_TOKEN=$(get_access_token)
+if [ -z "$ACCESS_TOKEN" ] || [[ ! "$ACCESS_TOKEN" =~ ^ya29\. ]]; then
+  echo "   ❌ CRITICAL: Failed to get access token for Cloud Run Admin API" >&2
+  echo "   This means the service account cannot query Cloud Run services" >&2
+  echo "   Check that the service account has roles/run.viewer permission" >&2
+  ACCESS_TOKEN=""
+else
+  echo "   ✅ Access token obtained (${#ACCESS_TOKEN} chars)" >&2
+fi
+echo "" >&2
+
+# Get all services from both projects using REST API
 ALL_SERVICES=""
 
-if [ -n "$HOME_PROJECT_ID" ]; then
-  echo "   DEBUG: Querying home project: ${HOME_PROJECT_ID}" >&2
-  HOME_SERVICES=$(gcloud run services list \
-    --region="${REGION}" \
-    --project="${HOME_PROJECT_ID}" \
-    --format="value(name)" 2>&1)
+# Function to list services via REST API
+list_services_via_api() {
+  local project_id=$1
+  local region=$2
+  local access_token=$3
+
+  if [ -z "$access_token" ]; then
+    echo ""
+    return 1
+  fi
+
+  local api_url="https://run.googleapis.com/v1/projects/${project_id}/locations/${region}/services"
+  local response=$(curl -s -f -H "Authorization: Bearer ${access_token}" \
+    -H "Content-Type: application/json" \
+    "$api_url" 2>&1)
+  local curl_exit=$?
+
+  if [ $curl_exit -ne 0 ]; then
+    echo "   DEBUG: API call failed with exit code $curl_exit" >&2
+    echo "   Response: ${response:0:200}" >&2
+    echo ""
+    return 1
+  fi
+
+  # Extract service names from JSON response
+  echo "$response" | jq -r '.items[]?.metadata.name // empty' 2>/dev/null || echo ""
+}
+
+if [ -n "$HOME_PROJECT_ID" ] && [ -n "$ACCESS_TOKEN" ]; then
+  echo "   DEBUG: Querying home project via REST API: ${HOME_PROJECT_ID}" >&2
+  HOME_SERVICES=$(list_services_via_api "$HOME_PROJECT_ID" "$REGION" "$ACCESS_TOKEN")
   HOME_SERVICES_EXIT=$?
   echo "   DEBUG: Home services query exit code: ${HOME_SERVICES_EXIT}" >&2
-  if [ $HOME_SERVICES_EXIT -ne 0 ]; then
-    echo "   ⚠️  Warning: Failed to query home project services: ${HOME_SERVICES:0:200}" >&2
+  if [ $HOME_SERVICES_EXIT -ne 0 ] || [ -z "$HOME_SERVICES" ]; then
+    echo "   ⚠️  Warning: Failed to query home project services via REST API" >&2
     HOME_SERVICES=""
   else
-    echo "   DEBUG: Found $(echo "$HOME_SERVICES" | grep -c . || echo "0") services in home project" >&2
+    HOME_COUNT=$(echo "$HOME_SERVICES" | grep -c . || echo "0")
+    echo "   DEBUG: Found ${HOME_COUNT} service(s) in home project" >&2
   fi
   while IFS= read -r svc; do
     if [ -n "$svc" ]; then
       ALL_SERVICES+="${svc}|${HOME_PROJECT_ID}"$'\n'
     fi
   done <<< "$HOME_SERVICES"
+elif [ -n "$HOME_PROJECT_ID" ] && [ -z "$ACCESS_TOKEN" ]; then
+  echo "   ⚠️  Warning: Skipping home project (no access token)" >&2
 fi
 
-if [ -n "$PROJECT_ID" ]; then
-  echo "   DEBUG: Querying labs project: ${PROJECT_ID}" >&2
-  LABS_SERVICES=$(gcloud run services list \
-    --region="${REGION}" \
-    --project="${PROJECT_ID}" \
-    --format="value(name)" 2>&1)
+if [ -n "$PROJECT_ID" ] && [ -n "$ACCESS_TOKEN" ]; then
+  echo "   DEBUG: Querying labs project via REST API: ${PROJECT_ID}" >&2
+  LABS_SERVICES=$(list_services_via_api "$PROJECT_ID" "$REGION" "$ACCESS_TOKEN")
   LABS_SERVICES_EXIT=$?
   echo "   DEBUG: Labs services query exit code: ${LABS_SERVICES_EXIT}" >&2
-  if [ $LABS_SERVICES_EXIT -ne 0 ]; then
-    echo "   ⚠️  Warning: Failed to query labs project services: ${LABS_SERVICES:0:200}" >&2
+  if [ $LABS_SERVICES_EXIT -ne 0 ] || [ -z "$LABS_SERVICES" ]; then
+    echo "   ⚠️  Warning: Failed to query labs project services via REST API" >&2
     LABS_SERVICES=""
   else
-    echo "   DEBUG: Found $(echo "$LABS_SERVICES" | grep -c . || echo "0") services in labs project" >&2
+    LABS_COUNT=$(echo "$LABS_SERVICES" | grep -c . || echo "0")
+    echo "   DEBUG: Found ${LABS_COUNT} service(s) in labs project" >&2
   fi
   while IFS= read -r svc; do
     if [ -n "$svc" ]; then
       ALL_SERVICES+="${svc}|${PROJECT_ID}"$'\n'
     fi
   done <<< "$LABS_SERVICES"
+elif [ -n "$PROJECT_ID" ] && [ -z "$ACCESS_TOKEN" ]; then
+  echo "   ⚠️  Warning: Skipping labs project (no access token)" >&2
 fi
 
-echo "   DEBUG: Total services to check: $(echo "$ALL_SERVICES" | grep -c . || echo "0")" >&2
+TOTAL_SERVICES=$(echo "$ALL_SERVICES" | grep -c . || echo "0")
+echo "   DEBUG: Total services to check: ${TOTAL_SERVICES}" >&2
+
+if [ "$TOTAL_SERVICES" -eq 0 ]; then
+  echo "   ⚠️  WARNING: No services found to process!" >&2
+  echo "   This could mean:" >&2
+  echo "     1. Access token not available (check roles/run.viewer permission)" >&2
+  echo "     2. No services have traefik_enable=true label" >&2
+  echo "     3. Services are in different projects/regions" >&2
+  echo "     4. REST API calls failed (check service account permissions)" >&2
+  echo "   Will generate empty routes.yml with only Traefik API routes" >&2
+fi
 echo "" >&2
 
 # Process each service
 declare -A processed_services
 declare -A auth_middlewares
 
+if [ "$TOTAL_SERVICES" -eq 0 ]; then
+  echo "   ⚠️  Skipping service processing (no services found)" >&2
+else
+  echo "   🔄 Processing ${TOTAL_SERVICES} service(s)..." >&2
+fi
+
+# Function to get service details via REST API
+get_service_via_api() {
+  local service_name=$1
+  local project_id=$2
+  local region=$3
+  local access_token=$4
+
+  if [ -z "$access_token" ]; then
+    echo ""
+    return 1
+  fi
+
+  local api_url="https://run.googleapis.com/v1/projects/${project_id}/locations/${region}/services/${service_name}"
+  local response=$(curl -s -f -H "Authorization: Bearer ${access_token}" \
+    -H "Content-Type: application/json" \
+    "$api_url" 2>&1)
+  local curl_exit=$?
+
+  if [ $curl_exit -ne 0 ]; then
+    echo "   DEBUG: API call failed with exit code $curl_exit" >&2
+    echo "   Response: ${response:0:200}" >&2
+    echo ""
+    return 1
+  fi
+
+  echo "$response"
+}
+
 while IFS='|' read -r service_name project_id; do
   if [ -z "$service_name" ] || [ -z "$project_id" ]; then
     continue
   fi
 
-  # Skip if service doesn't exist (handles services not yet deployed)
-  if ! gcloud run services describe "${service_name}" \
-    --region="${REGION}" \
-    --project="${project_id}" \
-    --format="value(name)" >/dev/null 2>&1; then
-    echo "  ⚪ Service ${service_name} not found, skipping" >&2
+  echo "  📋 Processing: ${service_name} (${project_id})" >&2
+
+  # Get service JSON via REST API (with retry for transient errors)
+  service_json=""
+  if [ -z "$ACCESS_TOKEN" ]; then
+    echo "    ❌ CRITICAL: No access token available, cannot query service details" >&2
+    echo "    Skipping ${service_name}" >&2
     continue
   fi
 
-  echo "  📋 Processing: ${service_name} (${project_id})" >&2
-
-  # Get service JSON (with retry for transient errors)
-  service_json=""
   for attempt in 1 2 3; do
-    service_json=$(gcloud run services describe "${service_name}" \
-      --region="${REGION}" \
-      --project="${project_id}" \
-      --format="json" 2>/dev/null || echo "")
+    service_json=$(get_service_via_api "${service_name}" "${project_id}" "${REGION}" "$ACCESS_TOKEN")
 
-    if [ -n "$service_json" ] && [ "$service_json" != "{}" ]; then
+    if [ -n "$service_json" ] && [ "$service_json" != "{}" ] && echo "$service_json" | jq -e '.metadata.name' >/dev/null 2>&1; then
       break
     fi
 
@@ -176,41 +295,61 @@ while IFS='|' read -r service_name project_id; do
     fi
   done
 
-  if [ -z "$service_json" ] || [ "$service_json" = "{}" ]; then
-    echo "    ⚠️  Could not fetch service details after retries, skipping" >&2
+  if [ -z "$service_json" ] || [ "$service_json" = "{}" ] || ! echo "$service_json" | jq -e '.metadata.name' >/dev/null 2>&1; then
+    echo "    ❌ FAILURE: Could not fetch service details for ${service_name} after retries, skipping" >&2
+    echo "    DEBUG: Service fetch failed - service_json empty or invalid" >&2
     continue
   fi
+
+  echo "    ✅ SUCCESS: Service details fetched for ${service_name}" >&2
 
   # Check if traefik_enable=true (using underscore for GCP label compatibility)
   traefik_enable=$(echo "$service_json" | jq -r '.spec.template.metadata.labels["traefik_enable"] // "false"' 2>/dev/null || echo "false")
   echo "    DEBUG: Service ${service_name} traefik_enable=${traefik_enable}" >&2
 
   if [ "$traefik_enable" != "true" ]; then
-    echo "    ⚪ traefik_enable=${traefik_enable}, skipping" >&2
+    echo "    ❌ FAILURE: Service ${service_name} traefik_enable=${traefik_enable} (not 'true'), skipping" >&2
     continue
   fi
 
-  echo "    ✅ Service ${service_name} has traefik_enable=true, processing..." >&2
+  echo "    ✅ SUCCESS: Service ${service_name} has traefik_enable=true, processing..." >&2
 
   # Get service URL
+  # CRITICAL: Use the same URL for both token generation and service definition
+  # This ensures the token audience matches the request URL
   service_url=$(echo "$service_json" | jq -r '.status.url // ""' 2>/dev/null || echo "")
   if [ -z "$service_url" ]; then
-    echo "    ⚠️  No service URL found" >&2
+    echo "    ❌ FAILURE: No service URL found for ${service_name}, skipping" >&2
     continue
   fi
+  echo "    ✅ SUCCESS: Service URL found for ${service_name}: ${service_url}" >&2
 
   echo "    ✅ Found Traefik-enabled service: ${service_url}" >&2
+  echo "    🔗 Using URL for both token generation and service definition (audience must match)" >&2
 
   # Get identity token for auth BEFORE processing routers (so we can add auth middleware to routers)
-  # Format: traefik_http_services_<service-name>_loadbalancer_server_port
-  # We need to determine the service name from labels first, but for now try to get token for the service URL
-  # The token will be used when we create the service definition and can be added to routers
+  # CRITICAL: Token audience is set to service_url, and service definition also uses service_url
+  # This ensures the token audience exactly matches the request URL
+  # NOTE: We always try to fetch token, even for public services, so middleware is ready when service is made private
+  echo "    DEBUG: Attempting to fetch identity token for ${service_name} (URL: ${service_url})" >&2
   service_token=$(get_identity_token "$service_url")
   if [ -n "$service_token" ] && [[ "$service_token" =~ ^eyJ ]]; then
-    echo "    🔑 Identity token fetched for service (${#service_token} chars)" >&2
+    echo "    ✅ SUCCESS: Identity token fetched for ${service_name} (${#service_token} chars)" >&2
   else
-    echo "    ⚠️  No identity token available (service may be public or token fetch failed)" >&2
-    service_token=""
+    echo "    ❌ FAILURE: Initial token fetch failed for ${service_name}" >&2
+    echo "    DEBUG: Token may be empty or invalid format (service may be public or metadata server unavailable)" >&2
+    echo "    🔄 Retrying token fetch (metadata server may need a moment)..." >&2
+    # Retry once after a short delay (metadata server might be temporarily unavailable)
+    sleep 1
+    service_token=$(get_identity_token "$service_url")
+    if [ -n "$service_token" ] && [[ "$service_token" =~ ^eyJ ]]; then
+      echo "    ✅ SUCCESS: Identity token fetched on retry for ${service_name} (${#service_token} chars)" >&2
+    else
+      echo "    ❌ FAILURE: Token fetch failed after retry for ${service_name}" >&2
+      echo "    DEBUG: Will still generate middleware structure (token will be fetched at runtime if needed)" >&2
+      echo "    💡 Note: Middleware will be created but may need token when service is made private" >&2
+      service_token=""
+    fi
   fi
 
   # Extract all labels
@@ -222,10 +361,12 @@ while IFS='|' read -r service_name project_id; do
   echo "    DEBUG: Found ${router_count} router label(s)" >&2
 
   if [ -z "$router_keys" ]; then
-    echo "    ⚠️  No router labels found" >&2
+    echo "    ❌ FAILURE: No router labels found for ${service_name}" >&2
     echo "    DEBUG: Available labels: $(echo "$labels_json" | jq -r 'keys[] | select(startswith("traefik_"))' | head -5 | tr '\n' ',' || echo "none")" >&2
+    echo "    DEBUG: Service ${service_name} has traefik_enable=true but no traefik_http_routers_* labels" >&2
     continue
   fi
+  echo "    ✅ SUCCESS: Found ${router_count} router label(s) for ${service_name}" >&2
 
   # Group routers by router name
   # Format: traefik_http_routers_<router-name>_<property>
@@ -265,26 +406,37 @@ while IFS='|' read -r service_name project_id; do
     entrypoints=$(echo "$config" | grep "^entrypoints=" | cut -d'=' -f2 || echo "web")
     middlewares=$(echo "$config" | grep "^middlewares=" | cut -d'=' -f2 || echo "")
     service_name_from_label=$(echo "$config" | grep "^service=" | cut -d'=' -f2 || echo "${service_name}")
+    echo "    DEBUG: Router ${router_name}: service_name_from_label='${service_name_from_label}'" >&2
 
-    # If we have a token for this service, add the auth middleware to routers that use this service
+    # Always add the auth middleware to routers that use this service (even if token fetch failed)
+    # This ensures middleware is ready when service is made private
     # The auth middleware name is <service-name>-auth
-    if [ -n "$service_token" ] && [ -n "$service_name_from_label" ]; then
+    if [ -n "$service_name_from_label" ]; then
       auth_middleware_name="${service_name_from_label}-auth"
+      echo "    DEBUG: Router ${router_name}: auth_middleware_name='${auth_middleware_name}'" >&2
       # Add auth middleware if not already in the list
       if [ -n "$middlewares" ]; then
         # Check if auth middleware is already in the list
-        # Support both semicolon and comma separators (semicolon preferred for GCP)
-        if [[ "$middlewares" == *";"* ]]; then
+        # Support multiple separators: __ (double underscore, preferred for GCP), ; (semicolon, legacy), , (comma, legacy)
+        if [[ "$middlewares" == *"__"* ]]; then
+          SEP="__"
+        elif [[ "$middlewares" == *";"* ]]; then
           SEP=";"
         else
           SEP=","
         fi
         if [[ ! "$middlewares" =~ ${auth_middleware_name} ]]; then
           middlewares="${middlewares}${SEP}${auth_middleware_name}"
+          if [ -z "$service_token" ]; then
+            echo "    ⚠️  Adding auth middleware to router (token not available yet - will be generated at service definition time)" >&2
+          fi
         fi
       else
         # No middlewares yet, add auth middleware
         middlewares="${auth_middleware_name}"
+        if [ -z "$service_token" ]; then
+          echo "    ⚠️  Adding auth middleware to router (token not available yet - will be generated at service definition time)" >&2
+        fi
       fi
     fi
 
@@ -301,9 +453,11 @@ ROUTER_EOF
     # Add middlewares if present
     if [ -n "$middlewares" ]; then
       echo "      middlewares:" >> "$OUTPUT_FILE"
-      # Split on semicolon (GCP doesn't allow commas in label values)
-      # Fallback to comma for backward compatibility
-      if [[ "$middlewares" == *";"* ]]; then
+      # Split on separator: __ (double underscore, preferred for GCP), ; (semicolon, legacy), , (comma, legacy)
+      # GCP labels don't allow semicolons or commas, so we use double underscore
+      if [[ "$middlewares" == *"__"* ]]; then
+        IFS='__' read -ra MW_ARRAY <<< "$middlewares"
+      elif [[ "$middlewares" == *";"* ]]; then
         IFS=';' read -ra MW_ARRAY <<< "$middlewares"
       else
         IFS=',' read -ra MW_ARRAY <<< "$middlewares"
@@ -331,20 +485,48 @@ ROUTER_EOF
   done
 
   # Generate service definition
-  # Format: traefik_http_services_<service-name>_loadbalancer_server_port
-  service_port=$(echo "$labels_json" | jq -r '.["traefik_http_services_'${service_name}'_loadbalancer_server_port"] // "8080"' 2>/dev/null || echo "8080")
+  # Format: traefik_http_services_<service-name>_lb_port (shortened from loadbalancer_server_port to fit GCP 63-char limit)
+  # Try shortened key first, fallback to full key for backward compatibility
+  service_port=$(echo "$labels_json" | jq -r '.["traefik_http_services_'${service_name}'_lb_port"] // .["traefik_http_services_'${service_name}'_loadbalancer_server_port"] // "8080"' 2>/dev/null || echo "8080")
+
+  # Get service_name_from_label from router configs (if any routers were processed)
+  # This should have been set in the router loop above
+  if [ -z "$service_name_from_label" ]; then
+    # Fallback: try to get from label, then use service name
+    service_name_from_label=$(echo "$service_json" | jq -r '.spec.template.metadata.labels["traefik_http_services_'${service_name}'_service"] // ""' 2>/dev/null || echo "")
+    if [ -z "$service_name_from_label" ]; then
+      service_name_from_label="${service_name}"
+    fi
+    echo "    DEBUG: Service definition: service_name_from_label='${service_name_from_label}' (from fallback)" >&2
+  else
+    echo "    DEBUG: Service definition: service_name_from_label='${service_name_from_label}' (from router config)" >&2
+  fi
+  echo "    DEBUG: Already processed services: ${!processed_services[@]}" >&2
 
   # Check if service already defined
   if [ -z "${processed_services[$service_name_from_label]}" ]; then
+    echo "    DEBUG: Service ${service_name_from_label} not yet processed, creating service definition..." >&2
     processed_services[$service_name_from_label]=1
 
     # Use the token we already fetched (or fetch again if not available)
+    # CRITICAL: Use the same service_url for token generation and service definition
+    # This ensures token audience matches the request URL
+    # NOTE: Always try to fetch token, even for public services, so middleware is ready when service is made private
     token="${service_token}"
     if [ -z "$token" ]; then
+      echo "    🔑 Fetching token for service definition (using same URL: ${service_url})" >&2
       token=$(get_identity_token "$service_url")
+      if [ -z "$token" ] || [[ ! "$token" =~ ^eyJ ]]; then
+        echo "    ⚠️  Token fetch failed - will retry once..." >&2
+        sleep 1
+        token=$(get_identity_token "$service_url")
+      fi
     fi
 
     # Add service definition
+    # CRITICAL: Use the same service_url that was used for token generation
+    # This ensures the token audience (service_url) matches the request URL (service_url)
+    # If these don't match, Cloud Run will reject the token with 401 Unauthorized
     cat >> "$OUTPUT_FILE" <<SERVICE_EOF
 
   services:
@@ -354,11 +536,16 @@ ROUTER_EOF
           - url: "${service_url}"
         passHostHeader: false
 SERVICE_EOF
+    echo "    ✅ Service definition uses URL: ${service_url} (matches token audience)" >&2
 
-    # Generate auth middleware if token exists
-    if [ -n "$token" ] && [ -z "${auth_middlewares[$service_name_from_label]}" ]; then
+    # Generate auth middleware (always, even if token is empty - it will be fetched at runtime if needed)
+    # This ensures middleware exists when service is made private
+    echo "    DEBUG: Checking if auth middleware already created for ${service_name_from_label}..." >&2
+    echo "    DEBUG: Already created auth middlewares: ${!auth_middlewares[@]}" >&2
+    if [ -z "${auth_middlewares[$service_name_from_label]}" ]; then
+      echo "    DEBUG: Creating auth middleware for ${service_name_from_label}..." >&2
+      echo "    ✅ SUCCESS: Adding auth middleware '${service_name_from_label}-auth' to routes.yml" >&2
       auth_middlewares[$service_name_from_label]=1
-      token_esc=$(echo -n "$token" | sed 's/"/\\"/g')
 
       # Check if middlewares section exists
       if ! grep -q "^  middlewares:" "$OUTPUT_FILE"; then
@@ -366,12 +553,53 @@ SERVICE_EOF
         echo "  middlewares:" >> "$OUTPUT_FILE"
       fi
 
-      cat >> "$OUTPUT_FILE" <<AUTH_EOF
+      if [ -n "$token" ] && [[ "$token" =~ ^eyJ ]]; then
+        # Token is available - use it in middleware
+        token_esc=$(echo -n "$token" | sed 's/"/\\"/g')
+        cat >> "$OUTPUT_FILE" <<AUTH_EOF
     ${service_name_from_label}-auth:
       headers:
         customRequestHeaders:
           Authorization: "Bearer ${token_esc}"
 AUTH_EOF
+        echo "    ✅ SUCCESS: Auth middleware '${service_name_from_label}-auth' created with token (${#token} chars)" >&2
+      else
+        # Token not available - this should not happen for Cloud Run services
+        # Metadata server should be able to generate tokens for any service URL
+        # Token fetch failed - this is unexpected for Cloud Run services
+        # Metadata server should be able to generate tokens for any service URL (public or private)
+        echo "    ❌ CRITICAL: Token fetch failed for ${service_name_from_label}" >&2
+        echo "    💡 This may indicate:" >&2
+        echo "       1. Metadata server not accessible (should work in Cloud Run)" >&2
+        echo "       2. Service account lacks iam.serviceAccountTokenCreator permission" >&2
+        echo "       3. Service URL format issue" >&2
+        echo "    ⚠️  Will retry token fetch one more time..." >&2
+        sleep 2
+        token=$(get_identity_token "$service_url")
+        if [ -n "$token" ] && [[ "$token" =~ ^eyJ ]]; then
+          token_esc=$(echo -n "$token" | sed 's/"/\\"/g')
+          cat >> "$OUTPUT_FILE" <<AUTH_EOF
+    ${service_name_from_label}-auth:
+      headers:
+        customRequestHeaders:
+          Authorization: "Bearer ${token_esc}"
+AUTH_EOF
+          echo "    ✅ SUCCESS: Auth middleware '${service_name_from_label}-auth' created with token after retry (${#token} chars)" >&2
+        else
+          echo "    ❌ FAILURE: Token fetch failed after retry for ${service_name_from_label}" >&2
+          echo "    DEBUG: Middleware will be created but won't work without token" >&2
+          echo "    🔧 This must be fixed before making service private" >&2
+          # Create middleware structure anyway (for visibility), but it won't work
+          # The routes will be regenerated on next deployment, and token should be available then
+          cat >> "$OUTPUT_FILE" <<AUTH_EOF
+    ${service_name_from_label}-auth:
+      headers:
+        customRequestHeaders:
+          Authorization: "Bearer TOKEN_FETCH_FAILED"
+AUTH_EOF
+          echo "    ⚠️  WARNING: Auth middleware '${service_name_from_label}-auth' created with error marker - will need token before service is made private" >&2
+        fi
+      fi
     fi
   fi
 
@@ -384,7 +612,23 @@ done <<< "$ALL_SERVICES"
 echo ""
 echo "✅ Routes file generated at ${OUTPUT_FILE}"
 echo ""
-echo "📊 Summary:"
+echo "📊 Summary:" >&2
+# Always emit summary logs (both success and failure cases)
+if [ ${#auth_middlewares[@]} -eq 0 ]; then
+  echo "   ❌ FAILURE: Auth middlewares created: NONE (no services processed)" >&2
+  echo "   DEBUG: No auth middlewares were created - this means no services were successfully processed" >&2
+else
+  echo "   ✅ SUCCESS: Auth middlewares created: ${!auth_middlewares[@]}" >&2
+  echo "   DEBUG: Summary - Created ${#auth_middlewares[@]} auth middleware(s): ${!auth_middlewares[@]}" >&2
+fi
+if [ ${#processed_services[@]} -eq 0 ]; then
+  echo "   ❌ FAILURE: Processed services: NONE (no services found or processing failed)" >&2
+  echo "   DEBUG: No services were processed - check logs above for reasons" >&2
+else
+  echo "   ✅ SUCCESS: Processed services: ${!processed_services[@]}" >&2
+  echo "   DEBUG: Summary - Successfully processed ${#processed_services[@]} service(s): ${!processed_services[@]}" >&2
+fi
+echo ""
 router_count=$(grep -c "^    [a-z]" "$OUTPUT_FILE" 2>/dev/null || echo "0")
 service_count=$(grep -c "      - url:" "$OUTPUT_FILE" 2>/dev/null || echo "0")
 echo "   Routers: ${router_count}"

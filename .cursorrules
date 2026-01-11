@@ -31,6 +31,82 @@ When working with Traefik or planning features related to routing, service disco
 - Use Traefik's load balancing and failover capabilities
 - Ensure services can be restarted without affecting routing
 
+## Container Logging & Error Handling
+
+**All containers must have safe logging that traps errors and provides useful logs:**
+
+1. **Redirect All Output to stderr**
+   - Use `exec 1>&2` at the start of scripts to ensure Cloud Run captures all output
+   - Cloud Run only captures stderr by default
+   - Example: `exec 1>&2` at the top of entrypoint scripts
+
+2. **Error Trapping**
+   - Use `trap` to catch errors and log them before exit
+   - Example: `trap 'log "ERROR: Script failed at line $LINENO"' ERR`
+   - Don't use `set -e` without error trapping (scripts exit silently)
+
+3. **Explicit Logging Function**
+   - Create a `log()` function that writes to both stderr and `/proc/1/fd/1` (container stdout)
+   - Ensures logs are captured even if stderr redirection fails
+   - Example:
+     ```bash
+     log() {
+       echo "$@" >&2
+       echo "$@" > /proc/1/fd/1 2>/dev/null || true
+     }
+     ```
+
+4. **Debug Logging at Key Points**
+   - Log script start, key decision points, and before/after critical operations
+   - Include context: environment variables, file paths, exit codes
+   - Example: `log "DEBUG: Processing service ${service_name}, attempt ${attempt}/3"`
+
+5. **Never Fail Silently**
+   - If a command fails, log the error and exit code
+   - Don't use `|| true` without logging why it failed
+   - Example: `command || { log "ERROR: Command failed with code $?"; exit 1; }`
+
+6. **Cloud Run Specific**
+   - All output must go to stderr (stdout is not captured)
+   - Use structured logging (JSON) when possible for better parsing
+   - Include timestamps in log messages
+   - Log environment detection (local vs Cloud Run)
+
+## Script Linting & Validation
+
+**ALWAYS run linters on shell scripts before considering them complete:**
+
+1. **Bash Syntax Check**
+   - Run `bash -n <script>` to check for syntax errors
+   - This catches missing `fi`, unclosed quotes, and other syntax issues
+   - Must pass before any script is considered complete
+
+2. **Shellcheck**
+   - Run `shellcheck <script>` on all shell scripts (`.sh`, `.bash`)
+   - Address all errors (SC1xxx, SC2xxx)
+   - Review warnings (SC2xxx info level) and fix when practical
+   - Common issues to fix:
+     - SC2155: Declare and assign separately to avoid masking return values
+     - SC2162: Use `read -r` to avoid mangling backslashes
+     - SC2094: Don't read and write the same file in the same pipeline
+     - SC2016: Expressions don't expand in single quotes
+
+3. **When to Run Linters**
+   - After creating a new script
+   - After modifying any script
+   - Before committing script changes
+   - When debugging script issues
+
+4. **Other Script Types**
+   - Python: Run `pylint`, `flake8`, or `mypy` as appropriate
+   - JavaScript/TypeScript: Run ESLint
+   - YAML: Validate with `yamllint` or schema validators
+   - JSON: Validate syntax with `jq` or `python -m json.tool`
+
+5. **Integration**
+   - Consider adding pre-commit hooks for automatic linting
+   - CI/CD should also run linters as part of validation
+
 ## Plugin & Tool Selection
 
 **Before building new Traefik-related features or tools:**

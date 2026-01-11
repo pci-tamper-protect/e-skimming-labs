@@ -1,33 +1,66 @@
 # Traefik Dockerfile for Google Cloud Run
+# Core principle: Containers are simple - routing/middleware externalized
 # This Dockerfile creates a Traefik image that routes to Cloud Run backend services
+# Identical to Dockerfile.test except runs as traefik user (for security in Cloud Run)
 
 FROM traefik:v3.0
 
-# Install curl, bash, and jq for health checks, entrypoint, and label parsing
+# Install curl, bash, jq, and Go for health checks, entrypoint, and route generation
 USER root
-RUN apk add --no-cache curl ca-certificates bash jq
+RUN apk add --no-cache curl ca-certificates bash jq go
 
 # Copy Traefik configuration
 COPY traefik.cloudrun.yml /etc/traefik/traefik.yml
 COPY dynamic/ /etc/traefik/dynamic/
 
+# Build Go binary for route generation
+# Ensure /app directory exists
+RUN mkdir -p /app/cmd/generate-routes
+
+# Copy go.mod and go.sum first for better layer caching
+COPY cmd/generate-routes/go.mod cmd/generate-routes/go.sum* /app/cmd/generate-routes/
+WORKDIR /app/cmd/generate-routes
+RUN go mod download && \
+    echo "✅ Go dependencies downloaded"
+
+# Copy build script and source code
+COPY cmd/generate-routes/build.sh /app/cmd/generate-routes/build.sh
+COPY cmd/generate-routes/*.go /app/cmd/generate-routes/
+RUN chmod +x /app/cmd/generate-routes/build.sh && \
+    /app/cmd/generate-routes/build.sh
+
 # Copy entrypoint script that generates dynamic config from env vars
+WORKDIR /
 COPY entrypoint.sh /entrypoint.sh
-# Copy script to generate routes from Cloud Run service labels
-COPY generate-routes-from-labels.sh /app/generate-routes-from-labels.sh
-# Copy script to refresh routes periodically
+# Copy script to refresh routes periodically (still uses Go binary)
 COPY refresh-routes.sh /app/refresh-routes.sh
-RUN chmod +x /entrypoint.sh /app/generate-routes-from-labels.sh /app/refresh-routes.sh && \
-    ls -la /entrypoint.sh /app/generate-routes-from-labels.sh /app/refresh-routes.sh && \
+# Keep bash script as fallback (for now)
+COPY generate-routes-from-labels.sh /app/generate-routes-from-labels.sh
+RUN chmod +x /entrypoint.sh /app/refresh-routes.sh /app/generate-routes-from-labels.sh && \
+    # Verify binary exists before trying to chmod (it should have been built in previous step)
+    if [ -f /app/generate-routes ]; then \
+        chmod 755 /app/generate-routes && \
+        echo "✅ Binary /app/generate-routes found and permissions set"; \
+    else \
+        echo "❌ ERROR: Binary /app/generate-routes not found!" && \
+        echo "   Checking /app directory:" && \
+        ls -la /app/ || true && \
+        echo "   Checking if build step succeeded..." && \
+        exit 1; \
+    fi && \
+    ls -la /entrypoint.sh /app/generate-routes /app/refresh-routes.sh && \
     test -f /entrypoint.sh && \
     test -x /entrypoint.sh && \
-    test -f /app/generate-routes-from-labels.sh && \
-    test -x /app/generate-routes-from-labels.sh && \
+    test -f /app/generate-routes && \
+    test -x /app/generate-routes && \
+    test -r /app/generate-routes && \
     test -f /app/refresh-routes.sh && \
     test -x /app/refresh-routes.sh && \
-    echo "✅ entrypoint.sh, generate-routes-from-labels.sh, and refresh-routes.sh copied and made executable"
+    echo "✅ entrypoint.sh, generate-routes binary, and refresh-routes.sh ready"
 
-# Switch back to traefik user
+# Switch to traefik user for security (Cloud Run best practice)
+# Local testing version (Dockerfile.test) runs as root to avoid permission issues
+# Note: /app/generate-routes is readable/executable by all users (755)
 USER traefik
 
 # Expose ports

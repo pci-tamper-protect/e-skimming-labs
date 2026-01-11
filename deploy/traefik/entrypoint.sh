@@ -52,9 +52,12 @@ get_identity_token() {
   fi
 
   # Extract the audience (service URL) for the token
+  # CRITICAL: The audience MUST exactly match the URL used in the HTTP request
+  # This same service_url is used both for token generation and in the service definition
   local audience="$service_url"
 
   echo "  🔑 Fetching token for: ${service_url}" >&2
+  echo "  📌 Token audience will be: ${audience} (must match request URL)" >&2
 
   # Get identity token from metadata server
   # Metadata server is available at http://metadata.google.internal
@@ -145,14 +148,48 @@ if [ -f "/app/generate-routes-from-labels.sh" ]; then
 fi
 log ""
 
-if [ "${ENVIRONMENT}" != "local" ] && [ -f "/app/generate-routes-from-labels.sh" ]; then
-  log "🔍 Attempting to generate routes from Cloud Run service labels..."
-  log "   This will query Cloud Run services and extract Traefik labels"
-  log "   to generate routers and services automatically."
-  log "   DEBUG: Calling /app/generate-routes-from-labels.sh /etc/traefik/dynamic/routes.yml"
-  log ""
+if [ "${ENVIRONMENT}" != "local" ]; then
+  # Prefer Go binary, fallback to bash script
+  log "   DEBUG: Checking for Go binary at /app/generate-routes..."
+  if [ -f "/app/generate-routes" ]; then
+    log "   ✅ Go binary found at /app/generate-routes"
+    log "🔍 Attempting to generate routes from Cloud Run service labels (Go SDK)..."
+    log "   This will query Cloud Run services and extract Traefik labels"
+    log "   to generate routers and services automatically."
+    log "🚀 Calling generate-routes /etc/traefik/dynamic/routes.yml"
+    log "   DEBUG: Full path: /app/generate-routes"
+    log ""
 
-  if /app/generate-routes-from-labels.sh /etc/traefik/dynamic/routes.yml 2>&1; then
+    if /app/generate-routes /etc/traefik/dynamic/routes.yml 2>&1; then
+      GENERATION_EXIT=$?
+      log "   DEBUG: Generation script exited with code: ${GENERATION_EXIT}"
+      # Check if routes.yml was created and has content
+      if [ -f "/etc/traefik/dynamic/routes.yml" ] && [ -s "/etc/traefik/dynamic/routes.yml" ]; then
+        log "✅ Routes generated successfully from Cloud Run labels (Go SDK)"
+        log "   File size: $(stat -c%s /etc/traefik/dynamic/routes.yml 2>/dev/null || stat -f%z /etc/traefik/dynamic/routes.yml 2>/dev/null || echo "unknown") bytes"
+      else
+        log "⚠️  Routes file not created or empty, falling back to environment variables"
+      fi
+    else
+      GENERATION_EXIT=$?
+      log "⚠️  Route generation failed (exit: ${GENERATION_EXIT}), falling back to bash script or environment variables"
+      # Fall through to bash script fallback
+    fi
+  else
+    log "   ⚠️  Go binary not found at /app/generate-routes, will try bash script fallback"
+  fi
+
+  # Fallback to bash script if Go binary failed or doesn't exist
+  if [ ! -f "/etc/traefik/dynamic/routes.yml" ] || [ ! -s "/etc/traefik/dynamic/routes.yml" ]; then
+    if [ -f "/app/generate-routes-from-labels.sh" ]; then
+      log "🔍 Attempting to generate routes from Cloud Run service labels (bash fallback)..."
+      log "   This will query Cloud Run services and extract Traefik labels"
+      log "   to generate routers and services automatically."
+      log "🚀 Calling generate-routes-from-labels.sh /etc/traefik/dynamic/routes.yml"
+      log "   DEBUG: Full path: /app/generate-routes-from-labels.sh"
+      log ""
+
+      if /app/generate-routes-from-labels.sh /etc/traefik/dynamic/routes.yml 2>&1; then
     GENERATION_EXIT=$?
     log "   DEBUG: Generation script exited with code: ${GENERATION_EXIT}"
     # Check if routes.yml was created and has content
@@ -174,6 +211,33 @@ if [ "${ENVIRONMENT}" != "local" ] && [ -f "/app/generate-routes-from-labels.sh"
         log "   Routers and services were auto-discovered from service labels"
         log "   Middlewares are defined in /etc/traefik/dynamic/routes.yml"
         log ""
+
+        # Ensure Traefik API routes are present (required when insecure: false)
+        # Based on: https://community.traefik.io/t/serving-traefiks-internal-dashboard-behind-traefik-itself/3457/7
+        if ! grep -q "traefik-api:" /etc/traefik/dynamic/routes.yml; then
+          log "⚠️  Traefik API routes not found in generated file, adding them..."
+          # Insert API routes at the beginning of routers section (after "routers:")
+          sed -i '/^  routers:/a\
+    # Traefik API and Dashboard routers (high priority to match before application routes)\
+    # Based on: https://community.traefik.io/t/serving-traefiks-internal-dashboard-behind-traefik-itself/3457/7\
+    traefik-api:\
+      rule: "PathPrefix(\`/api/http\`) || PathPrefix(\`/api/rawdata\`) || PathPrefix(\`/api/overview\`) || Path(\`/api/version\`)"\
+      service: api@internal\
+      priority: 1000\
+      entryPoints:\
+        - web\
+    traefik-dashboard:\
+      rule: "PathPrefix(\`/dashboard\`)"\
+      service: api@internal\
+      priority: 1000\
+      entryPoints:\
+        - web
+' /etc/traefik/dynamic/routes.yml
+          log "   ✅ Added Traefik API routes"
+        else
+          log "   ✅ Traefik API routes already present"
+        fi
+
         # Merge middlewares from routes.yml (middlewares only file) into the generated file
         if [ -f "/etc/traefik/dynamic/routes.yml" ] && grep -q "^  middlewares:" /etc/traefik/dynamic/routes.yml; then
           echo "📋 Merging middlewares from routes.yml..."
@@ -201,6 +265,8 @@ if [ "${ENVIRONMENT}" != "local" ] && [ -f "/app/generate-routes-from-labels.sh"
     GENERATION_EXIT=$?
     log "⚠️  Label-based generation failed (exit code: ${GENERATION_EXIT}), falling back to environment variables"
     log "   DEBUG: Check logs above for generation script errors"
+  fi
+  fi
   fi
   log ""
 else
@@ -237,6 +303,25 @@ cat > /etc/traefik/dynamic/cloudrun-services.yml <<EOF
 
 http:
   routers:
+    # Traefik API and Dashboard routers (high priority to match before application routes)
+    # These routes expose Traefik's internal API and dashboard on port 8080
+    # Based on: https://community.traefik.io/t/serving-traefiks-internal-dashboard-behind-traefik-itself/3457/7
+    # When insecure: false, we must create explicit routes to api@internal
+    # API: /api/http/*, /api/rawdata/*, /api/overview, etc.
+    # Dashboard: /dashboard/
+    traefik-api:
+      rule: "PathPrefix(\`/api/http\`) || PathPrefix(\`/api/rawdata\`) || PathPrefix(\`/api/overview\`) || Path(\`/api/version\`)"
+      service: api@internal
+      priority: 1000  # High priority to match before application /api/* routes (seo=500, analytics=500)
+      entryPoints:
+        - web
+    traefik-dashboard:
+      rule: "PathPrefix(\`/dashboard\`)"
+      service: api@internal
+      priority: 1000  # High priority
+      entryPoints:
+        - web
+
     # Home page router
     home-index:
       rule: "PathPrefix(\`/\`)"
@@ -524,6 +609,7 @@ fi)
         attempts: 3
 
     # User authentication check middlewares (forwardAuth)
+    # Note: X-Forwarded-For and X-Forwarded-Host are forwarded so home-index can detect proxy access
     lab1-auth-check:
       forwardAuth:
         address: "${HOME_INDEX_URL:-http://home-index:8080}/api/auth/check"
@@ -533,6 +619,8 @@ fi)
         authRequestHeaders:
           - "Authorization"
           - "Cookie"
+          - "X-Forwarded-For"
+          - "X-Forwarded-Host"
         trustForwardHeader: true
 
     lab2-auth-check:
@@ -544,6 +632,8 @@ fi)
         authRequestHeaders:
           - "Authorization"
           - "Cookie"
+          - "X-Forwarded-For"
+          - "X-Forwarded-Host"
         trustForwardHeader: true
 
     lab3-auth-check:
@@ -555,6 +645,8 @@ fi)
         authRequestHeaders:
           - "Authorization"
           - "Cookie"
+          - "X-Forwarded-For"
+          - "X-Forwarded-Host"
         trustForwardHeader: true
 
   services:
@@ -704,6 +796,6 @@ fi
 
 # Start Traefik with all arguments passed to this script
 log "DEBUG: About to exec Traefik with args: $@"
-log "DEBUG: Current time: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+log "DEBUG: Current time: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 log "DEBUG: Entrypoint script completed, starting Traefik..."
 exec "$@"

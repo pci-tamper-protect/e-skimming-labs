@@ -35,6 +35,8 @@ http:
         authRequestHeaders:
           - "Authorization"
           - "Cookie"
+          - "X-Forwarded-For"
+          - "X-Forwarded-Host"
         trustForwardHeader: true
 
     strip-lab1-prefix:
@@ -73,6 +75,8 @@ http:
         authRequestHeaders:
           - "Authorization"
           - "Cookie"
+          - "X-Forwarded-For"
+          - "X-Forwarded-Host"
         trustForwardHeader: true
 
     strip-lab2-prefix:
@@ -96,6 +100,8 @@ http:
         authRequestHeaders:
           - "Authorization"
           - "Cookie"
+          - "X-Forwarded-For"
+          - "X-Forwarded-Host"
         trustForwardHeader: true
 
     strip-lab3-prefix:

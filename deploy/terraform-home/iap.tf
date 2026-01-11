@@ -109,3 +109,11 @@ resource "google_cloud_run_v2_service_iam_member" "traefik_index_access" {
   role     = "roles/run.invoker"
   member   = "serviceAccount:traefik-${var.environment}@${data.google_project.labs_project.project_id}.iam.gserviceaccount.com"
 }
+
+# Grant Traefik permission to read Cloud Run service metadata in home project
+# This allows Traefik to query service labels via Cloud Run Admin API for route generation
+resource "google_project_iam_member" "traefik_home_viewer" {
+  project = local.home_project_id
+  role    = "roles/run.viewer"
+  member  = "serviceAccount:traefik-${var.environment}@${data.google_project.labs_project.project_id}.iam.gserviceaccount.com"
+}

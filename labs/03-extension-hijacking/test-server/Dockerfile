@@ -12,7 +12,9 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# Expose port
+# Expose port (8080 for Cloud Run, 3000 for local)
+# Server uses PORT env var, defaults to 3000 if not set
+EXPOSE 8080
 EXPOSE 3000
 
 # Health check

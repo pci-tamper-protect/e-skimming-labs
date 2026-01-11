@@ -12,16 +12,26 @@ LOG_FILE="${2:-/tmp/traefik-refresh.log}"
 
 echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") - Refreshing Traefik routes..." >> "$LOG_FILE"
 
-# Run the generation script
-if [ -f "/app/generate-routes-from-labels.sh" ]; then
-  if /app/generate-routes-from-labels.sh "$OUTPUT_FILE" >> "$LOG_FILE" 2>&1; then
-    echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") - Routes refreshed successfully" >> "$LOG_FILE"
+# Run the generation script (prefer Go binary, fallback to bash)
+if [ -f "/app/generate-routes" ]; then
+  if /app/generate-routes "$OUTPUT_FILE" >> "$LOG_FILE" 2>&1; then
+    echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") - Routes refreshed successfully (Go SDK)" >> "$LOG_FILE"
     exit 0
   else
-    echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") - Route refresh failed" >> "$LOG_FILE"
+    echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") - Route refresh failed (Go SDK), trying bash fallback" >> "$LOG_FILE"
+  fi
+fi
+
+# Fallback to bash script
+if [ -f "/app/generate-routes-from-labels.sh" ]; then
+  if /app/generate-routes-from-labels.sh "$OUTPUT_FILE" >> "$LOG_FILE" 2>&1; then
+    echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") - Routes refreshed successfully (bash fallback)" >> "$LOG_FILE"
+    exit 0
+  else
+    echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") - Route refresh failed (bash fallback)" >> "$LOG_FILE"
     exit 1
   fi
 else
-  echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") - Generation script not found" >> "$LOG_FILE"
+  echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") - Generation script not found (neither Go binary nor bash script)" >> "$LOG_FILE"
   exit 1
 fi

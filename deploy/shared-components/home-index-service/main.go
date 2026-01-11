@@ -435,10 +435,15 @@ func main() {
 
 		// Also check for direct proxy access (for local testing)
 		isLocalProxy := strings.Contains(forwardedFor, "127.0.0.1") || strings.Contains(forwardedFor, "localhost")
+		// Check for both 8081 (local dev) and 8082 (staging proxy) ports
 		isProxyHost := host == "127.0.0.1:8081" || host == "localhost:8081" ||
-			strings.HasSuffix(host, ":8081")
+			strings.HasSuffix(host, ":8081") ||
+			host == "127.0.0.1:8082" || host == "localhost:8082" ||
+			strings.HasSuffix(host, ":8082")
 		isForwardedProxyHost := forwardedHost == "127.0.0.1:8081" || forwardedHost == "localhost:8081" ||
-			strings.HasSuffix(forwardedHost, ":8081")
+			strings.HasSuffix(forwardedHost, ":8081") ||
+			forwardedHost == "127.0.0.1:8082" || forwardedHost == "localhost:8082" ||
+			strings.HasSuffix(forwardedHost, ":8082")
 
 		// In local environment, always use absolute URLs with 127.0.0.1:8080
 		// Traefik converts relative redirects to absolute using backend hostname, so we must use 127.0.0.1:8080
@@ -779,10 +784,15 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
 
 	// Also check for direct proxy access (for local testing)
 	isLocalProxy := strings.Contains(forwardedFor, "127.0.0.1") || strings.Contains(forwardedFor, "localhost")
+	// Check for both 8081 (local dev) and 8082 (staging proxy) ports
 	isProxyHost := host == "127.0.0.1:8081" || host == "localhost:8081" ||
-		strings.HasSuffix(host, ":8081")
+		strings.HasSuffix(host, ":8081") ||
+		host == "127.0.0.1:8082" || host == "localhost:8082" ||
+		strings.HasSuffix(host, ":8082")
 	isForwardedProxyHost := forwardedHost == "127.0.0.1:8081" || forwardedHost == "localhost:8081" ||
-		strings.HasSuffix(forwardedHost, ":8081")
+		strings.HasSuffix(forwardedHost, ":8081") ||
+		forwardedHost == "127.0.0.1:8082" || forwardedHost == "localhost:8082" ||
+		strings.HasSuffix(forwardedHost, ":8082")
 
 	// Use relative URLs if any proxy detection matches or in local environment
 	// In local environment with Traefik, always use relative paths (no host-based routing)
@@ -1664,10 +1674,15 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, labUR
 
 	// Check for proxy access
 	isLocalProxy := strings.Contains(forwardedFor, "127.0.0.1") || strings.Contains(forwardedFor, "localhost")
+	// Check for both 8081 (local dev) and 8082 (staging proxy) ports
 	isProxyHost := host == "127.0.0.1:8081" || host == "localhost:8081" ||
-		strings.HasSuffix(host, ":8081")
+		strings.HasSuffix(host, ":8081") ||
+		host == "127.0.0.1:8082" || host == "localhost:8082" ||
+		strings.HasSuffix(host, ":8082")
 	isForwardedProxyHost := forwardedHost == "127.0.0.1:8081" || forwardedHost == "localhost:8081" ||
-		strings.HasSuffix(forwardedHost, ":8081")
+		strings.HasSuffix(forwardedHost, ":8081") ||
+		forwardedHost == "127.0.0.1:8082" || forwardedHost == "localhost:8082" ||
+		strings.HasSuffix(forwardedHost, ":8082")
 
 	// Use relative URLs if behind Traefik in staging/local, or any proxy detection, or in local environment
 	useRelativeURLs := false
@@ -2120,10 +2135,15 @@ func serveAuthSignInURL(w http.ResponseWriter, r *http.Request, homeData HomePag
 
 	// Check for proxy access
 	isLocalProxy := strings.Contains(forwardedFor, "127.0.0.1") || strings.Contains(forwardedFor, "localhost")
+	// Check for both 8081 (local dev) and 8082 (staging proxy) ports
 	isProxyHost := host == "127.0.0.1:8081" || host == "localhost:8081" ||
-		strings.HasSuffix(host, ":8081")
+		strings.HasSuffix(host, ":8081") ||
+		host == "127.0.0.1:8082" || host == "localhost:8082" ||
+		strings.HasSuffix(host, ":8082")
 	isForwardedProxyHost := forwardedHost == "127.0.0.1:8081" || forwardedHost == "localhost:8081" ||
-		strings.HasSuffix(forwardedHost, ":8081")
+		strings.HasSuffix(forwardedHost, ":8081") ||
+		forwardedHost == "127.0.0.1:8082" || forwardedHost == "localhost:8082" ||
+		strings.HasSuffix(forwardedHost, ":8082")
 
 	// Use relative URLs if behind Traefik in staging/local, or any proxy detection, or in local environment
 	// In local environment with Traefik, always use relative paths (no host-based routing)
