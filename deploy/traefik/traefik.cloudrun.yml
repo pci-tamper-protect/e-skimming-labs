@@ -8,8 +8,24 @@ entryPoints:
     # No HTTP to HTTPS redirect as Cloud Run handles HTTPS termination
     # Note: forwarded-headers middleware is applied per-router, not at entrypoint level
 
-# Providers - File-based for Cloud Run (no Docker socket available)
+# Providers - Cloud Run plugin for dynamic service discovery
+# Local plugin mode: plugin source code is in ./plugins-local/src/github.com/pci-tamper-protect/traefik-cloudrun-provider
+experimental:
+  localPlugins:
+    cloudrun:
+      moduleName: github.com/pci-tamper-protect/traefik-cloudrun-provider
+
 providers:
+  plugin:
+    cloudrun:
+      # Configuration is loaded from environment variables:
+      # - LABS_PROJECT_ID (required)
+      # - HOME_PROJECT_ID (optional)
+      # - REGION (defaults to us-central1)
+      # - LOG_LEVEL (defaults to INFO)
+      # - LOG_FORMAT (defaults to text)
+      pollInterval: 30s
+  # Keep file provider for static middlewares (retry-cold-start, etc.)
   file:
     directory: /etc/traefik/dynamic
     watch: true

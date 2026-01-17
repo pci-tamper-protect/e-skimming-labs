@@ -1,0 +1,15 @@
+# Traefik Plugin Manifest for v3.0 Local Plugins
+# This manifest is REQUIRED for Traefik v3.0 local plugin mode
+# The plugin is used in e-skimming-labs with Traefik v3.0
+
+displayName: Cloud Run Provider
+type: provider
+iconPath: docs/icon.svg
+
+summary: Dynamically discover Google Cloud Run services and generate Traefik routing configuration
+
+testData:
+  projectIDs:
+    - test-project
+  region: us-central1
+  pollInterval: 30s

@@ -5,62 +5,74 @@
 
 FROM traefik:v3.0
 
-# Install curl, bash, jq, and Go for health checks, entrypoint, and route generation
+# Install curl, bash, jq, and Go for health checks, entrypoint, and plugin compilation
+# Install Go 1.24 (latest supported) from official releases instead of Alpine packages
+# Go 1.22 reached EOL on 2025-02-11, so we need a supported version
+# Note: gcloud CLI is NOT needed - plugin uses Go client libraries (google.golang.org/api)
 USER root
-RUN apk add --no-cache curl ca-certificates bash jq go
+RUN apk add --no-cache curl ca-certificates bash jq wget tar && \
+    GO_VERSION=1.24.0 && \
+    wget -q https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz -O /tmp/go.tar.gz && \
+    tar -C /usr/local -xzf /tmp/go.tar.gz && \
+    rm /tmp/go.tar.gz && \
+    ln -s /usr/local/go/bin/go /usr/local/bin/go && \
+    ln -s /usr/local/go/bin/gofmt /usr/local/bin/gofmt && \
+    # Verify Go is accessible and working
+    go version && \
+    which go && \
+    # Ensure Go is in PATH for all users (including traefik user)
+    echo 'export PATH="/usr/local/go/bin:/usr/local/bin:$PATH"' >> /etc/profile && \
+    echo 'export PATH="/usr/local/go/bin:/usr/local/bin:$PATH"' >> /etc/bash.bashrc && \
+    # Verify all tools are installed and accessible
+    which curl && curl --version | head -1 && \
+    which bash && bash --version | head -1 && \
+    which jq && jq --version && \
+    echo "✅ Go ${GO_VERSION} installed and verified" && \
+    echo "✅ All required tools installed: curl, bash, jq, go"
 
 # Copy Traefik configuration
+# Create /etc/traefik directory first (base image doesn't have it)
+RUN mkdir -p /etc/traefik/dynamic
 COPY traefik.cloudrun.yml /etc/traefik/traefik.yml
 COPY dynamic/ /etc/traefik/dynamic/
+# Ensure config file is readable by traefik user (we'll create the user later)
+RUN chmod 644 /etc/traefik/traefik.yml && \
+    chmod -R 755 /etc/traefik/dynamic && \
+    echo "✅ Traefik config files ready"
 
-# Build Go binary for route generation
-# Ensure /app directory exists
-RUN mkdir -p /app/cmd/generate-routes
+# Copy plugin source code for local plugin mode
+# Plugin must be in ./plugins-local/src/github.com/pci-tamper-protect/traefik-cloudrun-provider
+COPY plugins-local/ /plugins-local/
 
-# Copy go.mod and go.sum first for better layer caching
-COPY cmd/generate-routes/go.mod cmd/generate-routes/go.sum* /app/cmd/generate-routes/
-WORKDIR /app/cmd/generate-routes
-RUN go mod download && \
-    echo "✅ Go dependencies downloaded"
+# Ensure plugin directory is readable by traefik user (for local plugin compilation)
+# Traefik v3.0 compiles plugins at runtime, so it needs read access
+RUN chmod -R a+rX /plugins-local && \
+    echo "✅ Plugin directory permissions set"
 
-# Copy build script and source code
-COPY cmd/generate-routes/build.sh /app/cmd/generate-routes/build.sh
-COPY cmd/generate-routes/*.go /app/cmd/generate-routes/
-RUN chmod +x /app/cmd/generate-routes/build.sh && \
-    /app/cmd/generate-routes/build.sh
+# Create traefik user (base image doesn't have one by design - provides flexibility)
+# Traefik does NOT need root - running as non-root is a security best practice
+# Cloud Run uses port 8080 (not privileged ports 80/443), so no root privileges needed
+# Use UID 1000 to match common non-root user conventions
+RUN addgroup -g 1000 traefik && \
+    adduser -D -u 1000 -G traefik traefik && \
+    echo "✅ traefik user created"
 
-# Copy entrypoint script that generates dynamic config from env vars
+# Copy simplified entrypoint script (plugin handles route generation)
 WORKDIR /
-COPY entrypoint.sh /entrypoint.sh
-# Copy script to refresh routes periodically (still uses Go binary)
-COPY refresh-routes.sh /app/refresh-routes.sh
-# Keep bash script as fallback (for now)
-COPY generate-routes-from-labels.sh /app/generate-routes-from-labels.sh
-RUN chmod +x /entrypoint.sh /app/refresh-routes.sh /app/generate-routes-from-labels.sh && \
-    # Verify binary exists before trying to chmod (it should have been built in previous step)
-    if [ -f /app/generate-routes ]; then \
-        chmod 755 /app/generate-routes && \
-        echo "✅ Binary /app/generate-routes found and permissions set"; \
-    else \
-        echo "❌ ERROR: Binary /app/generate-routes not found!" && \
-        echo "   Checking /app directory:" && \
-        ls -la /app/ || true && \
-        echo "   Checking if build step succeeded..." && \
-        exit 1; \
-    fi && \
-    ls -la /entrypoint.sh /app/generate-routes /app/refresh-routes.sh && \
+COPY entrypoint-plugin.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh && \
     test -f /entrypoint.sh && \
     test -x /entrypoint.sh && \
-    test -f /app/generate-routes && \
-    test -x /app/generate-routes && \
-    test -r /app/generate-routes && \
-    test -f /app/refresh-routes.sh && \
-    test -x /app/refresh-routes.sh && \
-    echo "✅ entrypoint.sh, generate-routes binary, and refresh-routes.sh ready"
+    echo "✅ entrypoint.sh ready"
 
 # Switch to traefik user for security (Cloud Run best practice)
-# Local testing version (Dockerfile.test) runs as root to avoid permission issues
-# Note: /app/generate-routes is readable/executable by all users (755)
+# Traefik does not require root - port 8080 is not privileged
+# Note: /plugins-local is readable by all users (a+rX) so traefik user can compile plugins
+# Verify traefik user can access Go before switching
+RUN su traefik -c "go version" && \
+    su traefik -c "which go" && \
+    echo "✅ Verified traefik user can access Go"
+
 USER traefik
 
 # Expose ports

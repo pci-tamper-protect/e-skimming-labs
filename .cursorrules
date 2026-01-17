@@ -164,6 +164,60 @@ When working with Traefik or planning features related to routing, service disco
 - All services must listen on port 8080 for Cloud Run
 - Docker layer caching is enabled in GitHub Actions workflows
 
+### Container Runtime Verification **CRITICAL - COST US 5 DAYS OF DEBUGGING**
+**ALWAYS verify containers run at runtime, not just that they build successfully.**
+
+1. **Docker Build vs Runtime Validation**
+   - Docker build does NOT validate many runtime-critical directives:
+     - `USER <username>` - Build succeeds even if user doesn't exist, fails at runtime
+     - `CMD`/`ENTRYPOINT` - Build doesn't verify executables exist or are accessible
+     - File permissions - Build doesn't check if non-root users can access files
+     - Environment variables - Build doesn't validate required env vars are set
+   - **A successful build does NOT guarantee a working container**
+
+2. **Required Runtime Verification Steps**
+   - **Always test container startup** after building:
+     ```bash
+     docker run --rm <image> <command>
+     ```
+   - **Verify USER directive works** - Check that the specified user exists:
+     ```bash
+     docker run --rm --user root <image> id <username>
+     ```
+   - **Test entrypoint/command execution** - Ensure the container actually starts:
+     ```bash
+     docker run --rm <image>  # Should start without errors
+     ```
+   - **Check file permissions** - Verify non-root users can access required files:
+     ```bash
+     docker run --rm --user <non-root-user> <image> ls -la /required/path
+     ```
+
+3. **Common Issues That Build But Fail at Runtime**
+   - `USER traefik` when `traefik` user doesn't exist → Container fails to start
+   - Missing executable in PATH → Command not found errors
+   - Insufficient file permissions → Permission denied errors
+   - Missing environment variables → Application crashes
+   - Wrong working directory → File not found errors
+
+4. **Verification Checklist**
+   - [ ] Container builds successfully (`docker build`)
+   - [ ] Container runs successfully (`docker run`)
+   - [ ] USER directive works (user exists and is accessible)
+   - [ ] Entrypoint/CMD executes without errors
+   - [ ] Required files are accessible with correct permissions
+   - [ ] Environment variables are properly set
+   - [ ] Health checks pass (if defined)
+   - [ ] Application starts and responds to requests
+
+5. **For Cloud Run Deployments**
+   - After deploying, immediately check Cloud Run logs for startup errors
+   - Verify the service reaches "Ready" status, not just "Deployed"
+   - Test actual HTTP requests to the service, not just deployment success
+   - Check that the container is running as the expected user (not root unless intended)
+
+**Remember: A successful `docker build` is only the first step. Always verify runtime behavior.**
+
 ## Cloud Run URL Policy
 - Cloud Run exposes two URLs for each service:
   1. A random-suffix URL (volatile) - e.g., `lab-03-xxxxxx-uc.a.run.app`

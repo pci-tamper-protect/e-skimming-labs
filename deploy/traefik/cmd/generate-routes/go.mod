@@ -1,6 +1,6 @@
 module github.com/pcioasis/e-skimming-labs/deploy/traefik/cmd/generate-routes
 
-go 1.21
+go 1.24
 
 require (
 	golang.org/x/oauth2 v0.19.0

@@ -471,34 +471,42 @@ func main() {
 		}
 
 		// Extract token from request
-		// Check multiple sources in order: Authorization header, Cookie header (from Traefik), Cookie (parsed), query parameter
-		authHeader := r.Header.Get("Authorization")
+		// Priority order:
+		// 1. Cookie header (Firebase token) - prioritized when using gcloud proxy (gcloud sets Authorization)
+		// 2. Authorization header (Firebase token) - for direct access
+		// 3. Parsed Cookie (fallback)
+		// 4. Query parameter (fallback)
 		var token string
-		if authHeader != "" {
-			parts := strings.SplitN(authHeader, " ", 2)
-			if len(parts) == 2 && strings.ToLower(parts[0]) == "bearer" {
-				token = parts[1]
-				log.Printf("🔍 Token found in Authorization header (length: %d)", len(token))
+		
+		// Check Cookie header first (when using gcloud proxy, Authorization is set by gcloud, not user)
+		// This avoids trying to validate gcloud's GCP token as a Firebase token
+		cookieHeader := r.Header.Get("Cookie")
+		if cookieHeader != "" {
+			previewLen := 100
+			if len(cookieHeader) < previewLen {
+				previewLen = len(cookieHeader)
+			}
+			log.Printf("🔍 Cookie header received: %s", cookieHeader[:previewLen])
+			// Parse the Cookie header manually to extract firebase_token
+			cookies := strings.Split(cookieHeader, ";")
+			for _, c := range cookies {
+				c = strings.TrimSpace(c)
+				if strings.HasPrefix(c, "firebase_token=") {
+					token = strings.TrimPrefix(c, "firebase_token=")
+					log.Printf("🔍 Token extracted from Cookie header (length: %d)", len(token))
+					break
+				}
 			}
 		}
-		// Check Cookie header directly (Traefik ForwardAuth forwards Cookie header as-is)
+		
+		// Fallback to Authorization header if no Cookie token found (direct access scenario)
 		if token == "" {
-			cookieHeader := r.Header.Get("Cookie")
-			if cookieHeader != "" {
-				previewLen := 100
-				if len(cookieHeader) < previewLen {
-					previewLen = len(cookieHeader)
-				}
-				log.Printf("🔍 Cookie header received: %s", cookieHeader[:previewLen])
-				// Parse the Cookie header manually to extract firebase_token
-				cookies := strings.Split(cookieHeader, ";")
-				for _, c := range cookies {
-					c = strings.TrimSpace(c)
-					if strings.HasPrefix(c, "firebase_token=") {
-						token = strings.TrimPrefix(c, "firebase_token=")
-						log.Printf("🔍 Token extracted from Cookie header (length: %d)", len(token))
-						break
-					}
+			authHeader := r.Header.Get("Authorization")
+			if authHeader != "" {
+				parts := strings.SplitN(authHeader, " ", 2)
+				if len(parts) == 2 && strings.ToLower(parts[0]) == "bearer" {
+					token = parts[1]
+					log.Printf("🔍 Token found in Authorization header (length: %d)", len(token))
 				}
 			}
 		}
@@ -673,6 +681,10 @@ func main() {
 		// Authenticated - add user info to headers for downstream services
 		w.Header().Set("X-User-Id", userInfo.UserID)
 		w.Header().Set("X-User-Email", userInfo.Email)
+		// Preserve the original JWT token in X-Authorization header
+		// This allows backend services to access the raw Firebase token even after
+		// service auth middleware overwrites the Authorization header
+		w.Header().Set("X-Authorization", fmt.Sprintf("Bearer %s", token))
 		w.WriteHeader(http.StatusOK)
 	})
 
