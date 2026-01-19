@@ -1,0 +1,46 @@
+# Traefik Dockerfile for Google Cloud Run (Sidecar Architecture) - Traefik v3.0 Variant
+# Main Traefik container: serves web traffic only, reads routes.yml from shared volume
+# Provider sidecar generates routes.yml into shared volume
+# Dashboard sidecar serves dashboard UI separately
+# 
+# This is the Traefik v3.0 experimental variant. Default is v2.10.
+
+FROM traefik:v3.0
+
+# Install curl for health checks
+USER root
+RUN apk add --no-cache curl ca-certificates bash
+
+# Copy Traefik configuration (sidecar version - no plugin, uses file provider)
+RUN mkdir -p /etc/traefik/dynamic /shared/traefik/dynamic
+COPY traefik.cloudrun.sidecar.yml /etc/traefik/traefik.yml
+COPY dynamic/ /etc/traefik/dynamic/
+# Ensure config file is readable
+RUN chmod 644 /etc/traefik/traefik.yml && \
+    chmod -R 755 /etc/traefik/dynamic && \
+    chmod -R 755 /shared/traefik/dynamic && \
+    echo "✅ Traefik config files ready"
+
+# Create traefik user (non-root for security)
+RUN addgroup -g 1000 traefik && \
+    adduser -D -u 1000 -G traefik traefik && \
+    chown -R traefik:traefik /shared/traefik && \
+    echo "✅ traefik user created"
+
+# Copy entrypoint script for better logging
+COPY entrypoint-sidecar.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Switch to traefik user
+USER traefik
+
+# Expose ports
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=10s --timeout=3s --retries=3 \
+    CMD traefik healthcheck --ping || exit 1
+
+# Use entrypoint script for better startup logging
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["traefik"]

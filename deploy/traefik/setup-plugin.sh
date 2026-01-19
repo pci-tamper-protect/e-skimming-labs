@@ -40,17 +40,27 @@ else
     echo "   Traefik v3.0 local plugins require .traefik.yml file"
 fi
 
-# Check if vendor directory exists in source
+# Vendor directory IS required for Traefik v3.0 local plugins
+# Traefik v3.0 uses Yaegi (embedded Go interpreter) which does NOT support Go modules
+# Yaegi requires dependencies to be vendored in a vendor/ directory
+# Note: go mod vendor should NOT include standard library packages - if it does, that's a bug
 if [ -d "$PLUGIN_SOURCE/vendor" ]; then
-    echo "📦 Copying vendor directory..."
+    echo "📦 Copying vendor directory from source..."
     cp -r "$PLUGIN_SOURCE/vendor" "$PLUGIN_DEST/"
+    echo "✅ Vendor directory copied"
 else
-    echo "⚠️  Warning: No vendor directory found. Running go mod vendor..."
+    echo "📦 Generating vendor directory (required for Yaegi)..."
     cd "$PLUGIN_DEST"
     if command -v go &> /dev/null; then
-        go mod vendor || echo "⚠️  Warning: go mod vendor failed"
+        go mod vendor || {
+            echo "⚠️  Warning: go mod vendor failed"
+            echo "   Plugin may not compile correctly without vendor directory"
+        }
+        echo "✅ Vendor directory generated"
     else
-        echo "⚠️  Warning: go not found, cannot vendor dependencies"
+        echo "❌ ERROR: go not found, cannot vendor dependencies"
+        echo "   Vendor directory is REQUIRED for Traefik v3.0 local plugins"
+        exit 1
     fi
 fi
 

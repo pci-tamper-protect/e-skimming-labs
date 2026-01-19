@@ -16,8 +16,11 @@ const fs = require('fs')
 const path = require('path')
 
 const app = express()
-// Use PORT environment variable (Cloud Run requires 8080) or default to 3000 for local
-const PORT = process.env.PORT || 3000
+// Port configuration:
+// - When running WITH nginx (main lab2 container): use 3000 (nginx proxies /c2 to us)
+// - When running STANDALONE (lab2-c2-stg service): use PORT env var (8080 on Cloud Run)
+// C2_STANDALONE env var indicates standalone deployment
+const PORT = process.env.C2_STANDALONE === 'true' ? (process.env.PORT || 8080) : 3000
 
 // Middleware
 app.use(cors())

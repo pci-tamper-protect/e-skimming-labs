@@ -7,25 +7,8 @@ set -e
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Source environment configuration
-if [ -f "$SCRIPT_DIR/.env" ]; then
-    if [ -L "$SCRIPT_DIR/.env" ]; then
-        TARGET=$(readlink "$SCRIPT_DIR/.env")
-        echo "📋 Using .env -> $TARGET"
-    else
-        echo "📋 Using .env"
-    fi
-    source "$SCRIPT_DIR/.env"
-elif [ -f "$SCRIPT_DIR/.env.prd" ]; then
-    echo "📋 Using .env.prd"
-    source "$SCRIPT_DIR/.env.prd"
-elif [ -f "$SCRIPT_DIR/.env.stg" ]; then
-    echo "📋 Using .env.stg"
-    source "$SCRIPT_DIR/.env.stg"
-else
-    echo "❌ .env file not found in $SCRIPT_DIR"
-    exit 1
-fi
+# Load environment configuration using dotenvx (supports encrypted .env files)
+source "$SCRIPT_DIR/load-env.sh"
 
 LABS_PROJECT_ID="${LABS_PROJECT_ID:-}"
 HOME_PROJECT_ID="${HOME_PROJECT_ID:-}"

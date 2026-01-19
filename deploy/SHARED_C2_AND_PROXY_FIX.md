@@ -49,7 +49,7 @@ When services are public (`--allow-unauthenticated`):
 ### Why Proxy Fails
 When services are private (`--no-allow-unauthenticated`):
 - Traefik must generate IAM tokens for backend services
-- The token generation happens in `entrypoint.sh` or `generate-routes-from-labels.sh`
+- The token generation happens in the traefik-cloudrun-provider
 - The auth middleware adds `Authorization: Bearer <token>` header
 - If token generation fails or token is invalid, backend returns 401
 

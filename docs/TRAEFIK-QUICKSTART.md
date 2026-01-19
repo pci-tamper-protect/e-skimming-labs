@@ -2,29 +2,52 @@
 
 ## TL;DR - Get Started in 5 Minutes
 
-### 1. Start Everything
+### Option A: Local Sidecar Simulation (Recommended)
+
+This proxies to remote Cloud Run services via Traefik.
+
+```bash
+# Prerequisites: gcloud auth application-default login
+
+# Start
+docker compose -f docker-compose.sidecar-local.yml up -d
+
+# Access
+open http://localhost:9090
+
+# Stop
+docker compose -f docker-compose.sidecar-local.yml down
+```
+
+**Access Points:**
+- **Home Page**: http://localhost:9090/
+- **Lab 1**: http://localhost:9090/lab1
+- **Lab 2**: http://localhost:9090/lab2
+- **Lab 3**: http://localhost:9090/lab3
+- **Traefik Dashboard**: http://localhost:9091/dashboard/
+
+### Option B: Legacy Local Docker Compose
+
+This runs all services locally in Docker containers.
 
 ```bash
 docker-compose up -d
 ```
 
-### 2. Access Services
-
+**Access Points:**
 - **Home Page**: http://localhost:8080/
 - **Lab 1**: http://localhost:8080/lab1
 - **Lab 2**: http://localhost:8080/lab2
 - **Lab 3**: http://localhost:8080/lab3
 - **Traefik Dashboard**: http://localhost:8081/dashboard/
 
-### 3. Test Routing
+### Stop Everything
 
 ```bash
-./tests/test-traefik-routing.sh
-```
+# Sidecar simulation
+docker compose -f docker-compose.sidecar-local.yml down
 
-### 4. Stop Everything
-
-```bash
+# Legacy local
 docker-compose down
 ```
 

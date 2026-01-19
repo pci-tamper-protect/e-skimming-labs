@@ -12,14 +12,15 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# Expose port (8080 for Cloud Run, 3000 for local)
-# Server uses PORT env var, defaults to 3000 if not set
-EXPOSE 8080
-EXPOSE 3000
+# Mark as standalone deployment (uses PORT env var instead of hardcoded 3000)
+ENV C2_STANDALONE=true
 
-# Health check
+# Expose port 8080 for Cloud Run
+EXPOSE 8080
+
+# Health check on PORT (8080 on Cloud Run)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-8080}/health || exit 1
 
 # Start the server
 CMD ["node", "extension-data-server.js"]

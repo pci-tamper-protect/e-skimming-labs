@@ -267,9 +267,9 @@ func TestDynamicConfig_AddAuthMiddleware(t *testing.T) {
 		t.Fatalf("Expected 1 custom header, got %d", len(middleware.Headers.CustomRequestHeaders))
 	}
 
-	authHeader, ok := middleware.Headers.CustomRequestHeaders["Authorization"]
+	authHeader, ok := middleware.Headers.CustomRequestHeaders["X-Serverless-Authorization"]
 	if !ok {
-		t.Fatal("Authorization header not found")
+		t.Fatal("X-Serverless-Authorization header not found")
 	}
 
 	if authHeader != "Bearer test-token-123" {
@@ -287,13 +287,10 @@ func TestDynamicConfig_AddAuthMiddleware_EmptyToken(t *testing.T) {
 		t.Fatal("Middleware not found in config")
 	}
 
-	authHeader, ok := middleware.Headers.CustomRequestHeaders["Authorization"]
-	if !ok {
-		t.Fatal("Authorization header not found")
-	}
-
-	if authHeader != "Bearer TOKEN_FETCH_FAILED" {
-		t.Errorf("Expected error marker for empty token, got: %s", authHeader)
+	// When token is empty, no X-Serverless-Authorization header should be set
+	// This allows the service to return 401 naturally
+	if len(middleware.Headers.CustomRequestHeaders) != 0 {
+		t.Errorf("Expected no custom headers for empty token, got %d", len(middleware.Headers.CustomRequestHeaders))
 	}
 }
 

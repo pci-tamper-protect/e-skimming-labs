@@ -7,6 +7,20 @@
 
 set -e
 
+# Get script directory
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Source credential check
+source "$SCRIPT_DIR/check-credentials.sh"
+
+# Check credentials before proceeding
+if ! check_credentials; then
+  echo ""
+  echo "❌ Deployment aborted: Please fix credential issues first"
+  exit 1
+fi
+echo ""
+
 # Parse arguments
 FORCE_REBUILD=false
 IMAGE_TAG=""
@@ -42,7 +56,6 @@ fi
 echo ""
 
 # Get repo root
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 

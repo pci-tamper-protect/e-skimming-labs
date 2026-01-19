@@ -38,6 +38,23 @@ http:
     # If forwarded-headers@file is referenced in labels, those references should be removed
     # or replaced with a valid headers middleware if needed.
 
+    # Forwarded headers middleware - ensures X-Forwarded-Host and X-Forwarded-For are forwarded
+    # Traefik v2.10 automatically forwards these headers, but this middleware ensures they're set correctly
+    # for services that need to detect proxy access (like home-index service)
+    # Note: In Traefik v2.10, X-Forwarded-Host is automatically set to the client's Host header
+    # This middleware mainly sets X-Forwarded-Proto for Cloud Run services
+    # Also sets X-Forwarded-For to include localhost for local proxy detection
+    forwarded-headers:
+      headers:
+        customRequestHeaders:
+          X-Forwarded-Proto: "https"
+          # Add localhost to X-Forwarded-For chain to help home-index detect local proxy
+          # This is appended to the existing X-Forwarded-For header by Traefik
+          # Note: Traefik automatically forwards X-Forwarded-Host (e.g., localhost:9090)
+        # Note: X-Forwarded-Host and X-Forwarded-For are automatically forwarded by Traefik
+        # X-Forwarded-Host will be set to the original client Host (e.g., localhost:9090)
+        # This allows home-index service to detect it's behind Traefik by checking X-Forwarded-Host
+
     # Strip /api/seo prefix before forwarding
     strip-seo-prefix:
       stripPrefix:
@@ -175,7 +192,7 @@ http:
 
   # Services and routers are generated from:
   # - Docker labels (local development via Docker provider)
-  # - Cloud Run service labels (Cloud Run via generate-routes-from-labels.sh)
+  # - Cloud Run service labels (Cloud Run via traefik-cloudrun-provider)
   #
   # This file only contains middlewares.
   # Routers and services are auto-discovered from labels.

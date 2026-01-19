@@ -1,5 +1,40 @@
 package main
 
+/*
+ * ============================================================================
+ * ROUTING ARCHITECTURE PRINCIPLE - DO NOT REGRESS
+ * ============================================================================
+ *
+ * **CRITICAL**: Services MUST NOT contain routing logic. All routing belongs to Traefik.
+ *
+ * Services should ALWAYS return relative URLs for navigation:
+ *   - Lab URLs: /lab1, /lab2, /lab3
+ *   - Navigation: /mitre-attack, /threat-model, /sign-in
+ *   - Writeups: /lab-01-writeup, /lab-02-writeup, /lab-03-writeup
+ *
+ * Traefik handles all routing based on path prefixes:
+ *   - /lab1 → routes to lab1 service
+ *   - /lab2 → routes to lab2 service
+ *   - /lab3 → routes to lab3 service
+ *   - /mitre-attack → routes to home-index service
+ *   - /sign-in → routes to appropriate service
+ *
+ * **DO NOT** add logic to:
+ *   - Detect if service is behind Traefik (isBehindTraefik, isProxyHost, etc.)
+ *   - Conditionally use relative vs absolute URLs (useRelativeURLs)
+ *   - Check X-Forwarded-Host or X-Forwarded-For for routing decisions
+ *   - Generate different URLs based on environment (local vs staging vs production)
+ *
+ * **EXCEPTION**: Absolute URLs are ONLY allowed for SEO metadata:
+ *   - Canonical tags: <link rel="canonical" href="https://domain.com/">
+ *   - Open Graph tags: <meta property="og:url" content="https://domain.com/">
+ *
+ * If you find yourself adding routing logic to a service, STOP and ask:
+ * "Why can't Traefik handle this routing?"
+ *
+ * ============================================================================
+ */
+
 import (
 	"encoding/json"
 	"fmt"
@@ -125,12 +160,8 @@ func main() {
 	environment := os.Getenv("ENVIRONMENT")
 	domain := os.Getenv("DOMAIN")
 	labsDomain := os.Getenv("LABS_DOMAIN")
-	lab1Domain := os.Getenv("LAB1_DOMAIN")
-	lab2Domain := os.Getenv("LAB2_DOMAIN")
-	lab3Domain := os.Getenv("LAB3_DOMAIN")
-	lab1URL := os.Getenv("LAB1_URL")
-	lab2URL := os.Getenv("LAB2_URL")
-	lab3URL := os.Getenv("LAB3_URL")
+	// Lab URLs are no longer needed - services always use relative URLs (/lab1, /lab2, /lab3)
+	// Traefik handles routing based on path prefixes
 	mainDomain := os.Getenv("MAIN_DOMAIN")
 	labsProjectID := os.Getenv("LABS_PROJECT_ID")
 
@@ -159,15 +190,7 @@ func main() {
 			mainDomain = "labs.pcioasis.com"
 		}
 	}
-	if lab1Domain == "" {
-		lab1Domain = labsDomain
-	}
-	if lab2Domain == "" {
-		lab2Domain = labsDomain
-	}
-	if lab3Domain == "" {
-		lab3Domain = labsDomain
-	}
+	// Lab domains no longer needed - services use relative URLs (/lab1, /lab2, /lab3)
 	// MAIN_DOMAIN is set above based on environment if not explicitly provided
 	// Default to empty - should be set via environment variable
 	// This allows staging to use labs-stg and production to use labs-prd
@@ -184,50 +207,16 @@ func main() {
 	}
 
 	// Define available labs with detailed descriptions
-	// Use environment variables for lab URLs if provided
-	// For local development: use direct domain URLs (e.g., http://localhost:9001/)
-	// For production: use direct Cloud Run URLs (e.g., https://lab-02-dom-skimming-prd-mmwwcfi5za-uc.a.run.app)
-	if lab1URL == "" {
-		if isLocal && lab1Domain != "" {
-			// Local development: use direct port-based URL
-			lab1URL = fmt.Sprintf("%s://%s/", scheme, lab1Domain)
-		} else {
-			// Production: use direct Cloud Run URL
-			lab1URL = "https://lab-01-basic-magecart-prd-mmwwcfi5za-uc.a.run.app/"
-		}
-	}
-	if lab2URL == "" {
-		if isLocal && lab2Domain != "" {
-			// Local development: use direct port-based URL
-			lab2URL = fmt.Sprintf("%s://%s/banking.html", scheme, lab2Domain)
-		} else {
-			// Production: link directly to banking.html page
-			lab2URL = "https://lab-02-dom-skimming-prd-mmwwcfi5za-uc.a.run.app/banking.html"
-		}
-	}
-	if lab2URL != "" && !strings.HasSuffix(lab2URL, "/banking.html") {
-		lab2URL += "/banking.html"
-	}
-	if lab3URL == "" {
-		if isLocal && lab3Domain != "" {
-			// Local development: use direct port-based URL
-			lab3URL = fmt.Sprintf("%s://%s/index.html", scheme, lab3Domain)
-		} else {
-			// Production: link directly to index.html page
-			lab3URL = "https://lab-03-extension-hijacking-prd-207478017187.us-central1.run.app/index.html"
-		}
-	}
-	if lab3URL != "" && !strings.HasSuffix(lab3URL, "/index.html") {
-		lab3URL += "/index.html"
-	}
-
+	// IMPORTANT: Always use relative URLs for navigation - Traefik handles routing
+	// DO NOT add logic to detect environment or proxy - just use relative paths
+	// Environment variables (LAB1_URL, LAB2_URL, LAB3_URL) are ignored - we always use relative paths
 	labs := []Lab{
 		{
 			ID:          "lab1-basic-magecart",
 			Name:        "Basic Magecart Attack",
 			Description: "Learn the fundamentals of payment card skimming attacks through JavaScript injection. Understand how attackers compromise e-commerce sites, intercept form submissions, and exfiltrate credit card data. Practice detection using browser DevTools and implement basic defensive measures.",
 			Difficulty:  "Beginner",
-			URL:         lab1URL,
+			URL:         "/lab1", // Always relative - Traefik routes to lab1 service
 			Status:      "Available",
 		},
 		{
@@ -235,7 +224,7 @@ func main() {
 			Name:        "DOM-Based Skimming",
 			Description: "Master advanced DOM manipulation techniques for stealthy payment data capture. Learn real-time field monitoring, dynamic form injection, Shadow DOM abuse, and DOM tree manipulation. Understand how attackers bypass traditional detection methods.",
 			Difficulty:  "Intermediate",
-			URL:         lab2URL,
+			URL:         "/lab2", // Always relative - Traefik routes to lab2 service
 			Status:      "Available",
 		},
 		{
@@ -243,12 +232,14 @@ func main() {
 			Name:        "Browser Extension Hijacking",
 			Description: "Explore sophisticated browser extension-based attacks that exploit privileged APIs and persistent access. Learn about content script injection, background script persistence, cross-origin communication, and supply chain attacks through malicious extensions.",
 			Difficulty:  "Advanced",
-			URL:         lab3URL,
+			URL:         "/lab3", // Always relative - Traefik routes to lab3 service
 			Status:      "Available",
 		},
 	}
 
 	// Create home page data
+	// Use relative URLs for navigation - Traefik handles routing
+	// Absolute URLs only needed for SEO metadata (canonical, og:url)
 	homeData := HomePageData{
 		Environment:    environment,
 		Domain:         domain,
@@ -257,19 +248,20 @@ func main() {
 		LabsProjectID:  labsProjectID,
 		Scheme:         scheme,
 		Labs:           labs,
-		MITREURL:       fmt.Sprintf("%s://%s/mitre-attack", scheme, domain),
-		ThreatModelURL: fmt.Sprintf("%s://%s/threat-model", scheme, domain),
+		MITREURL:       "/mitre-attack",       // Always relative - Traefik routes
+		ThreatModelURL: "/threat-model",       // Always relative - Traefik routes
+		MainAppURL:     "",                    // Empty = use relative paths in templates
 	}
 
-	// Update labs with writeup URLs
+	// Update labs with writeup URLs (always relative)
 	for i := range homeData.Labs {
 		switch homeData.Labs[i].ID {
 		case "lab1-basic-magecart":
-			homeData.Labs[i].WriteupURL = fmt.Sprintf("%s://%s/lab-01-writeup", scheme, domain)
+			homeData.Labs[i].WriteupURL = "/lab-01-writeup"
 		case "lab2-dom-skimming":
-			homeData.Labs[i].WriteupURL = fmt.Sprintf("%s://%s/lab-02-writeup", scheme, domain)
+			homeData.Labs[i].WriteupURL = "/lab-02-writeup"
 		case "lab3-extension-hijacking":
-			homeData.Labs[i].WriteupURL = fmt.Sprintf("%s://%s/lab-03-writeup", scheme, domain)
+			homeData.Labs[i].WriteupURL = "/lab-03-writeup"
 		}
 	}
 
@@ -300,14 +292,17 @@ func main() {
 		firebaseServiceAccount = "" // Clear the encrypted value
 	}
 
-	mainAppURL := fmt.Sprintf("%s://%s", scheme, mainDomain)
+	// MainAppURL is now empty (relative paths) - services always use relative URLs
+	// IMPORTANT: Traefik handles routing, so services don't need to know about proxy setup
+	// DO NOT add logic to detect environment or generate absolute URLs here
+	mainAppURL := ""
 
 	authConfig := auth.Config{
 		Enabled:         enableAuth,
 		RequireAuth:     requireAuth,
 		ProjectID:       firebaseProjectID,
 		CredentialsJSON: firebaseServiceAccount,
-		MainAppURL:      mainAppURL,
+		MainAppURL:      mainAppURL, // Empty = use relative paths
 	}
 
 	authValidator, err := auth.NewTokenValidator(authConfig)
@@ -319,7 +314,7 @@ func main() {
 	homeData.AuthEnabled = enableAuth
 	homeData.AuthRequired = requireAuth
 	homeData.FirebaseProjectID = firebaseProjectID
-	homeData.MainAppURL = mainAppURL
+	homeData.MainAppURL = mainAppURL // Empty = use relative paths (Traefik handles routing)
 
 	// Create router with auth middleware
 	mux := http.NewServeMux()
@@ -343,15 +338,15 @@ func main() {
 	})
 
 	mux.HandleFunc("/lab-01-writeup", func(w http.ResponseWriter, r *http.Request) {
-		serveLabWriteup(w, r, "01-basic-magecart", lab1URL, homeData, authValidator)
+		serveLabWriteup(w, r, "01-basic-magecart", homeData, authValidator)
 	})
 
 	mux.HandleFunc("/lab-02-writeup", func(w http.ResponseWriter, r *http.Request) {
-		serveLabWriteup(w, r, "02-dom-skimming", lab2URL, homeData, authValidator)
+		serveLabWriteup(w, r, "02-dom-skimming", homeData, authValidator)
 	})
 
 	mux.HandleFunc("/lab-03-writeup", func(w http.ResponseWriter, r *http.Request) {
-		serveLabWriteup(w, r, "03-extension-hijacking", lab3URL, homeData, authValidator)
+		serveLabWriteup(w, r, "03-extension-hijacking", homeData, authValidator)
 	})
 
 	mux.HandleFunc("/api/labs", func(w http.ResponseWriter, r *http.Request) {
@@ -408,7 +403,9 @@ func main() {
 			return
 		}
 
-		// Detect if accessed via proxy (same logic as serveHomePage)
+		// IMPORTANT: Proxy detection here is ONLY for authentication bypass (local testing)
+		// DO NOT use this for URL routing decisions - services always use relative URLs
+		// Traefik handles all routing - services should never check X-Forwarded-Host for routing
 	host := r.Host
 	forwardedHost := r.Header.Get("X-Forwarded-Host")
 	forwardedFor := r.Header.Get("X-Forwarded-For")
@@ -418,44 +415,25 @@ func main() {
 		labsDomain = "labs.pcioasis.com"
 	}
 
-	// Check if we're behind Traefik (X-Forwarded-Host contains traefik)
-	// Detect if we're behind Traefik by checking:
-	// 1. X-Forwarded-Host contains "traefik" (local development)
-	// 2. Host matches LABS_DOMAIN (staging/production via Traefik)
-	// 3. X-Forwarded-Host matches LABS_DOMAIN (staging/production via Traefik)
+	// Check if we're behind Traefik (for auth bypass detection)
 	isBehindTraefik := strings.Contains(strings.ToLower(forwardedHost), "traefik") ||
 		(labsDomain != "" && (host == labsDomain || forwardedHost == labsDomain || strings.HasSuffix(host, labsDomain) || strings.HasSuffix(forwardedHost, labsDomain)))
 
-		// In staging or local, if we're behind Traefik, use relative URLs (Traefik uses path-based routing)
-		// In local environment with Traefik, always use relative paths (no host-based routing)
-		useRelativeURLs := false
-		if (environment == "stg" || environment == "local") && isBehindTraefik {
-			useRelativeURLs = true
-		}
-
-		// Also check for direct proxy access (for local testing)
-		isLocalProxy := strings.Contains(forwardedFor, "127.0.0.1") || strings.Contains(forwardedFor, "localhost")
-		// Check for both 8081 (local dev) and 8082 (staging proxy) ports
-		isProxyHost := host == "127.0.0.1:8081" || host == "localhost:8081" ||
-			strings.HasSuffix(host, ":8081") ||
-			host == "127.0.0.1:8082" || host == "localhost:8082" ||
-			strings.HasSuffix(host, ":8082")
-		isForwardedProxyHost := forwardedHost == "127.0.0.1:8081" || forwardedHost == "localhost:8081" ||
-			strings.HasSuffix(forwardedHost, ":8081") ||
-			forwardedHost == "127.0.0.1:8082" || forwardedHost == "localhost:8082" ||
-			strings.HasSuffix(forwardedHost, ":8082")
-
-		// In local environment, always use absolute URLs with 127.0.0.1:8080
-		// Traefik converts relative redirects to absolute using backend hostname, so we must use 127.0.0.1:8080
-		if environment == "local" {
-			useRelativeURLs = false
-			log.Printf("🔗 Using absolute URLs with 127.0.0.1:8080 in local environment (Traefik converts relative redirects)")
-		} else {
-			useRelativeURLs = useRelativeURLs || isLocalProxy || isProxyHost || isForwardedProxyHost
-		}
-
-		log.Printf("🔍 useRelativeURLs: %v (env:%s, isBehindTraefik:%v, isLocalProxy:%v, isProxyHost:%v, isForwardedProxyHost:%v)",
-			useRelativeURLs, environment, isBehindTraefik, isLocalProxy, isProxyHost, isForwardedProxyHost)
+	// Check for direct proxy access (for local testing)
+	isLocalProxy := strings.Contains(forwardedFor, "127.0.0.1") || strings.Contains(forwardedFor, "localhost")
+	// Check for 8081 (local dev), 8082 (staging proxy), and 9090 (local Traefik) ports
+	isProxyHost := host == "127.0.0.1:8081" || host == "localhost:8081" ||
+		strings.HasSuffix(host, ":8081") ||
+		host == "127.0.0.1:8082" || host == "localhost:8082" ||
+		strings.HasSuffix(host, ":8082") ||
+		host == "127.0.0.1:9090" || host == "localhost:9090" ||
+		strings.HasSuffix(host, ":9090")
+	isForwardedProxyHost := forwardedHost == "127.0.0.1:8081" || forwardedHost == "localhost:8081" ||
+		strings.HasSuffix(forwardedHost, ":8081") ||
+		forwardedHost == "127.0.0.1:8082" || forwardedHost == "localhost:8082" ||
+		strings.HasSuffix(forwardedHost, ":8082") ||
+		forwardedHost == "127.0.0.1:9090" || forwardedHost == "localhost:9090" ||
+		strings.HasSuffix(forwardedHost, ":9090")
 
 		// Bypass authentication for proxy access (local testing)
 		// User is already authenticated to gcloud when using proxy
@@ -599,34 +577,9 @@ func main() {
 			// No token provided
 			if isBrowserRequest {
 				// Redirect browser requests to sign-in
-				var redirectURL string
-				if useRelativeURLs {
-					// Use relative URL for proxy access (local environment)
-					// Must set Location header manually to avoid http.Redirect converting to absolute URL
-					redirectURL = fmt.Sprintf("/sign-in?redirect=%s", originalURI)
-				} else {
-					// Use absolute URL for direct access (staging/production)
-					scheme := "http"
-					if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
-						scheme = "https"
-					}
-					// Use X-Forwarded-Host (from Traefik) to get the correct client-facing hostname
-					redirectHost := r.Header.Get("X-Forwarded-Host")
-					if redirectHost == "" {
-						// In local environment, always use 127.0.0.1:8080, never use r.Host (internal Docker hostname)
-						if environment == "local" {
-							redirectHost = "127.0.0.1:8080"
-						} else {
-							redirectHost = r.Host
-						}
-					} else if environment == "local" {
-						// Even if X-Forwarded-Host is set, in local environment ensure we use 127.0.0.1:8080
-						// X-Forwarded-Host might be set to internal hostname by Traefik
-						redirectHost = "127.0.0.1:8080"
-					}
-					redirectURL = fmt.Sprintf("%s://%s/sign-in?redirect=%s", scheme, redirectHost, originalURI)
-				}
-				log.Printf("🔗 Redirecting to: %s (useRelative: %v, Host: %s, X-Forwarded-Host: %s)", redirectURL, useRelativeURLs, r.Host, r.Header.Get("X-Forwarded-Host"))
+				// Always use relative URL - Traefik handles routing
+				redirectURL := fmt.Sprintf("/sign-in?redirect=%s", originalURI)
+				log.Printf("🔗 Redirecting to: %s (relative URL, Traefik routes)", redirectURL)
 				w.Header().Set("Location", redirectURL)
 				w.WriteHeader(http.StatusFound)
 				return
@@ -641,34 +594,9 @@ func main() {
 		if err != nil || userInfo == nil {
 			if isBrowserRequest {
 				// Redirect browser requests to sign-in
-				var redirectURL string
-				if useRelativeURLs {
-					// Use relative URL for proxy access (local environment)
-					// Must set Location header manually to avoid http.Redirect converting to absolute URL
-					redirectURL = fmt.Sprintf("/sign-in?redirect=%s", originalURI)
-				} else {
-					// Use absolute URL for direct access (staging/production)
-					scheme := "http"
-					if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
-						scheme = "https"
-					}
-					// Use X-Forwarded-Host (from Traefik) to get the correct client-facing hostname
-					redirectHost := r.Header.Get("X-Forwarded-Host")
-					if redirectHost == "" {
-						// In local environment, always use 127.0.0.1:8080, never use r.Host (internal Docker hostname)
-						if environment == "local" {
-							redirectHost = "127.0.0.1:8080"
-						} else {
-							redirectHost = r.Host
-						}
-					} else if environment == "local" {
-						// Even if X-Forwarded-Host is set, in local environment ensure we use 127.0.0.1:8080
-						// X-Forwarded-Host might be set to internal hostname by Traefik
-						redirectHost = "127.0.0.1:8080"
-					}
-					redirectURL = fmt.Sprintf("%s://%s/sign-in?redirect=%s", scheme, redirectHost, originalURI)
-				}
-				log.Printf("🔗 Redirecting to: %s (useRelative: %v, Host: %s, X-Forwarded-Host: %s)", redirectURL, useRelativeURLs, r.Host, r.Header.Get("X-Forwarded-Host"))
+				// Always use relative URL - Traefik handles routing
+				redirectURL := fmt.Sprintf("/sign-in?redirect=%s", originalURI)
+				log.Printf("🔗 Redirecting to: %s (relative URL, Traefik routes)", redirectURL)
 				w.Header().Set("Location", redirectURL)
 				w.WriteHeader(http.StatusFound)
 				return
@@ -728,6 +656,9 @@ func main() {
 	log.Fatal(http.ListenAndServe(":"+port, handler))
 }
 
+// serveHomePage serves the main landing page
+// IMPORTANT: This function MUST NOT contain routing logic. All routing belongs to Traefik.
+// Services always return relative URLs (/lab1, /lab2, etc.) - Traefik handles routing.
 func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, validator *auth.TokenValidator) {
 	// Check if services are ready (only in local environment)
 	environment := os.Getenv("ENVIRONMENT")
@@ -750,70 +681,6 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
 		log.Printf("✅ All services ready, serving normal home page")
 	}
 
-	// Detect if accessed via proxy (127.0.0.1:8081 or localhost:8081)
-	// When using gcloud run services proxy, Traefik may not forward the original Host header
-	// We check multiple sources: Host header, X-Forwarded-Host, and X-Forwarded-For (for localhost)
-	host := r.Host
-	forwardedHost := r.Header.Get("X-Forwarded-Host")
-	forwardedFor := r.Header.Get("X-Forwarded-For")
-	labsDomain := os.Getenv("LABS_DOMAIN")
-	if labsDomain == "" {
-		labsDomain = "labs.pcioasis.com"
-	}
-
-	// Debug logging (only in staging/local, not production)
-	if environment == "stg" || environment == "local" {
-		log.Printf("🔍 Proxy detection - Host: %s, X-Forwarded-Host: %s, X-Forwarded-For: %s", host, forwardedHost, forwardedFor)
-	}
-
-	// Check if accessed via proxy:
-	// When using gcloud run services proxy, the flow is:
-	// Browser -> Proxy (127.0.0.1:8081) -> Traefik -> home-index
-	//
-	// What we see in logs:
-	// - Host: home-index-stg-xxxxx-uc.a.run.app (Cloud Run hostname)
-	// - X-Forwarded-Host: traefik-stg-xxxxx-uc.a.run.app (Traefik's hostname)
-	// - X-Forwarded-For: 169.254.169.126 (Cloud Run internal IP, not 127.0.0.1)
-	//
-	// Detection: If X-Forwarded-Host contains "traefik" and we're in staging,
-	// we're behind Traefik. Since the proxy is the only way to access staging locally,
-	// we can use relative URLs when behind Traefik in staging.
-
-	// Check if we're behind Traefik (X-Forwarded-Host contains traefik)
-	// Detect if we're behind Traefik by checking:
-	// 1. X-Forwarded-Host contains "traefik" (local development)
-	// 2. Host matches LABS_DOMAIN (staging/production via Traefik)
-	// 3. X-Forwarded-Host matches LABS_DOMAIN (staging/production via Traefik)
-	isBehindTraefik := strings.Contains(strings.ToLower(forwardedHost), "traefik") ||
-		(labsDomain != "" && (host == labsDomain || forwardedHost == labsDomain || strings.HasSuffix(host, labsDomain) || strings.HasSuffix(forwardedHost, labsDomain)))
-
-	// In staging or local, if we're behind Traefik, use relative URLs (Traefik uses path-based routing)
-	// In production, always use absolute URLs for SEO
-	useRelativeURLs := false
-	if (environment == "stg" || environment == "local") && isBehindTraefik {
-		useRelativeURLs = true
-	}
-
-	// Also check for direct proxy access (for local testing)
-	isLocalProxy := strings.Contains(forwardedFor, "127.0.0.1") || strings.Contains(forwardedFor, "localhost")
-	// Check for both 8081 (local dev) and 8082 (staging proxy) ports
-	isProxyHost := host == "127.0.0.1:8081" || host == "localhost:8081" ||
-		strings.HasSuffix(host, ":8081") ||
-		host == "127.0.0.1:8082" || host == "localhost:8082" ||
-		strings.HasSuffix(host, ":8082")
-	isForwardedProxyHost := forwardedHost == "127.0.0.1:8081" || forwardedHost == "localhost:8081" ||
-		strings.HasSuffix(forwardedHost, ":8081") ||
-		forwardedHost == "127.0.0.1:8082" || forwardedHost == "localhost:8082" ||
-		strings.HasSuffix(forwardedHost, ":8082")
-
-	// Use relative URLs if any proxy detection matches or in local environment
-	// In local environment with Traefik, always use relative paths (no host-based routing)
-	useRelativeURLs = useRelativeURLs || isLocalProxy || isProxyHost || isForwardedProxyHost || environment == "local"
-
-	if environment == "stg" || environment == "local" {
-		log.Printf("🔍 Proxy detection result - isProxyHost: %v, isForwardedProxyHost: %v, isLocalProxy: %v, useRelativeURLs: %v", isProxyHost, isForwardedProxyHost, isLocalProxy, useRelativeURLs)
-	}
-
 	// Get user info if authenticated
 	userInfo := auth.GetUserInfo(r)
 	if userInfo != nil {
@@ -821,37 +688,9 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
 		data.UserID = userInfo.UserID
 	}
 
-	// Create a copy of data to modify URLs if needed
+	// URLs are already relative in data - no need to modify them
+	// Traefik handles routing based on path prefixes (/lab1, /lab2, etc.)
 	pageData := data
-	if useRelativeURLs {
-		// Use relative URLs for navigation when accessed via proxy
-		pageData.MITREURL = "/mitre-attack"
-		pageData.ThreatModelURL = "/threat-model"
-		// Set MainAppURL to empty string to use relative paths in templates
-		// When MainAppURL is empty, {{.MainAppURL}}/sign-in becomes /sign-in
-		pageData.MainAppURL = ""
-		log.Printf("🔗 Using relative URLs - MainAppURL set to empty string")
-		// Create a copy of Labs slice to avoid modifying the original
-		labsCopy := make([]Lab, len(data.Labs))
-		copy(labsCopy, data.Labs)
-		pageData.Labs = labsCopy
-		// Update lab URLs and writeup URLs to be relative
-		for i := range pageData.Labs {
-			switch pageData.Labs[i].ID {
-			case "lab1-basic-magecart":
-				pageData.Labs[i].URL = "/lab1"
-				pageData.Labs[i].WriteupURL = "/lab-01-writeup"
-			case "lab2-dom-skimming":
-				pageData.Labs[i].URL = "/lab2"
-				pageData.Labs[i].WriteupURL = "/lab-02-writeup"
-			case "lab3-extension-hijacking":
-				pageData.Labs[i].URL = "/lab3"
-				pageData.Labs[i].WriteupURL = "/lab-03-writeup"
-			}
-		}
-	} else {
-		log.Printf("🔗 Using absolute URLs - MainAppURL: %s", pageData.MainAppURL)
-	}
 
 	tmpl := `
 <!DOCTYPE html>
@@ -1440,6 +1279,8 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
             if (loginBtn) {
                 loginBtn.addEventListener('click', function() {
                     const redirectUrl = encodeURIComponent(window.location.href);
+                    // IMPORTANT: Always use relative URL - Traefik handles routing
+                    // MainAppURL is empty, so this becomes /sign-in?redirect=...
                     window.location.href = '{{.MainAppURL}}/sign-in?redirect=' + redirectUrl;
                 });
             }
@@ -1619,7 +1460,7 @@ func serveDocsFile(w http.ResponseWriter, r *http.Request, filename string) {
 	w.Write(fileContent)
 }
 
-func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, labURL string, homeData HomePageData, validator *auth.TokenValidator) {
+func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, homeData HomePageData, validator *auth.TokenValidator) {
 	// Read the README file for the lab
 	// In container: /app/docs/labs/{lab-id}/README.md (copied from labs/{lab-id}/README.md)
 	// Local dev: labs/{lab-id}/README.md (original location, no duplication)
@@ -1670,81 +1511,17 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, labUR
 	htmlContent = highlightAttackLines(htmlContent)
 
 	// Determine lab URL for "Back to Lab" button
-	// Use same Traefik detection logic as serveHomePage
-	host := r.Host
-	forwardedHost := r.Header.Get("X-Forwarded-Host")
-	forwardedFor := r.Header.Get("X-Forwarded-For")
-	environment := os.Getenv("ENVIRONMENT")
-	labsDomain := os.Getenv("LABS_DOMAIN")
-	if labsDomain == "" {
-		labsDomain = "labs.pcioasis.com"
-	}
-
-	// Detect if we're behind Traefik (same logic as serveHomePage)
-	isBehindTraefik := strings.Contains(strings.ToLower(forwardedHost), "traefik") ||
-		(labsDomain != "" && (host == labsDomain || forwardedHost == labsDomain || strings.HasSuffix(host, labsDomain) || strings.HasSuffix(forwardedHost, labsDomain)))
-
-	// Check for proxy access
-	isLocalProxy := strings.Contains(forwardedFor, "127.0.0.1") || strings.Contains(forwardedFor, "localhost")
-	// Check for both 8081 (local dev) and 8082 (staging proxy) ports
-	isProxyHost := host == "127.0.0.1:8081" || host == "localhost:8081" ||
-		strings.HasSuffix(host, ":8081") ||
-		host == "127.0.0.1:8082" || host == "localhost:8082" ||
-		strings.HasSuffix(host, ":8082")
-	isForwardedProxyHost := forwardedHost == "127.0.0.1:8081" || forwardedHost == "localhost:8081" ||
-		strings.HasSuffix(forwardedHost, ":8081") ||
-		forwardedHost == "127.0.0.1:8082" || forwardedHost == "localhost:8082" ||
-		strings.HasSuffix(forwardedHost, ":8082")
-
-	// Use relative URLs if behind Traefik in staging/local, or any proxy detection, or in local environment
-	useRelativeURLs := false
-	if (environment == "stg" || environment == "local") && isBehindTraefik {
-		useRelativeURLs = true
-	}
-	useRelativeURLs = useRelativeURLs || isLocalProxy || isProxyHost || isForwardedProxyHost || environment == "local"
-
-	labBackURL := labURL
-	if labBackURL == "" || useRelativeURLs {
-		// Use relative paths when behind Traefik
-		switch labID {
-		case "01-basic-magecart":
-			if useRelativeURLs {
-				labBackURL = "/lab1"
-			} else if labBackURL == "" {
-				// Fallback: construct absolute URL based on environment
-				hostname := r.Host
-				isLocal := hostname == "localhost:3000" || hostname == "127.0.0.1:3000" || hostname == "localhost" || hostname == "127.0.0.1"
-				if isLocal {
-					labBackURL = "http://localhost:9001/"
-				} else {
-					labBackURL = "https://lab-01-basic-magecart-prd-mmwwcfi5za-uc.a.run.app/"
-				}
-			}
-		case "02-dom-skimming":
-			if useRelativeURLs {
-				labBackURL = "/lab2"
-			} else if labBackURL == "" {
-				hostname := r.Host
-				isLocal := hostname == "localhost:3000" || hostname == "127.0.0.1:3000" || hostname == "localhost" || hostname == "127.0.0.1"
-				if isLocal {
-					labBackURL = "http://localhost:9003/banking.html"
-				} else {
-					labBackURL = "https://lab-02-dom-skimming-prd-mmwwcfi5za-uc.a.run.app/banking.html"
-				}
-			}
-		case "03-extension-hijacking":
-			if useRelativeURLs {
-				labBackURL = "/lab3"
-			} else if labBackURL == "" {
-				hostname := r.Host
-				isLocal := hostname == "localhost:3000" || hostname == "127.0.0.1:3000" || hostname == "localhost" || hostname == "127.0.0.1"
-				if isLocal {
-					labBackURL = "http://localhost:9005/index.html"
-				} else {
-					labBackURL = "https://lab-03-extension-hijacking-prd-207478017187.us-central1.run.app/index.html"
-				}
-			}
-		}
+	// Always use relative URLs - Traefik handles routing
+	var labBackURL string
+	switch labID {
+	case "01-basic-magecart":
+		labBackURL = "/lab1"
+	case "02-dom-skimming":
+		labBackURL = "/lab2"
+	case "03-extension-hijacking":
+		labBackURL = "/lab3"
+	default:
+		labBackURL = "/" // Fallback to home
 	}
 
 	// Get user info if authenticated
@@ -2127,53 +1904,12 @@ func serveAuthValidate(w http.ResponseWriter, r *http.Request, validator *auth.T
 }
 
 // serveAuthSignInURL returns the sign-in URL for the main app
+// IMPORTANT: This function MUST NOT contain routing logic. All routing belongs to Traefik.
+// Always uses relative URLs (/sign-in) - Traefik handles routing.
 func serveAuthSignInURL(w http.ResponseWriter, r *http.Request, homeData HomePageData) {
-	// Detect if we should use relative URLs (same logic as serveHomePage and /api/auth/check)
-	host := r.Host
-	forwardedHost := r.Header.Get("X-Forwarded-Host")
-	forwardedFor := r.Header.Get("X-Forwarded-For")
-	environment := os.Getenv("ENVIRONMENT")
-	labsDomain := os.Getenv("LABS_DOMAIN")
-	if labsDomain == "" {
-		labsDomain = "labs.pcioasis.com"
-	}
-
-	// Detect if we're behind Traefik by checking:
-	// 1. X-Forwarded-Host contains "traefik" (local development)
-	// 2. Host matches LABS_DOMAIN (staging/production via Traefik)
-	// 3. X-Forwarded-Host matches LABS_DOMAIN (staging/production via Traefik)
-	isBehindTraefik := strings.Contains(strings.ToLower(forwardedHost), "traefik") ||
-		(labsDomain != "" && (host == labsDomain || forwardedHost == labsDomain || strings.HasSuffix(host, labsDomain) || strings.HasSuffix(forwardedHost, labsDomain)))
-
-	// Check for proxy access
-	isLocalProxy := strings.Contains(forwardedFor, "127.0.0.1") || strings.Contains(forwardedFor, "localhost")
-	// Check for both 8081 (local dev) and 8082 (staging proxy) ports
-	isProxyHost := host == "127.0.0.1:8081" || host == "localhost:8081" ||
-		strings.HasSuffix(host, ":8081") ||
-		host == "127.0.0.1:8082" || host == "localhost:8082" ||
-		strings.HasSuffix(host, ":8082")
-	isForwardedProxyHost := forwardedHost == "127.0.0.1:8081" || forwardedHost == "localhost:8081" ||
-		strings.HasSuffix(forwardedHost, ":8081") ||
-		forwardedHost == "127.0.0.1:8082" || forwardedHost == "localhost:8082" ||
-		strings.HasSuffix(forwardedHost, ":8082")
-
-	// Use relative URLs if behind Traefik in staging/local, or any proxy detection, or in local environment
-	// In local environment with Traefik, always use relative paths (no host-based routing)
-	useRelativeURLs := false
-	if (environment == "stg" || environment == "local") && isBehindTraefik {
-		useRelativeURLs = true
-	}
-	useRelativeURLs = useRelativeURLs || isLocalProxy || isProxyHost || isForwardedProxyHost || environment == "local"
-
 	redirectParam := r.URL.Query().Get("redirect")
-	var signInURL string
-	if useRelativeURLs {
-		// Use relative path for Traefik/local routing
-		signInURL = fmt.Sprintf("/sign-in?redirect=%s", redirectParam)
-	} else {
-		// Use absolute URL
-		signInURL = fmt.Sprintf("%s/sign-in?redirect=%s", homeData.MainAppURL, redirectParam)
-	}
+	// Always use relative path - Traefik routes /sign-in to the appropriate service
+	signInURL := fmt.Sprintf("/sign-in?redirect=%s", redirectParam)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{

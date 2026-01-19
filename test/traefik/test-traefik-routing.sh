@@ -11,8 +11,9 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Base URL - can be overridden by environment variable
-BASE_URL="${BASE_URL:-http://localhost:8080}"
-DASHBOARD_URL="${DASHBOARD_URL:-http://localhost:8081}"
+# Default ports: 9090 for sidecar simulation, 8080 for legacy local docker
+BASE_URL="${BASE_URL:-http://localhost:9090}"
+DASHBOARD_URL="${DASHBOARD_URL:-http://localhost:9091}"
 
 echo "🧪 Testing Traefik Routing"
 echo "=========================="

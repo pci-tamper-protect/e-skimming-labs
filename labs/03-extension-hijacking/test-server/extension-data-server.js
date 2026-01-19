@@ -17,8 +17,11 @@ const path = require('path')
 const rateLimit = require('express-rate-limit')
 
 const app = express()
-// Use Cloud Run PORT environment variable, fallback to 3000 for local development
-const PORT = process.env.PORT || 3000
+// Port configuration:
+// - When running WITH nginx (main lab3 container): use 3000 (nginx proxies /extension to us)
+// - When running STANDALONE (lab3-extension-stg service): use PORT env var (8080 on Cloud Run)
+// C2_STANDALONE env var indicates standalone deployment
+const PORT = process.env.C2_STANDALONE === 'true' ? (process.env.PORT || 8080) : 3000
 
 // Rate limiter for /stolen-data endpoints
 const limiter = rateLimit({

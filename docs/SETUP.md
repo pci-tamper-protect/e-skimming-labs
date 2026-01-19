@@ -7,12 +7,35 @@ understanding the system architecture.
 
 ## 🚀 Quick Start (30 Seconds)
 
+### Option A: Local Sidecar Simulation (Recommended)
+
+Proxies to remote Cloud Run services - best for development and testing.
+
 ```bash
 # Clone the repository
 git clone https://github.com/yourorg/e-skimming-labs.git
 cd e-skimming-labs
 
-# Start everything (Traefik is now the default)
+# Prerequisites: Authenticate with Google Cloud
+gcloud auth application-default login
+
+# Start the sidecar simulation
+docker compose -f docker-compose.sidecar-local.yml up -d
+
+# Open your browser
+open http://localhost:9090
+```
+
+### Option B: Legacy Local Docker
+
+Runs all services locally in Docker containers.
+
+```bash
+# Clone the repository
+git clone https://github.com/yourorg/e-skimming-labs.git
+cd e-skimming-labs
+
+# Start everything
 docker-compose up -d
 
 # Open your browser
@@ -21,37 +44,43 @@ open http://localhost:8080
 
 That's it! 🎉
 
-**Note:** The legacy setup (`docker-compose.no-traefik.yml`) still uses port 3000, but the default `docker-compose.yml` (with Traefik) uses port 8080 for all services.
+**Port Summary:**
+- Sidecar simulation: `localhost:9090` (gateway), `localhost:9091` (dashboard)
+- Legacy local: `localhost:8080` (gateway), `localhost:8081` (dashboard)
 
 ---
 
 ## 📍 Access Points
 
-**Default Setup (Recommended - `docker-compose.yml` with Traefik):**
+### Sidecar Simulation (Recommended - `docker-compose.sidecar-local.yml`)
 
-All services are accessible through a single entry point at `http://localhost:8080`:
+All services accessible through Traefik at `http://localhost:9090`:
 
-### Main Pages
+| Page | URL |
+|------|-----|
+| 🏠 Landing Page | http://localhost:9090/ |
+| 📊 MITRE Matrix | http://localhost:9090/mitre-attack |
+| 🕸️ Threat Model | http://localhost:9090/threat-model |
+| 🔬 Lab 1 (Magecart) | http://localhost:9090/lab1 |
+| 🔬 Lab 2 (DOM Skimming) | http://localhost:9090/lab2 |
+| 🔬 Lab 3 (Extension Hijack) | http://localhost:9090/lab3 |
+| Lab 1 C2 | http://localhost:9090/lab1/c2 |
+| Lab 2 C2 | http://localhost:9090/lab2/c2 |
+| Lab 3 Extension | http://localhost:9090/lab3/extension |
+| Traefik Dashboard | http://localhost:9091/dashboard/ |
 
-- 🏠 **Landing Page:** http://localhost:8080/
-- 📊 **MITRE Matrix:** http://localhost:8080/mitre-attack
-- 🕸️ **Threat Model:** http://localhost:8080/threat-model
+### Legacy Local (`docker-compose.yml`)
 
-### Interactive Labs
+All services accessible through Traefik at `http://localhost:8080`:
 
-- 🔬 **Lab 1 (Magecart):** http://localhost:8080/lab1
-- 🔬 **Lab 2 (DOM Skimming):** http://localhost:8080/lab2
-- 🔬 **Lab 3 (Extension Hijack):** http://localhost:8080/lab3
-
-### C2 Dashboards (View Stolen Data)
-
-- **Lab 1 C2:** http://localhost:8080/lab1/c2
-- **Lab 2 C2:** http://localhost:8080/lab2/c2
-- **Lab 3 C2:** http://localhost:8080/lab3/extension
-
-### Traefik Dashboard
-
-- **Traefik Dashboard:** http://localhost:8081/dashboard/
+| Page | URL |
+|------|-----|
+| 🏠 Landing Page | http://localhost:8080/ |
+| 📊 MITRE Matrix | http://localhost:8080/mitre-attack |
+| 🔬 Lab 1 | http://localhost:8080/lab1 |
+| 🔬 Lab 2 | http://localhost:8080/lab2 |
+| 🔬 Lab 3 | http://localhost:8080/lab3 |
+| Traefik Dashboard | http://localhost:8081/dashboard/ |
 
 ---
 

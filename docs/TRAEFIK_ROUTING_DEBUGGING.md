@@ -179,7 +179,7 @@ gcloud logging read "resource.type=cloud_run_revision AND resource.labels.servic
 
 **Common issues:**
 - Identity token not generated (check Traefik service account permissions)
-- Auth middleware not added to router (check `generate-routes-from-labels.sh`)
+- Auth middleware not added to router (check traefik-cloudrun-provider logs)
 - Token expired or invalid
 - Router doesn't include auth middleware in middleware list
 
@@ -241,26 +241,22 @@ curl -v -H "Authorization: Bearer $TOKEN" "$BACKEND_URL/c2"
 
 **If this works but Traefik doesn't:**
 - Traefik is not generating/forwarding the token correctly
-- Check `generate-routes-from-labels.sh` creates auth middleware
+- Check traefik-cloudrun-provider logs for auth middleware creation
 - Verify router uses the auth middleware
 
 #### Step 9: Verify Route Generation (Cloud Run)
 
 ```bash
-# Test route generation script locally
-cd deploy/traefik
-ENVIRONMENT=stg \
-  LABS_PROJECT_ID=labs-stg \
-  HOME_PROJECT_ID=labs-home-stg \
-  REGION=us-central1 \
-  ./generate-routes-from-labels.sh /tmp/test-routes.yml
-
-# Check generated routes
-cat /tmp/test-routes.yml | grep -A 10 "lab1"
+# Check generated routes in the provider container
+docker compose -f docker-compose.sidecar-local.yml exec traefik \
+  cat /shared/traefik/dynamic/routes.yml | grep -A 10 "lab1"
 
 # Verify auth middleware is created and added to routers
-cat /tmp/test-routes.yml | grep -A 3 "lab1-auth"
-cat /tmp/test-routes.yml | grep -B 2 -A 5 "lab1:" | grep "middlewares"
+docker compose -f docker-compose.sidecar-local.yml exec traefik \
+  cat /shared/traefik/dynamic/routes.yml | grep -A 3 "lab1-auth"
+
+# Check provider logs for route generation
+docker compose -f docker-compose.sidecar-local.yml logs provider | grep -i "lab1"
 ```
 
 **Check:**
@@ -408,9 +404,9 @@ gcloud run services get-iam-policy home-index-stg \
 - **[docs/STAGING.md](STAGING.md)** - Staging environment setup
 - **[docs/TESTING_TROUBLESHOOTING.md](TESTING_TROUBLESHOOTING.md)** - General troubleshooting
 - **[deploy/traefik/README.md](../deploy/traefik/README.md)** - Traefik configuration
-- **[deploy/traefik/generate-routes-from-labels.sh](../deploy/traefik/generate-routes-from-labels.sh)** - Route generation script
+- **[traefik-cloudrun-provider](../../traefik-cloudrun-provider/)** - Route generation provider
 
 ---
 
-**Last Updated:** 2026-01-08  
-**Version:** 1.0
+**Last Updated:** 2026-01-19  
+**Version:** 1.1

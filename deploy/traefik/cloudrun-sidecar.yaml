@@ -1,0 +1,107 @@
+# Cloud Run Service Configuration with Sidecars
+# This YAML defines a Cloud Run service with:
+# 1. Main Traefik container (web traffic)
+# 2. Provider sidecar (generates routes.yml)
+# 3. Dashboard sidecar (serves dashboard UI)
+#
+# Usage:
+#   gcloud run services replace cloudrun-sidecar.yaml --region=us-central1 --project=labs-stg
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: traefik-stg
+  # Note: run.googleapis.com/execution-environment annotation is only valid on Revision/Execution, not Service
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/execution-environment: gen2
+        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "3"
+    spec:
+      serviceAccountName: traefik-stg@labs-stg.iam.gserviceaccount.com
+      timeoutSeconds: 300
+      containerConcurrency: 1  # Reduced from 80 to allow fractional CPU allocation for sidecars
+      
+      # Shared volume for routes.yml (provider -> Traefik)
+      volumes:
+      - name: shared-routes
+        emptyDir:
+          medium: Memory
+          sizeLimit: 10Mi
+      - name: shared-stats
+        emptyDir:
+          medium: Memory
+          sizeLimit: 50Mi
+      
+      containers:
+      # Main Traefik container - serves web traffic
+      - name: traefik
+        image: us-central1-docker.pkg.dev/labs-stg/e-skimming-labs/traefik:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ENVIRONMENT
+          value: "stg"
+        - name: DOMAIN
+          value: "labs.stg.pcioasis.com"
+        - name: LABS_PROJECT_ID
+          value: "labs-stg"
+        - name: HOME_PROJECT_ID
+          value: "labs-home-stg"
+        - name: REGION
+          value: "us-central1"
+        resources:
+          limits:
+            cpu: "1"  # Main container: 1 CPU
+            memory: 512Mi
+        volumeMounts:
+        - name: shared-routes
+          mountPath: /shared/traefik/dynamic
+        - name: shared-stats
+          mountPath: /shared/traefik/stats
+        startupProbe:
+          httpGet:
+            path: /ping
+            port: 8080
+          initialDelaySeconds: 15  # Increased from 10 to allow more time for Traefik to start
+          periodSeconds: 5
+          timeoutSeconds: 5  # Increased from 3 to allow more time for response
+          failureThreshold: 20  # Increased from 12 to allow up to 100 seconds total (15 + 20*5)
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 8080
+          periodSeconds: 30
+          timeoutSeconds: 3
+          failureThreshold: 3
+      
+      # Provider sidecar - generates routes.yml into shared volume
+      - name: provider
+        image: us-central1-docker.pkg.dev/labs-stg/e-skimming-labs/traefik-cloudrun-provider:latest
+        env:
+        - name: ENVIRONMENT
+          value: "stg"
+        - name: LABS_PROJECT_ID
+          value: "labs-stg"
+        - name: HOME_PROJECT_ID
+          value: "labs-home-stg"
+        - name: REGION
+          value: "us-central1"
+        - name: MODE
+          value: "daemon"
+        - name: POLL_INTERVAL
+          value: "30s"
+        resources:
+          limits:
+            cpu: "0.5"  # With concurrency=1, fractional CPUs are allowed
+            memory: 256Mi
+        volumeMounts:
+        - name: shared-routes
+          mountPath: /shared/traefik/dynamic
+        # Provider writes routes.yml to /shared/traefik/dynamic/routes.yml
+      
+      # Note: Dashboard is deployed as a separate Cloud Run service
+      # See traefik-dashboard-sidecar.yaml for dashboard service configuration
+      # Dashboard cannot be in the same service because Cloud Run only exposes one port per service

@@ -3,7 +3,7 @@
 # This Dockerfile creates a Traefik image that routes to Cloud Run backend services
 # Identical to Dockerfile.test except runs as traefik user (for security in Cloud Run)
 
-FROM traefik:v3.0
+FROM traefik:v2.10
 
 # Install curl, bash, jq, and Go for health checks, entrypoint, and plugin compilation
 # Install Go 1.24 (latest supported) from official releases instead of Alpine packages
