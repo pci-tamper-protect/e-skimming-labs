@@ -133,6 +133,39 @@ func loadCatalogInfo() *CatalogInfo {
 	return &catalogInfo
 }
 
+// sanitizeForLog removes newlines and carriage returns from a string to prevent log injection,
+// and optionally truncates to maxLen characters to prevent log flooding.
+// If maxLen is 0, no truncation is applied.
+func sanitizeForLog(s string, maxLen int) string {
+	safe := strings.ReplaceAll(strings.ReplaceAll(s, "\n", ""), "\r", "")
+	if maxLen > 0 && len(safe) > maxLen {
+		return safe[:maxLen] + "...[truncated]"
+	}
+	return safe
+}
+
+// sanitizeToken returns a redacted version of a token showing only first 10% and last 10%
+// with the length, to prevent exposing sensitive credentials in logs while still being useful for debugging.
+func sanitizeToken(token string) string {
+	if token == "" {
+		return "[empty]"
+	}
+	length := len(token)
+	if length <= 20 {
+		// For very short tokens, just show length
+		return fmt.Sprintf("[token len=%d]", length)
+	}
+	// Show first 10% and last 10%
+	showLen := length / 10
+	if showLen < 4 {
+		showLen = 4
+	}
+	if showLen > 20 {
+		showLen = 20
+	}
+	return fmt.Sprintf("%s...%s [len=%d]", token[:showLen], token[length-showLen:], length)
+}
+
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -375,7 +408,7 @@ func main() {
 		// According to Traefik docs, ForwardAuth forwards headers specified in authRequestHeaders
 		// Reference: https://github.com/traefik/traefik/blob/master/pkg/middlewares/forwardauth/forwardauth.go
 		log.Printf("🔍 /api/auth/check called - Host: %s, X-Forwarded-Host: %s, X-Forwarded-For: %s",
-			r.Host, r.Header.Get("X-Forwarded-Host"), r.Header.Get("X-Forwarded-For"))
+			sanitizeForLog(r.Host, 200), sanitizeForLog(r.Header.Get("X-Forwarded-Host"), 200), sanitizeForLog(r.Header.Get("X-Forwarded-For"), 200))
 
 		// DEBUG: Log ALL headers to see what Traefik ForwardAuth is actually forwarding
 		// According to Traefik ForwardAuth implementation, it should forward headers listed in authRequestHeaders
@@ -383,19 +416,17 @@ func main() {
 		for name, values := range r.Header {
 			// Log cookie header value preview (truncated for security)
 			if strings.ToLower(name) == "cookie" {
-				previewLen := 200
-				if len(values[0]) < previewLen {
-					previewLen = len(values[0])
-				}
-				log.Printf("🔍   %s: %s (length: %d)", name, values[0][:previewLen], len(values[0]))
+				log.Printf("🔍   %s: %s", name, sanitizeToken(values[0]))
+			} else if strings.ToLower(name) == "authorization" {
+				log.Printf("🔍   %s: %s", name, sanitizeToken(strings.Join(values, ", ")))
 			} else {
-				log.Printf("🔍   %s: %v", name, values)
+				log.Printf("🔍   %s: %v", name, sanitizeForLog(strings.Join(values, ", "), 200))
 			}
 		}
 
 		// DEBUG: Log the request path and method to identify which route triggered this
 		log.Printf("🔍 DEBUG: Request path: %s, method: %s, X-Forwarded-Uri: %s",
-			r.URL.Path, r.Method, r.Header.Get("X-Forwarded-Uri"))
+			r.URL.Path, r.Method, sanitizeForLog(r.Header.Get("X-Forwarded-Uri"), 200))
 
 		if !authValidator.IsEnabled() {
 			// Auth disabled, allow access
@@ -441,7 +472,8 @@ func main() {
 			environment, isProxyHost, isForwardedProxyHost, isLocalProxy, isBehindTraefik)
 
 		if environment == "stg" && (isProxyHost || isForwardedProxyHost || isLocalProxy || isBehindTraefik) {
-			log.Printf("🔓 Bypassing auth for proxy access (Host: %s, Forwarded-Host: %s, Forwarded-For: %s)", host, forwardedHost, forwardedFor)
+			log.Printf("🔓 Bypassing auth for proxy access (Host: %s, Forwarded-Host: %s, Forwarded-For: %s)",
+				sanitizeForLog(host, 200), sanitizeForLog(forwardedHost, 200), sanitizeForLog(forwardedFor, 200))
 			w.Header().Set("X-User-Id", "proxy-user")
 			w.Header().Set("X-User-Email", "proxy@test.local")
 			w.WriteHeader(http.StatusOK)
@@ -460,18 +492,14 @@ func main() {
 		// This avoids trying to validate gcloud's GCP token as a Firebase token
 		cookieHeader := r.Header.Get("Cookie")
 		if cookieHeader != "" {
-			previewLen := 100
-			if len(cookieHeader) < previewLen {
-				previewLen = len(cookieHeader)
-			}
-			log.Printf("🔍 Cookie header received: %s", cookieHeader[:previewLen])
+			log.Printf("🔍 Cookie header received: %s", sanitizeToken(cookieHeader))
 			// Parse the Cookie header manually to extract firebase_token
 			cookies := strings.Split(cookieHeader, ";")
 			for _, c := range cookies {
 				c = strings.TrimSpace(c)
 				if strings.HasPrefix(c, "firebase_token=") {
 					token = strings.TrimPrefix(c, "firebase_token=")
-					log.Printf("🔍 Token extracted from Cookie header (length: %d)", len(token))
+					log.Printf("🔍 Token extracted from Cookie header: %s", sanitizeToken(token))
 					break
 				}
 			}
@@ -484,7 +512,7 @@ func main() {
 				parts := strings.SplitN(authHeader, " ", 2)
 				if len(parts) == 2 && strings.ToLower(parts[0]) == "bearer" {
 					token = parts[1]
-					log.Printf("🔍 Token found in Authorization header (length: %d)", len(token))
+					log.Printf("🔍 Token found in Authorization header: %s", sanitizeToken(token))
 				}
 			}
 		}
@@ -508,30 +536,22 @@ func main() {
 						}
 					}
 				}
-				log.Printf("🔍 Token found in parsed cookie (length: %d, parts: %d)", len(token), len(strings.Split(token, ".")))
+				log.Printf("🔍 Token found in parsed cookie: %s (parts: %d)", sanitizeToken(token), len(strings.Split(token, ".")))
 			} else {
 				log.Printf("🔍 Cookie not found or empty: %v", err)
 				// Also check all cookies for debugging
 				allCookies := r.Cookies()
 				log.Printf("🔍 All cookies received: %d cookies", len(allCookies))
 				for _, c := range allCookies {
-					valuePreview := c.Value
-					if len(valuePreview) > 20 {
-						valuePreview = valuePreview[:20] + "..."
-					}
-					log.Printf("🔍 Cookie: %s = %s (length: %d)", c.Name, valuePreview, len(c.Value))
+					log.Printf("🔍 Cookie: %s = %s", sanitizeForLog(c.Name, 50), sanitizeToken(c.Value))
 				}
 				// Also log all headers for debugging
 				log.Printf("🔍 All request headers:")
 				for name, values := range r.Header {
-					if strings.ToLower(name) == "cookie" {
-						previewLen := 200
-						if len(values[0]) < previewLen {
-							previewLen = len(values[0])
-						}
-						log.Printf("🔍   %s: %s", name, values[0][:previewLen])
+					if strings.ToLower(name) == "cookie" || strings.ToLower(name) == "authorization" {
+						log.Printf("🔍   %s: %s", name, sanitizeToken(strings.Join(values, ", ")))
 					} else {
-						log.Printf("🔍   %s: %v", name, values)
+						log.Printf("🔍   %s: %v", name, sanitizeForLog(strings.Join(values, ", "), 200))
 					}
 				}
 			}
@@ -564,7 +584,7 @@ func main() {
 		if token == "" {
 			log.Printf("⚠️ WARNING: No token found in any source (Authorization, Cookie header, parsed cookie, or query params)")
 			log.Printf("⚠️ This suggests Traefik ForwardAuth is not forwarding the Cookie header correctly")
-			log.Printf("⚠️ Original URI: %s, Request path: %s", originalURI, r.URL.Path)
+			log.Printf("⚠️ Original URI: %s, Request path: %s", sanitizeForLog(originalURI, 200), r.URL.Path)
 		}
 
 		// Check if this is a browser request
@@ -579,7 +599,7 @@ func main() {
 				// Redirect browser requests to sign-in
 				// Always use relative URL - Traefik handles routing
 				redirectURL := fmt.Sprintf("/sign-in?redirect=%s", originalURI)
-				log.Printf("🔗 Redirecting to: %s (relative URL, Traefik routes)", redirectURL)
+				log.Printf("🔗 Redirecting to: %s (relative URL, Traefik routes)", sanitizeForLog(redirectURL, 200))
 				w.Header().Set("Location", redirectURL)
 				w.WriteHeader(http.StatusFound)
 				return
@@ -596,7 +616,7 @@ func main() {
 				// Redirect browser requests to sign-in
 				// Always use relative URL - Traefik handles routing
 				redirectURL := fmt.Sprintf("/sign-in?redirect=%s", originalURI)
-				log.Printf("🔗 Redirecting to: %s (relative URL, Traefik routes)", redirectURL)
+				log.Printf("🔗 Redirecting to: %s (relative URL, Traefik routes)", sanitizeForLog(redirectURL, 200))
 				w.Header().Set("Location", redirectURL)
 				w.WriteHeader(http.StatusFound)
 				return
@@ -1938,12 +1958,8 @@ func serveAuthUser(w http.ResponseWriter, r *http.Request, validator *auth.Token
 			return
 		}
 
-		// Log token prefix for debugging (don't log full token)
-		tokenPrefix := token
-		if len(token) > 20 {
-			tokenPrefix = token[:20] + "..."
-		}
-		log.Printf("🔍 /api/auth/user - Token found (prefix: %s, length: %d)", tokenPrefix, len(token))
+		// Log token for debugging (sanitized)
+		log.Printf("🔍 /api/auth/user - Token found: %s", sanitizeToken(token))
 
 		// Validate token
 		var err error
@@ -2394,9 +2410,9 @@ func serveSignInPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
 
 	if errorParam != "" {
 		log.Printf("🔐 Sign-in page accessed with error [ip=%s, error=%s, email=%s, user-agent=%s]",
-			clientIP, errorParam, emailParam, userAgent)
+			sanitizeForLog(clientIP, 50), sanitizeForLog(errorParam, 100), sanitizeForLog(emailParam, 100), sanitizeForLog(userAgent, 100))
 	} else {
-		log.Printf("🔐 Sign-in page accessed [ip=%s, user-agent=%s]", clientIP, userAgent)
+		log.Printf("🔐 Sign-in page accessed [ip=%s, user-agent=%s]", sanitizeForLog(clientIP, 50), sanitizeForLog(userAgent, 100))
 	}
 
 	if !homeData.AuthEnabled {
@@ -2411,7 +2427,7 @@ func serveSignInPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
 		redirectURL = "/"
 	}
 
-	log.Printf("🔐 Sign-in page rendered [ip=%s, redirect=%s]", clientIP, redirectURL)
+	log.Printf("🔐 Sign-in page rendered [ip=%s, redirect=%s]", sanitizeForLog(clientIP, 50), sanitizeForLog(redirectURL, 200))
 
 	// Get Firebase config from environment
 	firebaseAPIKey := os.Getenv("FIREBASE_API_KEY")
@@ -2871,7 +2887,7 @@ func serveSignInPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
 	// Cross-Origin-Opener-Policy: same-origin-allow-popups allows popups to communicate back
 	w.Header().Set("Cross-Origin-Opener-Policy", "same-origin-allow-popups")
 	w.Header().Set("Cross-Origin-Embedder-Policy", "unsafe-none")
-	log.Printf("🔐 Sign-in page response headers set [redirect=%s, COOP=same-origin-allow-popups]", redirectURL)
+	log.Printf("🔐 Sign-in page response headers set [redirect=%s, COOP=same-origin-allow-popups]", sanitizeForLog(redirectURL, 200))
 	w.Write([]byte(html))
 }
 
@@ -2884,7 +2900,7 @@ func serveSignUpPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
 	}
 	userAgent := r.Header.Get("User-Agent")
 
-	log.Printf("📝 Sign-up page accessed [ip=%s, user-agent=%s]", clientIP, userAgent)
+	log.Printf("📝 Sign-up page accessed [ip=%s, user-agent=%s]", sanitizeForLog(clientIP, 50), sanitizeForLog(userAgent, 100))
 
 	if !homeData.AuthEnabled {
 		log.Printf("❌ Sign-up attempted but authentication is disabled [ip=%s]", clientIP)
@@ -2898,7 +2914,7 @@ func serveSignUpPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
 		redirectURL = "/"
 	}
 
-	log.Printf("📝 Sign-up page rendered [ip=%s, redirect=%s]", clientIP, redirectURL)
+	log.Printf("📝 Sign-up page rendered [ip=%s, redirect=%s]", sanitizeForLog(clientIP, 50), sanitizeForLog(redirectURL, 200))
 
 	// Get Firebase config from environment
 	firebaseAPIKey := os.Getenv("FIREBASE_API_KEY")
@@ -3190,7 +3206,7 @@ func serveSignUpPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
 	// Cross-Origin-Opener-Policy: same-origin-allow-popups allows popups to communicate back
         w.Header().Set("Cross-Origin-Opener-Policy", "same-origin-allow-popups")
         w.Header().Set("Cross-Origin-Embedder-Policy", "unsafe-none")
-        log.Printf("🔐 Sign-up page response headers set [redirect=%s, COOP=same-origin-allow-popups]", redirectURL)
+        log.Printf("🔐 Sign-up page response headers set [redirect=%s, COOP=same-origin-allow-popups]", sanitizeForLog(redirectURL, 200))
         w.Write([]byte(html))
 }
 

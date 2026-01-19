@@ -1,6 +1,119 @@
-# IAM-based Access Control for Staging Environment
+# IAM Setup and Service Accounts
 
-This document describes how IAM-based access control is configured to restrict access to staging services to only developers in the `2025-interns` and `core-eng` groups.
+This document describes:
+1. All service accounts in labs-stg and labs-home-stg projects
+2. IAM-based access control for staging environments
+3. Local development authentication options
+
+---
+
+## Service Accounts
+
+### labs-stg Project
+
+| Service Account | Purpose | Key Roles |
+|-----------------|---------|-----------|
+| `traefik-stg@labs-stg.iam.gserviceaccount.com` | Traefik reverse proxy gateway (Cloud Run) | `roles/run.viewer`, `roles/run.invoker`, `roles/artifactregistry.reader` |
+| `traefik-provider-token-sa@labs-stg.iam.gserviceaccount.com` | **Local dev & CI/CD testing** | `roles/run.viewer`, `roles/run.invoker`, `roles/iam.serviceAccountTokenCreator` |
+| `labs-runtime-sa@labs-stg.iam.gserviceaccount.com` | Runtime SA for lab services | `roles/run.invoker`, `roles/run.viewer`, `roles/datastore.user`, `roles/artifactregistry.reader` |
+| `labs-analytics-sa@labs-stg.iam.gserviceaccount.com` | Analytics service runtime | `roles/datastore.user`, `roles/logging.logWriter`, `roles/monitoring.metricWriter` |
+| `labs-seo-sa@labs-stg.iam.gserviceaccount.com` | SEO service runtime | `roles/datastore.user` |
+| `labs-deploy-sa@labs-stg.iam.gserviceaccount.com` | CI/CD deployment | `roles/run.admin`, `roles/artifactregistry.writer`, `roles/iam.serviceAccountUser` |
+| `1078730674198-compute@developer.gserviceaccount.com` | Default compute SA (avoid using) | Various default roles |
+
+### labs-home-stg Project
+
+| Service Account | Purpose | Key Roles |
+|-----------------|---------|-----------|
+| `home-runtime-sa@labs-home-stg.iam.gserviceaccount.com` | Runtime SA for home services | `roles/run.invoker`, `roles/run.viewer` |
+| `home-seo-sa@labs-home-stg.iam.gserviceaccount.com` | SEO service runtime | `roles/datastore.user` |
+| `home-deploy-sa@labs-home-stg.iam.gserviceaccount.com` | CI/CD deployment | `roles/run.admin`, `roles/artifactregistry.writer` |
+| `fbase-adm-sdk-runtime@labs-home-stg.iam.gserviceaccount.com` | Firebase Admin SDK for auth | Firebase Admin SDK roles |
+| `327539540168-compute@developer.gserviceaccount.com` | Default compute SA (avoid using) | Various default roles |
+
+---
+
+## Local Development Authentication
+
+### Option 1: ADC with Service Account Impersonation (Recommended)
+
+User credentials (ADC) cannot directly generate identity tokens. Use impersonation:
+
+```bash
+# 1. Login with your user account
+gcloud auth application-default login
+
+# 2. Set impersonation in docker-compose.sidecar-local.yml
+# The provider will impersonate traefik-stg to generate identity tokens
+IMPERSONATE_SERVICE_ACCOUNT=traefik-stg@labs-stg.iam.gserviceaccount.com
+```
+
+**Required permissions on your user account:**
+- `roles/iam.serviceAccountTokenCreator` on `traefik-stg@labs-stg.iam.gserviceaccount.com`
+
+### Option 2: Service Account Key (For CI/CD or long-running local dev)
+
+Use the dedicated `traefik-provider-token-sa` service account with minimal permissions.
+
+```bash
+# Setup SA, grant permissions, create key, upload to GitHub (idempotent)
+./deploy/traefik/iam.sh stg   # for staging
+./deploy/traefik/iam.sh prd   # for production
+```
+
+The `iam.sh` script:
+1. Creates `traefik-provider-token-sa@labs-{stg|prd}.iam.gserviceaccount.com`
+2. Grants `roles/run.viewer` and `roles/run.invoker` on both labs and home projects
+3. Grants `roles/iam.serviceAccountTokenCreator` on itself
+4. Creates key and uploads to GitHub secret `TRAEFIK_PROVIDER_SA_KEY_{STG|PRD}`
+
+**Why one combined SA instead of separate provider/gateway SAs?**
+
+In theory, least privilege would suggest two separate SAs:
+- **Provider SA**: `roles/run.viewer` only (query services for route discovery)
+- **Gateway SA**: `roles/run.invoker` + `roles/iam.serviceAccountTokenCreator` (invoke services)
+
+However, we use a single combined SA because:
+1. **Cloud Run sidecar architecture**: In production, Traefik and the provider run as sidecars in the same Cloud Run service, sharing the same service account (`traefik-stg@`)
+2. **Simpler local simulation**: For local dev and CI, using one SA mirrors the production setup
+3. **Practical security**: The provider needs to generate identity tokens to test routes, which requires the same permissions as the gateway
+
+**For local development, create a local key:**
+```bash
+# Create a key for local use
+gcloud iam service-accounts keys create ~/traefik-provider-token-sa-key.json \
+  --iam-account=traefik-provider-token-sa@labs-stg.iam.gserviceaccount.com \
+  --project=labs-stg
+
+# Set environment variable
+export GOOGLE_APPLICATION_CREDENTIALS=~/traefik-provider-token-sa-key.json
+```
+
+**Or mount in docker-compose:**
+```yaml
+volumes:
+  - ~/traefik-provider-token-sa-key.json:/etc/secrets/sa-key.json:ro
+environment:
+  - GOOGLE_APPLICATION_CREDENTIALS=/etc/secrets/sa-key.json
+```
+
+### Minimum Permissions for Local Provider
+
+The `traefik-cloudrun-provider` needs these permissions:
+
+| Permission | Role | Purpose |
+|------------|------|---------|
+| `run.services.list` | `roles/run.viewer` | Discover services with traefik labels |
+| `run.services.get` | `roles/run.viewer` | Read service metadata and labels |
+| `run.routes.invoke` | `roles/run.invoker` | Generate identity tokens for backend services |
+
+**Cross-project access:** The SA also needs `roles/run.viewer` in `labs-home-stg` to discover home services.
+
+---
+
+## IAM-based Access Control for Staging
+
+This section describes how IAM-based access control is configured to restrict access to staging services to only developers in the `2025-interns` and `core-eng` groups.
 
 **Note:** This uses IAM bindings (not Load Balancer with IAP) to avoid costs. Load Balancers have a base cost even with no traffic.
 

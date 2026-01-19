@@ -1,10 +1,12 @@
-# Traefik Dashboard Sidecar Dockerfile - Traefik v3.0 Variant
-# This container serves only the Traefik dashboard UI
-# It runs a minimal Traefik instance that serves the dashboard and proxies API calls
-# to the main Traefik container's API (localhost:8080/api)
+# Traefik Dashboard Sidecar Dockerfile - Traefik v3.0
+# This container serves ONLY the Traefik dashboard UI - no routing, no reverse proxy
+# It runs a minimal Traefik instance that:
+#   1. Serves the dashboard UI on port 8080
+#   2. Proxies API calls (/api/*) to the main Traefik service
+# This is NOT a full Traefik reverse proxy - it's dashboard-only
 # Cloud Run requirement: must listen on port 8080
 #
-# This is the Traefik v3.0 experimental variant. Default is v2.10.
+# This is the Traefik v3.0 version. For v2.10 (stable), use Dockerfile.dashboard-sidecar
 
 FROM traefik:v3.0
 
@@ -15,10 +17,10 @@ RUN apk add --no-cache curl ca-certificates
 # Create dashboard-only Traefik configuration
 RUN mkdir -p /etc/traefik/dynamic
 
-# Dashboard-only static config
+# Dashboard-only static config (Traefik 3.0 version)
 # This Traefik instance serves dashboard on port 8080
 # It will proxy API requests to the main Traefik container's API via HTTP
-COPY traefik.dashboard-sidecar.yml /etc/traefik/traefik.yml
+COPY traefik.dashboard-sidecar.traefik-3.0.yml /etc/traefik/traefik.yml
 RUN chmod 644 /etc/traefik/traefik.yml
 
 # Create entrypoint script to generate dynamic config with main Traefik API URL

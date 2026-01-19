@@ -21,10 +21,12 @@ See [TESTING.md](./TESTING.md#local-sidecar-simulation-fast-debugging) for detai
 
 ## Version Strategy
 
-**Default**: Traefik v2.10 (stable, production-ready)
-**Experimental**: Traefik v3.0 variants (labeled with `.traefik-3.0` suffix)
+| Version | Status | Deploy Script | Use Case |
+|---------|--------|---------------|----------|
+| **v2.10** | Stable (Default) | `deploy-sidecar.sh` | Production deployments |
+| **v3.0** | Latest Features | `deploy-sidecar-traefik-3.0.sh` | New features, testing |
 
-All default Dockerfiles and scripts use Traefik v2.10. Traefik v3.0 variants are available for experimentation when v3.0-specific features are needed.
+All default Dockerfiles and scripts use Traefik v2.10. Traefik v3.0 variants are available when v3.0-specific features are needed.
 
 ## Overview
 
@@ -173,27 +175,30 @@ cd ../e-skimming-labs/deploy/traefik
 docker build -f Dockerfile.dashboard-sidecar -t us-central1-docker.pkg.dev/labs-stg/e-skimming-labs/traefik-dashboard:latest .
 ```
 
-**Traefik v3.0 Experimental Variant** (use only when testing v3.0 features):
+**Traefik v3.0** (latest features):
 ```bash
 # Main Traefik (v3.0)
-docker build -f Dockerfile.cloudrun.sidecar.traefik-3.0 -t us-central1-docker.pkg.dev/labs-stg/e-skimming-labs/traefik:traefik-3.0 .
+docker build -f Dockerfile.cloudrun.sidecar.traefik-3.0 -t us-central1-docker.pkg.dev/labs-stg/e-skimming-labs/traefik:v3.0 .
 
 # Dashboard sidecar (v3.0)
-docker build -f Dockerfile.dashboard-sidecar.traefik-3.0 -t us-central1-docker.pkg.dev/labs-stg/e-skimming-labs/traefik-dashboard:traefik-3.0 .
+docker build -f Dockerfile.dashboard-sidecar.traefik-3.0 -t us-central1-docker.pkg.dev/labs-stg/e-skimming-labs/traefik-dashboard:v3.0 .
 ```
 
-**Note**: 
-- **Default is Traefik v2.10** (stable, production-ready)
-- Use v3.0 variants (`.traefik-3.0` suffix) only when experimenting with v3.0-specific features
-- The deployment script (`deploy-sidecar.sh`) uses v2.10 by default
+**Version Notes**: 
+- **Default is Traefik v2.10** (stable, production-ready) via `deploy-sidecar.sh`
+- **Traefik v3.0** is available via `deploy-sidecar-traefik-3.0.sh`
+- v3.0 images are tagged `:v3.0`, v2.10 images use `:latest`
 
 ### Deploy
 
 ```bash
-# Using deployment script
+# Traefik v2.10 (default, stable)
 ./deploy-sidecar.sh stg
 
-# Or using YAML directly
+# Traefik v3.0 (latest features)
+./deploy-sidecar-traefik-3.0.sh stg
+
+# Or using YAML directly (v2.10)
 gcloud run services replace cloudrun-sidecar.yaml \
   --region=us-central1 \
   --project=labs-stg

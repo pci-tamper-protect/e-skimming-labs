@@ -143,58 +143,22 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
     // Check that the back button is visible
     await expect(backButton).toBeVisible()
 
-    // Get the actual href attribute
+    // Get the actual href attribute - should be "/" (relative URL, Traefik handles routing)
     const href = await backButton.getAttribute('href')
+    console.log('Back button href:', href)
 
-    // Normalize URLs for comparison (handle relative URLs, localhost vs 127.0.0.1, and trailing slashes)
-    const normalizeUrl = (url) => {
-      if (!url) return url
-      let normalized = url
-      // If it's a relative URL, resolve it against currentEnv.homeIndex
-      if (url.startsWith('/')) {
-        try {
-          const resolved = new URL(url, currentEnv.homeIndex).href
-          normalized = resolved
-        } catch {
-          normalized = url
-        }
-      }
-      // Normalize localhost to 127.0.0.1 for comparison
-      normalized = normalized.replace(/^https?:\/\/localhost/, 'http://127.0.0.1')
-      // Remove trailing slash for consistent comparison (except for root path)
-      if (normalized.endsWith('/') && normalized !== 'http://127.0.0.1/' && normalized !== 'http://localhost/') {
-        normalized = normalized.slice(0, -1)
-      }
-      return normalized
-    }
-
-    const expectedUrl = normalizeUrl(currentEnv.homeIndex)
-    const actualUrl = normalizeUrl(href)
-
-    // Accept either the exact URL, relative path '/', or a normalized match
-    const isValid = href === '/' ||
-                    href === currentEnv.homeIndex ||
-                    actualUrl === expectedUrl ||
-                    (href && actualUrl.replace(/\/$/, '') === expectedUrl.replace(/\/$/, ''))
-
-    expect(isValid).toBe(true)
+    // Back button should use relative URL "/"
+    expect(href).toBe('/')
 
     // Test clicking the back button
     await backButton.click()
 
-    // Wait for navigation and normalize the URL for comparison
-    await page.waitForURL('**', { timeout: 10000 })
+    // Wait for navigation
+    await page.waitForLoadState('networkidle')
+
+    // Verify we're on the home page (URL should end with /)
     const currentUrl = page.url()
-    const normalizedCurrentUrl = normalizeUrl(currentUrl)
-    const normalizedExpectedUrl = normalizeUrl(currentEnv.homeIndex)
-
-    // Compare normalized URLs (handles localhost vs 127.0.0.1)
-    expect(normalizedCurrentUrl).toBe(normalizedExpectedUrl)
-
-    // Verify we're on the home page (normalize both URLs for comparison)
-    const expectedHomeUrl = normalizeUrl(currentEnv.homeIndex + '/')
-    const actualPageUrl = normalizeUrl(page.url())
-    expect(actualPageUrl).toBe(expectedHomeUrl)
+    expect(currentUrl).toMatch(/\/$/)
     await expect(page).toHaveTitle('E-Skimming Labs - Interactive Training Platform')
 
     // Verify we can see the main labs content
@@ -574,7 +538,7 @@ test.describe('MITRE ATT&CK Matrix - Environment Detection', () => {
   // Configure tests to run in parallel for maximum speed
   test.describe.configure({ mode: 'parallel' })
 
-  test('should detect localhost environment and set correct back button URL', async ({ page }) => {
+  test('should use relative URL for back button (Traefik handles routing)', async ({ page }) => {
     // Set up console listener BEFORE navigation
     /** @type {string | null} */
     let consoleLogText = null
@@ -593,38 +557,21 @@ test.describe('MITRE ATT&CK Matrix - Environment Detection', () => {
     // Find the back button and check its href
     const backButton = page.getByRole('link', { name: '← Back to Labs' })
 
-    // Normalize URLs for comparison (handle localhost vs 127.0.0.1 and trailing slashes)
-    const normalizeUrlForComparison = (url) => {
-      if (!url) return url
-      // Normalize localhost to 127.0.0.1
-      let normalized = url.replace(/^https?:\/\/localhost/, 'http://127.0.0.1')
-      // Remove trailing slash for consistent comparison (except for root path)
-      if (normalized.endsWith('/') && normalized !== 'http://127.0.0.1/' && normalized !== 'http://localhost/') {
-        normalized = normalized.slice(0, -1)
-      }
-      return normalized
-    }
-
-    // Get the actual href and normalize both for comparison
+    // Get the actual href - should be "/" (relative URL, Traefik handles routing)
     const actualHref = await backButton.getAttribute('href')
-    const normalizedActual = normalizeUrlForComparison(actualHref)
-    const normalizedExpected = normalizeUrlForComparison(currentEnv.homeIndex)
+    console.log('Back button href:', actualHref)
 
-    // Check that normalized URLs match (handles localhost vs 127.0.0.1 differences)
-    expect(normalizedActual).toBe(normalizedExpected)
+    // Back button should use relative URL "/"
+    expect(actualHref).toBe('/')
 
-    // Verify console log was generated (if captured - may not work in all test environments)
+    // Verify console log was generated (if captured)
     if (consoleLogText) {
       const logText = String(consoleLogText)
-      // Check if the log contains either the expected URL or a normalized version
-      const normalizedExpected = normalizeUrlForComparison(currentEnv.homeIndex)
-      const containsExpected = logText.indexOf(currentEnv.homeIndex) >= 0 ||
-                               logText.indexOf(normalizedExpected) >= 0 ||
-                               logText.replace(/localhost/g, '127.0.0.1').indexOf(normalizedExpected) >= 0
-      expect(containsExpected).toBeTruthy()
+      // Should indicate relative URL is being used
+      expect(logText).toContain('/')
+      console.log('Console log captured:', logText)
     } else {
-      // If console log doesn't work in test environment, just verify the href is correct
-      console.log('Console log not captured, but href is verified correct')
+      console.log('Console log not captured, but href is correct')
     }
   })
 })

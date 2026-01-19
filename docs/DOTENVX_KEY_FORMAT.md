@@ -19,62 +19,53 @@ DOTENV_PUBLIC_KEY_KEYS_STG="03ed68a7f1bb4784d52c0df7b8dc6ba3f4db7120b4a4f5625b1a
 #/     [how it works](https://dotenvx.com/encryption)       /
 #/----------------------------------------------------------/
 
-DOTENV_PRIVATE_KEY_STG_SECRETS=54b219bfe2faa52b41102d44036ff49712952473d6092360ff5062d09b30e9a4
+DOTENV_PRIVATE_KEY_STG=54b219bfe2faa52b41102d44036ff49712952473d6092360ff5062d09b30e9a4
 ```
 
 **Key Points:**
-- `DOTENV_PRIVATE_KEY_STG_SECRETS` should be a **plain hex string** (no quotes needed, but quotes are OK)
+- `DOTENV_PRIVATE_KEY_STG` should be a **plain hex string** (no quotes needed, but quotes are OK)
 - **NO `encrypted:` prefix** - the private key itself is never encrypted
 - The value should be a long hexadecimal string (typically 64+ characters)
 - ✅ **Verified**: This format works correctly with `dotenvx get -f .env.stg -fk .env.keys.stg`
 
 **Note:** Any stray lines with `value="encrypted:..."` in the file are harmless comments/leftovers and don't affect functionality.
 
-## Variable Naming: `DOTENV_PRIVATE_KEY_STG_SECRETS` vs `DOTENV_PRIVATE_KEY_STG`
+## Variable Naming Convention
 
-### Current Usage
+### Standard dotenvx Format (Used in entrypoint scripts)
 
-The entrypoint scripts in `e-skimming-labs` use `DOTENV_PRIVATE_KEY_STG_SECRETS`:
+The entrypoint scripts use the **standard dotenvx format**:
 
 ```bash
 # deploy/shared-components/home-index-service/entrypoint.sh
-DOTENV_PRIVATE_KEY=$(grep -E "^DOTENV_PRIVATE_KEY_STG_SECRETS=" /etc/secrets/dotenvx-key | cut -d'=' -f2)
+DOTENV_PRIVATE_KEY=$(grep -E "^DOTENV_PRIVATE_KEY_STG=" /etc/secrets/dotenvx-key | cut -d'=' -f2- | tr -d '"' | tr -d "'")
 ```
-
-### Standard dotenvx Format
 
 By default, `dotenvx keys -fk .env.keys.stg` generates:
 - `DOTENV_PUBLIC_KEY_KEYS_STG` (public key)
-- `DOTENV_PRIVATE_KEY_STG` (private key) - **Note: No `_SECRETS` suffix**
+- `DOTENV_PRIVATE_KEY_STG` (private key)
 
-### Recommendation
+For production, the same pattern applies:
+- `DOTENV_PRIVATE_KEY_PRD` (private key for production)
 
-**Keep using `DOTENV_PRIVATE_KEY_STG_SECRETS`** because:
-1. It's already used in the entrypoint scripts
-2. It's more descriptive (indicates it's for secrets)
-3. It avoids confusion with other potential `DOTENV_PRIVATE_KEY_STG` variables
+### Why Standard Format
 
-**To fix the key file format:**
+**Use the standard `DOTENV_PRIVATE_KEY_STG` format** because:
+1. It matches what `dotenvx keys` generates by default
+2. No manual renaming required after key generation
+3. The entrypoint scripts are configured to use this format
 
-1. If you have the correct private key (plain hex string), update `.env.keys.stg`:
+**To set up the key file:**
+
+1. Generate keys (already in correct format):
    ```bash
-   # Remove the encrypted value and add the correct private key
-   DOTENV_PRIVATE_KEY_STG_SECRETS="496b6d9a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8"
-   ```
-
-2. If you need to regenerate the key file:
-   ```bash
-   # Generate new keys
    dotenvx keys -fk .env.keys.stg
-   
-   # Then manually rename the private key variable
-   sed -i.bak 's/^DOTENV_PRIVATE_KEY_STG=/DOTENV_PRIVATE_KEY_STG_SECRETS=/' .env.keys.stg
    ```
 
-3. Verify the format:
+2. Verify the format:
    ```bash
    # Should show a plain hex string (no "encrypted:" prefix)
-   grep "DOTENV_PRIVATE_KEY_STG_SECRETS" .env.keys.stg
+   grep "DOTENV_PRIVATE_KEY_STG" .env.keys.stg
    ```
 
 ## How to Get the Correct Private Key
