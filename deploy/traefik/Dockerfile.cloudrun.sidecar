@@ -33,13 +33,8 @@ RUN addgroup -g 1000 traefik && \
 COPY entrypoint-sidecar.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Copy home-index route generation script (runs as root in entrypoint before switching to traefik user)
-COPY generate-home-index-route.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/generate-home-index-route.sh
-
-# Note: Entrypoint runs as root initially to generate home-index route,
-# then switches to traefik user before exec'ing Traefik
-# Keep as root for entrypoint (will switch to traefik user in entrypoint script)
+# Note: Route generation is handled by the traefik-cloudrun-provider sidecar
+# Entrypoint copies middlewares to shared volume, then switches to traefik user
 USER root
 
 # Expose ports
