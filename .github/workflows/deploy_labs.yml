@@ -550,7 +550,8 @@ jobs:
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
       # Use environment-specific secrets - fallback to generic secret
       # Note: GitHub Actions treats missing secrets as empty strings, so we check for non-empty
-      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_SA_KEY_PRD) || secrets.GCP_SA_KEY }}
+      # Secret names: GCP_LABS_SA_KEY_STG, GCP_LABS_SA_KEY_PRD, GCP_LABS_SA_KEY (fallback)
+      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
 
     steps:
       - name: Checkout code
@@ -812,7 +813,8 @@ jobs:
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
       # Use environment-specific secrets - fallback to generic secret
       # Note: GitHub Actions treats missing secrets as empty strings, so we check for non-empty
-      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_SA_KEY_PRD) || secrets.GCP_SA_KEY }}
+      # Secret names: GCP_LABS_SA_KEY_STG, GCP_LABS_SA_KEY_PRD, GCP_LABS_SA_KEY (fallback)
+      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
     strategy:
       matrix:
         lab: ${{ fromJson(needs.setup.outputs.labs) }}
@@ -1043,7 +1045,8 @@ jobs:
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
       # Use environment-specific secrets - fallback to generic secret
       # Note: GitHub Actions treats missing secrets as empty strings, so we check for non-empty
-      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_SA_KEY_PRD) || secrets.GCP_SA_KEY }}
+      # Secret names: GCP_LABS_SA_KEY_STG, GCP_LABS_SA_KEY_PRD, GCP_LABS_SA_KEY (fallback)
+      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
 
     steps:
       - name: Checkout code
@@ -1231,7 +1234,8 @@ jobs:
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
       # Use environment-specific secrets - fallback to generic secret
-      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_SA_KEY_PRD) || secrets.GCP_SA_KEY }}
+      # Secret names: GCP_LABS_SA_KEY_STG, GCP_LABS_SA_KEY_PRD, GCP_LABS_SA_KEY (fallback)
+      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
 
     steps:
       - name: Checkout code
@@ -1350,13 +1354,14 @@ jobs:
     needs: [setup, deploy-labs, deploy-home-components, deploy-labs-components, deploy-index, deploy-traefik]
     runs-on: ubuntu-latest
     if: always()
-    # Specify environment to access environment-level secrets (if GCP_SA_KEY_STG is stored as environment secret)
+    # Specify environment to access environment-level secrets
     environment: ${{ needs.setup.outputs.environment }}
     env:
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
       ENVIRONMENT: ${{ needs.setup.outputs.environment }}
-      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_SA_KEY_PRD) || secrets.GCP_SA_KEY }}
+      # Secret names: GCP_LABS_SA_KEY_STG, GCP_LABS_SA_KEY_PRD, GCP_LABS_SA_KEY (fallback)
+      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
     outputs:
       deployment_success: ${{ steps.check-deployment.outputs.success }}
 
@@ -1505,7 +1510,8 @@ jobs:
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
       # Use environment-specific secrets for proxy authentication
-      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_SA_KEY_PRD) || secrets.GCP_SA_KEY }}
+      # Secret names: GCP_LABS_SA_KEY_STG, GCP_LABS_SA_KEY_PRD, GCP_LABS_SA_KEY (fallback)
+      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
     # Use matrix strategy to shard tests across multiple parallel jobs
     # GitHub Enterprise supports up to 256 matrix jobs, but we'll use 4 shards for optimal performance
     strategy:
@@ -1591,14 +1597,28 @@ jobs:
           echo "⏳ Waiting 30 seconds for deployment to stabilize..."
           sleep 30
 
+      - name: Check GCP credentials availability
+        if: needs.setup.outputs.environment == 'stg'
+        id: check-gcp-creds
+        run: |
+          if [ -n "${{ env.LABS_GCP_SA_KEY }}" ]; then
+            echo "has_creds=true" >> $GITHUB_OUTPUT
+            echo "✅ GCP credentials available for proxy"
+          else
+            echo "has_creds=false" >> $GITHUB_OUTPUT
+            echo "⚠️  GCP credentials not available - proxy will not be started"
+            echo "   Tests will fail with 401 errors when accessing staging services directly"
+            echo "   Ensure GCP_SA_KEY_STG secret is set in repository or environment secrets"
+          fi
+
       - name: Authenticate to Google Cloud (for proxy)
-        if: needs.setup.outputs.environment == 'stg' && env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        if: needs.setup.outputs.environment == 'stg' && steps.check-gcp-creds.outputs.has_creds == 'true'
         uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ env.LABS_GCP_SA_KEY }}
 
       - name: Set up Cloud SDK (for proxy)
-        if: needs.setup.outputs.environment == 'stg' && env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        if: needs.setup.outputs.environment == 'stg' && steps.check-gcp-creds.outputs.has_creds == 'true'
         uses: google-github-actions/setup-gcloud@v3
 
       - name: Load proxy configuration from .env.stg
@@ -1620,7 +1640,7 @@ jobs:
           echo "🔗 Proxy config from .env.stg: $PROXY_HOST:$PROXY_PORT"
 
       - name: Start gcloud proxy for staging tests
-        if: needs.setup.outputs.environment == 'stg' && env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        if: needs.setup.outputs.environment == 'stg' && steps.check-gcp-creds.outputs.has_creds == 'true'
         id: start-proxy
         run: |
           echo "🔗 Starting gcloud proxy for staging tests..."
@@ -1715,7 +1735,7 @@ jobs:
           npx playwright test e2e --shard=${{ matrix.shard }}/${{ matrix.total-shards }}
 
       - name: Stop proxy (cleanup)
-        if: always() && needs.setup.outputs.environment == 'stg' && steps.start-proxy.outputs.proxy_pid != ''
+        if: always() && needs.setup.outputs.environment == 'stg' && steps.check-gcp-creds.outputs.has_creds == 'true' && steps.start-proxy.outputs.proxy_pid != ''
         run: |
           echo "🧹 Stopping proxy..."
           PROXY_PID="${{ steps.start-proxy.outputs.proxy_pid }}"

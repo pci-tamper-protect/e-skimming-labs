@@ -93,6 +93,12 @@ spec:
           value: "daemon"
         - name: POLL_INTERVAL
           value: "30s"
+        # User authentication for labs (Firebase JWT validation)
+        # - false (default): Labs are publicly accessible (no user auth required)
+        # - true: Labs require user authentication via Firebase
+        # When enabled, generates forwardAuth middlewares that call home-index /api/auth/check
+        - name: USER_AUTH_ENABLED
+          value: "true"
         resources:
           limits:
             cpu: "0.5"  # With concurrency=1, fractional CPUs are allowed

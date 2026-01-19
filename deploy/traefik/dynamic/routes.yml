@@ -68,20 +68,9 @@ http:
           - "/api/analytics"
 
     # Lab 1 middlewares
-    # Auth check middleware - forwards to home-index-service to verify authentication
-    lab1-auth-check:
-      forwardAuth:
-        address: "http://home-index:8080/api/auth/check"
-        authResponseHeaders:
-          - "X-User-Id"
-          - "X-User-Email"
-          - "X-Authorization"  # Preserves original user JWT token (from Cookie or Authorization)
-        authRequestHeaders:
-          - "Authorization"
-          - "Cookie"
-          - "X-Forwarded-For"
-          - "X-Forwarded-Host"
-        trustForwardHeader: true
+    # Note: lab1-auth-check middleware is generated dynamically by traefik-cloudrun-provider
+    # when USER_AUTH_ENABLED=true. It uses forwardAuth to call home-index /api/auth/check
+    # for user JWT validation. The provider generates the correct Cloud Run URL.
 
     strip-lab1-prefix:
       stripPrefix:
@@ -109,20 +98,8 @@ http:
           - "/lab1/variants/websocket"
 
     # Lab 2 middlewares
-    # Auth check middleware - forwards to home-index-service to verify authentication
-    lab2-auth-check:
-      forwardAuth:
-        address: "http://home-index:8080/api/auth/check"
-        authResponseHeaders:
-          - "X-User-Id"
-          - "X-User-Email"
-          - "X-Authorization"  # Preserves original user JWT token (from Cookie or Authorization)
-        authRequestHeaders:
-          - "Authorization"
-          - "Cookie"
-          - "X-Forwarded-For"
-          - "X-Forwarded-Host"
-        trustForwardHeader: true
+    # Note: lab2-auth-check middleware is generated dynamically by traefik-cloudrun-provider
+    # when USER_AUTH_ENABLED=true. See lab1 comment above.
 
     strip-lab2-prefix:
       stripPrefix:
@@ -135,20 +112,8 @@ http:
           - "/lab2/c2"
 
     # Lab 3 middlewares
-    # Auth check middleware - forwards to home-index-service to verify authentication
-    lab3-auth-check:
-      forwardAuth:
-        address: "http://home-index:8080/api/auth/check"
-        authResponseHeaders:
-          - "X-User-Id"
-          - "X-User-Email"
-          - "X-Authorization"  # Preserves original user JWT token (from Cookie or Authorization)
-        authRequestHeaders:
-          - "Authorization"
-          - "Cookie"
-          - "X-Forwarded-For"
-          - "X-Forwarded-Host"
-        trustForwardHeader: true
+    # Note: lab3-auth-check middleware is generated dynamically by traefik-cloudrun-provider
+    # when USER_AUTH_ENABLED=true. See lab1 comment above.
 
     strip-lab3-prefix:
       stripPrefix:

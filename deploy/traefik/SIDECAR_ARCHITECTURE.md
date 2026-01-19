@@ -110,11 +110,13 @@ This document describes the sidecar-based architecture for deploying Traefik to 
   - `REGION` (default: us-central1)
   - `MODE` (default: daemon)
   - `POLL_INTERVAL` (default: 30s)
+  - `USER_AUTH_ENABLED` (default: false) - See User Authentication below
 
 **Key Features**:
 - Standalone binary (no Traefik dependency)
 - Automatic route regeneration on service changes
 - Shared volume ensures main Traefik sees updates immediately
+- Dynamic forwardAuth middleware generation for user JWT validation
 
 ### 3. Dashboard Service
 
@@ -273,6 +275,47 @@ To migrate from the plugin-based architecture:
 3. **Verify routes**: Check that `routes.yml` is generated correctly
 4. **Test dashboard**: Verify dashboard is accessible
 5. **Monitor**: Watch logs for any issues
+
+## User Authentication
+
+The `USER_AUTH_ENABLED` environment variable controls whether labs require user authentication:
+
+| Environment | `USER_AUTH_ENABLED` | Behavior |
+|-------------|---------------------|----------|
+| Local (docker-compose.sidecar-local.yml) | `false` (default) | Labs are publicly accessible |
+| Staging (cloudrun-sidecar.yaml) | `true` | Labs require Firebase JWT authentication |
+| Production | `true` | Labs require Firebase JWT authentication |
+
+### How It Works
+
+When `USER_AUTH_ENABLED=true`:
+1. Provider discovers the home-index Cloud Run URL during service discovery
+2. Provider generates `lab1-auth-check`, `lab2-auth-check`, `lab3-auth-check` forwardAuth middlewares
+3. These middlewares call `{home-index-url}/api/auth/check` for JWT validation
+4. Lab routes include the auth-check middleware in their middleware chain
+
+When `USER_AUTH_ENABLED=false` (or not set):
+1. Provider skips auth-check middleware generation
+2. Auth-check middlewares are filtered out of router configurations
+3. Labs are publicly accessible (only Cloud Run IAM auth via service tokens)
+
+### Public Routes (No Auth Required)
+
+The following routes are always public regardless of `USER_AUTH_ENABLED`:
+- `/` - Labs home page
+- `/mitre-attack` - MITRE ATT&CK matrix
+- `/threat-model` - Interactive threat model
+- `/sign-in`, `/sign-up` - Authentication pages
+
+### Testing Auth Locally
+
+To test authentication flow locally:
+```bash
+# Start with auth enabled
+USER_AUTH_ENABLED=true docker compose -f docker-compose.sidecar-local.yml up
+```
+
+Note: This requires the home-index service to be running with Firebase configured.
 
 ## Future Improvements
 

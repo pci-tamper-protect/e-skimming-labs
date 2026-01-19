@@ -88,10 +88,11 @@ services:
       # Set this to a service account that has Cloud Run Invoker role on the target services
       # Your user account needs 'Service Account Token Creator' role on this service account
       - IMPERSONATE_SERVICE_ACCOUNT=${IMPERSONATE_SERVICE_ACCOUNT:-traefik-stg@labs-stg.iam.gserviceaccount.com}
-      # Skip auth-check middlewares for local development
-      # Auth-check uses forwardAuth to call home-index:8080/api/auth/check which doesn't work locally
-      # (there's no local home-index container - it's a remote Cloud Run service)
-      - SKIP_AUTH_CHECK=true
+      # User authentication for labs (Firebase JWT validation)
+      # - false (default for local): Labs are publicly accessible (no user auth required)
+      # - true: Labs require user authentication via Firebase
+      # Set to true to test auth flow locally (requires home-index with Firebase configured)
+      - USER_AUTH_ENABLED=${USER_AUTH_ENABLED:-false}
     networks:
       - labs-network
     # Provider writes routes.yml to /shared/traefik/dynamic/routes.yml
