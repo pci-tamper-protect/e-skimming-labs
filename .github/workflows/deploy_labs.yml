@@ -1409,6 +1409,8 @@ jobs:
           ATTEMPT=0
 
           # Function to check if service is ready
+          # For staging (IAM-protected services), we only check Cloud Run status
+          # For production (public services), we also verify HTTP access
           check_service_ready() {
             local SERVICE_NAME=$1
             local PROJECT=$2
@@ -1418,12 +1420,17 @@ jobs:
               --format="value(status.conditions[0].status)" 2>/dev/null || echo "Unknown")
 
             if [[ "$STATUS" == "True" ]]; then
+              # For staging, Cloud Run status is sufficient (services are IAM-protected)
+              if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
+                return 0
+              fi
+
+              # For production, also verify HTTP access
               local URL=$(gcloud run services describe "$SERVICE_NAME" \
                 --region="$REGION" \
                 --project="$PROJECT" \
                 --format="value(status.url)" 2>/dev/null)
 
-              # Try to access the service
               if curl -sf --max-time 5 "$URL" > /dev/null 2>&1; then
                 return 0
               fi
