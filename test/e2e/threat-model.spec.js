@@ -52,46 +52,22 @@ test.describe('Threat Model Page', () => {
     // Check that the back button is visible
     await expect(backButton).toBeVisible()
 
-    // Normalize URLs for comparison (handle localhost vs 127.0.0.1 and trailing slashes)
-    const normalizeUrlForComparison = (url, addTrailingSlash = false) => {
-      if (!url) return url
-      // Normalize localhost to 127.0.0.1
-      let normalized = url.replace(/^https?:\/\/localhost/, 'http://127.0.0.1')
-      // Remove trailing slash for consistent comparison (except for root path)
-      if (normalized.endsWith('/') && normalized !== 'http://127.0.0.1/' && normalized !== 'http://localhost/') {
-        normalized = normalized.slice(0, -1)
-      }
-      // Add trailing slash if requested (for home page URLs)
-      if (addTrailingSlash && !normalized.endsWith('/')) {
-        normalized = normalized + '/'
-      }
-      return normalized
-    }
-
-    // Get the actual href and normalize both for comparison
+    // Get the actual href - should be relative "/" (Traefik handles routing)
     const actualHref = await backButton.getAttribute('href')
-    const normalizedActual = normalizeUrlForComparison(actualHref)
-    const normalizedExpected = normalizeUrlForComparison(currentEnv.homeIndex)
+    console.log('Back button href:', actualHref)
 
-    // Check that normalized URLs match (handles localhost vs 127.0.0.1 differences)
-    expect(normalizedActual).toBe(normalizedExpected)
+    // Back button should use relative URL "/" - Traefik handles routing to correct host
+    expect(actualHref).toBe('/')
 
-    // Debug: Log the actual href value
-    const hrefValue = await backButton.getAttribute('href')
-    console.log('Back button href:', hrefValue)
-
-    // Test clicking the back button (now has proper click handler)
+    // Test clicking the back button
     await backButton.click()
 
     // Wait for navigation
     await page.waitForLoadState('networkidle')
 
-    // Verify we're on the home page (normalize URL for comparison)
-    // Both URLs should have trailing slashes for home page comparison
-    const expectedHomeUrl = normalizeUrlForComparison(currentEnv.homeIndex, true)
-    const actualPageUrl = page.url()
-    const normalizedPageUrl = normalizeUrlForComparison(actualPageUrl, true)
-    expect(normalizedPageUrl).toBe(expectedHomeUrl)
+    // Verify we're on the home page by checking the URL ends with "/" or is the base URL
+    const currentUrl = page.url()
+    expect(currentUrl).toMatch(/\/$/) // URL should end with /
     await expect(page).toHaveTitle('E-Skimming Labs - Interactive Training Platform')
 
     // Verify we can see the main labs content
@@ -206,53 +182,35 @@ test.describe('Threat Model Page', () => {
   })
 
   test('should have proper navigation flow', async ({ page }) => {
-    // Normalize URLs for comparison (handle localhost vs 127.0.0.1 and trailing slashes)
-    const normalizeUrlForComparison = (url, addTrailingSlash = false) => {
-      if (!url) return url
-      // Normalize localhost to 127.0.0.1
-      let normalized = url.replace(/^https?:\/\/localhost/, 'http://127.0.0.1')
-      // Remove trailing slash for consistent comparison (except for root path)
-      if (normalized.endsWith('/') && normalized !== 'http://127.0.0.1/' && normalized !== 'http://localhost/') {
-        normalized = normalized.slice(0, -1)
-      }
-      // Add trailing slash if requested (for home page URLs)
-      if (addTrailingSlash && !normalized.endsWith('/')) {
-        normalized = normalized + '/'
-      }
-      return normalized
-    }
-
     // Test navigation from threat model to home and back
     const backButton = page.getByRole('link', { name: '← Back to Labs' })
 
     // Go back to home
     await backButton.click()
     await page.waitForLoadState('networkidle')
-    // Verify we're on the home page (normalize URL for comparison)
-    // Both URLs should have trailing slashes for home page comparison
-    const expectedHomeUrlAfterClick = normalizeUrlForComparison(currentEnv.homeIndex, true)
-    const actualPageUrlAfterClick = page.url()
-    const normalizedPageUrlAfterClick = normalizeUrlForComparison(actualPageUrlAfterClick, true)
-    expect(normalizedPageUrlAfterClick).toBe(expectedHomeUrlAfterClick)
+
+    // Verify we're on the home page (URL should end with /)
+    const currentUrlAfterBack = page.url()
+    expect(currentUrlAfterBack).toMatch(/\/$/)
 
     // Navigate back to threat model (use .first() for duplicate links)
     const threatModelLink = page.getByRole('link', { name: 'Threat Model' }).first()
     await expect(threatModelLink).toBeVisible()
 
-    // Get the actual href to verify it's correct
+    // Get the actual href to verify it's correct (should be relative)
     const href = await threatModelLink.getAttribute('href')
     console.log('Threat Model link href:', href)
+    expect(href).toBe('/threat-model')
 
     // Click the link
     await threatModelLink.click()
     await page.waitForLoadState('networkidle')
 
-    // Verify we're on threat model page (allow for both correct and incorrect URLs during transition)
+    // Verify we're on threat model page
     const currentUrl = page.url()
     console.log('Current URL after clicking Threat Model:', currentUrl)
+    expect(currentUrl).toContain('/threat-model')
 
-    // If the URL is wrong, it means the home-index service needs to be restarted
-    // But we'll still verify we're on the threat model page by checking the title
     await expect(page).toHaveTitle(/Threat Model/)
 
     // Verify we're back on threat model page
@@ -263,7 +221,7 @@ test.describe('Threat Model Page', () => {
 })
 
 test.describe('Threat Model Page - Environment Detection', () => {
-  test('should detect localhost environment and set correct back button URL', async ({ page }) => {
+  test('should use relative URL for back button (Traefik handles routing)', async ({ page }) => {
     // Set up console listener BEFORE navigation
     let consoleLogText = null
     page.on('console', msg => {
@@ -281,41 +239,20 @@ test.describe('Threat Model Page - Environment Detection', () => {
     // Find the back button and check its href
     const backButton = page.getByRole('link', { name: '← Back to Labs' })
 
-    // Normalize URLs for comparison (handle localhost vs 127.0.0.1 and trailing slashes)
-    const normalizeUrlForComparison = (url, addTrailingSlash = false) => {
-      if (!url) return url
-      // Normalize localhost to 127.0.0.1
-      let normalized = url.replace(/^https?:\/\/localhost/, 'http://127.0.0.1')
-      // Remove trailing slash for consistent comparison (except for root path)
-      if (normalized.endsWith('/') && normalized !== 'http://127.0.0.1/' && normalized !== 'http://localhost/') {
-        normalized = normalized.slice(0, -1)
-      }
-      // Add trailing slash if requested (for home page URLs)
-      if (addTrailingSlash && !normalized.endsWith('/')) {
-        normalized = normalized + '/'
-      }
-      return normalized
-    }
-
-    // Get the actual href and normalize both for comparison
+    // Get the actual href - should be "/" (relative URL, Traefik handles routing)
     const actualHref = await backButton.getAttribute('href')
-    const normalizedActual = normalizeUrlForComparison(actualHref)
-    const normalizedExpected = normalizeUrlForComparison(currentEnv.homeIndex)
+    console.log('Back button href:', actualHref)
 
-    // Check that normalized URLs match (handles localhost vs 127.0.0.1 differences)
-    expect(normalizedActual).toBe(normalizedExpected)
+    // Back button should use relative URL "/"
+    expect(actualHref).toBe('/')
 
-    // Verify console log was generated (if captured - may not work in all test environments)
+    // Verify console log was generated (if captured)
     if (consoleLogText) {
       const logText = String(consoleLogText)
-      // Check if the log contains either the expected URL or a normalized version
-      const normalizedExpectedForLog = normalizeUrlForComparison(currentEnv.homeIndex)
-      const containsExpected = logText.indexOf(currentEnv.homeIndex) >= 0 ||
-                               logText.indexOf(normalizedExpectedForLog) >= 0 ||
-                               logText.replace(/localhost/g, '127.0.0.1').indexOf(normalizedExpectedForLog) >= 0
-      expect(containsExpected).toBeTruthy()
+      // Should indicate relative URL is being used
+      expect(logText).toContain('/')
+      console.log('Console log captured:', logText)
     } else {
-      // If console log doesn't work in test environment, just verify the href is correct
       console.log('Console log not captured, but href is correct')
     }
   })

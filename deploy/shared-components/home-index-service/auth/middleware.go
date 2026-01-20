@@ -18,6 +18,26 @@ const (
 	UserInfoKey AuthContextKey = "userInfo"
 )
 
+// sanitizeEmail sanitizes an email address to show only first 2 chars + "@" + domain
+// Example: "abraham@example.com" -> "ab@example.com"
+func sanitizeEmail(email string) string {
+	atIndex := strings.Index(email, "@")
+	if atIndex == -1 {
+		// Not a valid email format, return as-is
+		return email
+	}
+	
+	localPart := email[:atIndex]
+	domain := email[atIndex+1:]
+	
+	// Show first 2 characters of local part, or all if less than 2
+	if len(localPart) <= 2 {
+		return email // Too short to sanitize meaningfully
+	}
+	
+	return localPart[:2] + "@" + domain
+}
+
 // AuthMiddleware creates HTTP middleware for authentication
 func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -94,7 +114,7 @@ func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 
 			// Check email verification if user info is available
 			if userInfo != nil && validator.IsRequired() && !userInfo.EmailVerified {
-				log.Printf("❌ Email not verified for user: %s", userInfo.Email)
+				log.Printf("❌ Email not verified for user: %s", sanitizeEmail(userInfo.Email))
 				// For browser requests, redirect to sign-in with a message
 				acceptHeader := r.Header.Get("Accept")
 				isBrowserRequest := strings.Contains(acceptHeader, "text/html") ||
@@ -129,7 +149,7 @@ func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 			if userInfo != nil {
 				ctx := context.WithValue(r.Context(), UserInfoKey, userInfo)
 				r = r.WithContext(ctx)
-				log.Printf("✅ Request authenticated (user: %s, email: %s, verified: %v)", userInfo.UserID, userInfo.Email, userInfo.EmailVerified)
+				log.Printf("✅ Request authenticated (user: %s, email: %s, verified: %v)", userInfo.UserID, sanitizeEmail(userInfo.Email), userInfo.EmailVerified)
 			}
 
 			next.ServeHTTP(w, r)

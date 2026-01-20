@@ -7,6 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>Checkout - TechGear Store</title>
+    <base href="/lab1/" />
     <style>
       * {
         margin: 0;
@@ -240,49 +241,36 @@
       </div>
     </main>
 
-    <!-- Development: Clear Cache Button (only shows in localhost) -->
+    <!-- Development: Clear Cache Button -->
     <script>
       (function() {
-        const hostname = window.location.hostname
-        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
-        if (isLocal) {
-          const clearCacheBtn = document.createElement('button')
-          clearCacheBtn.textContent = '🗑️ Clear Cache'
-          clearCacheBtn.setAttribute('aria-label', 'Clear browser cache') //aria-label added
-          clearCacheBtn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9999;padding:10px 20px;background:#dc2626;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;box-shadow:0 4px 6px rgba(0,0,0,0.3);'
-          clearCacheBtn.onclick = function() {
-            if ('caches' in window) {
-              caches.keys().then(names => {
-                names.forEach(name => caches.delete(name))
-              })
-            }
-            localStorage.clear()
-            sessionStorage.clear()
-            window.location.href = window.location.href.split('?')[0] + '?nocache=' + Date.now()
+        const clearCacheBtn = document.createElement('button')
+        clearCacheBtn.textContent = '🗑️ Clear Cache'
+        clearCacheBtn.setAttribute('aria-label', 'Clear browser cache')
+        clearCacheBtn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9999;padding:10px 20px;background:#dc2626;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;box-shadow:0 4px 6px rgba(0,0,0,0.3);'
+        clearCacheBtn.onclick = function() {
+          if ('caches' in window) {
+            caches.keys().then(names => {
+              names.forEach(name => caches.delete(name))
+            })
           }
-          document.body.appendChild(clearCacheBtn)
+          localStorage.clear()
+          sessionStorage.clear()
+          window.location.href = window.location.href.split('?')[0] + '?nocache=' + Date.now()
         }
+        document.body.appendChild(clearCacheBtn)
       })()
     </script>
 
     <!-- Training version: Uses benign function names for AI training -->
     <script>
-      // Cache busting for JS - must happen before script loads
+      // Load training script
       (function() {
-        const hostname = window.location.hostname
-        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
-        if (isLocal) {
-          const timestamp = Date.now()
-          const script = document.createElement('script')
-          script.src = 'js/checkout-process-train.js?v=' + timestamp
-          script.id = 'main-js'
-          document.body.appendChild(script)
-        } else {
-          const script = document.createElement('script')
-          script.src = 'js/checkout-process-train.js'
-          script.id = 'main-js'
-          document.body.appendChild(script)
-        }
+        const timestamp = Date.now()
+        const script = document.createElement('script')
+        script.src = 'js/checkout-process-train.js?v=' + timestamp
+        script.id = 'main-js'
+        document.body.appendChild(script)
       })()
     </script>
 
@@ -308,37 +296,14 @@
         e.target.value = e.target.value.replace(/\D/g, '')
       })
 
-      // Environment-aware URL configuration with uniform path-based routing
+      // Update header links with relative paths
       ;(function () {
-        const hostname = window.location.hostname
-
-        // Determine base URL based on environment
-        let baseUrl
-        if (hostname === 'localhost' || hostname === '127.0.0.1') {
-          // Local development - use port 8080 (Traefik)
-          baseUrl = 'http://localhost:8080'
-        } else if (hostname.includes('stg.pcioasis.com') || hostname.includes('staging')) {
-          // Staging environment
-          baseUrl = 'https://labs.stg.pcioasis.com'
-        } else if (hostname.includes('pcioasis.com') && !hostname.includes('stg')) {
-          // Production environment
-          baseUrl = 'https://labs.pcioasis.com'
-        } else {
-          // Fallback: use current origin
-          baseUrl = window.location.origin
-        }
-
-        // Uniform path-based routing (works across all environments)
-        const homeUrl = baseUrl + '/'
-        const c2Url = baseUrl + '/lab1/c2'
-
-        // Update header links
         const headerLinks = document.querySelectorAll('.header a')
         headerLinks.forEach(link => {
           if (link.textContent.includes('Back to Labs')) {
-            link.href = homeUrl
+            link.href = '/'
           } else if (link.textContent.includes('View Stolen Data')) {
-            link.href = c2Url
+            link.href = '/lab1/c2'
           }
         })
       })()

@@ -32,12 +32,11 @@ echo "   Service: ${SERVICE_NAME}"
 echo "   Image: ${IMAGE_NAME}"
 echo ""
 
-# Check if image exists
-if ! gcloud artifacts docker images describe "${IMAGE_NAME}" > /dev/null 2>&1; then
-  echo "📦 Docker image not found. Building and pushing..."
-  ./build-and-push.sh "${ENVIRONMENT}"
-  echo ""
-fi
+# Always build and push the image first
+echo "📦 Building and pushing Docker image..."
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+"${SCRIPT_DIR}/build-and-push.sh" "${ENVIRONMENT}"
+echo ""
 
 # Get project numbers for constructing service URLs
 LABS_PROJECT_NUMBER=$(gcloud projects describe "${PROJECT_ID}" --format="value(projectNumber)")
@@ -89,7 +88,7 @@ gcloud run deploy "${SERVICE_NAME}" \
   --project="${PROJECT_ID}" \
   --service-account="${SERVICE_ACCOUNT}" \
   --platform=managed \
-  --allow-unauthenticated \
+  --no-allow-unauthenticated \
   --port=8080 \
   --memory=512Mi \
   --cpu=1 \
@@ -97,6 +96,9 @@ gcloud run deploy "${SERVICE_NAME}" \
   --max-instances=$([ "$ENVIRONMENT" = "prd" ] && echo "10" || echo "3") \
   --set-env-vars="ENVIRONMENT=${ENVIRONMENT}" \
   --set-env-vars="DOMAIN=${DOMAIN}" \
+  --set-env-vars="LABS_PROJECT_ID=${PROJECT_ID}" \
+  --set-env-vars="HOME_PROJECT_ID=${HOME_PROJECT_ID}" \
+  --set-env-vars="REGION=${REGION}" \
   --set-env-vars="HOME_INDEX_URL=${HOME_INDEX_URL}" \
   --set-env-vars="SEO_URL=${SEO_URL}" \
   --set-env-vars="ANALYTICS_URL=${ANALYTICS_URL}" \

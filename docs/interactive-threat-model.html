@@ -1752,7 +1752,22 @@
         simulation.force('center', d3.forceCenter(newWidth / 2, newHeight / 2))
         simulation.alpha(0.3).restart()
       })
-      // Environment-aware back button URL
+      /*
+       * ============================================================================
+       * ROUTING ARCHITECTURE PRINCIPLE - DO NOT REGRESS
+       * ============================================================================
+       *
+       * **CRITICAL**: Client-side code MUST NOT contain routing logic.
+       * All routing belongs to Traefik.
+       *
+       * Services should ALWAYS use relative URLs for navigation.
+       * Traefik handles all routing based on path prefixes.
+       *
+       * **DO NOT** add logic to detect environment or generate absolute URLs.
+       *
+       * ============================================================================
+       */
+      // Set back button URL - always use relative URL
       function setBackButtonUrl() {
         const backBtn = document.getElementById('back-btn')
         if (!backBtn) {
@@ -1760,36 +1775,10 @@
           return
         }
 
-        const hostname = window.location.hostname
-        const port = window.location.port
-        const protocol = window.location.protocol
-
-        // Determine base URL based on environment (consistent with lab pages)
-        let backUrl
-        if (hostname === 'localhost' || hostname === '127.0.0.1') {
-          // Local development - use port 8080 (Traefik)
-          backUrl = 'http://localhost:8080'
-        } else if (hostname.includes('stg.pcioasis.com') || hostname.includes('staging')) {
-          // Staging environment
-          backUrl = 'https://labs.stg.pcioasis.com'
-        } else if (hostname.includes('pcioasis.com') && !hostname.includes('stg')) {
-          // Production environment
-          backUrl = 'https://labs.pcioasis.com'
-        } else {
-          // Fallback: use current origin
-          backUrl = window.location.origin
-        }
-
-        backBtn.href = backUrl
-        console.log('Threat Model back button URL set to:', backUrl)
-
-        // Add robust click handler to ensure navigation works
-        backBtn.addEventListener('click', function (e) {
-          e.preventDefault()
-          e.stopPropagation()
-          console.log('Back button clicked, navigating to:', backUrl)
-          window.location.href = backUrl
-        })
+        // IMPORTANT: Always use relative URL - Traefik handles routing
+        // DO NOT add logic to detect environment or generate absolute URLs
+        backBtn.href = '/'
+        console.log('Threat Model back button URL set to: / (relative - Traefik handles routing)')
       }
 
       // Set back button URL on page load

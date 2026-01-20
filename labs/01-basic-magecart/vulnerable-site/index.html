@@ -12,14 +12,11 @@
     <script>
       // Cache busting for development - inject before page loads
       (function() {
-        const hostname = window.location.hostname
-        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
-        if (isLocal) {
-          const timestamp = Date.now()
-          const cssLink = document.getElementById('main-css')
-          if (cssLink && !cssLink.href.includes('?')) {
-            cssLink.href = cssLink.href + '?v=' + timestamp
-          }
+        // Use relative path - works in all environments
+        const timestamp = Date.now()
+        const cssLink = document.getElementById('main-css')
+        if (cssLink && !cssLink.href.includes('?')) {
+          cssLink.href = cssLink.href + '?v=' + timestamp
         }
       })()
     </script>
@@ -33,12 +30,12 @@
 
     <nav>
       <ul>
-        <li><a href="about:blank" class="back-button" aria-label="Go back to labs homepage">← Back to Labs</a></li>
+        <li><a href="/" class="back-button" aria-label="Go back to labs homepage">← Back to Labs</a></li>
         <li>
-          <a href="about:blank" class="c2-button" target="_blank" aria-label="View Stolen Data">🕵️ View Stolen Data</a>
+          <a href="/lab1/c2" class="c2-button" target="_blank" aria-label="View Stolen Data">🕵️ View Stolen Data</a>
         </li>
         <li>
-          <a href="about:blank" class="writeup-button" target="_blank" aria-label="Lab Writeup">📖 Writeup</a>
+          <a href="/lab-01-writeup" class="writeup-button" target="_blank" aria-label="Lab Writeup">📖 Writeup</a>
         </li>
         <li><a href="#" aria-label="Go to homepage">Home</a></li>
         <li><a href="checkout.html" aria-label="Go to checkout page">Checkout</a></li>
@@ -75,69 +72,26 @@
       <p>&copy; 2024 TechGear Store | Educational Lab Environment</p>
     </footer>
 
-    <!-- Development: Clear Cache Button (only shows in localhost) -->
+    <!-- Development: Clear Cache Button -->
     <script>
       (function() {
-        const hostname = window.location.hostname
-        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
-        if (isLocal) {
-          const clearCacheBtn = document.createElement('button')
-          clearCacheBtn.textContent = '🗑️ Clear Cache'
-          clearCacheBtn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9999;padding:10px 20px;background:#dc2626;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;box-shadow:0 4px 6px rgba(0,0,0,0.3);'
-          clearCacheBtn.onclick = function() {
-            // Clear all caches
-            if ('caches' in window) {
-              caches.keys().then(names => {
-                names.forEach(name => caches.delete(name))
-              })
-            }
-            // Clear localStorage and sessionStorage
-            localStorage.clear()
-            sessionStorage.clear()
-            // Force reload with cache bypass
-            window.location.href = window.location.href.split('?')[0] + '?nocache=' + Date.now()
+        const clearCacheBtn = document.createElement('button')
+        clearCacheBtn.textContent = '🗑️ Clear Cache'
+        clearCacheBtn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9999;padding:10px 20px;background:#dc2626;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;box-shadow:0 4px 6px rgba(0,0,0,0.3);'
+        clearCacheBtn.onclick = function() {
+          // Clear all caches
+          if ('caches' in window) {
+            caches.keys().then(names => {
+              names.forEach(name => caches.delete(name))
+            })
           }
-          document.body.appendChild(clearCacheBtn)
+          // Clear localStorage and sessionStorage
+          localStorage.clear()
+          sessionStorage.clear()
+          // Force reload with cache bypass
+          window.location.href = window.location.href.split('?')[0] + '?nocache=' + Date.now()
         }
-      })()
-    </script>
-
-    <script>
-      // Environment-aware URL configuration with uniform path-based routing
-      ;(function () {
-        const hostname = window.location.hostname
-        const port = window.location.port
-        const protocol = window.location.protocol
-
-        // Determine base URL based on environment
-        let baseUrl
-        if (hostname === 'localhost' || hostname === '127.0.0.1') {
-          // Local development - use port 8080 (Traefik)
-          baseUrl = 'http://localhost:8080'
-        } else if (hostname.includes('stg.pcioasis.com') || hostname.includes('staging')) {
-          // Staging environment
-          baseUrl = 'https://labs.stg.pcioasis.com'
-        } else if (hostname.includes('pcioasis.com') && !hostname.includes('stg')) {
-          // Production environment
-          baseUrl = 'https://labs.pcioasis.com'
-        } else {
-          // Fallback: use current origin
-          baseUrl = window.location.origin
-        }
-
-        // Uniform path-based routing (works across all environments)
-        const homeUrl = baseUrl + '/'
-        const c2Url = baseUrl + '/lab1/c2'
-        const writeupUrl = baseUrl + '/lab-01-writeup'
-
-        // Update links
-        const backButton = document.querySelector('.back-button')
-        const c2Button = document.querySelector('.c2-button')
-        const writeupButton = document.querySelector('.writeup-button')
-
-        if (backButton) backButton.href = homeUrl
-        if (c2Button) c2Button.href = c2Url
-        if (writeupButton) writeupButton.href = writeupUrl
+        document.body.appendChild(clearCacheBtn)
       })()
     </script>
   </body>

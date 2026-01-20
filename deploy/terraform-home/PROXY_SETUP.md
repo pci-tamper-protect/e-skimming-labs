@@ -26,21 +26,31 @@ The multi-service proxy allows navigation between services because it rewrites U
 
 ```bash
 cd deploy/terraform-home
-./start-multi-service-proxy.sh stg 8080
+# For staging, the script will automatically use STG_PROXY_PORT from .env.stg (default: 8082)
+./start-multi-service-proxy.sh stg
+
+# Or specify port explicitly:
+./start-multi-service-proxy.sh stg 8082
 ```
 
 This will:
 - Discover all Cloud Run services
-- Generate `/etc/hosts` entries (all use port 8080)
+- Generate `/etc/hosts` entries (all use port 8082 for staging, or value from `STG_PROXY_PORT` in `.env.stg`)
 - Start a single proxy that routes based on Host header
-- Rewrite URLs in HTML to use `.local:8080` domains
+- Rewrite URLs in HTML to use `.local:8082` domains
+
+**Note:** Staging uses port 8082 by default (configurable via `STG_PROXY_PORT` in `.env.stg`) to avoid conflicts with local development (8080) and Traefik dashboard (8081).
 
 ### 2. Sync /etc/hosts with proxy
 
 **IMPORTANT:** The hosts file entries MUST match what the proxy discovered. Use the sync script:
 
 ```bash
-./sync-hosts-with-proxy.sh stg 8080
+# For staging, the script will automatically use STG_PROXY_PORT from .env.stg (default: 8082)
+./sync-hosts-with-proxy.sh stg
+
+# Or specify port explicitly:
+./sync-hosts-with-proxy.sh stg 8082
 ```
 
 This will:
@@ -87,12 +97,12 @@ sudo service network-manager restart  # NetworkManager
 
 All services use the same port (8080), so navigation between services works:
 
-- `http://home-index-stg-*.local:8080`
-- `http://home-seo-stg-*.local:8080`
-- `http://labs-analytics-stg-*.local:8080`
-- `http://lab-01-basic-magecart-stg-*.local:8080`
-- `http://lab-02-dom-skimming-stg-*.local:8080`
-- `http://lab-03-extension-hijacking-stg-*.local:8080`
+- `http://home-index-stg-*.local:8082` (or port from `STG_PROXY_PORT` in `.env.stg`)
+- `http://home-seo-stg-*.local:8082`
+- `http://labs-analytics-stg-*.local:8082`
+- `http://lab-01-basic-magecart-stg-*.local:8082`
+- `http://lab-02-dom-skimming-stg-*.local:8082`
+- `http://lab-03-extension-hijacking-stg-*.local:8082`
 
 **The proxy automatically rewrites URLs in HTML responses**, so links between services will work correctly!
 
@@ -142,7 +152,7 @@ If clicking a link gives "can't be reached" or 404:
 2. **Restart the proxy** - The proxy only discovers services when it starts:
    ```bash
    # Stop the current proxy (Ctrl+C)
-   ./start-multi-service-proxy.sh stg 8080
+   ./start-multi-service-proxy.sh stg 8082
    ```
 
 3. **Check proxy logs** - The proxy prints debug info showing:

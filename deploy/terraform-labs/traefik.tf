@@ -23,6 +23,14 @@ resource "google_project_iam_member" "traefik_artifact_registry_reader" {
   member  = "serviceAccount:${google_service_account.traefik.email}"
 }
 
+# Grant Traefik permission to read Cloud Run service metadata (for label-based route generation)
+# This allows Traefik to query service labels via Cloud Run Admin API
+resource "google_project_iam_member" "traefik_viewer" {
+  project = local.labs_project_id
+  role    = "roles/run.viewer"
+  member  = "serviceAccount:${google_service_account.traefik.email}"
+}
+
 # Data source to reference Traefik service (managed by GitHub Actions)
 data "google_cloud_run_v2_service" "traefik" {
   name     = "traefik-${var.environment}"

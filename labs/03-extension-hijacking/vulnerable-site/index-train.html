@@ -373,30 +373,39 @@
       })()
     </script>
     <script>
-      // Environment-aware URL configuration with uniform path-based routing
+      /*
+       * ============================================================================
+       * ROUTING ARCHITECTURE PRINCIPLE - DO NOT REGRESS
+       * ============================================================================
+       * 
+       * **CRITICAL**: Client-side code MUST NOT contain routing logic. All routing belongs to Traefik.
+       * 
+       * Services should ALWAYS use relative URLs for navigation:
+       *   - Home: /
+       *   - C2: /lab3/extension
+       *   - Writeup: /lab-03-writeup
+       * 
+       * Traefik handles all routing based on path prefixes.
+       * 
+       * **DO NOT** add logic to:
+       *   - Detect environment (localhost vs staging vs production)
+       *   - Conditionally use relative vs absolute URLs
+       *   - Check hostname for routing decisions
+       *   - Generate different URLs based on environment
+       * 
+       * If you find yourself adding routing logic, STOP and ask:
+       * "Why can't Traefik handle this routing?"
+       * 
+       * ============================================================================
+       */
+      // TODO: Simplify to always use relative URLs - remove environment detection
+      // Always use relative URLs - Traefik handles routing
       ;(function () {
-        const hostname = window.location.hostname
-
-        // Determine base URL based on environment
-        let baseUrl
-        if (hostname === 'localhost' || hostname === '127.0.0.1') {
-          // Local development - use port 8080 (Traefik)
-          baseUrl = 'http://localhost:8080'
-        } else if (hostname.includes('stg.pcioasis.com') || hostname.includes('staging')) {
-          // Staging environment
-          baseUrl = 'https://labs.stg.pcioasis.com'
-        } else if (hostname.includes('pcioasis.com') && !hostname.includes('stg')) {
-          // Production environment
-          baseUrl = 'https://labs.pcioasis.com'
-        } else {
-          // Fallback: use current origin
-          baseUrl = window.location.origin
-        }
-
-        // Uniform path-based routing (works across all environments)
-        const homeUrl = baseUrl + '/'
-        const c2Url = baseUrl + '/lab3/extension'
-        const writeupUrl = baseUrl + '/lab-03-writeup'
+        // IMPORTANT: Always use relative URLs - Traefik handles routing
+        // DO NOT add logic to detect environment or generate absolute URLs
+        const homeUrl = '/'
+        const c2Url = '/lab3/extension'
+        const writeupUrl = '/lab-03-writeup'
 
         // Update lab navigation buttons
         const backButton = document.getElementById('back-button')

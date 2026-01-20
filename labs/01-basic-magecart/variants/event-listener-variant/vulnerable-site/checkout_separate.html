@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Checkout - TechGear Store</title>
+    <base href="/lab1/variants/event-listener/" />
     <style>
       * {
         margin: 0;
@@ -344,23 +345,11 @@
         e.target.value = e.target.value.replace(/\D/g, '')
       })
 
-      // Environment-aware URL configuration with uniform path-based routing
+      // Update C2 dashboard links with relative paths
       ;(function () {
-        const hostname = window.location.hostname
-        let baseUrl
-        if (hostname === 'localhost' || hostname === '127.0.0.1') {
-          baseUrl = 'http://localhost:8080'
-        } else if (hostname.includes('stg.pcioasis.com') || hostname.includes('staging')) {
-          baseUrl = 'https://labs.stg.pcioasis.com'
-        } else if (hostname.includes('pcioasis.com') && !hostname.includes('stg')) {
-          baseUrl = 'https://labs.pcioasis.com'
-        } else {
-          baseUrl = window.location.origin
-        }
-        const c2Url = baseUrl + '/lab1/c2'
         const c2DashboardLinks = document.querySelectorAll('.c2-dashboard-link')
         c2DashboardLinks.forEach(link => {
-          link.href = c2Url
+          link.href = '/lab1/c2'
         })
       })()
     </script>

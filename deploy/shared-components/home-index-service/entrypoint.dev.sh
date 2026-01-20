@@ -30,10 +30,11 @@ fi
 # Check if dotenvx key is mounted
 if [ -f "/etc/secrets/dotenvx-key" ]; then
     # Extract the private key for the current environment from the keys file
+    # Use standard format: DOTENV_PRIVATE_KEY_STG or DOTENV_PRIVATE_KEY_PRD
     if [ "$ENV" = "prd" ]; then
-        DOTENV_PRIVATE_KEY=$(grep -E "^DOTENV_PRIVATE_KEY_PRD_SECRETS=" /etc/secrets/dotenvx-key | cut -d'=' -f2)
+        DOTENV_PRIVATE_KEY=$(grep -E "^DOTENV_PRIVATE_KEY_PRD=" /etc/secrets/dotenvx-key | cut -d'=' -f2- | tr -d '"' | tr -d "'")
     else
-        DOTENV_PRIVATE_KEY=$(grep -E "^DOTENV_PRIVATE_KEY_STG_SECRETS=" /etc/secrets/dotenvx-key | cut -d'=' -f2)
+        DOTENV_PRIVATE_KEY=$(grep -E "^DOTENV_PRIVATE_KEY_STG=" /etc/secrets/dotenvx-key | cut -d'=' -f2- | tr -d '"' | tr -d "'")
     fi
 
     if [ -n "$DOTENV_PRIVATE_KEY" ]; then
