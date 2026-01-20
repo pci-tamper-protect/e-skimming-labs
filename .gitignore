@@ -7,6 +7,7 @@ package-lock.json
 **/_update-notifier-last-checked
 **/clean/
 
+deploy/traefik/debug/*
 .env.keys.*
 .env.keys
 .env.*.bak.*

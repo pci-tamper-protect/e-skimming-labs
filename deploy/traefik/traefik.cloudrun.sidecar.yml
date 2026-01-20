@@ -1,0 +1,71 @@
+# Traefik Static Configuration for Google Cloud Run (Sidecar Architecture)
+# Main Traefik container: serves web traffic only, no dashboard
+# Dashboard is served by a separate sidecar container
+
+# Entry points
+# Cloud Run requires binding to 0.0.0.0 (not just :port)
+# Only one entrypoint should use port 8080 (Cloud Run's exposed port)
+# Note: Traefik v2.10 automatically creates a "traefik" entrypoint on :8080 when api.insecure: true
+# To avoid conflicts, we use only "web" entrypoint and configure API to use it
+# IMPORTANT: Only define "web" entrypoint - do not define "http" or other default entrypoints
+entryPoints:
+  web:
+    address: "0.0.0.0:8080"  # Cloud Run uses port 8080, must bind to 0.0.0.0
+    # No HTTP to HTTPS redirect as Cloud Run handles HTTPS termination
+    # Note: forwarded-headers middleware is applied per-router, not at entrypoint level
+
+# Providers - File provider reads from shared volume
+# The entrypoint copies middlewares.yml from /etc/traefik/dynamic to /shared/traefik/dynamic
+# Provider sidecar generates routes.yml with routers, services, and auth middlewares
+# Both files end up in /shared/traefik/dynamic for Traefik to watch
+providers:
+  file:
+    directory: /shared/traefik/dynamic
+    watch: true
+
+# API Configuration
+# Enable API for dashboard sidecar to access stats
+# Dashboard sidecar will connect to this API on localhost:8080
+# In Traefik v2.10, when insecure: true, it auto-creates a "traefik" entrypoint on :8080
+# To avoid port conflicts, we disable insecure API and use dynamic routes instead
+# The dashboard sidecar will access the API via the "web" entrypoint using api@internal service
+api:
+  dashboard: false  # Dashboard is served by sidecar, not main container
+  insecure: false   # Disable insecure API to prevent auto-creation of "traefik" entrypoint
+  # API will be accessible via dynamic routes in routes.yml using api@internal service
+
+# Logging
+log:
+  level: DEBUG  # DEBUG for troubleshooting startup issues
+  format: json
+
+# Access logs for Cloud Run
+accessLog:
+  format: json
+  fields:
+    defaultMode: keep
+    headers:
+      defaultMode: keep
+      names:
+        User-Agent: keep
+        X-Forwarded-For: keep
+        X-Forwarded-Proto: keep
+        X-Cloud-Trace-Context: keep
+        Authorization: keep
+
+# Metrics for Cloud Monitoring
+metrics:
+  prometheus:
+    addEntryPointsLabels: true
+    addRoutersLabels: true
+    addServicesLabels: true
+    entryPoint: web  # Serve metrics on web entrypoint (port 8080)
+
+# Health check endpoint
+ping:
+  entryPoint: web
+
+# Global settings
+global:
+  checkNewVersion: false  # Disable in production
+  sendAnonymousUsage: false

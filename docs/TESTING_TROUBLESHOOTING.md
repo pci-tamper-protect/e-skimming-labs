@@ -155,98 +155,13 @@ gcloud projects get-iam-policy labs-stg \
 
 ## 🔍 Troubleshooting Traefik Routing
 
-### Issue: 404 Not Found
+**See [TRAEFIK_ROUTING_DEBUGGING.md](TRAEFIK_ROUTING_DEBUGGING.md) for comprehensive debugging guide.**
 
-**Symptoms:** Accessing a route returns 404
-
-**Diagnosis:**
-```bash
-# Check if service is registered in Traefik
-curl http://localhost:8081/api/http/services | jq '.[] | select(.name | contains("lab1"))'
-
-# Check Traefik logs
-docker-compose logs traefik | grep "lab1"
-
-# Verify service is running
-docker-compose ps
-```
-
-**Solutions:**
-1. Verify service labels in `docker-compose.yml`
-2. Check service is running: `docker-compose ps`
-3. Restart Traefik: `docker-compose restart traefik`
-4. For Cloud Run: Check environment variables are set correctly
-
-### Issue: 502 Bad Gateway
-
-**Symptoms:** Traefik returns 502 when accessing a service
-
-**Diagnosis:**
-```bash
-# Check backend service logs
-docker-compose logs lab1-vulnerable-site
-
-# Test backend directly
-docker exec lab1-techgear-store wget -O- http://localhost:80
-
-# For Cloud Run: Check backend service status
-gcloud run services describe lab-01-basic-magecart-stg \
-  --region=us-central1 \
-  --project=labs-stg
-```
-
-**Solutions:**
-1. Verify backend service is running and healthy
-2. Check service port matches Traefik configuration
-3. For Cloud Run: Verify service account has `roles/run.invoker` permission
-4. Check backend service logs for errors
-
-### Issue: Traefik Can't Reach Backend Services (Cloud Run)
-
-**Symptoms:** 502 errors, authentication failures
-
-**Diagnosis:**
-```bash
-# Check Traefik service account permissions
-gcloud projects get-iam-policy labs-stg \
-  --flatten="bindings[].members" \
-  --filter="bindings.members:traefik-stg@labs-stg.iam.gserviceaccount.com"
-
-# Check backend service IAM policy
-gcloud run services get-iam-policy home-index-stg \
-  --region=us-central1 \
-  --project=labs-home-stg | grep traefik
-
-# Verify backend is private (no allUsers)
-gcloud run services get-iam-policy home-index-stg \
-  --region=us-central1 \
-  --project=labs-home-stg | grep allUsers
-```
-
-**Solutions:**
-1. Ensure Traefik service account has `roles/run.invoker` on backend services
-2. Verify backend services are private (no `allUsers` binding)
-3. Check identity tokens are being generated correctly (see [Troubleshooting Authentication](#-troubleshooting-authentication))
-
-### Issue: Static Assets Not Loading
-
-**Symptoms:** HTML loads but CSS/JS fails
-
-**Solutions:**
-1. Check if `stripPrefix` middleware is correctly configured
-2. Verify paths in HTML are relative (not absolute)
-3. Update asset paths: `/css/style.css` → `css/style.css`
-4. Check browser console for errors
-
-### Issue: Infinite Redirects
-
-**Symptoms:** Browser shows "too many redirects"
-
-**Solutions:**
-1. Check if multiple middlewares are adding redirects
-2. Verify `X-Forwarded-Proto` header handling
-3. Disable HTTP to HTTPS redirect in local development
-4. Check Cloud Run ingress settings
+Quick reference:
+- **404 Not Found:** Check service is registered in Traefik, verify labels
+- **502 Bad Gateway:** See [TRAEFIK_ROUTING_DEBUGGING.md](TRAEFIK_ROUTING_DEBUGGING.md) for step-by-step debugging
+- **Static Assets Not Loading:** Check `stripPrefix` middleware, verify relative paths
+- **Infinite Redirects:** Check middleware configuration, verify `X-Forwarded-Proto` handling
 
 ---
 

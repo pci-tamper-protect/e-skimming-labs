@@ -4,24 +4,43 @@
 # Entry points
 entryPoints:
   web:
-    address: ":8080"  # Cloud Run uses port 8080
+    address: ":8080"  # Cloud Run uses port 8080 (only port exposed)
     # No HTTP to HTTPS redirect as Cloud Run handles HTTPS termination
     # Note: forwarded-headers middleware is applied per-router, not at entrypoint level
 
-  # Dashboard/API endpoint for monitoring
-  traefik:
-    address: ":8081"
+# Providers - Cloud Run plugin for dynamic service discovery
+# Local plugin mode: plugin source code is in ./plugins-local/src/github.com/pci-tamper-protect/traefik-cloudrun-provider
+experimental:
+  localPlugins:
+    cloudrun:
+      moduleName: github.com/pci-tamper-protect/traefik-cloudrun-provider
 
-# Providers - File-based for Cloud Run (no Docker socket available)
 providers:
+  plugin:
+    cloudrun:
+      # Configuration is loaded from environment variables:
+      # - LABS_PROJECT_ID (required)
+      # - HOME_PROJECT_ID (optional)
+      # - REGION (defaults to us-central1)
+      # - LOG_LEVEL (defaults to INFO)
+      # - LOG_FORMAT (defaults to text)
+      pollInterval: 30s
+  # Keep file provider for static middlewares (retry-cold-start, etc.)
   file:
     directory: /etc/traefik/dynamic
     watch: true
 
 # API and Dashboard
+# Serve API and dashboard on the same port (8080) as web traffic
+# When insecure: false, we need to create explicit routes in dynamic/routes.yml
+# to expose the API and dashboard via the api@internal service
+# Note: When insecure: false, do NOT set api.entryPoint in static config.
+# The entryPoints are specified in the dynamic routes to api@internal instead.
 api:
   dashboard: true
   insecure: false
+  # entryPoint is NOT set here when insecure: false
+  # EntryPoints are specified in dynamic routes to api@internal
 
 # Logging
 log:
@@ -48,7 +67,7 @@ metrics:
     addEntryPointsLabels: true
     addRoutersLabels: true
     addServicesLabels: true
-    entryPoint: traefik
+    entryPoint: web  # Serve metrics on web entrypoint (port 8080)
 
 # Health check endpoint
 ping:

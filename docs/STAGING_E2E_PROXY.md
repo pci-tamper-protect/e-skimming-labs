@@ -22,14 +22,16 @@ The `.github/workflows/deploy_labs.yml` workflow automatically:
    gcloud run services proxy traefik-stg \
      --region=us-central1 \
      --project=labs-stg \
-     --port=8081
+     --port=8082
    ```
+   - Port 8082 is used by default (configurable via `STG_PROXY_PORT` in `.env.stg`)
+   - Port 8082 avoids conflicts with local dev (8080) and Traefik dashboard (8081)
    - Runs in background
    - Waits up to 30 seconds for proxy to be ready
    - Exports `PROXY_URL` and `USE_PROXY` environment variables
 
 3. **Runs tests** with proxy URL
-   - Tests use `http://127.0.0.1:8081` instead of `https://labs.stg.pcioasis.com`
+   - Tests use `http://127.0.0.1:8082` instead of `https://labs.stg.pcioasis.com`
    - All navigation uses relative URLs (works through proxy)
 
 4. **Cleans up** (always, even on failure)
@@ -72,7 +74,7 @@ The service account `labs-deploy-sa@labs-stg.iam.gserviceaccount.com` should alr
 
 When running tests in CI/CD with proxy:
 
-- `PROXY_URL`: `http://127.0.0.1:8081` (set by workflow)
+- `PROXY_URL`: `http://127.0.0.1:8082` (set by workflow, configurable via `STG_PROXY_PORT` in `.env.stg`)
 - `USE_PROXY`: `true` (set by workflow)
 - `TEST_ENV`: `stg` (set by workflow)
 
@@ -81,14 +83,17 @@ When running tests in CI/CD with proxy:
 For local testing, you can manually start the proxy:
 
 ```bash
-# Start proxy
+# Start proxy (using helper script - recommended)
+./deploy/traefik/proxy-traefik-stg.sh &
+
+# Or manually (default port is 8082):
 gcloud run services proxy traefik-stg \
   --region=us-central1 \
   --project=labs-stg \
-  --port=8081 &
+  --port=8082 &
 
 # Set environment variables
-export PROXY_URL="http://127.0.0.1:8081"
+export PROXY_URL="http://127.0.0.1:8082"
 export USE_PROXY="true"
 export TEST_ENV="stg"
 
@@ -135,7 +140,7 @@ npm test
    ```
 
 2. Check test configuration logs:
-   - Look for "🔗 Using gcloud proxy: http://127.0.0.1:8081"
+   - Look for "🔗 Using gcloud proxy: http://127.0.0.1:8082"
    - Verify `currentEnv.homeIndex` shows proxy URL
 
 3. Ensure home-index-service is deployed with latest code (proxy detection)

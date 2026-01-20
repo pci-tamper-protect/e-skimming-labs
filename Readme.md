@@ -369,13 +369,6 @@ This repository is provided for:
 - ✅ Understanding attacker techniques
 - ✅ Academic study
 
-### Prohibited Uses
-
-- ❌ Attacking systems without authorization
-- ❌ Stealing payment card data
-- ❌ Deploying on production systems
-- ❌ Violating computer fraud laws
-- ❌ Any illegal activity
 
 ### Responsible Disclosure
 
@@ -387,14 +380,6 @@ If you discover a real vulnerability:
 4. Follow coordinated disclosure timelines
 5. Report to relevant bug bounty programs
 
-### Legal Frameworks
-
-Be aware of laws in your jurisdiction:
-
-- **US**: Computer Fraud and Abuse Act (CFAA)
-- **UK**: Computer Misuse Act
-- **EU**: Directive on attacks against information systems
-- **Payment Card Industry**: PCI DSS compliance requirements
 
 ## 📚 Documentation
 
@@ -453,12 +438,11 @@ this code. All code is provided AS-IS for educational purposes only.
 For questions, suggestions, or security concerns:
 
 - Open an issue on GitHub
-- Email: [your-email]
-- Twitter: [@yourhandle]
+
 
 ---
 
 **Remember**: The best defense is understanding the attack. Use this knowledge
 to build better, more secure e-commerce systems. 🛡️
 
-_Last Updated: [Current Date]_
+_Last Updated: 2026-01-19_

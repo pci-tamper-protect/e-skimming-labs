@@ -1,6 +1,6 @@
 #!/bin/bash
 # Proxy Traefik staging service with support for both localhost and 127.0.0.1
-# This script addresses the issue where localhost:8081 gives 404 but 127.0.0.1:8081 works
+# This script addresses the issue where localhost gives 404 but 127.0.0.1 works
 
 set -e
 
@@ -8,7 +8,25 @@ ENVIRONMENT="stg"
 PROJECT_ID="labs-stg"
 REGION="us-central1"
 SERVICE_NAME="traefik-stg"
-PORT="${1:-8081}"
+
+# Load STG_PROXY_PORT from .env.stg if available, otherwise default to 8082
+# Port 8082 is used to avoid conflicts with local dev (8080) and dashboard (8081)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+if [ -f "$PROJECT_ROOT/.env.stg" ]; then
+  # Source .env.stg and extract STG_PROXY_PORT
+  # Use dotenvx if available, otherwise try to source directly (may fail with comments)
+  if command -v dotenvx &> /dev/null && [ -f "$PROJECT_ROOT/.env.keys.stg" ]; then
+    STG_PROXY_PORT=$(cd "$PROJECT_ROOT" && dotenvx run -f .env.stg -fk .env.keys.stg -- sh -c 'echo "$STG_PROXY_PORT"' 2>/dev/null | tail -n 1 | tr -d '\n\r' | xargs || echo "")
+  else
+    # Fallback: try to extract without dotenvx (may fail if encrypted)
+    STG_PROXY_PORT=$(grep "^STG_PROXY_PORT=" "$PROJECT_ROOT/.env.stg" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | xargs || echo "")
+  fi
+fi
+
+# Use command line argument, then STG_PROXY_PORT from .env.stg, then default to 8082
+PORT="${1:-${STG_PROXY_PORT:-8082}}"
 
 echo "🔗 Proxying Traefik staging service..."
 echo "   Service: $SERVICE_NAME"

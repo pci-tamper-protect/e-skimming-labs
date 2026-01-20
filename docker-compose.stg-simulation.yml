@@ -23,10 +23,6 @@ services:
       # Use Cloud Run config (file provider only)
       - ./deploy/traefik/traefik.cloudrun.yml:/etc/traefik/traefik.yml:ro
       - ./deploy/traefik/dynamic:/etc/traefik/dynamic:ro
-      # Mount scripts for testing
-      - ./deploy/traefik/generate-routes-from-labels.sh:/app/generate-routes-from-labels.sh:ro
-      - ./deploy/traefik/entrypoint.sh:/entrypoint.sh:ro
-      - ./deploy/traefik/test-stg-simulation.sh:/app/test-stg-simulation.sh:ro
       # Mount Docker socket for querying services (testing only)
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
@@ -37,7 +33,7 @@ services:
       - REGION=us-central1
     networks:
       - labs-network
-    command: ["/entrypoint.sh", "traefik"]
+    command: ["traefik"]
     healthcheck:
       test: ['CMD', 'traefik', 'healthcheck', '--ping']
       interval: 10s

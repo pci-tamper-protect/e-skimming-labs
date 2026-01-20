@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>C2 Server Dashboard - Lab 1 Basic Magecart</title>
+    <base href="/lab1/c2/" />
     <style>
       * {
         margin: 0;
@@ -343,39 +344,16 @@
       // Auto-refresh every 5 seconds
       setInterval(loadData, 5000)
 
-      // Environment-aware URL configuration with uniform path-based routing
+      // Update navigation links with relative paths
       ;(function () {
-        const hostname = window.location.hostname
-
-        // Determine base URL based on environment
-        let baseUrl
-        if (hostname === 'localhost' || hostname === '127.0.0.1') {
-          // Local development - use port 8080 (Traefik)
-          baseUrl = 'http://localhost:8080'
-        } else if (hostname.includes('stg.pcioasis.com') || hostname.includes('staging')) {
-          // Staging environment
-          baseUrl = 'https://labs.stg.pcioasis.com'
-        } else if (hostname.includes('pcioasis.com') && !hostname.includes('stg')) {
-          // Production environment
-          baseUrl = 'https://labs.pcioasis.com'
-        } else {
-          // Fallback: use current origin
-          baseUrl = window.location.origin
-        }
-
-        // Uniform path-based routing (works across all environments)
-        // Use /lab1/index.html to ensure CSS and other assets load correctly
-        const labUrl = baseUrl + '/lab1/index.html'
-        const homeUrl = baseUrl + '/'
-
         const backButton = document.getElementById('back-button')
         const homeButton = document.getElementById('home-button')
 
         if (backButton) {
-          backButton.href = labUrl
+          backButton.href = '/lab1'
         }
         if (homeButton) {
-          homeButton.href = homeUrl
+          homeButton.href = '/'
         }
       })()
     </script>

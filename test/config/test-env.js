@@ -81,24 +81,27 @@ const getProxyConfig = () => {
 
 const proxyConfig = getProxyConfig()
 
+// Allow BASE_URL override for local testing (e.g., sidecar on port 9090)
+const LOCAL_BASE_URL = process.env.BASE_URL || 'http://localhost:8080'
+
 const environments = {
   local: {
-    homeIndex: 'http://localhost:8080',
+    homeIndex: LOCAL_BASE_URL,
     mainApp: 'http://localhost:5173',
     lab1: {
-      vulnerable: 'http://localhost:8080/lab1',
-      c2: 'http://localhost:8080/lab1/c2',
-      writeup: 'http://localhost:8080/lab-01-writeup',
+      vulnerable: `${LOCAL_BASE_URL}/lab1`,
+      c2: `${LOCAL_BASE_URL}/lab1/c2`,
+      writeup: `${LOCAL_BASE_URL}/lab-01-writeup`,
     },
     lab2: {
-      vulnerable: 'http://localhost:8080/lab2',
-      c2: 'http://localhost:8080/lab2/c2',
-      writeup: 'http://localhost:8080/lab-02-writeup',
+      vulnerable: `${LOCAL_BASE_URL}/lab2`,
+      c2: `${LOCAL_BASE_URL}/lab2/c2`,
+      writeup: `${LOCAL_BASE_URL}/lab-02-writeup`,
     },
     lab3: {
-      vulnerable: 'http://localhost:8080/lab3',
-      c2: 'http://localhost:8080/lab3/extension',
-      writeup: 'http://localhost:8080/lab-03-writeup',
+      vulnerable: `${LOCAL_BASE_URL}/lab3`,
+      c2: `${LOCAL_BASE_URL}/lab3/extension`,
+      writeup: `${LOCAL_BASE_URL}/lab-03-writeup`,
     },
   },
   stg: {

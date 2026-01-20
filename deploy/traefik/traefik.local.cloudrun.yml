@@ -1,0 +1,98 @@
+# Traefik Static Configuration for Local Development with Cloud Run Provider
+# This configuration is similar to traefik.cloudrun.yml but optimized for local development:
+# - Uses configurable ports from environment variables
+# - Enables insecure dashboard for easier access
+# - Uses debug logging
+
+# Entry points
+entryPoints:
+  web:
+    address: ":${TRAEFIK_LOCAL_ONLY_PORT:-8084}"  # Substituted by entrypoint script
+    # Trust forwarded headers from internal networks (for local development)
+    forwardedHeaders:
+      insecure: true  # Allow insecure headers for local development
+      trustedIPs:
+        - "127.0.0.1/32"
+        - "10.0.0.0/8"      # GCP internal network
+        - "172.16.0.0/12"   # Docker networks
+        - "192.168.0.0/16"  # Private networks
+
+  # Dashboard entrypoint (separate port for local development)
+  dashboard:
+    address: ":${TRAEFIK_LOCAL_ONLY_DASHBOARD_PORT:-8085}"  # Substituted by entrypoint script
+    forwardedHeaders:
+      insecure: true
+      trustedIPs:
+        - "127.0.0.1/32"
+        - "172.16.0.0/12"
+        - "192.168.0.0/16"
+
+# Providers - Cloud Run plugin for dynamic service discovery
+# Local plugin mode: plugin source code is in ./plugins-local/src/github.com/pci-tamper-protect/traefik-cloudrun-provider
+experimental:
+  localPlugins:
+    cloudrun:
+      moduleName: github.com/pci-tamper-protect/traefik-cloudrun-provider
+
+providers:
+  plugin:
+    cloudrun:
+      # Configuration is loaded from environment variables:
+      # - LABS_PROJECT_ID (required)
+      # - HOME_PROJECT_ID (optional)
+      # - REGION (defaults to us-central1)
+      # - LOG_LEVEL (defaults to INFO)
+      # - LOG_FORMAT (defaults to text)
+      pollInterval: 30s
+  # Keep file provider for static middlewares (retry-cold-start, etc.)
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+# API and Dashboard
+# For local development, enable insecure mode for easier dashboard access
+# When insecure: true, the API and dashboard are served on the same port as the entrypoint
+# To serve on a separate port, we need to create explicit routes in dynamic/routes.yml
+# For now, we'll serve on the web entrypoint (port 8084) for simplicity
+# Dashboard will be accessible at: http://localhost:${TRAEFIK_LOCAL_ONLY_PORT}/dashboard/
+api:
+  dashboard: true
+  insecure: true  # Enable insecure mode for local development
+  # Note: entryPoint is not supported in Traefik v3 when insecure: true
+  # To serve on a separate port, create routes in dynamic/routes.yml to api@internal
+
+# Logging
+log:
+  level: DEBUG  # Debug logging for local development
+  format: json
+
+# Access logs for debugging
+accessLog:
+  format: json
+  fields:
+    defaultMode: keep
+    headers:
+      defaultMode: keep
+      names:
+        User-Agent: keep
+        X-Forwarded-For: keep
+        X-Forwarded-Proto: keep
+        X-Serverless-Authorization: keep  # Log service-to-service auth header
+        Authorization: keep  # Log user auth header
+
+# Metrics for monitoring
+metrics:
+  prometheus:
+    addEntryPointsLabels: true
+    addRoutersLabels: true
+    addServicesLabels: true
+    entryPoint: web  # Serve metrics on web entrypoint
+
+# Health check endpoint
+ping:
+  entryPoint: web
+
+# Global settings
+global:
+  checkNewVersion: false  # Disable in local development
+  sendAnonymousUsage: false

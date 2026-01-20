@@ -51,12 +51,12 @@ retry-cold-start:
 
 The retry middleware is automatically added to all routers:
 
-1. **Label-based generation** (`generate-routes-from-labels.sh`):
+1. **traefik-cloudrun-provider**:
    - Automatically adds `retry-cold-start@file` to all routers
    - Checks if already present to avoid duplicates
 
-2. **Environment variable fallback** (`entrypoint.sh`):
-   - Adds `retry-cold-start@file` to all router definitions
+2. **Static routes** (`routes.yml`):
+   - Manually include `retry-cold-start@file` in middleware list
 
 ## Cold Start Flow
 
