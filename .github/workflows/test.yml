@@ -264,7 +264,7 @@ jobs:
 
       - name: Download all test results
         if: always()
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           pattern: playwright-json-*-shard-*
           merge-multiple: true

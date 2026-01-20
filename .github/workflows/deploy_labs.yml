@@ -1935,7 +1935,7 @@ jobs:
 
       - name: Download all test results
         if: always()
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           pattern: playwright-json-${{ needs.setup.outputs.environment }}-shard-*
           merge-multiple: true
@@ -1943,7 +1943,7 @@ jobs:
 
       - name: Download test reports from all shards
         if: always()
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           pattern: playwright-report-${{ needs.setup.outputs.environment }}-shard-*
           path: test/reports-merged/
