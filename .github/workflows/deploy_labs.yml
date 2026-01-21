@@ -51,13 +51,22 @@ jobs:
   setup:
     runs-on: ubuntu-latest
     outputs:
-      labs: ${{ steps.discover-labs.outputs.labs }}
+      # Labs to deploy (only changed ones, or all if force)
+      labs: ${{ steps.filter-labs.outputs.labs }}
+      all_labs: ${{ steps.discover-labs.outputs.labs }}
       environment: ${{ steps.set-env.outputs.environment }}
       domain_prefix: ${{ steps.set-env.outputs.domain_prefix }}
       home_project_id: ${{ steps.set-env.outputs.home_project_id }}
       labs_project_id: ${{ steps.set-env.outputs.labs_project_id }}
+      # Granular change detection outputs
       deploy_home: ${{ steps.detect-changes.outputs.deploy_home }}
       deploy_labs: ${{ steps.detect-changes.outputs.deploy_labs }}
+      deploy_seo: ${{ steps.detect-changes.outputs.deploy_seo }}
+      deploy_home_index: ${{ steps.detect-changes.outputs.deploy_home_index }}
+      deploy_analytics: ${{ steps.detect-changes.outputs.deploy_analytics }}
+      deploy_labs_index: ${{ steps.detect-changes.outputs.deploy_labs_index }}
+      deploy_traefik: ${{ steps.detect-changes.outputs.deploy_traefik }}
+      changed_labs: ${{ steps.detect-changes.outputs.changed_labs }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -70,69 +79,152 @@ jobs:
           # Default: deploy based on what changed
           DEPLOY_HOME="false"
           DEPLOY_LABS="false"
+          DEPLOY_SEO="false"
+          DEPLOY_HOME_INDEX="false"
+          DEPLOY_ANALYTICS="false"
+          DEPLOY_LABS_INDEX="false"
+          DEPLOY_TRAEFIK="false"
+          CHANGED_LABS="[]"
 
           # Fetch commit message once and reuse throughout this step
           COMMIT_MSG=$(git log -1 --pretty=%B)
+
+          # Get changed files based on event type
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+          else
+            CHANGED_FILES=""
+          fi
+
+          echo "📁 Changed files:"
+          echo "$CHANGED_FILES" | head -20
+          if [ $(echo "$CHANGED_FILES" | wc -l) -gt 20 ]; then
+            echo "... and more"
+          fi
 
           # Check commit message for force keywords (preferred method)
           # Use word boundaries to prevent partial matches (e.g., "unforce-all")
           if echo "$COMMIT_MSG" | grep -qiE "\[force-all\]|\bforce-all\b"; then
             DEPLOY_HOME="true"
             DEPLOY_LABS="true"
+            DEPLOY_SEO="true"
+            DEPLOY_HOME_INDEX="true"
+            DEPLOY_ANALYTICS="true"
+            DEPLOY_LABS_INDEX="true"
+            DEPLOY_TRAEFIK="true"
+            CHANGED_LABS="all"
             echo "✅ Force deploy detected in commit message: [force-all]"
           elif echo "$COMMIT_MSG" | grep -qiE "\[force-home\]|\bforce-home\b"; then
             DEPLOY_HOME="true"
+            DEPLOY_SEO="true"
+            DEPLOY_HOME_INDEX="true"
             echo "✅ Force deploy detected in commit message: [force-home]"
           elif echo "$COMMIT_MSG" | grep -qiE "\[force-labs\]|\bforce-labs\b"; then
             DEPLOY_LABS="true"
+            DEPLOY_ANALYTICS="true"
+            DEPLOY_LABS_INDEX="true"
+            CHANGED_LABS="all"
             echo "✅ Force deploy detected in commit message: [force-labs]"
-          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            # For PRs, detect changed paths
-            echo "🔍 Detecting changes in PR..."
-
-            if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q "^deploy/shared-components/seo-service/\|^deploy/shared-components/home-index-service/\|^deploy/Dockerfile.index"; then
-              DEPLOY_HOME="true"
-              echo "✅ Home components changed"
-            fi
-
-            if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q "^deploy/shared-components/analytics-service/\|^labs/\|^deploy/Dockerfile.index"; then
-              DEPLOY_LABS="true"
-              echo "✅ Labs components changed"
-            fi
-
-            # If workflow file changed, deploy all (safety)
-            if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q "^\.github/workflows/deploy_labs\.yml"; then
-              DEPLOY_HOME="true"
-              DEPLOY_LABS="true"
-              echo "✅ Workflow changed, deploying all"
-            fi
-          elif [[ "${{ github.event_name }}" == "push" ]]; then
-            # For pushes, detect changes from previous commit
-            echo "🔍 Detecting changes in push..."
-
-            if git diff --name-only HEAD~1 HEAD | grep -q "^deploy/shared-components/seo-service/\|^deploy/shared-components/home-index-service/\|^deploy/Dockerfile.index"; then
-              DEPLOY_HOME="true"
-              echo "✅ Home components changed"
-            fi
-
-            if git diff --name-only HEAD~1 HEAD | grep -q "^deploy/shared-components/analytics-service/\|^labs/\|^deploy/Dockerfile.index"; then
-              DEPLOY_LABS="true"
-              echo "✅ Labs components changed"
-            fi
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             # Manual trigger: deploy all
             DEPLOY_HOME="true"
             DEPLOY_LABS="true"
+            DEPLOY_SEO="true"
+            DEPLOY_HOME_INDEX="true"
+            DEPLOY_ANALYTICS="true"
+            DEPLOY_LABS_INDEX="true"
+            DEPLOY_TRAEFIK="true"
+            CHANGED_LABS="all"
             echo "✅ Manual trigger, deploying all"
+          elif [[ -n "$CHANGED_FILES" ]]; then
+            # Granular change detection
+            echo "🔍 Detecting granular changes..."
+
+            # SEO service
+            if echo "$CHANGED_FILES" | grep -q "^deploy/shared-components/seo-service/"; then
+              DEPLOY_SEO="true"
+              DEPLOY_HOME="true"
+              echo "  ✅ SEO service changed"
+            fi
+
+            # Home index service
+            if echo "$CHANGED_FILES" | grep -q "^deploy/shared-components/home-index-service/"; then
+              DEPLOY_HOME_INDEX="true"
+              DEPLOY_HOME="true"
+              echo "  ✅ Home index service changed"
+            fi
+
+            # Analytics service
+            if echo "$CHANGED_FILES" | grep -q "^deploy/shared-components/analytics-service/"; then
+              DEPLOY_ANALYTICS="true"
+              DEPLOY_LABS="true"
+              echo "  ✅ Analytics service changed"
+            fi
+
+            # Labs index (deploy/Dockerfile.index affects labs index)
+            if echo "$CHANGED_FILES" | grep -q "^deploy/Dockerfile.index\|^deploy/shared-components/labs-index/"; then
+              DEPLOY_LABS_INDEX="true"
+              DEPLOY_LABS="true"
+              echo "  ✅ Labs index changed"
+            fi
+
+            # Traefik
+            if echo "$CHANGED_FILES" | grep -q "^deploy/traefik/"; then
+              DEPLOY_TRAEFIK="true"
+              echo "  ✅ Traefik changed"
+            fi
+
+            # Individual labs - detect which specific labs changed
+            LABS_CHANGED=()
+            for lab_dir in ./labs/*/; do
+              lab_name=$(basename "$lab_dir")
+              if echo "$CHANGED_FILES" | grep -q "^labs/${lab_name}/"; then
+                LABS_CHANGED+=("$lab_name")
+                DEPLOY_LABS="true"
+                echo "  ✅ Lab changed: $lab_name"
+              fi
+            done
+
+            if [ ${#LABS_CHANGED[@]} -gt 0 ]; then
+              CHANGED_LABS=$(printf '%s\n' "${LABS_CHANGED[@]}" | jq -R -s -c 'split("\n")[:-1]')
+            fi
+
+            # If workflow file changed, deploy all (safety)
+            if echo "$CHANGED_FILES" | grep -q "^\.github/workflows/deploy_labs\.yml"; then
+              DEPLOY_HOME="true"
+              DEPLOY_LABS="true"
+              DEPLOY_SEO="true"
+              DEPLOY_HOME_INDEX="true"
+              DEPLOY_ANALYTICS="true"
+              DEPLOY_LABS_INDEX="true"
+              DEPLOY_TRAEFIK="true"
+              CHANGED_LABS="all"
+              echo "  ✅ Workflow changed, deploying all"
+            fi
           fi
 
+          # Output all detection results
           echo "deploy_home=$DEPLOY_HOME" >> $GITHUB_OUTPUT
           echo "deploy_labs=$DEPLOY_LABS" >> $GITHUB_OUTPUT
+          echo "deploy_seo=$DEPLOY_SEO" >> $GITHUB_OUTPUT
+          echo "deploy_home_index=$DEPLOY_HOME_INDEX" >> $GITHUB_OUTPUT
+          echo "deploy_analytics=$DEPLOY_ANALYTICS" >> $GITHUB_OUTPUT
+          echo "deploy_labs_index=$DEPLOY_LABS_INDEX" >> $GITHUB_OUTPUT
+          echo "deploy_traefik=$DEPLOY_TRAEFIK" >> $GITHUB_OUTPUT
+          echo "changed_labs=$CHANGED_LABS" >> $GITHUB_OUTPUT
 
           echo ""
           echo "📋 Deployment plan:"
           echo "  Home components: $DEPLOY_HOME"
+          echo "    - SEO service: $DEPLOY_SEO"
+          echo "    - Home index: $DEPLOY_HOME_INDEX"
           echo "  Labs components: $DEPLOY_LABS"
+          echo "    - Analytics: $DEPLOY_ANALYTICS"
+          echo "    - Labs index: $DEPLOY_LABS_INDEX"
+          echo "    - Changed labs: $CHANGED_LABS"
+          echo "  Traefik: $DEPLOY_TRAEFIK"
 
       - name: Set environment variables
         id: set-env
@@ -183,12 +275,37 @@ jobs:
           echo "labs=$labs" >> $GITHUB_OUTPUT
           echo "Discovered labs: $labs"
 
+      - name: Filter labs to deploy
+        id: filter-labs
+        run: |
+          ALL_LABS='${{ steps.discover-labs.outputs.labs }}'
+          CHANGED_LABS='${{ steps.detect-changes.outputs.changed_labs }}'
+
+          if [[ "$CHANGED_LABS" == "all" ]] || [[ "$CHANGED_LABS" == "[]" && "${{ steps.detect-changes.outputs.deploy_labs }}" == "true" ]]; then
+            # Deploy all labs if force keyword or workflow changed
+            echo "labs=$ALL_LABS" >> $GITHUB_OUTPUT
+            echo "📦 Will deploy ALL labs: $ALL_LABS"
+          elif [[ "$CHANGED_LABS" != "[]" ]]; then
+            # Deploy only changed labs
+            echo "labs=$CHANGED_LABS" >> $GITHUB_OUTPUT
+            echo "📦 Will deploy CHANGED labs only: $CHANGED_LABS"
+          else
+            # No labs to deploy
+            echo "labs=[]" >> $GITHUB_OUTPUT
+            echo "📦 No labs to deploy"
+          fi
+
+  # ============================================================================
+  # HOME COMPONENTS - SEO and Index services (run in parallel)
+  # ============================================================================
   deploy-home-components:
     needs: setup
     runs-on: ubuntu-latest
     # Skip deployment for Dependabot PRs (secrets not available)
     # Only deploy if home components changed or force keyword detected
-    if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && needs.setup.outputs.deploy_home == 'true'
+    if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && (needs.setup.outputs.deploy_seo == 'true' || needs.setup.outputs.deploy_home_index == 'true')
+    # Specify environment to access environment-level secrets (if GCP_SA_KEY_STG is stored as environment secret)
+    environment: ${{ needs.setup.outputs.environment }}
     env:
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
@@ -276,7 +393,7 @@ jobs:
 
       - name: Check if SEO image exists
         id: check-seo-image
-        if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null
+        if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null && needs.setup.outputs.deploy_seo == 'true'
         run: |
           IMAGE="${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/seo:${{ github.sha }}"
           if gcloud artifacts docker images describe "$IMAGE" --project="${{ env.HOME_PROJECT_ID }}" --location="${{ env.HOME_GAR_LOCATION }}" &>/dev/null; then
@@ -288,7 +405,7 @@ jobs:
           fi
 
       - name: Build SEO Service
-        if: steps.check-seo-image.outputs.exists != 'true'
+        if: needs.setup.outputs.deploy_seo == 'true' && steps.check-seo-image.outputs.exists != 'true'
         uses: docker/build-push-action@v6
         with:
           context: deploy/shared-components/seo-service
@@ -305,7 +422,7 @@ jobs:
 
       - name: Check if Index image exists
         id: check-index-image
-        if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null
+        if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null && needs.setup.outputs.deploy_home_index == 'true'
         run: |
           IMAGE="${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index:${{ github.sha }}"
           if gcloud artifacts docker images describe "$IMAGE" --project="${{ env.HOME_PROJECT_ID }}" --location="${{ env.HOME_GAR_LOCATION }}" &>/dev/null; then
@@ -317,7 +434,7 @@ jobs:
           fi
 
       - name: Generate catalog-info.yaml
-        if: steps.check-index-image.outputs.exists != 'true'
+        if: needs.setup.outputs.deploy_home_index == 'true' && steps.check-index-image.outputs.exists != 'true'
         run: |
           echo "🔄 Generating catalog-info.yaml..."
           if [ ! -f scripts/generate-catalog-info.sh ]; then
@@ -334,7 +451,7 @@ jobs:
           echo "✅ catalog-info.yaml generated successfully"
 
       - name: Build Index Service
-        if: steps.check-index-image.outputs.exists != 'true'
+        if: needs.setup.outputs.deploy_home_index == 'true' && steps.check-index-image.outputs.exists != 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -350,7 +467,7 @@ jobs:
           load: true
 
       - name: Push SEO Service to Artifact Registry
-        if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null
+        if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null && needs.setup.outputs.deploy_seo == 'true' && steps.check-seo-image.outputs.exists != 'true'
         run: |
           echo "📤 Pushing SEO service images to Artifact Registry..."
           echo "Repository: ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}"
@@ -412,7 +529,7 @@ jobs:
           }
 
       - name: Push Index Service to Artifact Registry
-        if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null && steps.check-index-image.outputs.exists != 'true'
+        if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null && needs.setup.outputs.deploy_home_index == 'true' && steps.check-index-image.outputs.exists != 'true'
         run: |
           echo "📤 Pushing Index service images to Artifact Registry..."
           SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
@@ -438,7 +555,7 @@ jobs:
           }
 
       - name: Deploy SEO Service to Cloud Run
-        if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null
+        if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null && needs.setup.outputs.deploy_seo == 'true'
         run: |
           # For staging: Use --no-allow-unauthenticated (IAM groups will be added via Terraform)
           # For production: Use --allow-unauthenticated (public access)
@@ -455,7 +572,8 @@ jobs:
               --min-instances=0 \
               --max-instances=5 \
               --set-env-vars="PROJECT_ID=${{ env.HOME_PROJECT_ID }},HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }}" \
-              --labels="environment=${{ needs.setup.outputs.environment }},component=seo,project=e-skimming-labs-home"
+              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=seo,project=e-skimming-labs-home,traefik_enable=true,traefik_http_routers_home-seo_rule_id=home-seo,traefik_http_routers_home-seo_priority=500,traefik_http_routers_home-seo_entrypoints=web,traefik_http_routers_home-seo_middlewares=strip-seo-prefix-file,traefik_http_services_home-seo_lb_port=8080"
 
             # Grant access to developer groups for staging (Terraform will also manage this)
             echo "Granting access to developer groups for staging SEO service..."
@@ -481,11 +599,12 @@ jobs:
               --min-instances=0 \
               --max-instances=5 \
               --set-env-vars="PROJECT_ID=${{ env.HOME_PROJECT_ID }},HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }}" \
-              --labels="environment=${{ needs.setup.outputs.environment }},component=seo,project=e-skimming-labs-home"
+              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_PRD:latest \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=seo,project=e-skimming-labs-home,traefik_enable=true,traefik_http_routers_home-seo_rule_id=home-seo,traefik_http_routers_home-seo_priority=500,traefik_http_routers_home-seo_entrypoints=web,traefik_http_routers_home-seo_middlewares=strip-seo-prefix-file,traefik_http_services_home-seo_lb_port=8080"
           fi
 
       - name: Deploy Index Service to Cloud Run
-        if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null
+        if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null && needs.setup.outputs.deploy_home_index == 'true'
         run: |
           # For staging: Use --no-allow-unauthenticated (IAM groups will be added via Terraform)
           # For production: Use --allow-unauthenticated (public access)
@@ -495,14 +614,15 @@ jobs:
               --region=${{ env.HOME_GAR_LOCATION }} \
               --platform=managed \
               --no-allow-unauthenticated \
-              --service-account=home-runtime-sa@${{ env.HOME_PROJECT_ID }}.iam.gserviceaccount.com \
+              --service-account=fbase-adm-sdk-runtime@${{ env.HOME_PROJECT_ID }}.iam.gserviceaccount.com \
               --port=8080 \
               --memory=512Mi \
               --cpu=1 \
               --min-instances=0 \
               --max-instances=5 \
-              --set-env-vars="HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/banking.html,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/index.html" \
-              --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs-home"
+              --set-env-vars="HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/banking.html,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/index.html,ENABLE_AUTH=true,REQUIRE_AUTH=true,FIREBASE_PROJECT_ID=ui-firebase-pcioasis-${{ needs.setup.outputs.environment }}" \
+              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs-home,traefik_enable=true,traefik_http_routers_home-index_rule_id=home-index-root,traefik_http_routers_home-index_priority=1,traefik_http_routers_home-index_entrypoints=web,traefik_http_routers_home-index_middlewares=forwarded-headers-file,traefik_http_services_home-index_lb_port=8080,traefik_http_routers_home-index-signin_rule_id=home-index-signin,traefik_http_routers_home-index-signin_priority=100,traefik_http_routers_home-index-signin_entrypoints=web,traefik_http_routers_home-index-signin_middlewares=signin-headers-file,traefik_http_routers_home-index-signin_service=home-index"
 
             # Grant access to developer groups for staging (Terraform will also manage this)
             echo "Granting access to developer groups for staging Index service..."
@@ -521,27 +641,34 @@ jobs:
               --region=${{ env.HOME_GAR_LOCATION }} \
               --platform=managed \
               --allow-unauthenticated \
-              --service-account=home-runtime-sa@${{ env.HOME_PROJECT_ID }}.iam.gserviceaccount.com \
+              --service-account=fbase-adm-sdk-runtime@${{ env.HOME_PROJECT_ID }}.iam.gserviceaccount.com \
               --port=8080 \
               --memory=512Mi \
               --cpu=1 \
               --min-instances=0 \
               --max-instances=5 \
-              --set-env-vars="HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/banking.html,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/index.html" \
-              --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs-home"
+              --set-env-vars="HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/banking.html,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/index.html,ENABLE_AUTH=true,REQUIRE_AUTH=true,FIREBASE_PROJECT_ID=ui-firebase-pcioasis-${{ needs.setup.outputs.environment }}" \
+              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_PRD:latest \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs-home,traefik_enable=true,traefik_http_routers_home-index_rule_id=home-index-root,traefik_http_routers_home-index_priority=1,traefik_http_routers_home-index_entrypoints=web,traefik_http_routers_home-index_middlewares=forwarded-headers-file,traefik_http_services_home-index_lb_port=8080,traefik_http_routers_home-index-signin_rule_id=home-index-signin,traefik_http_routers_home-index-signin_priority=100,traefik_http_routers_home-index-signin_entrypoints=web,traefik_http_routers_home-index-signin_middlewares=signin-headers-file,traefik_http_routers_home-index-signin_service=home-index"
           fi
 
+  # ============================================================================
+  # LABS COMPONENTS - Analytics service (runs in parallel with labs)
+  # ============================================================================
   deploy-labs-components:
     needs: setup
     runs-on: ubuntu-latest
     # Skip deployment for Dependabot PRs (secrets not available)
-    # Only deploy if labs components changed or force keyword detected
-    if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && needs.setup.outputs.deploy_labs == 'true'
+    # Only deploy if analytics service changed
+    if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && needs.setup.outputs.deploy_analytics == 'true'
+    # Specify environment to access environment-level secrets (if GCP_SA_KEY_STG is stored as environment secret)
+    environment: ${{ needs.setup.outputs.environment }}
     env:
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
       # Use environment-specific secrets - fallback to generic secret
       # Note: GitHub Actions treats missing secrets as empty strings, so we check for non-empty
+      # Secret names: GCP_LABS_SA_KEY_STG, GCP_LABS_SA_KEY_PRD, GCP_LABS_SA_KEY (fallback)
       LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
 
     steps:
@@ -565,11 +692,11 @@ jobs:
           echo ""
           echo "📋 Secret selection info:"
           if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
-            echo "   Expected secret: GCP_LABS_SA_KEY_STG"
-            echo "   Fallback secret: GCP_LABS_SA_KEY (if STG not set)"
+            echo "   Expected secret: GCP_SA_KEY_STG"
+            echo "   Fallback secret: GCP_SA_KEY (if STG not set)"
           else
-            echo "   Expected secret: GCP_LABS_SA_KEY_PRD"
-            echo "   Fallback secret: GCP_LABS_SA_KEY (if PRD not set)"
+            echo "   Expected secret: GCP_SA_KEY_PRD"
+            echo "   Fallback secret: GCP_SA_KEY (if PRD not set)"
           fi
           echo ""
 
@@ -598,10 +725,10 @@ jobs:
             echo ""
             echo "   2. Update the GitHub secret:"
             if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
-              echo "      gh secret set GCP_LABS_SA_KEY_STG --body \"\$(cat /tmp/labs-deploy-key.json)\" \\"
+              echo "      gh secret set GCP_SA_KEY_STG --body \"\$(cat /tmp/labs-deploy-key.json)\" \\"
               echo "        --repo pci-tamper-protect/e-skimming-labs"
             else
-              echo "      gh secret set GCP_LABS_SA_KEY_PRD --body \"\$(cat /tmp/labs-deploy-key.json)\" \\"
+              echo "      gh secret set GCP_SA_KEY_PRD --body \"\$(cat /tmp/labs-deploy-key.json)\" \\"
               echo "        --repo pci-tamper-protect/e-skimming-labs"
             fi
             echo ""
@@ -760,7 +887,8 @@ jobs:
               --min-instances=0 \
               --max-instances=5 \
               --set-env-vars="PROJECT_ID=${{ env.LABS_PROJECT_ID }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},FIRESTORE_DATABASE=(default)" \
-              --labels="environment=${{ needs.setup.outputs.environment }},component=analytics,project=e-skimming-labs"
+              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=analytics,project=e-skimming-labs,traefik_enable=true,traefik_http_routers_labs-analytics_rule_id=labs-analytics,traefik_http_routers_labs-analytics_priority=500,traefik_http_routers_labs-analytics_entrypoints=web,traefik_http_routers_labs-analytics_middlewares=strip-analytics-prefix-file,traefik_http_services_labs-analytics_lb_port=8080"
 
             # Grant access to developer groups for staging (Terraform will also manage this)
             echo "Granting access to developer groups for staging Analytics service..."
@@ -786,20 +914,27 @@ jobs:
               --min-instances=0 \
               --max-instances=5 \
               --set-env-vars="PROJECT_ID=${{ env.LABS_PROJECT_ID }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},FIRESTORE_DATABASE=(default)" \
-              --labels="environment=${{ needs.setup.outputs.environment }},component=analytics,project=e-skimming-labs"
+              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_PRD:latest \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=analytics,project=e-skimming-labs,traefik_enable=true,traefik_http_routers_labs-analytics_rule_id=labs-analytics,traefik_http_routers_labs-analytics_priority=500,traefik_http_routers_labs-analytics_entrypoints=web,traefik_http_routers_labs-analytics_middlewares=strip-analytics-prefix-file,traefik_http_services_labs-analytics_lb_port=8080"
           fi
 
+  # ============================================================================
+  # LABS - Individual lab services (matrix parallelization, only changed labs)
+  # ============================================================================
   deploy-labs:
-    needs: [setup, deploy-labs-components]
+    needs: [setup]
     runs-on: ubuntu-latest
     # Skip deployment for Dependabot PRs (secrets not available)
-    # Only deploy if labs components changed or force keyword detected
-    if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && needs.setup.outputs.deploy_labs == 'true'
+    # Only deploy if there are labs to deploy (changed or force)
+    if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && needs.setup.outputs.labs != '[]'
+    # Specify environment to access environment-level secrets (if GCP_SA_KEY_STG is stored as environment secret)
+    environment: ${{ needs.setup.outputs.environment }}
     env:
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
       # Use environment-specific secrets - fallback to generic secret
       # Note: GitHub Actions treats missing secrets as empty strings, so we check for non-empty
+      # Secret names: GCP_LABS_SA_KEY_STG, GCP_LABS_SA_KEY_PRD, GCP_LABS_SA_KEY (fallback)
       LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
     strategy:
       matrix:
@@ -932,6 +1067,19 @@ jobs:
           # For staging: Use --no-allow-unauthenticated to restrict access (IAM groups will be added via Terraform)
           # For production: Use --allow-unauthenticated for public access
           if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
+            # Extract lab number from matrix.lab (01-basic-magecart -> 1, 02-dom-skimming -> 2, 03-extension-hijacking -> 3)
+            LAB_NUM=$(echo "${{ matrix.lab }}" | sed 's/^0*//' | cut -d'-' -f1)
+            # Build Traefik labels based on lab number
+            if [[ "$LAB_NUM" == "1" ]]; then
+              TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab1-c2_rule_id=lab1-c2,traefik_http_routers_lab1-c2_priority=300,traefik_http_routers_lab1-c2_entrypoints=web,traefik_http_routers_lab1-c2_middlewares=strip-lab1-c2-prefix-file,traefik_http_routers_lab1-c2_service=lab1,traefik_http_routers_lab1-static_rule_id=lab1-static,traefik_http_routers_lab1-static_priority=250,traefik_http_routers_lab1-static_entrypoints=web,traefik_http_routers_lab1-static_middlewares=strip-lab1-prefix-file,traefik_http_routers_lab1-static_service=lab1,traefik_http_routers_lab1_rule_id=lab1,traefik_http_routers_lab1_priority=200,traefik_http_routers_lab1_entrypoints=web,traefik_http_routers_lab1_middlewares=lab1-auth-check-file__strip-lab1-prefix-file,traefik_http_routers_lab1_service=lab1,traefik_http_services_lab1_lb_port=8080"
+            elif [[ "$LAB_NUM" == "2" ]]; then
+              TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab2-c2_rule_id=lab2-c2,traefik_http_routers_lab2-c2_priority=300,traefik_http_routers_lab2-c2_entrypoints=web,traefik_http_routers_lab2-c2_middlewares=strip-lab2-c2-prefix-file,traefik_http_routers_lab2-c2_service=lab2-vulnerable-site,traefik_http_routers_lab2-static_rule_id=lab2-static,traefik_http_routers_lab2-static_priority=250,traefik_http_routers_lab2-static_entrypoints=web,traefik_http_routers_lab2-static_middlewares=strip-lab2-prefix-file,traefik_http_routers_lab2-static_service=lab2-vulnerable-site,traefik_http_routers_lab2-main_rule_id=lab2,traefik_http_routers_lab2-main_priority=200,traefik_http_routers_lab2-main_entrypoints=web,traefik_http_routers_lab2-main_middlewares=lab2-auth-check-file__strip-lab2-prefix-file,traefik_http_services_lab2-vulnerable-site_lb_port=8080"
+            elif [[ "$LAB_NUM" == "3" ]]; then
+              TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab3-extension_rule_id=lab3-extension,traefik_http_routers_lab3-extension_priority=300,traefik_http_routers_lab3-extension_entrypoints=web,traefik_http_routers_lab3-extension_middlewares=strip-lab3-extension-prefix-file,traefik_http_routers_lab3-extension_service=lab3-vulnerable-site,traefik_http_routers_lab3-static_rule_id=lab3-static,traefik_http_routers_lab3-static_priority=250,traefik_http_routers_lab3-static_entrypoints=web,traefik_http_routers_lab3-static_middlewares=strip-lab3-prefix-file,traefik_http_routers_lab3-static_service=lab3-vulnerable-site,traefik_http_routers_lab3-main_rule_id=lab3,traefik_http_routers_lab3-main_priority=200,traefik_http_routers_lab3-main_entrypoints=web,traefik_http_routers_lab3-main_middlewares=lab3-auth-check-file__strip-lab3-prefix-file,traefik_http_services_lab3-vulnerable-site_lb_port=8080"
+            else
+              TRAEFIK_LABELS="traefik_enable=true"
+            fi
+
             gcloud run deploy lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
               --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }} \
               --region=${{ env.LABS_GAR_LOCATION }} \
@@ -944,7 +1092,8 @@ jobs:
               --min-instances=0 \
               --max-instances=10 \
               --set-env-vars="LAB_NAME=${{ matrix.lab }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},HOME_URL=https://${{ needs.setup.outputs.domain_prefix }},C2_URL=https://lab-${{ matrix.lab }}-c2-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app" \
-              --labels="environment=${{ needs.setup.outputs.environment }},lab=${{ matrix.lab }},project=e-skimming-labs"
+              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
+              --labels="environment=${{ needs.setup.outputs.environment }},lab=${{ matrix.lab }},project=e-skimming-labs,${TRAEFIK_LABELS}"
 
             # Grant access to developer groups for staging
             echo "Granting access to developer groups for staging lab..."
@@ -958,6 +1107,19 @@ jobs:
               --member="group:core-eng@pcioasis.com" \
               --role="roles/run.invoker"
           else
+            # Extract lab number from matrix.lab (01-basic-magecart -> 1, 02-dom-skimming -> 2, 03-extension-hijacking -> 3)
+            LAB_NUM=$(echo "${{ matrix.lab }}" | sed 's/^0*//' | cut -d'-' -f1)
+            # Build Traefik labels based on lab number
+            if [[ "$LAB_NUM" == "1" ]]; then
+              TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab1-c2_rule_id=lab1-c2,traefik_http_routers_lab1-c2_priority=300,traefik_http_routers_lab1-c2_entrypoints=web,traefik_http_routers_lab1-c2_middlewares=strip-lab1-c2-prefix-file,traefik_http_routers_lab1-c2_service=lab1,traefik_http_routers_lab1-static_rule_id=lab1-static,traefik_http_routers_lab1-static_priority=250,traefik_http_routers_lab1-static_entrypoints=web,traefik_http_routers_lab1-static_middlewares=strip-lab1-prefix-file,traefik_http_routers_lab1-static_service=lab1,traefik_http_routers_lab1_rule_id=lab1,traefik_http_routers_lab1_priority=200,traefik_http_routers_lab1_entrypoints=web,traefik_http_routers_lab1_middlewares=lab1-auth-check-file__strip-lab1-prefix-file,traefik_http_routers_lab1_service=lab1,traefik_http_services_lab1_lb_port=8080"
+            elif [[ "$LAB_NUM" == "2" ]]; then
+              TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab2-c2_rule_id=lab2-c2,traefik_http_routers_lab2-c2_priority=300,traefik_http_routers_lab2-c2_entrypoints=web,traefik_http_routers_lab2-c2_middlewares=strip-lab2-c2-prefix-file,traefik_http_routers_lab2-c2_service=lab2-vulnerable-site,traefik_http_routers_lab2-static_rule_id=lab2-static,traefik_http_routers_lab2-static_priority=250,traefik_http_routers_lab2-static_entrypoints=web,traefik_http_routers_lab2-static_middlewares=strip-lab2-prefix-file,traefik_http_routers_lab2-static_service=lab2-vulnerable-site,traefik_http_routers_lab2-main_rule_id=lab2,traefik_http_routers_lab2-main_priority=200,traefik_http_routers_lab2-main_entrypoints=web,traefik_http_routers_lab2-main_middlewares=lab2-auth-check-file__strip-lab2-prefix-file,traefik_http_services_lab2-vulnerable-site_lb_port=8080"
+            elif [[ "$LAB_NUM" == "3" ]]; then
+              TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab3-extension_rule_id=lab3-extension,traefik_http_routers_lab3-extension_priority=300,traefik_http_routers_lab3-extension_entrypoints=web,traefik_http_routers_lab3-extension_middlewares=strip-lab3-extension-prefix-file,traefik_http_routers_lab3-extension_service=lab3-vulnerable-site,traefik_http_routers_lab3-static_rule_id=lab3-static,traefik_http_routers_lab3-static_priority=250,traefik_http_routers_lab3-static_entrypoints=web,traefik_http_routers_lab3-static_middlewares=strip-lab3-prefix-file,traefik_http_routers_lab3-static_service=lab3-vulnerable-site,traefik_http_routers_lab3-main_rule_id=lab3,traefik_http_routers_lab3-main_priority=200,traefik_http_routers_lab3-main_entrypoints=web,traefik_http_routers_lab3-main_middlewares=lab3-auth-check-file__strip-lab3-prefix-file,traefik_http_services_lab3-vulnerable-site_lb_port=8080"
+            else
+              TRAEFIK_LABELS="traefik_enable=true"
+            fi
+
             gcloud run deploy lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
               --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }} \
               --region=${{ env.LABS_GAR_LOCATION }} \
@@ -970,7 +1132,8 @@ jobs:
               --min-instances=0 \
               --max-instances=10 \
               --set-env-vars="LAB_NAME=${{ matrix.lab }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},HOME_URL=https://${{ needs.setup.outputs.domain_prefix }},C2_URL=https://lab-${{ matrix.lab }}-c2-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app" \
-              --labels="environment=${{ needs.setup.outputs.environment }},lab=${{ matrix.lab }},project=e-skimming-labs"
+              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_PRD:latest \
+              --labels="environment=${{ needs.setup.outputs.environment }},lab=${{ matrix.lab }},project=e-skimming-labs,${TRAEFIK_LABELS}"
           fi
 
       - name: Configure custom domain mapping
@@ -990,17 +1153,23 @@ jobs:
             --domain=${{ matrix.lab }}.${{ needs.setup.outputs.domain_prefix }} \
             --region=${{ env.LABS_GAR_LOCATION }} || true
 
+  # ============================================================================
+  # LABS INDEX - Labs landing page (runs in parallel with other deployments)
+  # ============================================================================
   deploy-index:
-    needs: [setup, deploy-labs, deploy-home-components]
+    needs: [setup]
     runs-on: ubuntu-latest
     # Skip deployment for Dependabot PRs (secrets not available)
-    # Only deploy if labs components changed or force keyword detected (index is part of labs)
-    if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && needs.setup.outputs.deploy_labs == 'true'
+    # Only deploy if labs index changed
+    if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && needs.setup.outputs.deploy_labs_index == 'true'
+    # Specify environment to access environment-level secrets (if GCP_SA_KEY_STG is stored as environment secret)
+    environment: ${{ needs.setup.outputs.environment }}
     env:
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
       # Use environment-specific secrets - fallback to generic secret
       # Note: GitHub Actions treats missing secrets as empty strings, so we check for non-empty
+      # Secret names: GCP_LABS_SA_KEY_STG, GCP_LABS_SA_KEY_PRD, GCP_LABS_SA_KEY (fallback)
       LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
 
     steps:
@@ -1139,6 +1308,7 @@ jobs:
               --min-instances=0 \
               --max-instances=5 \
               --set-env-vars="ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},ANALYTICS_SERVICE_URL=https://labs-analytics-${{ needs.setup.outputs.environment }}-hash.a.run.app,SEO_SERVICE_URL=https://labs-seo-${{ needs.setup.outputs.environment }}-hash.a.run.app" \
+              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
               --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs"
 
             # Grant access to developer groups for staging
@@ -1165,6 +1335,7 @@ jobs:
               --min-instances=0 \
               --max-instances=5 \
               --set-env-vars="ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},ANALYTICS_SERVICE_URL=https://labs-analytics-${{ needs.setup.outputs.environment }}-hash.a.run.app,SEO_SERVICE_URL=https://labs-seo-${{ needs.setup.outputs.environment }}-hash.a.run.app" \
+              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_PRD:latest \
               --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs"
           fi
 
@@ -1175,50 +1346,21 @@ jobs:
           # For now, we use direct Cloud Run URLs
           echo "Index service deployed at: https://labs-index-${{ needs.setup.outputs.environment }}-hash.a.run.app"
 
-  notify-deployment:
-    needs: [setup, deploy-labs, deploy-home-components, deploy-labs-components]
+  # ============================================================================
+  # TRAEFIK - API Gateway (only if traefik config changed)
+  # ============================================================================
+  deploy-traefik:
+    needs: [setup]
     runs-on: ubuntu-latest
-    if: always()
-    outputs:
-      deployment_success: ${{ steps.check-deployment.outputs.success }}
-
-    steps:
-      - name: Check deployment status
-        id: check-deployment
-        run: |
-          # Check if all required deployments succeeded (or were skipped appropriately)
-          DEPLOY_LABS_SUCCESS=$([[ "${{ needs.deploy-labs.result }}" == "success" ]] && echo "true" || echo "false")
-          DEPLOY_HOME_SUCCESS=$([[ "${{ needs.deploy-home-components.result }}" == "success" || "${{ needs.deploy-home-components.result }}" == "skipped" ]] && echo "true" || echo "false")
-          DEPLOY_LABS_COMPONENTS_SUCCESS=$([[ "${{ needs.deploy-labs-components.result }}" == "success" ]] && echo "true" || echo "false")
-
-          if [[ "$DEPLOY_LABS_SUCCESS" == "true" && "$DEPLOY_HOME_SUCCESS" == "true" && "$DEPLOY_LABS_COMPONENTS_SUCCESS" == "true" ]]; then
-            echo "success=true" >> $GITHUB_OUTPUT
-            echo "✅ All required deployments completed successfully to ${{ needs.setup.outputs.domain_prefix }}"
-            echo "Labs available at:"
-            echo "  - Index: https://${{ needs.setup.outputs.domain_prefix }}"
-
-            # List deployed labs
-            labs='${{ needs.setup.outputs.labs }}'
-            echo "$labs" | jq -r '.[]' | while read lab; do
-              echo "  - $lab: https://${{ needs.setup.outputs.domain_prefix }}/$lab"
-            done
-          else
-            echo "success=false" >> $GITHUB_OUTPUT
-            echo "❌ Deployment failed or incomplete"
-            echo "deploy-labs result: ${{ needs.deploy-labs.result }}"
-            echo "deploy-home-components result: ${{ needs.deploy-home-components.result }}"
-            echo "deploy-labs-components result: ${{ needs.deploy-labs-components.result }}"
-            exit 1
-          fi
-
-  e2e-tests:
-    needs: [setup, notify-deployment]
-    runs-on: ubuntu-latest
-    # Only run e2e tests after successful deployment on push events (not PRs)
-    if: github.event_name == 'push' && needs.notify-deployment.outputs.deployment_success == 'true'
+    # Skip deployment for Dependabot PRs (secrets not available)
+    # Only deploy Traefik if traefik config changed
+    if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && needs.setup.outputs.deploy_traefik == 'true'
+    # Specify environment to access environment-level secrets
     environment: ${{ needs.setup.outputs.environment }}
     env:
-      # Use environment-specific secrets for proxy authentication
+      LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
+      HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
+      # Use environment-specific secrets - fallback to generic secret
       # Secret names: GCP_LABS_SA_KEY_STG, GCP_LABS_SA_KEY_PRD, GCP_LABS_SA_KEY (fallback)
       LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
 
@@ -1226,12 +1368,324 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Authenticate to Google Cloud (Labs Project)
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ env.LABS_GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Configure Docker to use gcloud as credential helper
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        run: |
+          gcloud auth configure-docker ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev
+          # Also configure cross-project access for golden images
+          gcloud auth configure-docker us-central1-docker.pkg.dev
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Check if Traefik image exists
+        id: check-traefik-image
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        run: |
+          IMAGE="${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/traefik:${{ github.sha }}"
+          if gcloud artifacts docker images describe "$IMAGE" --project="${{ env.LABS_PROJECT_ID }}" --location="${{ env.LABS_GAR_LOCATION }}" &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Image already exists: $IMAGE"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  Image not found, will build: $IMAGE"
+          fi
+
+      - name: Build Traefik container
+        if: steps.check-traefik-image.outputs.exists != 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: deploy/traefik
+          file: deploy/traefik/Dockerfile.cloudrun
+          push: false
+          tags: |
+            ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/traefik:${{ github.sha }}
+            ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/traefik:latest
+          cache-from: type=gha,scope=traefik
+          cache-to: type=gha,mode=max,scope=traefik
+          load: true
+
+      - name: Push Traefik container to Artifact Registry
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null && steps.check-traefik-image.outputs.exists != 'true'
+        run: |
+          IMAGE_BASE="${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/traefik"
+          IMAGE_SHA="${IMAGE_BASE}:${{ github.sha }}"
+          IMAGE_LATEST="${IMAGE_BASE}:latest"
+
+          docker push "$IMAGE_SHA" || {
+            echo "❌ Failed to push Traefik image with SHA tag"
+            exit 1
+          }
+          docker push "$IMAGE_LATEST" || {
+            echo "❌ Failed to push Traefik image with latest tag"
+            exit 1
+          }
+
+      - name: Deploy Traefik to Cloud Run
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        run: |
+          # Traefik needs to access all services, so it needs appropriate permissions
+          if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
+            gcloud run deploy traefik-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/traefik:${{ github.sha }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --platform=managed \
+              --no-allow-unauthenticated \
+              --service-account=traefik-${{ needs.setup.outputs.environment }}@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=80 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=1 \
+              --max-instances=5 \
+              --set-env-vars="ENVIRONMENT=${{ needs.setup.outputs.environment }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }}" \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=traefik,project=e-skimming-labs"
+
+            # Grant access to developer groups for staging
+            echo "Granting access to developer groups for staging Traefik service..."
+            gcloud run services add-iam-policy-binding traefik-${{ needs.setup.outputs.environment }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --member="group:2025-interns@pcioasis.com" \
+              --role="roles/run.invoker"
+
+            gcloud run services add-iam-policy-binding traefik-${{ needs.setup.outputs.environment }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --member="group:core-eng@pcioasis.com" \
+              --role="roles/run.invoker"
+          else
+            gcloud run deploy traefik-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/traefik:${{ github.sha }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --platform=managed \
+              --allow-unauthenticated \
+              --service-account=traefik-${{ needs.setup.outputs.environment }}@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=80 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=1 \
+              --max-instances=5 \
+              --set-env-vars="ENVIRONMENT=${{ needs.setup.outputs.environment }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }}" \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=traefik,project=e-skimming-labs"
+          fi
+
+  notify-deployment:
+    needs: [setup, deploy-labs, deploy-home-components, deploy-labs-components, deploy-index, deploy-traefik]
+    runs-on: ubuntu-latest
+    if: always()
+    # Specify environment to access environment-level secrets
+    environment: ${{ needs.setup.outputs.environment }}
+    env:
+      LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
+      HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
+      ENVIRONMENT: ${{ needs.setup.outputs.environment }}
+      # Secret names: GCP_LABS_SA_KEY_STG, GCP_LABS_SA_KEY_PRD, GCP_LABS_SA_KEY (fallback)
+      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
+    outputs:
+      deployment_success: ${{ steps.check-deployment.outputs.success }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Authenticate to Google Cloud
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ env.LABS_GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Check deployment status
+        id: check-deployment
+        run: |
+          # Check if all deployments succeeded or were appropriately skipped
+          # Jobs can be: success, failure, cancelled, or skipped
+          # Skipped is OK when the service didn't need to be deployed
+
+          echo "📋 Deployment Results:"
+          echo "  deploy-labs: ${{ needs.deploy-labs.result }}"
+          echo "  deploy-home-components: ${{ needs.deploy-home-components.result }}"
+          echo "  deploy-labs-components: ${{ needs.deploy-labs-components.result }}"
+          echo "  deploy-index: ${{ needs.deploy-index.result }}"
+          echo "  deploy-traefik: ${{ needs.deploy-traefik.result }}"
+
+          # A job is considered successful if it succeeded OR was skipped (nothing to deploy)
+          check_job() {
+            local result="$1"
+            [[ "$result" == "success" || "$result" == "skipped" ]]
+          }
+
+          FAILED_JOBS=""
+          check_job "${{ needs.deploy-labs.result }}" || FAILED_JOBS="$FAILED_JOBS deploy-labs"
+          check_job "${{ needs.deploy-home-components.result }}" || FAILED_JOBS="$FAILED_JOBS deploy-home-components"
+          check_job "${{ needs.deploy-labs-components.result }}" || FAILED_JOBS="$FAILED_JOBS deploy-labs-components"
+          check_job "${{ needs.deploy-index.result }}" || FAILED_JOBS="$FAILED_JOBS deploy-index"
+          check_job "${{ needs.deploy-traefik.result }}" || FAILED_JOBS="$FAILED_JOBS deploy-traefik"
+
+          if [[ -z "$FAILED_JOBS" ]]; then
+            echo "success=true" >> $GITHUB_OUTPUT
+            echo "✅ All deployments completed successfully (or skipped as expected)"
+          else
+            echo "success=false" >> $GITHUB_OUTPUT
+            echo "❌ Some deployments failed:$FAILED_JOBS"
+            exit 1
+          fi
+
+      - name: Wait for Cloud Run services to be ready
+        if: steps.check-deployment.outputs.success == 'true' && env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        run: |
+          echo "⏳ Waiting for Cloud Run services to be ready and serving traffic..."
+
+          REGION="us-central1"
+          MAX_ATTEMPTS=30
+          ATTEMPT=0
+
+          # Function to check if service is ready
+          # For staging (IAM-protected services), we only check Cloud Run status
+          # For production (public services), we also verify HTTP access
+          check_service_ready() {
+            local SERVICE_NAME=$1
+            local PROJECT=$2
+            local STATUS=$(gcloud run services describe "$SERVICE_NAME" \
+              --region="$REGION" \
+              --project="$PROJECT" \
+              --format="value(status.conditions[0].status)" 2>/dev/null || echo "Unknown")
+
+            if [[ "$STATUS" == "True" ]]; then
+              # For staging, Cloud Run status is sufficient (services are IAM-protected)
+              if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
+                return 0
+              fi
+
+              # For production, also verify HTTP access
+              local URL=$(gcloud run services describe "$SERVICE_NAME" \
+                --region="$REGION" \
+                --project="$PROJECT" \
+                --format="value(status.url)" 2>/dev/null)
+
+              if curl -sf --max-time 5 "$URL" > /dev/null 2>&1; then
+                return 0
+              fi
+            fi
+            return 1
+          }
+
+          # Wait for home-index service
+          if [[ "${{ needs.setup.outputs.deploy_home }}" == "true" ]]; then
+            echo "Checking home-index-${{ needs.setup.outputs.environment }}..."
+            ATTEMPT=0
+            while [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; do
+              if check_service_ready "home-index-${{ needs.setup.outputs.environment }}" "${{ env.HOME_PROJECT_ID }}"; then
+                echo "✅ home-index-${{ needs.setup.outputs.environment }} is ready"
+                break
+              fi
+              ATTEMPT=$((ATTEMPT + 1))
+              echo "  Attempt $ATTEMPT/$MAX_ATTEMPTS: Waiting for home-index service..."
+              sleep 5
+            done
+
+            if [[ $ATTEMPT -eq $MAX_ATTEMPTS ]]; then
+              echo "⚠️  Warning: home-index service may not be fully ready, but continuing..."
+            fi
+          fi
+
+          # Wait for labs-index service
+          echo "Checking labs-index-${{ needs.setup.outputs.environment }}..."
+          ATTEMPT=0
+          while [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; do
+            if check_service_ready "labs-index-${{ needs.setup.outputs.environment }}" "${{ env.LABS_PROJECT_ID }}"; then
+              echo "✅ labs-index-${{ needs.setup.outputs.environment }} is ready"
+              break
+            fi
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "  Attempt $ATTEMPT/$MAX_ATTEMPTS: Waiting for labs-index service..."
+            sleep 5
+          done
+
+          if [[ $ATTEMPT -eq $MAX_ATTEMPTS ]]; then
+            echo "⚠️  Warning: labs-index service may not be fully ready, but continuing..."
+          fi
+
+          # Wait for a few lab services (sample check)
+          labs='${{ needs.setup.outputs.labs }}'
+          LAB_COUNT=$(echo "$labs" | jq 'length')
+          if [[ $LAB_COUNT -gt 0 ]]; then
+            FIRST_LAB=$(echo "$labs" | jq -r '.[0]')
+            echo "Checking lab-$FIRST_LAB-${{ needs.setup.outputs.environment }}..."
+            ATTEMPT=0
+            while [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; do
+              if check_service_ready "lab-$FIRST_LAB-${{ needs.setup.outputs.environment }}" "${{ env.LABS_PROJECT_ID }}"; then
+                echo "✅ lab-$FIRST_LAB-${{ needs.setup.outputs.environment }} is ready"
+                break
+              fi
+              ATTEMPT=$((ATTEMPT + 1))
+              echo "  Attempt $ATTEMPT/$MAX_ATTEMPTS: Waiting for lab service..."
+              sleep 5
+            done
+          fi
+
+          echo "✅ Cloud Run services are ready for testing"
+
+      - name: List deployed services
+        if: steps.check-deployment.outputs.success == 'true'
+        run: |
+          echo "Labs available at:"
+          echo "  - Index: https://${{ needs.setup.outputs.domain_prefix }}"
+
+          # List deployed labs
+          labs='${{ needs.setup.outputs.labs }}'
+          echo "$labs" | jq -r '.[]' | while read lab; do
+            echo "  - $lab: https://${{ needs.setup.outputs.domain_prefix }}/$lab"
+          done
+
+  e2e-tests:
+    needs: [setup, deploy-labs, deploy-home-components, deploy-labs-components, deploy-index, notify-deployment]
+    runs-on: ubuntu-latest
+    # Run e2e tests after successful deployment on push events or PRs against stg
+    if: (github.event_name == 'push' || (github.event_name == 'pull_request' && needs.setup.outputs.environment == 'stg')) && needs.notify-deployment.outputs.deployment_success == 'true'
+    # Specify environment to access environment-level secrets (if GCP_SA_KEY_STG is stored as environment secret)
+    environment: ${{ needs.setup.outputs.environment }}
+    env:
+      HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
+      LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
+      # Use environment-specific secrets for proxy authentication
+      # Secret names: GCP_LABS_SA_KEY_STG, GCP_LABS_SA_KEY_PRD, GCP_LABS_SA_KEY (fallback)
+      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
+    # Use matrix strategy to shard tests across multiple parallel jobs
+    # GitHub Enterprise supports up to 256 matrix jobs, but we'll use 4 shards for optimal performance
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+        total-shards: [4]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: test/package-lock.json
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: test/node_modules
+          key: ${{ runner.os }}-npm-${{ hashFiles('test/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
 
       - name: Install dependencies
         working-directory: test
@@ -1241,95 +1695,201 @@ jobs:
         working-directory: test
         run: npx playwright install --with-deps chromium
 
+      - name: Install dotenvx
+        if: needs.setup.outputs.environment == 'stg'
+        run: npm install -g @dotenvx/dotenvx
+
+      - name: Decrypt test credentials (staging only)
+        if: needs.setup.outputs.environment == 'stg'
+        id: decrypt-test-creds
+        run: |
+          # Check if .env.tests.stg exists
+          if [ -f ".env.tests.stg" ]; then
+            echo "🔐 Decrypting test credentials from .env.tests.stg"
+            # Check if key file exists (should be committed for tests)
+            if [ -f ".env.keys.tests-stg" ]; then
+              # Decrypt to temporary file
+              dotenvx decrypt -f .env.tests.stg -fk .env.keys.tests-stg > /tmp/test-creds.env 2>/dev/null || true
+              if [ -f "/tmp/test-creds.env" ]; then
+                # Extract and export to GITHUB_ENV
+                while IFS='=' read -r key value; do
+                  # Skip comments and empty lines
+                  [[ "$key" =~ ^#.*$ ]] && continue
+                  [[ -z "$key" ]] && continue
+                  # Only export the variables we need
+                  case "$key" in
+                    TEST_USER_EMAIL_STG|TEST_USER_PASSWORD_STG|AUTH_ENABLED)
+                      # Remove quotes if present
+                      value=$(echo "$value" | sed 's/^"//;s/"$//')
+                      echo "${key}=${value}" >> $GITHUB_ENV
+                      ;;
+                  esac
+                done < /tmp/test-creds.env
+                # Ensure AUTH_ENABLED is set
+                if ! grep -q "^AUTH_ENABLED=" $GITHUB_ENV; then
+                  echo "AUTH_ENABLED=true" >> $GITHUB_ENV
+                fi
+                echo "✅ Test credentials decrypted and exported"
+                # Clean up
+                rm -f /tmp/test-creds.env
+              else
+                echo "⚠️  Failed to decrypt .env.tests.stg"
+              fi
+            else
+              echo "⚠️  .env.keys.tests-stg not found, skipping auth setup"
+            fi
+          else
+            echo "⚠️  .env.tests.stg not found, tests will run without authentication"
+          fi
+
       - name: Wait for deployment to stabilize
         run: |
           echo "⏳ Waiting 30 seconds for deployment to stabilize..."
           sleep 30
 
-      # For staging, we need a proxy because Cloud Run services are IAM-protected
+      - name: Check GCP credentials availability
+        if: needs.setup.outputs.environment == 'stg'
+        id: check-gcp-creds
+        env:
+          # Pass the SA key as env var to avoid shell expansion issues with multi-line JSON
+          SA_KEY: ${{ env.LABS_GCP_SA_KEY }}
+        run: |
+          # Use env var to check - avoids shell expansion issues with JSON strings
+          if [ -n "$SA_KEY" ]; then
+            echo "has_creds=true" >> $GITHUB_OUTPUT
+            echo "✅ GCP credentials available for proxy"
+          else
+            echo "has_creds=false" >> $GITHUB_OUTPUT
+            echo "⚠️  GCP credentials not available - proxy will not be started"
+            echo "   Tests will fail with 401 errors when accessing staging services directly"
+            echo "   Ensure GCP_LABS_SA_KEY_STG secret is set in repository or environment secrets"
+          fi
+
       - name: Authenticate to Google Cloud (for proxy)
-        if: needs.setup.outputs.environment == 'stg' && env.LABS_GCP_SA_KEY != ''
-        uses: google-github-actions/auth@v2
+        if: needs.setup.outputs.environment == 'stg' && steps.check-gcp-creds.outputs.has_creds == 'true'
+        uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ env.LABS_GCP_SA_KEY }}
 
       - name: Set up Cloud SDK (for proxy)
-        if: needs.setup.outputs.environment == 'stg' && env.LABS_GCP_SA_KEY != ''
-        uses: google-github-actions/setup-gcloud@v2
+        if: needs.setup.outputs.environment == 'stg' && steps.check-gcp-creds.outputs.has_creds == 'true'
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Load proxy configuration from .env.stg
+        if: needs.setup.outputs.environment == 'stg'
+        id: proxy-config
+        run: |
+          # Read proxy configuration from .env.stg
+          # Source the file and extract PROXY_HOST and PROXY_PORT
+          set +e  # Don't fail on errors (in case .env.stg has encrypted values)
+          source .env.stg 2>/dev/null || true
+          set -e
+
+          # Use values from .env.stg or fallback to defaults
+          PROXY_HOST="${PROXY_HOST:-127.0.0.1}"
+          PROXY_PORT="${PROXY_PORT:-8080}"
+
+          echo "proxy_port=$PROXY_PORT" >> $GITHUB_OUTPUT
+          echo "proxy_host=$PROXY_HOST" >> $GITHUB_OUTPUT
+          echo "🔗 Proxy config from .env.stg: $PROXY_HOST:$PROXY_PORT"
 
       - name: Start gcloud proxy for staging tests
-        if: needs.setup.outputs.environment == 'stg' && env.LABS_GCP_SA_KEY != ''
+        if: needs.setup.outputs.environment == 'stg' && steps.check-gcp-creds.outputs.has_creds == 'true'
         id: start-proxy
         run: |
           echo "🔗 Starting gcloud proxy for staging tests..."
-          PROXY_PORT=8082
+          PROXY_PORT="${{ steps.proxy-config.outputs.proxy_port }}"
+          PROXY_HOST="${{ steps.proxy-config.outputs.proxy_host }}"
 
-          # Start proxy in background with nohup to prevent it from dying
-          nohup gcloud run services proxy traefik-stg \
+          # Start proxy in background
+          gcloud run services proxy traefik-stg \
             --region=us-central1 \
             --project=labs-stg \
             --port=$PROXY_PORT > /tmp/proxy.log 2>&1 &
 
           PROXY_PID=$!
           echo "proxy_pid=$PROXY_PID" >> $GITHUB_OUTPUT
-          echo "Proxy started with PID: $PROXY_PID"
+          echo "proxy_port=$PROXY_PORT" >> $GITHUB_OUTPUT
 
-          # Wait for proxy to be ready (up to 60 seconds)
+          # Wait for proxy to be ready
           echo "⏳ Waiting for proxy to be ready..."
-          MAX_WAIT=60
+          MAX_WAIT=30
           WAIT_COUNT=0
           while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
-            if curl -sf --max-time 2 http://127.0.0.1:$PROXY_PORT/ > /dev/null 2>&1; then
+            # Check if proxy is responding (try both health endpoint and root)
+            if curl -sf --max-time 2 http://$PROXY_HOST:$PROXY_PORT/health > /dev/null 2>&1 || \
+               curl -sf --max-time 2 http://$PROXY_HOST:$PROXY_PORT/ > /dev/null 2>&1; then
               echo "✅ Proxy is ready on port $PROXY_PORT"
-              echo "proxy_url=http://127.0.0.1:$PROXY_PORT" >> $GITHUB_OUTPUT
-              break
-            fi
-            # Check if process is still running
-            if ! kill -0 $PROXY_PID 2>/dev/null; then
-              echo "❌ Proxy process died unexpectedly"
-              echo "Proxy log:"
-              cat /tmp/proxy.log || true
-              echo "proxy_url=" >> $GITHUB_OUTPUT
               break
             fi
             sleep 1
             WAIT_COUNT=$((WAIT_COUNT + 1))
-            if [ $((WAIT_COUNT % 10)) -eq 0 ]; then
-              echo "  Still waiting... ($WAIT_COUNT/$MAX_WAIT seconds)"
+            if [ $((WAIT_COUNT % 5)) -eq 0 ]; then
+              echo "  Still waiting... ($WAIT_COUNT/$MAX_WAIT)"
             fi
           done
 
           if [ $WAIT_COUNT -eq $MAX_WAIT ]; then
-            echo "⚠️  Proxy did not become ready in time"
+            echo "⚠️  Warning: Proxy may not be fully ready, but continuing..."
             echo "Proxy log (last 20 lines):"
             tail -20 /tmp/proxy.log || true
-            echo "proxy_url=" >> $GITHUB_OUTPUT
+            echo ""
+            echo "Checking if proxy process is running:"
+            ps aux | grep "gcloud run services proxy" | grep -v grep || echo "  No proxy process found"
           fi
 
-      - name: Run E2E tests
+          # Verify proxy is actually working before setting URL
+          if curl -sf --max-time 5 http://$PROXY_HOST:$PROXY_PORT/ > /dev/null 2>&1; then
+            PROXY_URL="http://$PROXY_HOST:$PROXY_PORT"
+            echo "✅ Proxy confirmed working: $PROXY_URL"
+          else
+            PROXY_URL=""
+            echo "❌ Proxy is not responding, tests will use direct URLs"
+            echo "Proxy log (last 10 lines):"
+            tail -10 /tmp/proxy.log || true
+          fi
+
+          echo "proxy_url=$PROXY_URL" >> $GITHUB_OUTPUT
+          echo "proxy_pid=$PROXY_PID" >> $GITHUB_OUTPUT
+
+          if [ -n "$PROXY_URL" ]; then
+            echo "🔗 Proxy URL set: $PROXY_URL"
+          else
+            echo "⚠️  Proxy URL not set - tests will use direct domain URLs"
+          fi
+
+      - name: Run E2E tests (shard ${{ matrix.shard }}/${{ matrix.total-shards }})
         working-directory: test
         env:
           TEST_ENV: ${{ needs.setup.outputs.environment }}
-          # For staging, use proxy URL if available
-          BASE_URL: ${{ steps.start-proxy.outputs.proxy_url || format('https://{0}', needs.setup.outputs.domain_prefix) }}
+          # For staging, use proxy URL if available (set by start-proxy step)
+          # Set USE_PROXY based on whether proxy URL is available
+          PROXY_URL: ${{ steps.start-proxy.outputs.proxy_url }}
+          USE_PROXY: ${{ needs.setup.outputs.environment == 'stg' && steps.start-proxy.outputs.proxy_url != '' && 'true' || 'false' }}
+          PROXY_HOST: ${{ steps.proxy-config.outputs.proxy_host }}
+          PROXY_PORT: ${{ steps.proxy-config.outputs.proxy_port }}
         run: |
-          echo "🧪 Running E2E tests against ${{ needs.setup.outputs.environment }} environment"
-          
-          if [ -n "${{ steps.start-proxy.outputs.proxy_url }}" ]; then
-            echo "🔗 Using gcloud proxy: $BASE_URL"
+          echo "🧪 Running E2E tests (shard ${{ matrix.shard }}/${{ matrix.total-shards }})"
+          echo "TEST_ENV: $TEST_ENV"
+          echo "PROXY_URL: $PROXY_URL"
+          echo "USE_PROXY: $USE_PROXY"
+
+          if [ "$USE_PROXY" == "true" ] && [ -n "$PROXY_URL" ]; then
+            echo "🔗 Using gcloud proxy: $PROXY_URL"
           else
-            echo "🔗 Using direct URL: $BASE_URL"
-            if [ "${{ needs.setup.outputs.environment }}" == "stg" ]; then
-              echo "⚠️  WARNING: Staging tests without proxy may fail with 401 errors"
-              echo "   Ensure GCP_LABS_SA_KEY_STG secret is set with roles/run.invoker permission"
-            fi
+            echo "🔗 Base URL: https://${{ needs.setup.outputs.domain_prefix }}"
           fi
-          
-          npx playwright test e2e
-        continue-on-error: true
+
+          echo "📊 Test shard: ${{ matrix.shard }}/${{ matrix.total-shards }}"
+
+          if [ -n "$TEST_USER_EMAIL_STG" ]; then
+            echo "🔐 Using authenticated test account: $TEST_USER_EMAIL_STG"
+          fi
+
+          npx playwright test e2e --shard=${{ matrix.shard }}/${{ matrix.total-shards }}
 
       - name: Stop proxy (cleanup)
-        if: always() && steps.start-proxy.outputs.proxy_pid != ''
+        if: always() && needs.setup.outputs.environment == 'stg' && steps.check-gcp-creds.outputs.has_creds == 'true' && steps.start-proxy.outputs.proxy_pid != ''
         run: |
           echo "🧹 Stopping proxy..."
           PROXY_PID="${{ steps.start-proxy.outputs.proxy_pid }}"
@@ -1342,21 +1902,143 @@ jobs:
             echo "✅ Cleaned up proxy processes"
           fi
 
-      - name: Upload test results
+      - name: Upload test results (shard ${{ matrix.shard }})
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ needs.setup.outputs.environment }}
+          name: playwright-report-${{ needs.setup.outputs.environment }}-shard-${{ matrix.shard }}
           path: test/playwright-report/
           retention-days: 30
+          if-no-files-found: ignore
 
-      - name: Upload test screenshots
+      - name: Upload test JSON results (shard ${{ matrix.shard }})
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
-          name: playwright-screenshots-${{ needs.setup.outputs.environment }}
+          name: playwright-json-${{ needs.setup.outputs.environment }}-shard-${{ matrix.shard }}
+          path: test/test-results/results.json
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Upload test screenshots (shard ${{ matrix.shard }})
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-screenshots-${{ needs.setup.outputs.environment }}-shard-${{ matrix.shard }}
           path: test/test-results/
           retention-days: 7
+          if-no-files-found: ignore
+
+  e2e-tests-merge:
+    needs: [setup, deploy-labs, deploy-home-components, deploy-labs-components, deploy-index, notify-deployment, e2e-tests]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && needs.notify-deployment.outputs.deployment_success == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Download all test results
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          pattern: playwright-json-${{ needs.setup.outputs.environment }}-shard-*
+          merge-multiple: true
+          path: test/test-results-merged/
+
+      - name: Download test reports from all shards
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          pattern: playwright-report-${{ needs.setup.outputs.environment }}-shard-*
+          path: test/reports-merged/
+
+      - name: Check which shard jobs failed using GitHub API
+        id: check-shard-jobs
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🔍 Checking which test shard jobs failed..."
+          FAILED_SHARDS=()
+
+          # Use GitHub CLI to check workflow run jobs
+          if command -v gh &> /dev/null && gh auth status &> /dev/null; then
+            echo "Using GitHub CLI to check job status..."
+            # Get jobs for this workflow run
+            JOBS=$(gh run view ${{ github.run_id }} --json jobs --jq '.jobs[] | select(.name | startswith("e2e-tests")) | {name: .name, conclusion: .conclusion, status: .status}')
+            echo "$JOBS" | jq -r '.name + ": " + .conclusion + " (" + .status + ")"' || echo "Could not parse job results"
+
+            # Extract shard numbers from failed jobs
+            echo "$JOBS" | jq -r 'select(.conclusion == "failure" or .conclusion == "cancelled") | .name' | while read job_name; do
+              if [[ "$job_name" =~ shard[[:space:]]*([0-9]+) ]]; then
+                shard_num="${BASH_REMATCH[1]}"
+                FAILED_SHARDS+=("$shard_num")
+                echo "Found failed shard: $shard_num"
+              fi
+            done
+          else
+            echo "GitHub CLI not available, will infer from test results"
+          fi
+
+          # Output failed shards
+          if [ ${#FAILED_SHARDS[@]} -gt 0 ]; then
+            echo "failed_shards=${FAILED_SHARDS[*]}" >> $GITHUB_OUTPUT
+            echo "has_failed_shards=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_failed_shards=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Analyze test results and report failures
+        id: analyze-results
+        if: always()
+        run: |
+          echo "📊 Analyzing test results from all shards..."
+
+          TOTAL_TESTS=0
+          FAILED_TESTS=0
+          PASSED_TESTS=0
+
+          # Check JSON results files if they exist
+          if [ -d "test/test-results-merged" ]; then
+            for json_file in test/test-results-merged/*.json; do
+              if [ -f "$json_file" ]; then
+                echo "Found results file: $json_file"
+                if command -v jq &> /dev/null; then
+                  # Playwright JSON results format
+                  stats=$(jq -r '.stats // {}' "$json_file" 2>/dev/null || echo "{}")
+                  if [ -n "$stats" ] && [ "$stats" != "{}" ]; then
+                    failures=$(echo "$stats" | jq -r '.failures // 0' 2>/dev/null || echo "0")
+                    total=$(echo "$stats" | jq -r '.total // 0' 2>/dev/null || echo "0")
+                    passed=$(echo "$stats" | jq -r '.passed // 0' 2>/dev/null || echo "0")
+                    FAILED_TESTS=$((FAILED_TESTS + failures))
+                    TOTAL_TESTS=$((TOTAL_TESTS + total))
+                    PASSED_TESTS=$((PASSED_TESTS + passed))
+                    echo "  Failures: $failures, Passed: $passed, Total: $total"
+                  fi
+                fi
+              fi
+            done
+          fi
+
+          echo "total_tests=$TOTAL_TESTS" >> $GITHUB_OUTPUT
+          echo "failed_tests=$FAILED_TESTS" >> $GITHUB_OUTPUT
+          echo "passed_tests=$PASSED_TESTS" >> $GITHUB_OUTPUT
+
+          if [ "$FAILED_TESTS" -gt 0 ] || [ "${{ steps.check-shard-jobs.outputs.has_failed_shards }}" == "true" ]; then
+            echo "has_failures=true" >> $GITHUB_OUTPUT
+            echo "❌ Test failures detected: $FAILED_TESTS out of $TOTAL_TESTS tests failed"
+            if [ "${{ steps.check-shard-jobs.outputs.failed_shards }}" != "" ]; then
+              echo "Failed shards: ${{ steps.check-shard-jobs.outputs.failed_shards }}"
+            fi
+          else
+            echo "has_failures=false" >> $GITHUB_OUTPUT
+            if [ "$TOTAL_TESTS" -gt 0 ]; then
+              echo "✅ All tests passed: $TOTAL_TESTS tests"
+            else
+              echo "⚠️  No test results found (tests may have failed before producing results)"
+              echo "has_failures=true" >> $GITHUB_OUTPUT
+            fi
+          fi
 
       - name: Comment test results on commit
         if: always()
@@ -1366,19 +2048,38 @@ jobs:
             const fs = require('fs');
             const environment = '${{ needs.setup.outputs.environment }}';
             const baseUrl = 'https://${{ needs.setup.outputs.domain_prefix }}';
+            const failedTests = '${{ steps.analyze-results.outputs.failed_tests }}' || '0';
+            const totalTests = '${{ steps.analyze-results.outputs.total_tests }}' || '0';
+            const hasFailures = '${{ steps.analyze-results.outputs.has_failures }}' === 'true';
 
-            // Create a simple comment with test status
-            const comment = `## 🧪 E2E Test Results (${environment.toUpperCase()})
+            // Determine status emoji and message
+            const statusEmoji = hasFailures ? '❌' : '✅';
+            const statusText = hasFailures ? 'FAILED' : 'PASSED';
 
+            const failedShards = '${{ steps.check-shard-jobs.outputs.failed_shards }}' || 'Unknown';
+
+            // Create a comment with test status
+            const comment = `## 🧪 E2E Test Results (${environment.toUpperCase()}) ${statusEmoji}
+
+            **Status:** ${statusText}
             **Environment:** ${environment}
             **Base URL:** ${baseUrl}
             **Run:** ${{ github.run_number }}
+            **Shards:** 4 parallel test shards
+
+            **Test Summary:**
+            - Total Tests: ${totalTests}
+            - Passed Tests: ${{ steps.analyze-results.outputs.passed_tests }}
+            - Failed Tests: ${failedTests}
+            ${hasFailures ? `- ⚠️ **Failed Shards:** ${failedShards}` : '- ✅ All tests passed'}
+
+            ${hasFailures ? '**Check individual shard jobs in the workflow run to see detailed failure information.**' : ''}
 
             Test artifacts:
             - [Test Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
             - [Screenshots](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
-            Tests ran against the newly deployed environment.`;
+            Tests ran against the newly deployed environment using parallel sharding for faster execution.`;
 
             github.rest.repos.createCommitComment({
               owner: context.repo.owner,
@@ -1386,3 +2087,26 @@ jobs:
               commit_sha: context.sha,
               body: comment
             });
+
+      - name: Fail if any shard had test failures
+        if: steps.analyze-results.outputs.has_failures == 'true'
+        run: |
+          echo "❌ Test failures detected. Failing merge step."
+          echo ""
+          echo "Test Summary:"
+          echo "  - Total Tests: ${{ steps.analyze-results.outputs.total_tests }}"
+          echo "  - Passed Tests: ${{ steps.analyze-results.outputs.passed_tests }}"
+          echo "  - Failed Tests: ${{ steps.analyze-results.outputs.failed_tests }}"
+          if [ -n "${{ steps.check-shard-jobs.outputs.failed_shards }}" ]; then
+            echo "  - Failed Shards: ${{ steps.check-shard-jobs.outputs.failed_shards }}"
+          fi
+          echo ""
+          echo "Check individual shard jobs in the workflow run to see detailed failure information:"
+          echo "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo ""
+          echo "To view specific shard results:"
+          echo "  - Shard 1: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/job/..."
+          echo "  - Shard 2: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/job/..."
+          echo "  - Shard 3: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/job/..."
+          echo "  - Shard 4: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/job/..."
+          exit 1
