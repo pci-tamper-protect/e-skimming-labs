@@ -6,20 +6,28 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Source environment configuration
-if [ -f "$SCRIPT_DIR/../.env" ]; then
-    if [ -L "$SCRIPT_DIR/../.env" ]; then
-        TARGET=$(readlink "$SCRIPT_DIR/../.env")
+# Source environment configuration from repo root
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+if [ -f "$REPO_ROOT/.env" ]; then
+    if [ -L "$REPO_ROOT/.env" ]; then
+        TARGET=$(readlink "$REPO_ROOT/.env")
         echo "📋 Using .env -> $TARGET"
     else
         echo "📋 Using .env"
     fi
-    source "$SCRIPT_DIR/../.env"
-elif [ -f "$SCRIPT_DIR/../.env.stg" ]; then
-    echo "📋 Using .env.stg"
-    source "$SCRIPT_DIR/../.env.stg"
+    source "$REPO_ROOT/.env"
+elif [ -f "$REPO_ROOT/.env.prd" ]; then
+    echo "📋 Using .env.prd from repo root (create symlink: ln -s .env.prd .env)"
+    source "$REPO_ROOT/.env.prd"
+elif [ -f "$REPO_ROOT/.env.stg" ]; then
+    echo "📋 Using .env.stg from repo root (create symlink: ln -s .env.stg .env)"
+    source "$REPO_ROOT/.env.stg"
 else
-    echo "❌ .env file not found. Please create symlink: ln -s .env.stg .env"
+    echo "❌ .env file not found in repo root: $REPO_ROOT"
+    echo ""
+    echo "Please create a .env file in repo root:"
+    echo "  ln -s .env.stg .env  # for staging"
+    echo "  ln -s .env.prd .env  # for production"
     exit 1
 fi
 
@@ -130,23 +138,13 @@ fi
 
 echo ""
 
-# Import Cloud Run services (if deploy_services is true)
-if [ "${IMPORT_SERVICES:-false}" = "true" ]; then
-    echo "🚀 Importing Cloud Run services..."
-    
-    # Analytics service
-    if terraform state show 'google_cloud_run_v2_service.analytics_service[0]' >/dev/null 2>&1; then
-        echo "   ✅ analytics_service already in state"
-    else
-        SERVICE_NAME="labs-analytics-${ENVIRONMENT}"
-        SERVICE_ID="projects/$PROJECT_ID/locations/$REGION/services/$SERVICE_NAME"
-        if terraform import 'google_cloud_run_v2_service.analytics_service[0]' "$SERVICE_ID" 2>&1; then
-            echo "   ✅ Imported: $SERVICE_ID"
-        else
-            echo "   ⚠️  Failed to import analytics_service"
-        fi
-    fi
-fi
+# Cloud Run Services - NOT imported (managed by GitHub Actions, not Terraform)
+# See TERRAFORM_SCOPE.md for architectural details
+echo ""
+echo "⚠️  Cloud Run services are NOT managed by Terraform"
+echo "   They are deployed and managed by GitHub Actions workflows"
+echo "   IAM bindings use data sources to reference services"
+echo "   If services are in state, remove them: ./remove-cloud-run-from-state.sh ${ENVIRONMENT}"
 
 echo ""
 echo "================================================"
@@ -157,6 +155,5 @@ echo "  1. Run: terraform plan -var='environment=$ENVIRONMENT' -var='deploy_serv
 echo "  2. Review the plan to ensure no unexpected changes"
 echo "  3. Apply if everything looks correct"
 echo ""
-echo "Note: To import Cloud Run services, run:"
-echo "  IMPORT_SERVICES=true ./import-existing-resources.sh"
-
+echo "Note: Cloud Run services are NOT imported (managed by GitHub Actions)"
+echo "  If they're in state, remove them: ./remove-cloud-run-from-state.sh ${ENVIRONMENT}"

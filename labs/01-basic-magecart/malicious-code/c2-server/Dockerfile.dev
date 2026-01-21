@@ -1,0 +1,26 @@
+# Development Dockerfile with nodemon for hot-reload
+FROM us-central1-docker.pkg.dev/pcioasis-operations/containers/node-base:latest
+
+WORKDIR /app
+
+# Install nodemon globally for hot-reload
+RUN npm install -g nodemon
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies (including dev dependencies for nodemon)
+RUN npm install
+
+# Note: Source files will be mounted as volume in docker-compose.dev.yml
+# We don't copy them here so changes are reflected immediately
+
+# Create directory for stolen data
+RUN mkdir -p stolen-data
+
+# Expose port
+EXPOSE 3000
+
+# Start server with nodemon for hot-reload
+CMD ["nodemon", "server.js", "--watch", "server.js", "--watch", "dashboard.html"]
+

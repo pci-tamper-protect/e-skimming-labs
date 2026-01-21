@@ -31,8 +31,8 @@ output "storage_bucket_logs" {
 }
 
 output "analytics_service_url" {
-  description = "The Analytics service URL"
-  value       = google_cloud_run_v2_service.analytics_service[0].uri
+  description = "The Analytics service URL (from data source, service managed by GitHub Actions)"
+  value       = try(data.google_cloud_run_v2_service.analytics_service.uri, "Service not deployed yet")
 }
 
 output "seo_service_url" {
@@ -70,13 +70,17 @@ output "github_secrets_instructions_labs" {
   description = "Instructions for setting up GitHub secrets for labs"
   value       = <<-EOT
     Add the following secrets to your GitHub repository for LABS deployment:
-    
+
     1. GCP_LABS_PROJECT_ID: ${local.labs_project_id}
     2. GCP_LABS_SA_KEY: [Use the service account key from terraform output]
     3. GAR_LABS_LOCATION: ${var.region}
     4. REPOSITORY_LABS: e-skimming-labs
-    
-    To get the service account key, run:
-    terraform output -raw labs_deploy_key
+
+    To create the service account key (NOT managed by Terraform):
+      gcloud iam service-accounts keys create /tmp/labs-deploy-key.json \
+        --iam-account=labs-deploy-sa@${local.labs_project_id}.iam.gserviceaccount.com \
+        --project=${local.labs_project_id}
+
+    Then use create-or-rotate-service-account-key.sh to encrypt and store in .env files
   EOT
 }

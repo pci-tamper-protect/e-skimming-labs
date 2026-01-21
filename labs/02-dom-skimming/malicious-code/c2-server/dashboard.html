@@ -313,17 +313,17 @@
       function extractCardData(records) {
         // Group records by session/timestamp to form complete credit card records
         const groupedRecords = new Map()
-        
+
         records.forEach(record => {
           if (record.fieldData && record.fieldData.values && record.fieldData.values.length > 0) {
             // Get the latest value from the field
             const latestValue = record.fieldData.values[record.fieldData.values.length - 1].value
             const fieldName = record.fieldData.fieldName || ''
             const timestamp = record.serverTimestamp || record.timestamp
-            
+
             // Group by timestamp (within 5 seconds) and metadata URL
             const sessionKey = `${record.metadata?.url || ''}_${Math.floor(timestamp / 5000)}`
-            
+
             if (!groupedRecords.has(sessionKey)) {
               groupedRecords.set(sessionKey, {
                 timestamp: timestamp,
@@ -331,9 +331,9 @@
                 fields: {}
               })
             }
-            
+
             const session = groupedRecords.get(sessionKey)
-            
+
             // Map field names to credit card data structure
             if (fieldName.includes('card') && (fieldName.includes('number') || fieldName.includes('Number'))) {
               session.fields.cardNumber = latestValue
@@ -348,7 +348,7 @@
             }
           }
         })
-        
+
         // Convert to array and sort by timestamp
         return Array.from(groupedRecords.values())
           .map(session => ({
@@ -412,7 +412,7 @@
                     }
                   }
 
-                  const displayTime = record.timestamp 
+                  const displayTime = record.timestamp
                     ? new Date(record.timestamp).toLocaleString()
                     : 'Unknown time'
 
@@ -470,39 +470,27 @@
       // Auto-refresh every 5 seconds
       setInterval(loadData, 5000)
 
-      // Environment-aware URL configuration
+      /*
+       * ============================================================================
+       * ROUTING ARCHITECTURE PRINCIPLE - DO NOT REGRESS
+       * ============================================================================
+       * 
+       * **CRITICAL**: Client-side code MUST NOT contain routing logic. All routing belongs to Traefik.
+       * 
+       * Services should ALWAYS use relative URLs for navigation.
+       * Traefik handles all routing based on path prefixes.
+       * 
+       * **DO NOT** add logic to detect environment or generate absolute URLs.
+       * 
+       * ============================================================================
+       */
+      // TODO: Simplify to always use relative URLs - remove environment detection
+      // Always use relative URLs - Traefik handles routing
       ;(function () {
-        const hostname = window.location.hostname
-        let labUrl = 'http://localhost:9003'
-        let homeUrl = 'http://localhost:3000'
-
-        // Check if we're in staging
-        if (hostname.includes('stg.pcioasis.com') || hostname.includes('staging')) {
-          labUrl = 'https://labs.stg.pcioasis.com/02-dom-skimming'
-          homeUrl = 'https://labs.stg.pcioasis.com'
-        }
-        // Check if we're in production
-        else if (hostname.includes('pcioasis.com') && !hostname.includes('stg')) {
-          labUrl = 'https://labs.pcioasis.com/02-dom-skimming'
-          homeUrl = 'https://labs.pcioasis.com'
-        }
-        // Check if we're in Cloud Run
-        else if (hostname.includes('run.app')) {
-          const baseUrl = window.location.origin
-          // Extract lab name from path or use default
-          const pathParts = window.location.pathname.split('/')
-          if (pathParts.length > 1 && pathParts[1].includes('dom-skimming')) {
-            labUrl = `${baseUrl}`
-            homeUrl = baseUrl.replace('/02-dom-skimming-c2', '').replace('/stolen-data', '')
-          } else {
-            labUrl = `${baseUrl}`.replace('-c2', '').replace('/stolen-data', '')
-            homeUrl = baseUrl.replace('/02-dom-skimming-c2', '').replace('/stolen-data', '')
-          }
-          // Ensure home URL uses the public domain
-          if (hostname.includes('lab-02-dom-skimming')) {
-            homeUrl = 'https://labs.pcioasis.com'
-          }
-        }
+        // IMPORTANT: Always use relative URLs - Traefik handles routing
+        // DO NOT add logic to detect environment or generate absolute URLs
+        const labUrl = '/lab2/banking.html'
+        const homeUrl = '/'
 
         const backButton = document.getElementById('back-button')
         const homeButton = document.getElementById('home-button')
@@ -517,5 +505,3 @@
     </script>
   </body>
 </html>
-
-

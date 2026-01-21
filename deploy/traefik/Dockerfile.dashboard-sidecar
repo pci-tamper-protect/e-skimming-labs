@@ -1,0 +1,47 @@
+# Traefik Dashboard Sidecar Dockerfile (Dashboard-Only Mode)
+# This container serves ONLY the Traefik dashboard UI - no routing, no reverse proxy
+# It runs a minimal Traefik instance that:
+#   1. Serves the dashboard UI on port 8080
+#   2. Proxies API calls (/api/*) to the main Traefik service
+# This is NOT a full Traefik reverse proxy - it's dashboard-only
+# Cloud Run requirement: must listen on port 8080
+
+FROM traefik:v2.10
+
+# Install curl for health checks
+USER root
+RUN apk add --no-cache curl ca-certificates
+
+# Create dashboard-only Traefik configuration
+RUN mkdir -p /etc/traefik/dynamic
+
+# Dashboard-only static config
+# This Traefik instance serves dashboard on port 8080
+# It will proxy API requests to the main Traefik container's API via HTTP
+COPY traefik.dashboard-sidecar.yml /etc/traefik/traefik.yml
+RUN chmod 644 /etc/traefik/traefik.yml
+
+# Create entrypoint script to generate dynamic config with main Traefik API URL
+# The dashboard service needs to forward /api/* requests to main Traefik service
+COPY dashboard-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Create traefik user (non-root for security)
+RUN addgroup -g 1000 traefik && \
+    adduser -D -u 1000 -G traefik traefik && \
+    chown -R traefik:traefik /etc/traefik && \
+    echo "✅ traefik user created"
+
+# Switch to traefik user
+USER traefik
+
+# Expose port 8080 (Cloud Run requirement)
+EXPOSE 8080
+
+# Health check - verify dashboard is accessible
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
+    CMD curl -f http://localhost:8080/dashboard/ || exit 1
+
+# Use custom entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["traefik"]

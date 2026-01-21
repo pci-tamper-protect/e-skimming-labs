@@ -16,8 +16,11 @@ const fs = require('fs')
 const path = require('path')
 
 const app = express()
-// Always use port 3000 for C2 server (Cloud Run sets PORT=8080 but we want to remain on 3000)
-const PORT = 3000
+// Port configuration:
+// - When running WITH nginx (main lab2 container): use 3000 (nginx proxies /c2 to us)
+// - When running STANDALONE (lab2-c2-stg service): use PORT env var (8080 on Cloud Run)
+// C2_STANDALONE env var indicates standalone deployment
+const PORT = process.env.C2_STANDALONE === 'true' ? (process.env.PORT || 8080) : 3000
 
 // Middleware
 app.use(cors())
@@ -381,17 +384,17 @@ app.get('/recent/:count?', (req, res) => {
 app.get('/attack/:filename', (req, res) => {
   try {
     const filename = req.params.filename
-    
+
     // Security: Prevent path traversal attacks
     // Only allow alphanumeric, hyphens, underscores, and dots in filename
     if (!/^[a-zA-Z0-9._-]+$/.test(filename) || filename.includes('..')) {
       return res.status(400).json({ error: 'Invalid filename' })
     }
-    
+
     // Use path.basename to strip any directory separators
     const safeFilename = path.basename(filename)
     const filepath = path.join(DATA_DIR, safeFilename)
-    
+
     // Verify the resolved path is within DATA_DIR (prevent path traversal)
     const resolvedPath = path.resolve(filepath)
     const resolvedDataDir = path.resolve(DATA_DIR)
@@ -415,17 +418,17 @@ app.get('/attack/:filename', (req, res) => {
 app.get('/analysis/:filename', (req, res) => {
   try {
     const filename = req.params.filename
-    
+
     // Security: Prevent path traversal attacks
     // Only allow alphanumeric, hyphens, underscores, and dots in filename
     if (!/^[a-zA-Z0-9._-]+$/.test(filename) || filename.includes('..')) {
       return res.status(400).json({ error: 'Invalid filename' })
     }
-    
+
     // Use path.basename to strip any directory separators
     const safeFilename = path.basename(filename)
     const analysisPath = path.join(ANALYSIS_DIR, `analysis_${safeFilename}`)
-    
+
     // Verify the resolved path is within ANALYSIS_DIR (prevent path traversal)
     const resolvedPath = path.resolve(analysisPath)
     const resolvedAnalysisDir = path.resolve(ANALYSIS_DIR)

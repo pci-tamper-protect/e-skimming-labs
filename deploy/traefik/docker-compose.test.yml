@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  # Mock backend that simulates home-index-stg with auth endpoint
+  mock-backend:
+    image: python:3.11-alpine
+    command:
+      - sh
+      - -c
+      - |
+        cat > /tmp/server.py << 'PYEOF'
+        from http.server import HTTPServer, BaseHTTPRequestHandler
+        import json
+
+        class AuthHandler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                if self.path == "/api/auth/check":
+                    self.send_response(200)
+                    self.send_header("Content-type", "application/json")
+                    self.send_header("X-User-Id", "test-user-123")
+                    self.send_header("X-User-Email", "test@example.com")
+                    self.end_headers()
+                    response = {"authenticated": True, "user": "test-user-123"}
+                    self.wfile.write(json.dumps(response).encode())
+                    print(f"✅ ForwardAuth check passed: {self.headers.get('Authorization', 'No auth header')}")
+                else:
+                    self.send_response(200)
+                    self.send_header("Content-type", "text/html")
+                    self.end_headers()
+                    self.wfile.write(b"<h1>Mock Backend - Home Index</h1>")
+
+            def log_message(self, format, *args):
+                print(f"[mock-backend] {format % args}")
+
+        server = HTTPServer(("", 8080), AuthHandler)
+        print("🚀 Mock backend listening on :8080")
+        print("   /api/auth/check - ForwardAuth endpoint")
+        server.serve_forever()
+        PYEOF
+        python /tmp/server.py
+    networks:
+      - traefik-test
+
+  traefik-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    environment:
+      # Mock staging environment - point to local mock backend
+      ENVIRONMENT: stg
+      DOMAIN: labs.stg.pcioasis.com
+      HOME_INDEX_URL: http://mock-backend:8080
+      SEO_URL: http://mock-backend:8080
+      ANALYTICS_URL: http://mock-backend:8080
+      LAB1_URL: http://mock-backend:8080
+      LAB1_C2_URL: http://mock-backend:8080
+      LAB2_URL: http://mock-backend:8080
+      LAB2_C2_URL: http://mock-backend:8080
+      LAB3_URL: http://mock-backend:8080
+      LAB3_EXTENSION_URL: http://mock-backend:8080
+
+      # Mock identity tokens (valid JWT format)
+      HOME_INDEX_TOKEN: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJodHRwOi8vbW9jay1iYWNrZW5kOjgwODAiLCJleHAiOjE3MzUxMjM0NTYsImlhdCI6MTczNTEyMzQ1NiwiaXNzIjoiaHR0cHM6Ly9hY2NvdW50cy5nb29nbGUuY29tIiwic3ViIjoidGVzdC1zZXJ2aWNlLWFjY291bnQifQ.test_signature"
+      SEO_TOKEN: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJodHRwOi8vbW9jay1iYWNrZW5kOjgwODAiLCJleHAiOjE3MzUxMjM0NTYsImlhdCI6MTczNTEyMzQ1NiwiaXNzIjoiaHR0cHM6Ly9hY2NvdW50cy5nb29nbGUuY29tIiwic3ViIjoidGVzdC1zZXJ2aWNlLWFjY291bnQifQ.test_signature"
+      ANALYTICS_TOKEN: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJodHRwOi8vbW9jay1iYWNrZW5kOjgwODAiLCJleHAiOjE3MzUxMjM0NTYsImlhdCI6MTczNTEyMzQ1NiwiaXNzIjoiaHR0cHM6Ly9hY2NvdW50cy5nb29nbGUuY29tIiwic3ViIjoidGVzdC1zZXJ2aWNlLWFjY291bnQifQ.test_signature"
+      LAB1_TOKEN: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJodHRwOi8vbW9jay1iYWNrZW5kOjgwODAiLCJleHAiOjE3MzUxMjM0NTYsImlhdCI6MTczNTEyMzQ1NiwiaXNzIjoiaHR0cHM6Ly9hY2NvdW50cy5nb29nbGUuY29tIiwic3ViIjoidGVzdC1zZXJ2aWNlLWFjY291bnQifQ.test_signature"
+      LAB2_TOKEN: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJodHRwOi8vbW9jay1iYWNrZW5kOjgwODAiLCJleHAiOjE3MzUxMjM0NTYsImlhdCI6MTczNTEyMzQ1NiwiaXNzIjoiaHR0cHM6Ly9hY2NvdW50cy5nb29nbGUuY29tIiwic3ViIjoidGVzdC1zZXJ2aWNlLWFjY291bnQifQ.test_signature"
+      LAB3_TOKEN: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJodHRwOi8vbW9jay1iYWNrZW5kOjgwODAiLCJleHAiOjE3MzUxMjM0NTYsImlhdCI6MTczNTEyMzQ1NiwiaXNzIjoiaHR0cHM6Ly9hY2NvdW50cy5nb29nbGUuY29tIiwic3ViIjoidGVzdC1zZXJ2aWNlLWFjY291bnQifQ.test_signature"
+    volumes:
+      - ./test-output:/test-output
+    ports:
+      - "8080:8080"  # Main HTTP endpoint
+      - "8081:8081"  # Dashboard
+    depends_on:
+      - mock-backend
+    networks:
+      - traefik-test
+
+networks:
+  traefik-test:
+    driver: bridge

@@ -1,5 +1,27 @@
 package main
 
+/*
+ * ============================================================================
+ * ROUTING ARCHITECTURE PRINCIPLE - DO NOT REGRESS
+ * ============================================================================
+ *
+ * **CRITICAL**: Services MUST NOT contain routing logic. All routing belongs to Traefik.
+ *
+ * Services should ALWAYS return relative URLs for navigation.
+ * Traefik handles all routing based on path prefixes.
+ *
+ * **DO NOT** add logic to:
+ *   - Detect if service is behind Traefik
+ *   - Conditionally use relative vs absolute URLs
+ *   - Check X-Forwarded-Host or X-Forwarded-For for routing decisions
+ *   - Generate different URLs based on environment
+ *
+ * If you find yourself adding routing logic to a service, STOP and ask:
+ * "Why can't Traefik handle this routing?"
+ *
+ * ============================================================================
+ */
+
 import (
 	"encoding/json"
 	"fmt"

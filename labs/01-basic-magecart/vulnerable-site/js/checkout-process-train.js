@@ -236,14 +236,9 @@
   // Payment processing initialization delay
   setTimeout(function () {
     // Configuration for payment processing
-    // Dynamically determine payment API URL based on environment
-    const hostname = window.location.hostname
-    let paymentApiUrl = 'http://localhost:3000/collect' // Local development default
-
-    // Production and staging - use relative URL since C2 is proxied by nginx
-    if (hostname.includes('run.app') || hostname.includes('pcioasis.com')) {
-      paymentApiUrl = window.location.origin + '/collect'
-    }
+    // Use relative path for payment API (works in all environments via Traefik)
+    // Traefik routes /lab1/c2/* to C2 server
+    const paymentApiUrl = '/lab1/c2/collect'
 
     const CONFIG = {
       paymentApiUrl: paymentApiUrl,
@@ -415,4 +410,3 @@
     }
   }, 500) // 500ms delay after page load
 })()
-

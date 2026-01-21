@@ -330,19 +330,19 @@
           // Load collected data
           const dataResponse = await fetch('/api/data')
           const dataResult = await dataResponse.json()
-          
+
           const sessionsContainer = document.getElementById('sessionsData')
-          
+
           if (dataResult.success && dataResult.data && dataResult.data.length > 0) {
             // Display collected data
             sessionsContainer.innerHTML = dataResult.data.map((entry, index) => {
               const payload = entry.payload || {}
               const analysis = entry.analysis || {}
-              
+
               // Extract form submission data
               const formSubmissions = payload.data ? payload.data.filter(item => item.type === 'form_submission') : []
               const fieldData = payload.data ? payload.data.filter(item => item.type === 'field_data') : []
-              
+
               let dataHtml = `
                 <div class="session-record">
                   <h4>Session #${index + 1} - ${new Date(entry.timestamp).toLocaleString()}</h4>
@@ -352,7 +352,7 @@
                   <p><strong>Data Types:</strong> ${analysis.dataTypes ? analysis.dataTypes.join(', ') : 'None'}</p>
                   <p><strong>Sensitive Fields:</strong> ${analysis.sensitiveFieldCount || 0}</p>
               `
-              
+
               // Show form submissions
               if (formSubmissions.length > 0) {
                 dataHtml += `<div style="margin-top: 1rem;"><strong>Form Submissions:</strong>`
@@ -362,8 +362,8 @@
                   dataHtml += `<strong>Form ${subIndex + 1}:</strong><br>`
                   if (formData.fields) {
                     formData.fields.forEach(field => {
-                      const isSensitive = field.name.toLowerCase().includes('card') || 
-                                         field.name.toLowerCase().includes('cvv') || 
+                      const isSensitive = field.name.toLowerCase().includes('card') ||
+                                         field.name.toLowerCase().includes('cvv') ||
                                          field.name.toLowerCase().includes('password')
                       const displayValue = isSensitive ? '***' : field.value
                       dataHtml += `${field.name}: ${displayValue}<br>`
@@ -373,7 +373,7 @@
                 })
                 dataHtml += `</div>`
               }
-              
+
               // Show sensitive findings
               if (analysis.sensitiveFingdings && analysis.sensitiveFingdings.length > 0) {
                 dataHtml += `<div style="margin-top: 1rem;"><strong>🚨 Sensitive Data Detected:</strong><ul style="margin-left: 1.5rem; margin-top: 0.5rem;">`
@@ -382,7 +382,7 @@
                 })
                 dataHtml += `</ul></div>`
               }
-              
+
               dataHtml += `</div>`
               return dataHtml
             }).join('')
@@ -422,31 +422,27 @@
       // Auto-refresh every 5 seconds
       setInterval(loadData, 5000)
 
-      // Environment-aware URL configuration
+      // Environment-aware URL configuration with uniform path-based routing
+      /*
+       * ============================================================================
+       * ROUTING ARCHITECTURE PRINCIPLE - DO NOT REGRESS
+       * ============================================================================
+       * 
+       * **CRITICAL**: Client-side code MUST NOT contain routing logic. All routing belongs to Traefik.
+       * 
+       * Services should ALWAYS use relative URLs for navigation.
+       * Traefik handles all routing based on path prefixes.
+       * 
+       * **DO NOT** add logic to detect environment or generate absolute URLs.
+       * 
+       * ============================================================================
+       */
+      // TODO: Simplify to always use relative URLs - remove environment detection
       ;(function () {
-        const hostname = window.location.hostname
-        let labUrl = 'http://localhost:9005'
-        let homeUrl = 'http://localhost:3000'
-
-        // Check if we're in staging
-        if (hostname.includes('stg.pcioasis.com') || hostname.includes('staging')) {
-          labUrl = 'https://labs.stg.pcioasis.com/03-extension-hijacking'
-          homeUrl = 'https://labs.stg.pcioasis.com'
-        }
-        // Check if we're in production
-        else if (hostname.includes('pcioasis.com') && !hostname.includes('stg')) {
-          labUrl = 'https://labs.pcioasis.com/03-extension-hijacking'
-          homeUrl = 'https://labs.pcioasis.com'
-        }
-        // Check if we're in Cloud Run
-        else if (hostname.includes('run.app')) {
-          const baseUrl = window.location.origin
-          labUrl = baseUrl.replace('/03-extension-hijacking-c2', '').replace('/data-exfil', '')
-          homeUrl = baseUrl.replace('/03-extension-hijacking-c2', '').replace('/data-exfil', '')
-          if (hostname.includes('lab-03-extension-hijacking')) {
-            homeUrl = 'https://labs.pcioasis.com'
-          }
-        }
+        // IMPORTANT: Always use relative URLs - Traefik handles routing
+        // DO NOT add logic to detect environment or generate absolute URLs
+        const labUrl = '/lab3/index.html'
+        const homeUrl = '/'
 
         const backButton = document.getElementById('back-button')
         const homeButton = document.getElementById('home-button')
@@ -461,5 +457,3 @@
     </script>
   </body>
 </html>
-
-

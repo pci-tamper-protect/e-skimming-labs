@@ -7,6 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>SecureShop - Premium E-commerce Platform</title>
+    <base href="/lab3/" />
     <link rel="stylesheet" href="css/style.css" id="main-css" />
     <script>
       // Cache busting for development - inject before page loads
@@ -37,9 +38,9 @@
       <!-- Lab Navigation Row (Top Row) -->
       <div class="nav-buttons-row">
         <div class="header-content">
-          <a href="http://localhost:3000" class="nav-button back-button" id="back-button">← Back to Labs</a>
-          <a href="http://localhost:9006" class="nav-button c2-button" id="view-stolen-button" target="_blank" aria-label="View Stolen Data">🕵️ View Stolen Data</a>
-          <a href="http://localhost:3000/lab-03-writeup" class="nav-button writeup-button" id="writeup-button" target="_blank" aria-label="Lab Writeup">📖 Writeup</a>
+          <a href="#" class="nav-button back-button" id="back-button">← Back to Labs</a>
+          <a href="#" class="nav-button c2-button" id="view-stolen-button" target="_blank" aria-label="View Stolen Data">🕵️ View Stolen Data</a>
+          <a href="#" class="nav-button writeup-button" id="writeup-button" target="_blank" aria-label="Lab Writeup">📖 Writeup</a>
         </div>
       </div>
 
@@ -372,30 +373,39 @@
       })()
     </script>
     <script>
-      // Environment-aware URL configuration
+      /*
+       * ============================================================================
+       * ROUTING ARCHITECTURE PRINCIPLE - DO NOT REGRESS
+       * ============================================================================
+       * 
+       * **CRITICAL**: Client-side code MUST NOT contain routing logic. All routing belongs to Traefik.
+       * 
+       * Services should ALWAYS use relative URLs for navigation:
+       *   - Home: /
+       *   - C2: /lab3/extension
+       *   - Writeup: /lab-03-writeup
+       * 
+       * Traefik handles all routing based on path prefixes.
+       * 
+       * **DO NOT** add logic to:
+       *   - Detect environment (localhost vs staging vs production)
+       *   - Conditionally use relative vs absolute URLs
+       *   - Check hostname for routing decisions
+       *   - Generate different URLs based on environment
+       * 
+       * If you find yourself adding routing logic, STOP and ask:
+       * "Why can't Traefik handle this routing?"
+       * 
+       * ============================================================================
+       */
+      // TODO: Simplify to always use relative URLs - remove environment detection
+      // Always use relative URLs - Traefik handles routing
       ;(function () {
-        const hostname = window.location.hostname
-        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
-
-        let homeUrl, c2Url
-
-        if (isLocal) {
-          homeUrl = 'http://localhost:3000'
-          c2Url = 'http://localhost:9006'
-        } else if (hostname.includes('labs.stg.pcioasis.com')) {
-          homeUrl = 'https://labs.stg.pcioasis.com'
-          c2Url = 'https://labs.stg.pcioasis.com/03-extension-hijacking-c2'
-        } else if (hostname.includes('labs.pcioasis.com')) {
-          homeUrl = 'https://labs.pcioasis.com'
-          c2Url = 'https://labs.pcioasis.com/03-extension-hijacking-c2'
-        } else if (hostname.includes('lab-03-extension-hijacking')) {
-          // Production Cloud Run
-          homeUrl = 'https://labs.pcioasis.com'
-          c2Url = 'https://lab-03-extension-hijacking-c2-prd-mmwwcfi5za-uc.a.run.app'
-        } else {
-          homeUrl = window.location.protocol + '//' + hostname
-          c2Url = window.location.protocol + '//' + hostname + '/c2'
-        }
+        // IMPORTANT: Always use relative URLs - Traefik handles routing
+        // DO NOT add logic to detect environment or generate absolute URLs
+        const homeUrl = '/'
+        const c2Url = '/lab3/extension'
+        const writeupUrl = '/lab-03-writeup'
 
         // Update lab navigation buttons
         const backButton = document.getElementById('back-button')

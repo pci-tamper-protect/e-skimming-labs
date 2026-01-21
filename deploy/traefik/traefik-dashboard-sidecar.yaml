@@ -1,0 +1,53 @@
+# Cloud Run Service Configuration for Traefik Dashboard
+# This is a separate service that serves the Traefik dashboard UI
+# It proxies API requests to the main Traefik service
+#
+# Usage:
+#   gcloud run services replace traefik-dashboard-sidecar.yaml --region=us-central1 --project=labs-stg
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: traefik-dashboard-stg
+  # Note: run.googleapis.com/execution-environment annotation is only valid on Revision/Execution, not Service
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/execution-environment: gen2
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "1"
+    spec:
+      serviceAccountName: traefik-stg@labs-stg.iam.gserviceaccount.com
+      timeoutSeconds: 300
+      containerConcurrency: 1  # Reduced from 10 to allow fractional CPU (0.5)
+      
+      containers:
+      # Dashboard container - serves dashboard UI and proxies API to main Traefik
+      - name: dashboard
+        image: us-central1-docker.pkg.dev/labs-stg/e-skimming-labs/traefik-dashboard:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: TRAEFIK_API_URL
+          value: "https://traefik-stg-<PROJECT_NUMBER>-uc.a.run.app"
+          # This will be replaced with actual main Traefik URL during deployment
+        resources:
+          limits:
+            cpu: "1"  # Gen2 execution environment requires minimum 1.0 CPU total
+            memory: 512Mi  # Gen2 execution environment requires minimum 512 Mi total memory
+        startupProbe:
+          httpGet:
+            path: /ping  # Use /ping instead of /dashboard/ - more reliable for startup
+            port: 8080
+          initialDelaySeconds: 10  # Increased from 5 to allow Traefik to start
+          periodSeconds: 5  # Check every 5 seconds
+          timeoutSeconds: 5  # Increased from 3 to allow more time for response
+          failureThreshold: 12  # Increased from 3 to allow up to 60 seconds total (10 + 12*5)
+        livenessProbe:
+          httpGet:
+            path: /dashboard/
+            port: 8080
+          periodSeconds: 30
+          timeoutSeconds: 3
+          failureThreshold: 3

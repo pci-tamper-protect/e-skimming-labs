@@ -1,5 +1,138 @@
 # Cursor Rules for e-skimming-labs
 
+## Traefik Design Principles **IMPORTANT, CRITICAL**
+
+When working with Traefik or planning features related to routing, service discovery, or reverse proxy functionality, follow these core principles:
+
+### 1. Routing/Environment Logic by Traefik, Not by Services
+- **Services should NEVER detect environments or construct URLs based on hostname**
+- **Services should use relative paths only** - Traefik handles all routing
+- **No environment detection in containers** - no `window.location.hostname` checks, no conditional URL construction
+- **Use `<base href>` tags** for path resolution in HTML
+- **Let Traefik strip prefixes** - services receive clean paths
+
+### 2. Automatic Service Discovery
+- Traefik should discover services automatically via labels or file-based configuration
+- Prefer dynamic configuration over static configuration
+- Use Traefik's service discovery mechanisms (Docker, Kubernetes, file provider, etc.)
+
+### 3. Hot Reloading
+- Traefik configuration should support hot reloading without service restarts
+- Use file-based dynamic configuration for routes, middlewares, and services
+- Changes to routing should take effect immediately without downtime
+
+### 4. Modularity & Extensibility
+- Use Traefik middlewares for cross-cutting concerns (auth, headers, rate limiting, etc.)
+- Keep routing logic in Traefik configuration, not in application code
+- Services should be simple and focused on business logic
+
+### 5. High Availability & Failover
+- Configure health checks for all services
+- Use Traefik's load balancing and failover capabilities
+- Ensure services can be restarted without affecting routing
+
+## Container Logging & Error Handling
+
+**All containers must have safe logging that traps errors and provides useful logs:**
+
+1. **Redirect All Output to stderr**
+   - Use `exec 1>&2` at the start of scripts to ensure Cloud Run captures all output
+   - Cloud Run only captures stderr by default
+   - Example: `exec 1>&2` at the top of entrypoint scripts
+
+2. **Error Trapping**
+   - Use `trap` to catch errors and log them before exit
+   - Example: `trap 'log "ERROR: Script failed at line $LINENO"' ERR`
+   - Don't use `set -e` without error trapping (scripts exit silently)
+
+3. **Explicit Logging Function**
+   - Create a `log()` function that writes to both stderr and `/proc/1/fd/1` (container stdout)
+   - Ensures logs are captured even if stderr redirection fails
+   - Example:
+     ```bash
+     log() {
+       echo "$@" >&2
+       echo "$@" > /proc/1/fd/1 2>/dev/null || true
+     }
+     ```
+
+4. **Debug Logging at Key Points**
+   - Log script start, key decision points, and before/after critical operations
+   - Include context: environment variables, file paths, exit codes
+   - Example: `log "DEBUG: Processing service ${service_name}, attempt ${attempt}/3"`
+
+5. **Never Fail Silently**
+   - If a command fails, log the error and exit code
+   - Don't use `|| true` without logging why it failed
+   - Example: `command || { log "ERROR: Command failed with code $?"; exit 1; }`
+
+6. **Cloud Run Specific**
+   - All output must go to stderr (stdout is not captured)
+   - Use structured logging (JSON) when possible for better parsing
+   - Include timestamps in log messages
+   - Log environment detection (local vs Cloud Run)
+
+## Script Linting & Validation
+
+**ALWAYS run linters on shell scripts before considering them complete:**
+
+1. **Bash Syntax Check**
+   - Run `bash -n <script>` to check for syntax errors
+   - This catches missing `fi`, unclosed quotes, and other syntax issues
+   - Must pass before any script is considered complete
+
+2. **Shellcheck**
+   - Run `shellcheck <script>` on all shell scripts (`.sh`, `.bash`)
+   - Address all errors (SC1xxx, SC2xxx)
+   - Review warnings (SC2xxx info level) and fix when practical
+   - Common issues to fix:
+     - SC2155: Declare and assign separately to avoid masking return values
+     - SC2162: Use `read -r` to avoid mangling backslashes
+     - SC2094: Don't read and write the same file in the same pipeline
+     - SC2016: Expressions don't expand in single quotes
+
+3. **When to Run Linters**
+   - After creating a new script
+   - After modifying any script
+   - Before committing script changes
+   - When debugging script issues
+
+4. **Other Script Types**
+   - Python: Run `pylint`, `flake8`, or `mypy` as appropriate
+   - JavaScript/TypeScript: Run ESLint
+   - YAML: Validate with `yamllint` or schema validators
+   - JSON: Validate syntax with `jq` or `python -m json.tool`
+
+5. **Integration**
+   - Consider adding pre-commit hooks for automatic linting
+   - CI/CD should also run linters as part of validation
+
+## Plugin & Tool Selection
+
+**Before building new Traefik-related features or tools:**
+
+1. **Check Traefik Labs Organization First**
+   - Search: https://github.com/orgs/traefik/repositories?type=all
+   - Look for official or community-maintained solutions
+
+2. **Check Plugin Catalog**
+   - Browse: https://plugins.traefik.io/plugins
+   - Search for existing plugins that solve the problem
+
+3. **Evaluation Criteria**
+   - If there's at least one well-maintained and highly-rated option, prefer using it
+   - If multiple options exist, analyze:
+     - Maintenance status (recent commits, active maintainers)
+     - Community adoption (stars, forks, issues)
+     - Documentation quality
+     - Compatibility with current Traefik version
+     - Fit for current project needs
+
+4. **Contribution Over Building New**
+   - If a plugin exists but needs improvements, contribute to it rather than building new
+   - Submit PRs, report issues, improve documentation
+   - Only build new if no suitable option exists
+
 ## Data Structure Changes
 - **ALWAYS ASK** before changing key names in YAML or JSON files
 - Key names may have dependencies across multiple repositories
@@ -19,6 +152,7 @@
 - Create feature branches for changes
 - Create PRs to main branch
 - Don't push directly to main (branch protection enabled)
+- **NEVER push commits automatically** - always let the user add, commit, and push changes themselves
 
 ## Configuration vs Secrets
 - Configuration values (project IDs, regions, URLs) should be in config.yml or hardcoded in workflows
@@ -29,3 +163,75 @@
 - Use golden base images from pcioasis-operations/containers
 - All services must listen on port 8080 for Cloud Run
 - Docker layer caching is enabled in GitHub Actions workflows
+
+### Container Runtime Verification **CRITICAL - COST US 5 DAYS OF DEBUGGING**
+**ALWAYS verify containers run at runtime, not just that they build successfully.**
+
+1. **Docker Build vs Runtime Validation**
+   - Docker build does NOT validate many runtime-critical directives:
+     - `USER <username>` - Build succeeds even if user doesn't exist, fails at runtime
+     - `CMD`/`ENTRYPOINT` - Build doesn't verify executables exist or are accessible
+     - File permissions - Build doesn't check if non-root users can access files
+     - Environment variables - Build doesn't validate required env vars are set
+   - **A successful build does NOT guarantee a working container**
+
+2. **Required Runtime Verification Steps**
+   - **Always test container startup** after building:
+     ```bash
+     docker run --rm <image> <command>
+     ```
+   - **Verify USER directive works** - Check that the specified user exists:
+     ```bash
+     docker run --rm --user root <image> id <username>
+     ```
+   - **Test entrypoint/command execution** - Ensure the container actually starts:
+     ```bash
+     docker run --rm <image>  # Should start without errors
+     ```
+   - **Check file permissions** - Verify non-root users can access required files:
+     ```bash
+     docker run --rm --user <non-root-user> <image> ls -la /required/path
+     ```
+
+3. **Common Issues That Build But Fail at Runtime**
+   - `USER traefik` when `traefik` user doesn't exist → Container fails to start
+   - Missing executable in PATH → Command not found errors
+   - Insufficient file permissions → Permission denied errors
+   - Missing environment variables → Application crashes
+   - Wrong working directory → File not found errors
+
+4. **Verification Checklist**
+   - [ ] Container builds successfully (`docker build`)
+   - [ ] Container runs successfully (`docker run`)
+   - [ ] USER directive works (user exists and is accessible)
+   - [ ] Entrypoint/CMD executes without errors
+   - [ ] Required files are accessible with correct permissions
+   - [ ] Environment variables are properly set
+   - [ ] Health checks pass (if defined)
+   - [ ] Application starts and responds to requests
+
+5. **For Cloud Run Deployments**
+   - After deploying, immediately check Cloud Run logs for startup errors
+   - Verify the service reaches "Ready" status, not just "Deployed"
+   - Test actual HTTP requests to the service, not just deployment success
+   - Check that the container is running as the expected user (not root unless intended)
+
+**Remember: A successful `docker build` is only the first step. Always verify runtime behavior.**
+
+## Cloud Run URL Policy
+- Cloud Run exposes two URLs for each service:
+  1. A random-suffix URL (volatile) - e.g., `lab-03-xxxxxx-uc.a.run.app`
+  2. A numeric stable URL (preferred) - e.g., `lab-03-extension-hijacking-prd-207478017187.us-central1.run.app`
+- Always use the numeric stable URL in all code, navigation logic, documentation, and suggestions
+- Never use:
+  - Random Cloud Run URLs (e.g., `lab-03-xxxxxx-uc.a.run.app`)
+  - `window.location.origin` for production URLs
+  - `hostname.replace()` to construct URLs
+  - Fallback guessing such as `window.location.protocol + '//' + hostname`
+- All Labs must follow the unified URL policy:
+  - `homeUrl` must always use the numeric home-index URL: `https://home-index-prd-171147998109.us-central1.run.app`
+  - `writeupUrl` must always use the numeric home-index URL: `https://home-index-prd-171147998109.us-central1.run.app/lab-XX-writeup`
+  - `c2Url` (if applicable) must always use the numeric Cloud Run URL for that lab: `https://lab-XX-YYYY-prd-207478017187.us-central1.run.app/path`
+  - No dynamic hostname construction
+  - No replace logic
+  - No fallback guessing

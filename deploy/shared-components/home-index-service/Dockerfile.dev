@@ -1,0 +1,66 @@
+# Development Dockerfile with Air for hot-reload
+# Based on the production Dockerfile but adds Air for auto-rebuild
+
+ARG BASE_IMAGE=us-central1-docker.pkg.dev/pcioasis-operations/containers/go-base:latest
+ARG ALPINE_BASE=us-central1-docker.pkg.dev/pcioasis-operations/containers/alpine-base:latest
+
+FROM ${BASE_IMAGE} AS builder
+
+# Install Air for hot-reload
+RUN go install github.com/cosmtrek/air@latest
+
+# Set working directory
+WORKDIR /app
+
+# Copy go.mod and go.sum
+COPY deploy/shared-components/home-index-service/go.mod ./
+COPY deploy/shared-components/home-index-service/go.sum* ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy Air config template
+COPY deploy/shared-components/home-index-service/.air.toml ./.air.toml
+
+# Final stage using alpine-base
+FROM ${ALPINE_BASE} AS runtime
+
+# Install Air for hot-reload
+USER root
+RUN apk add --no-cache curl && \
+    curl -sfS https://raw.githubusercontent.com/cosmtrek/air/master/install.sh | sh && \
+    apk del curl
+
+# Create app directory structure
+WORKDIR /app
+RUN mkdir -p tmp src docs labs
+
+# Copy Air binary
+COPY --from=builder /go/bin/air /usr/local/bin/air
+
+# Copy Air config
+COPY deploy/shared-components/home-index-service/.air.toml ./.air.toml
+
+# Copy entrypoint script (will be used by Air's full_bin)
+COPY deploy/shared-components/home-index-service/entrypoint.dev.sh ./entrypoint.dev.sh
+
+# Install dotenvx for decrypting environment variables
+RUN apk add --no-cache curl && \
+    curl -sfS https://dotenvx.sh/install.sh | sh && \
+    apk del curl && \
+    chmod +x ./entrypoint.dev.sh
+
+# Set ownership
+RUN chown -R appuser:appuser /app
+USER appuser
+
+# Expose port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+
+# Run Air for hot-reload
+# Air will watch /app/src, /app/docs, /app/labs and rebuild when files change
+CMD ["air", "-c", "/app/.air.toml"]

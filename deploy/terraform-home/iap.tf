@@ -80,3 +80,40 @@ resource "google_cloud_run_v2_service_iam_member" "seo_stg_user_access" {
   member   = "user:${each.value}"
 }
 
+# Grant Traefik service account permission to invoke home services
+# Traefik acts as a reverse proxy and needs to call these services on behalf of users
+# This allows Traefik to route requests to home services without requiring user authentication
+# Note: Traefik service account is created in terraform-labs project
+# If the service account doesn't exist yet, apply terraform-labs first, then re-run terraform-home
+data "google_project" "labs_project" {
+  project_id = var.environment == "prd" ? "labs-prd" : "labs-stg"
+}
+
+# Traefik service account from labs project needs invoker access to home services
+# Note: This requires the Traefik service account to exist (created by terraform-labs)
+# If you get an error that the service account doesn't exist:
+#   1. Apply terraform-labs first to create the Traefik service account
+#   2. Then re-run terraform-home to create these IAM bindings
+resource "google_cloud_run_v2_service_iam_member" "traefik_seo_access" {
+  location = data.google_cloud_run_v2_service.home_seo_service[0].location
+  project  = data.google_cloud_run_v2_service.home_seo_service[0].project
+  name     = data.google_cloud_run_v2_service.home_seo_service[0].name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:traefik-${var.environment}@${data.google_project.labs_project.project_id}.iam.gserviceaccount.com"
+}
+
+resource "google_cloud_run_v2_service_iam_member" "traefik_index_access" {
+  location = data.google_cloud_run_v2_service.home_index_service[0].location
+  project  = data.google_cloud_run_v2_service.home_index_service[0].project
+  name     = data.google_cloud_run_v2_service.home_index_service[0].name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:traefik-${var.environment}@${data.google_project.labs_project.project_id}.iam.gserviceaccount.com"
+}
+
+# Grant Traefik permission to read Cloud Run service metadata in home project
+# This allows Traefik to query service labels via Cloud Run Admin API for route generation
+resource "google_project_iam_member" "traefik_home_viewer" {
+  project = local.home_project_id
+  role    = "roles/run.viewer"
+  member  = "serviceAccount:traefik-${var.environment}@${data.google_project.labs_project.project_id}.iam.gserviceaccount.com"
+}

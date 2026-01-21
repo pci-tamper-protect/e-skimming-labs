@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Checkout - TechGear Store</title>
+    <base href="/lab1/variants/obfuscated/" />
     <style>
       * {
         margin: 0;
@@ -304,7 +305,7 @@
         <p style="margin-top: 1rem; color: #856404">
           <strong>Educational Note:</strong> Your payment data was also sent to the attacker's C2
           server. Check
-          <a href="http://localhost:3000/stolen" target="_blank">the C2 dashboard</a> to see the
+          <a href="#" class="c2-dashboard-link" target="_blank">the C2 dashboard</a> to see the
           stolen data.
         </p>
       </div>
@@ -343,6 +344,14 @@
       document.getElementById('cvv').addEventListener('input', function (e) {
         e.target.value = e.target.value.replace(/\D/g, '')
       })
+
+      // Update C2 dashboard links with relative paths
+      ;(function () {
+        const c2DashboardLinks = document.querySelectorAll('.c2-dashboard-link')
+        c2DashboardLinks.forEach(link => {
+          link.href = '/lab1/c2'
+        })
+      })()
     </script>
   </body>
 </html>

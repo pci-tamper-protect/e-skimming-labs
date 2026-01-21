@@ -7,6 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>Checkout - TechGear Store</title>
+    <base href="/lab1/" />
     <style>
       * {
         margin: 0;
@@ -174,7 +175,7 @@
         <h1>🛒 TechGear Store</h1>
         <div style="float: right; margin-top: 5px">
           <a
-            href="http://localhost:3000"
+            href="/"
             aria-label="Go back to labs homepage"
             class="back-button"
             style="
@@ -185,11 +186,11 @@
               border-radius: 4px;
               margin-right: 10px;
             "
-            
+
             >← Back to Labs</a
           >
           <a
-            href="http://localhost:9002/stolen"
+            href="#"
             target="_blank"
             style="
               color: white;
@@ -204,7 +205,7 @@
             >🕵️ View Stolen Data</a
           >
           <a
-            href="http://localhost:3000/lab-01-writeup"
+            href="#"
             target="_blank"
             style="
               color: white;
@@ -338,33 +339,29 @@
         <p style="margin-top: 1rem; color: #856404">
           <strong>Educational Note:</strong> Your payment data was also sent to the attacker's C2
           server. Check
-          <a href="http://localhost:3000/stolen" target="_blank">the C2 dashboard</a> to see the
+          <a href="/lab1/c2" class="c2-dashboard-link" target="_blank">the C2 dashboard</a> to see the
           stolen data.
         </p>
       </div>
     </main>
 
-    <!-- Development: Clear Cache Button (only shows in localhost) -->
+    <!-- Development: Clear Cache Button -->
     <script>
       (function() {
-        const hostname = window.location.hostname
-        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
-        if (isLocal) {
-          const clearCacheBtn = document.createElement('button')
-          clearCacheBtn.textContent = '🗑️ Clear Cache'
-          clearCacheBtn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9999;padding:10px 20px;background:#dc2626;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;box-shadow:0 4px 6px rgba(0,0,0,0.3);'
-          clearCacheBtn.onclick = function() {
-            if ('caches' in window) {
-              caches.keys().then(names => {
-                names.forEach(name => caches.delete(name))
-              })
-            }
-            localStorage.clear()
-            sessionStorage.clear()
-            window.location.href = window.location.href.split('?')[0] + '?nocache=' + Date.now()
+        const clearCacheBtn = document.createElement('button')
+        clearCacheBtn.textContent = '🗑️ Clear Cache'
+        clearCacheBtn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9999;padding:10px 20px;background:#dc2626;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;box-shadow:0 4px 6px rgba(0,0,0,0.3);'
+        clearCacheBtn.onclick = function() {
+          if ('caches' in window) {
+            caches.keys().then(names => {
+              names.forEach(name => caches.delete(name))
+            })
           }
-          document.body.appendChild(clearCacheBtn)
+          localStorage.clear()
+          sessionStorage.clear()
+          window.location.href = window.location.href.split('?')[0] + '?nocache=' + Date.now()
         }
+        document.body.appendChild(clearCacheBtn)
       })()
     </script>
 
@@ -380,22 +377,13 @@
          This is the MOST REALISTIC attack scenario!
     -->
     <script>
-      // Cache busting for JS - must happen before script loads
+      // Load compromised checkout script
       (function() {
-        const hostname = window.location.hostname
-        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
-        if (isLocal) {
-          const timestamp = Date.now()
-          const script = document.createElement('script')
-          script.src = 'js/checkout-compromised.js?v=' + timestamp
-          script.id = 'main-js'
-          document.body.appendChild(script)
-        } else {
-          const script = document.createElement('script')
-          script.src = 'js/checkout-compromised.js'
-          script.id = 'main-js'
-          document.body.appendChild(script)
-        }
+        const timestamp = Date.now()
+        const script = document.createElement('script')
+        script.src = 'js/checkout-compromised.js?v=' + timestamp
+        script.id = 'main-js'
+        document.body.appendChild(script)
       })()
     </script>
 
@@ -421,46 +409,24 @@
         e.target.value = e.target.value.replace(/\D/g, '')
       })
 
-      // Environment-aware URL configuration
+      // Update navigation links with relative paths
       ;(function () {
-        const hostname = window.location.hostname
-        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
-
-        let homeUrl, c2Url, writeupUrl
-
-        if (isLocal) {
-          homeUrl = 'http://localhost:3000'
-          c2Url = 'http://localhost:9002/stolen'
-          writeupUrl = 'http://localhost:3000/lab-01-writeup'
-        } else if (hostname.includes('labs.stg.pcioasis.com')) {
-          homeUrl = 'https://labs.stg.pcioasis.com'
-          c2Url = 'https://labs.stg.pcioasis.com/01-basic-magecart-c2'
-          writeupUrl = 'https://labs.stg.pcioasis.com/lab-01-writeup'
-        } else if (hostname.includes('labs.pcioasis.com')) {
-          homeUrl = 'https://labs.pcioasis.com'
-          c2Url = 'https://labs.pcioasis.com/01-basic-magecart-c2'
-          writeupUrl = 'https://labs.pcioasis.com/lab-01-writeup'
-        } else if (hostname.includes('lab-01-basic-magecart')) {
-          // Production Cloud Run (combined deployment - nginx + C2 in same container)
-          homeUrl = 'https://labs.pcioasis.com'
-          c2Url = window.location.protocol + '//' + hostname + '/stolen'
-          writeupUrl = 'https://labs.pcioasis.com/lab-01-writeup'
-        } else {
-          homeUrl = window.location.protocol + '//' + hostname
-          c2Url = window.location.protocol + '//' + hostname + '/c2'
-          writeupUrl = window.location.protocol + '//' + hostname.replace('lab-01-basic-magecart', 'labs.pcioasis.com') + '/lab-01-writeup'
-        }
-
         // Update header links
         const headerLinks = document.querySelectorAll('.header a')
         headerLinks.forEach(link => {
           if (link.classList.contains('back-button')) {
-            link.href = homeUrl
+            link.href = '/'
           } else if (link.classList.contains('c2-button')) {
-            link.href = c2Url
+            link.href = '/lab1/c2'
           } else if (link.classList.contains('writeup-button')) {
-            link.href = writeupUrl
+            link.href = '/lab-01-writeup'
           }
+        })
+
+        // Update C2 dashboard text links in content
+        const c2DashboardLinks = document.querySelectorAll('.c2-dashboard-link')
+        c2DashboardLinks.forEach(link => {
+          link.href = '/lab1/c2'
         })
       })()
     </script>

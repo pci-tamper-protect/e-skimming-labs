@@ -1,216 +1,195 @@
 #!/bin/bash
-
-# Deploy E-Skimming Labs Home Page Infrastructure
-# This script deploys the Terraform infrastructure for the labs home project
+# Deploy Home Services to Cloud Run (gcloud only, no Terraform)
+# This script builds, pushes, and deploys home services (SEO, Index)
+# Usage: ./deploy/deploy-home.sh [stg|prd] [image-tag] [--force-rebuild]
+#        If image-tag is not provided, uses current git SHA
 
 set -e
 
-# Get the directory where this script is located
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Get script directory and repo root
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Source environment configuration
-# Check for .env file first (whether it's a file or symlink)
-if [ -f "$SCRIPT_DIR/.env" ]; then
-    # Determine which file .env points to for informative message
-    if [ -L "$SCRIPT_DIR/.env" ]; then
-        TARGET=$(readlink "$SCRIPT_DIR/.env")
-        echo "📋 Using .env -> $TARGET"
-    else
-        echo "📋 Using .env"
-    fi
-    source "$SCRIPT_DIR/.env"
-# Fallback to .env.prd or .env.stg if .env doesn't exist
-elif [ -f "$SCRIPT_DIR/.env.prd" ]; then
-    echo "📋 Using .env.prd (create symlink: ln -s .env.prd .env)"
-    source "$SCRIPT_DIR/.env.prd"
-elif [ -f "$SCRIPT_DIR/.env.stg" ]; then
-    echo "📋 Using .env.stg (create symlink: ln -s .env.stg .env)"
-    source "$SCRIPT_DIR/.env.stg"
-else
-    echo "❌ .env file not found in $SCRIPT_DIR"
-    echo ""
-    echo "Please create a .env file with the following variables:"
-    echo "  HOME_PROJECT_ID=labs-home-prd"
-    echo "  HOME_REGION=us-central1"
-    echo ""
-    echo "You can either:"
-    echo "  1. Create .env.prd or .env.stg with your values"
-    echo "  2. Create a symlink: ln -s .env.prd .env (or ln -s .env.stg .env)"
-    echo "  3. Or create .env directly"
-    exit 1
+# Source credential check
+source "$SCRIPT_DIR/check-credentials.sh"
+
+# Check credentials before proceeding
+if ! check_credentials; then
+  echo ""
+  echo "❌ Deployment aborted: Please fix credential issues first"
+  exit 1
 fi
+echo ""
 
-PROJECT_ID="$HOME_PROJECT_ID"
-REGION="$HOME_REGION"
-TERRAFORM_DIR="terraform-home"
+# Parse arguments
+ENVIRONMENT=""
+FORCE_REBUILD=false
+IMAGE_TAG=""
 
-# Determine environment from project ID
-if [[ "$PROJECT_ID" == *"-stg" ]]; then
-    ENVIRONMENT="stg"
-elif [[ "$PROJECT_ID" == *"-prd" ]]; then
-    ENVIRONMENT="prd"
-else
-    echo "❌ Cannot determine environment from project ID: $PROJECT_ID"
-    echo "   Project ID must end with -stg or -prd"
-    echo "   Or set ENVIRONMENT environment variable explicitly (stg or prd)"
-    exit 1
-fi
+for arg in "$@"; do
+  if [ "$arg" = "--force-rebuild" ]; then
+    FORCE_REBUILD=true
+  elif [ "$arg" = "stg" ] || [ "$arg" = "prd" ]; then
+    ENVIRONMENT="$arg"
+  elif [ -z "$IMAGE_TAG" ] && [ "$arg" != "--force-rebuild" ]; then
+    IMAGE_TAG="$arg"
+  fi
+done
 
-# Verify environment is explicitly set
+# Require environment
 if [ -z "$ENVIRONMENT" ]; then
-    echo "❌ ENVIRONMENT must be explicitly set (stg or prd)"
-    echo "   Set it in .env file or as environment variable"
-    exit 1
+  echo "❌ Environment required: stg or prd"
+  echo "Usage: $0 [stg|prd] [image-tag] [--force-rebuild]"
+  exit 1
 fi
 
-# Determine labs project ID (for home-index service)
-if [[ "$PROJECT_ID" == *"-stg" ]]; then
-    LABS_PROJECT_ID="${LABS_PROJECT_ID:-labs-stg}"
+# Load environment variables
+source "$SCRIPT_DIR/load-env.sh"
+
+# Configuration based on environment
+if [ "$ENVIRONMENT" = "stg" ]; then
+  HOME_PROJECT_ID="${HOME_PROJECT_ID:-labs-home-stg}"
+  DOMAIN_PREFIX="labs.stg.pcioasis.com"
 else
-    LABS_PROJECT_ID="${LABS_PROJECT_ID:-labs-prd}"
+  HOME_PROJECT_ID="${HOME_PROJECT_ID:-labs-home-prd}"
+  DOMAIN_PREFIX="labs.pcioasis.com"
 fi
 
-echo "🏠 Deploying E-Skimming Labs Home Page Infrastructure"
-echo "=================================================="
-echo "Project ID: $PROJECT_ID"
-echo "Region: $REGION"
+HOME_GAR_LOCATION="${LABS_REGION:-us-central1}"
+HOME_REPOSITORY="e-skimming-labs-home"
+LABS_PROJECT_ID="${LABS_PROJECT_ID:-labs-${ENVIRONMENT}}"
+
+# Get image tag
+IMAGE_TAG="${IMAGE_TAG:-$(git rev-parse --short HEAD 2>/dev/null || echo 'latest')}"
+
+echo "🏠 Deploying Home Services to Cloud Run..."
+echo "   Environment: $ENVIRONMENT"
+echo "   Project: $HOME_PROJECT_ID"
+echo "   Region: $HOME_GAR_LOCATION"
+echo "   Image tag: $IMAGE_TAG"
+if [ "$FORCE_REBUILD" = true ]; then
+  echo "   ⚠️  Force rebuild: enabled"
+fi
 echo ""
 
-# Check if gcloud is installed and authenticated
-if ! command -v gcloud &> /dev/null; then
-    echo "❌ gcloud CLI is not installed. Please install it first."
-    exit 1
-fi
+cd "$REPO_ROOT"
 
-# Check if user is authenticated with gcloud
-if ! gcloud auth list --filter=status:ACTIVE --format="value(account)" &>/dev/null; then
-    echo "❌ No active gcloud authentication found."
-    echo "   Please run: gcloud auth login"
-    exit 1
-fi
+# Authenticate to Artifact Registry
+echo "🔐 Authenticating to Artifact Registry..."
+gcloud auth configure-docker ${HOME_GAR_LOCATION}-docker.pkg.dev --quiet
 
-# Check and set up Application Default Credentials (ADC) for Terraform
-# Terraform uses ADC, which is separate from gcloud auth login
-if [ -z "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
-    # Check if ADC exists and is valid
-    if ! gcloud auth application-default print-access-token &>/dev/null; then
-        echo "⚠️  Application Default Credentials not found or expired."
-        echo ""
-        echo "📋 Terraform needs Application Default Credentials (ADC) to access GCS backend."
-        echo "   This is separate from 'gcloud auth login'."
-        echo ""
-        echo "   Please run this command manually:"
-        echo "   gcloud auth application-default login"
-        echo ""
-        echo "   Or if you prefer to use a service account key file:"
-        echo "   export GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json"
-        echo ""
-        read -p "Press Enter after you've set up ADC, or Ctrl+C to cancel..."
-        echo ""
-        
-        # Verify ADC is now working
-        if ! gcloud auth application-default print-access-token &>/dev/null; then
-            echo "❌ Application Default Credentials still not configured."
-            echo "   Please run: gcloud auth application-default login"
-            exit 1
-        fi
-        echo "✅ Application Default Credentials are now configured"
-    else
-        echo "✅ Application Default Credentials are configured"
-    fi
+# ============================================================================
+# BUILD AND DEPLOY FUNCTIONS
+# ============================================================================
+
+build_and_push() {
+  local service_name="$1"
+  local build_dir="$2"
+  local dockerfile="$3"
+  local image="$4"
+  local build_args="${5:-}"
+
+  echo "📦 Building $service_name..."
+  
+  if [ "$FORCE_REBUILD" = true ] || ! docker image inspect "$image" &>/dev/null; then
+    docker build \
+      -f "$build_dir/$dockerfile" \
+      -t "$image" \
+      $build_args \
+      "$build_dir"
+    
+    echo "📤 Pushing $image..."
+    docker push "$image"
+  else
+    echo "   ⏭️  Image exists, skipping build (use --force-rebuild to override)"
+  fi
+}
+
+# ============================================================================
+# DEPLOY HOME SERVICES
+# ============================================================================
+
+# 1. Deploy SEO Service
+echo ""
+echo "1️⃣  Deploying home-seo-${ENVIRONMENT}..."
+SEO_IMAGE="${HOME_GAR_LOCATION}-docker.pkg.dev/${HOME_PROJECT_ID}/${HOME_REPOSITORY}/seo:${IMAGE_TAG}"
+
+build_and_push \
+  "home-seo-${ENVIRONMENT}" \
+  "deploy/shared-components/seo-service" \
+  "Dockerfile" \
+  "$SEO_IMAGE" \
+  "--build-arg ENVIRONMENT=$ENVIRONMENT"
+
+gcloud run deploy home-seo-${ENVIRONMENT} \
+  --image="$SEO_IMAGE" \
+  --region=${HOME_GAR_LOCATION} \
+  --platform=managed \
+  --project=${HOME_PROJECT_ID} \
+  --no-allow-unauthenticated \
+  --service-account=home-runtime-sa@${HOME_PROJECT_ID}.iam.gserviceaccount.com \
+  --port=8080 \
+  --memory=512Mi \
+  --cpu=1 \
+  --min-instances=0 \
+  --max-instances=5 \
+  --set-env-vars="PROJECT_ID=${HOME_PROJECT_ID},HOME_PROJECT_ID=${HOME_PROJECT_ID},ENVIRONMENT=${ENVIRONMENT},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${DOMAIN_PREFIX},LABS_PROJECT_ID=${LABS_PROJECT_ID}" \
+  --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
+  --labels="environment=${ENVIRONMENT},component=seo,project=e-skimming-labs-home,traefik_enable=true,traefik_http_routers_home-seo_rule_id=home-seo,traefik_http_routers_home-seo_priority=500,traefik_http_routers_home-seo_entrypoints=web,traefik_http_routers_home-seo_middlewares=strip-seo-prefix-file,traefik_http_services_home-seo_lb_port=8080"
+
+echo "   ✅ SEO service deployed"
+
+# 2. Deploy Index Service
+echo ""
+echo "2️⃣  Deploying home-index-${ENVIRONMENT}..."
+INDEX_IMAGE="${HOME_GAR_LOCATION}-docker.pkg.dev/${HOME_PROJECT_ID}/${HOME_REPOSITORY}/index:${IMAGE_TAG}"
+
+# Index service builds from repo root with Dockerfile in subdirectory
+if [ "$FORCE_REBUILD" = true ] || ! docker image inspect "$INDEX_IMAGE" &>/dev/null; then
+  docker build \
+    -f "deploy/shared-components/home-index-service/Dockerfile" \
+    -t "$INDEX_IMAGE" \
+    --build-arg ENVIRONMENT=$ENVIRONMENT \
+    .
+  
+  echo "📤 Pushing $INDEX_IMAGE..."
+  docker push "$INDEX_IMAGE"
 else
-    echo "✅ Using service account credentials from GOOGLE_APPLICATION_CREDENTIALS"
+  echo "   ⏭️  Image exists, skipping build"
 fi
 
-# Check if terraform is installed
-if ! command -v terraform &> /dev/null; then
-    echo "❌ Terraform is not installed. Please install it first."
-    exit 1
-fi
+gcloud run deploy home-index-${ENVIRONMENT} \
+  --image="$INDEX_IMAGE" \
+  --region=${HOME_GAR_LOCATION} \
+  --platform=managed \
+  --project=${HOME_PROJECT_ID} \
+  --no-allow-unauthenticated \
+  --service-account=fbase-adm-sdk-runtime@${HOME_PROJECT_ID}.iam.gserviceaccount.com \
+  --port=8080 \
+  --memory=512Mi \
+  --cpu=1 \
+  --min-instances=0 \
+  --max-instances=5 \
+  --set-env-vars="HOME_PROJECT_ID=${HOME_PROJECT_ID},ENVIRONMENT=${ENVIRONMENT},DOMAIN=${DOMAIN_PREFIX},LABS_DOMAIN=${DOMAIN_PREFIX},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${LABS_PROJECT_ID},ENABLE_AUTH=true,REQUIRE_AUTH=true,FIREBASE_PROJECT_ID=ui-firebase-pcioasis-${ENVIRONMENT}" \
+  --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
+  --labels="environment=${ENVIRONMENT},component=index,project=e-skimming-labs-home,traefik_enable=true,traefik_http_routers_home-index_rule_id=home-index-root,traefik_http_routers_home-index_priority=1,traefik_http_routers_home-index_entrypoints=web,traefik_http_routers_home-index_middlewares=forwarded-headers-file,traefik_http_services_home-index_lb_port=8080,traefik_http_routers_home-index-signin_rule_id=home-index-signin,traefik_http_routers_home-index-signin_priority=100,traefik_http_routers_home-index-signin_entrypoints=web,traefik_http_routers_home-index-signin_middlewares=signin-headers-file,traefik_http_routers_home-index-signin_service=home-index"
 
-# Set the project
-echo "📋 Setting GCP project..."
-gcloud config set project $PROJECT_ID
+echo "   ✅ Index service deployed"
 
-# Build and push Docker images before deploying services
-if [ "${BUILD_IMAGES:-true}" != "false" ]; then
-    echo "🏗️  Building Docker images..."
-    "$SCRIPT_DIR/build-images.sh"
-    echo ""
-fi
-
-# Enable required APIs
-echo "🔧 Enabling required APIs..."
-gcloud services enable \
-    run.googleapis.com \
-    artifactregistry.googleapis.com \
-    firestore.googleapis.com \
-    storage.googleapis.com \
-    monitoring.googleapis.com \
-    logging.googleapis.com \
-    cloudresourcemanager.googleapis.com \
-    iam.googleapis.com \
-    servicenetworking.googleapis.com
-
-# Navigate to terraform directory (relative to script location)
-cd "$SCRIPT_DIR/$TERRAFORM_DIR"
-TERRAFORM_DIR_ABS=$(pwd)
-
-# Initialize Terraform with environment-specific backend config
-echo "🏗️  Initializing Terraform..."
-echo "   Directory: $TERRAFORM_DIR_ABS"
-BACKEND_CONFIG="backend-${ENVIRONMENT}.conf"
-if [ -f "$BACKEND_CONFIG" ]; then
-    echo "   Running: terraform init -backend-config=\"$BACKEND_CONFIG\""
-    terraform init -backend-config="$BACKEND_CONFIG"
-else
-    echo "❌ Backend config file not found: $BACKEND_CONFIG"
-    echo "   Expected location: $SCRIPT_DIR/$TERRAFORM_DIR/$BACKEND_CONFIG"
-    echo "   Please create backend config files: backend-prd.conf and backend-stg.conf"
-    exit 1
-fi
-
-# Plan the deployment
-echo "📋 Planning Terraform deployment..."
-echo "   Directory: $TERRAFORM_DIR_ABS"
-PLAN_CMD="terraform plan -var=\"environment=$ENVIRONMENT\" -var=\"deploy_services=true\" -out=tfplan"
-echo "   Running: $PLAN_CMD"
-terraform plan \
-    -var="environment=$ENVIRONMENT" \
-    -var="deploy_services=true" \
-    -out=tfplan
-
-# Ask for confirmation
-echo ""
-echo "⚠️  This will create the following resources in $PROJECT_ID:"
-echo "   - Service accounts for home page and GitHub Actions"
-echo "   - Artifact Registry repository for home page images"
-echo "   - Firestore database for home page analytics"
-echo "   - Cloud Storage bucket for home page assets"
-echo "   - Cloud Run services (SEO, Index)"
-echo "   - Monitoring and logging"
-echo ""
-
-# Apply the plan
-echo "🚀 Applying Terraform plan..."
-echo "   Directory: $TERRAFORM_DIR_ABS"
-echo "   Running: terraform apply -auto-approve tfplan"
-terraform apply -auto-approve tfplan
+# ============================================================================
+# SUMMARY
+# ============================================================================
 
 echo ""
-echo "✅ Home page infrastructure deployed successfully!"
+echo "✅ Home services deployed successfully!"
 echo ""
-echo "📋 Next steps:"
-echo "1. Get the service account key for GitHub Actions:"
-echo "   terraform output -raw home_deploy_key"
-echo ""
-echo "2. Add the following secrets to your GitHub repository:"
-echo "   - GCP_HOME_PROJECT_ID: $PROJECT_ID"
-echo "   - GCP_HOME_SA_KEY: [Use the service account key from step 1]"
-echo "   - GAR_HOME_LOCATION: $REGION"
-echo "   - REPOSITORY_HOME: e-skimming-labs-home"
-echo ""
-echo "3. Deploy the home page using GitHub Actions"
-echo ""
-echo "🔗 Useful outputs:"
-terraform output
+echo "📋 Service URLs:"
+gcloud run services describe home-seo-${ENVIRONMENT} \
+  --region=${HOME_GAR_LOCATION} \
+  --project=${HOME_PROJECT_ID} \
+  --format="value(status.url)" 2>/dev/null | sed 's/^/   SEO: /' || echo "   SEO: (not available)"
+
+gcloud run services describe home-index-${ENVIRONMENT} \
+  --region=${HOME_GAR_LOCATION} \
+  --project=${HOME_PROJECT_ID} \
+  --format="value(status.url)" 2>/dev/null | sed 's/^/   Index: /' || echo "   Index: (not available)"

@@ -1,0 +1,135 @@
+version: '3.8'
+
+# Local Sidecar Simulation - Simulates Cloud Run sidecar architecture
+# This allows fast local debugging without waiting for Cloud Logging
+#
+# Architecture:
+# 1. Main Traefik container (web traffic on host port 9090, container port 8080)
+# 2. Provider sidecar (generates routes.yml into shared volume)
+# 3. Shared volumes for routes and stats
+# 4. Dashboard service (optional, separate on port 9091)
+#
+# Prerequisites:
+#   1. Ensure you have ADC credentials:
+#      gcloud auth application-default login
+#
+# Usage:
+#   docker-compose -f docker-compose.sidecar-local.yml up -d
+#   docker-compose -f docker-compose.sidecar-local.yml logs -f traefik
+#   docker-compose -f docker-compose.sidecar-local.yml logs -f provider
+#
+# Access:
+#   - Traefik Gateway: http://localhost:9090 (mapped from container port 8080)
+#   - Dashboard: http://localhost:9091/dashboard/ (if enabled)
+#   - API: http://localhost:9090/api/rawdata
+
+services:
+  # Main Traefik container - serves web traffic
+  traefik:
+    build:
+      context: ./deploy/traefik
+      dockerfile: Dockerfile.cloudrun.sidecar
+    container_name: e-skimming-labs-traefik-sidecar-local
+    restart: unless-stopped
+    ports:
+      - '9090:8080'      # Main HTTP entry point (Traefik gateway on 9090)
+    volumes:
+      # Shared volume for routes.yml (provider writes, Traefik reads)
+      - shared-routes:/shared/traefik/dynamic
+      - shared-stats:/shared/traefik/stats
+      # Mount Google credentials for home-index route generation (uses ADC to query Cloud Run)
+      - /Users/kestenbroughton/.config/gcloud:/root/.config/gcloud:ro
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-stg}
+      - DOMAIN=${DOMAIN:-localhost:9090}
+      - LABS_PROJECT_ID=${LABS_PROJECT_ID:-labs-stg}
+      - HOME_PROJECT_ID=${HOME_PROJECT_ID:-labs-home-stg}
+      - REGION=${REGION:-us-central1}
+      # Provider uses these to query Cloud Run API for service discovery
+    networks:
+      - labs-network
+    depends_on:
+      - provider
+    healthcheck:
+      test: ['CMD', 'traefik', 'healthcheck', '--ping']
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s  # Give provider time to generate initial routes.yml
+
+  # Provider sidecar - generates routes.yml into shared volume
+  provider:
+    build:
+      context: ../traefik-cloudrun-provider
+      dockerfile: Dockerfile.provider.sidecar
+    container_name: e-skimming-labs-provider-sidecar-local
+    restart: unless-stopped
+    volumes:
+      # Shared volume for routes.yml (provider writes here)
+      - shared-routes:/shared/traefik/dynamic
+      # Mount Google credentials for Cloud Run API access
+      # Mount entire gcloud config directory for ADC (Application Default Credentials)
+      # This allows provider to use ADC from ~/.config/gcloud/application_default_credentials.json
+      # Edit the path below to match your home directory (replace 'kestenbroughton' with your username):
+      - /Users/kestenbroughton/.config/gcloud:/home/cloudrunner/.config/gcloud:ro
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-stg}
+      - LABS_PROJECT_ID=${LABS_PROJECT_ID:-labs-stg}
+      - HOME_PROJECT_ID=${HOME_PROJECT_ID:-labs-home-stg}
+      - REGION=${REGION:-us-central1}
+      - MODE=daemon
+      # Poll interval for checking Cloud Run service changes
+      - POLL_INTERVAL=${POLL_INTERVAL:-30s}
+      # Token cache duration - tokens refresh every 25 minutes (well before 1-hour expiry)
+      # This ensures routes.yml always has fresh tokens
+      - TOKEN_CACHE_DURATION=${TOKEN_CACHE_DURATION:-25m}
+      # Service account impersonation for identity tokens (required for local development)
+      # User credentials from 'gcloud auth application-default login' cannot generate identity tokens
+      # Set this to a service account that has Cloud Run Invoker role on the target services
+      # Your user account needs 'Service Account Token Creator' role on this service account
+      - IMPERSONATE_SERVICE_ACCOUNT=${IMPERSONATE_SERVICE_ACCOUNT:-traefik-stg@labs-stg.iam.gserviceaccount.com}
+      # User authentication for labs (Firebase JWT validation)
+      # - false (default for local): Labs are publicly accessible (no user auth required)
+      # - true: Labs require user authentication via Firebase
+      # Set to true to test auth flow locally (requires home-index with Firebase configured)
+      - USER_AUTH_ENABLED=${USER_AUTH_ENABLED:-false}
+    networks:
+      - labs-network
+    # Provider writes routes.yml to /shared/traefik/dynamic/routes.yml
+    command: ["/shared/traefik/dynamic/routes.yml"]
+
+
+  # Dashboard service (optional) - separate service like Cloud Run
+  # Proxies API calls to main Traefik service
+  traefik-dashboard:
+    build:
+      context: ./deploy/traefik
+      dockerfile: Dockerfile.dashboard-sidecar
+    container_name: e-skimming-labs-traefik-dashboard-sidecar-local
+    restart: unless-stopped
+    ports:
+      - '9091:8080'      # Dashboard on separate port (9091)
+    environment:
+      # URL of main Traefik service (accessible via Docker network)
+      - TRAEFIK_API_URL=http://traefik:8080
+    networks:
+      - labs-network
+    depends_on:
+      - traefik
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:8080/ping']
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  # Shared volume for routes.yml (provider -> Traefik)
+  shared-routes:
+    driver: local
+  # Shared volume for stats (future use)
+  shared-stats:
+    driver: local
+
+networks:
+  labs-network:
+    driver: bridge

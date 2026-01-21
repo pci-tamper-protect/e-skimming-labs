@@ -22,7 +22,7 @@ COPY . .
 RUN go mod tidy
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -o seo-service main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o seo-service .
 
 # Final stage using alpine-base
 FROM ${ALPINE_BASE} AS runtime
@@ -38,4 +38,3 @@ USER appuser
 
 EXPOSE 8080
 CMD ["./seo-service"]
-

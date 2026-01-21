@@ -1,0 +1,51 @@
+# Traefik Static Configuration for Dashboard Service (Dashboard-Only Mode)
+# This Traefik instance serves ONLY the dashboard UI - no routing, no providers
+# It proxies API requests to the main Traefik service's API
+# Main Traefik API URL is provided via TRAEFIK_API_URL environment variable
+
+# Entry points
+# IMPORTANT: Explicitly define entrypoint to prevent Traefik from creating default "http" entrypoint on port 80
+# When api.insecure: true, Traefik v2.10 automatically creates a "traefik" entrypoint on :8080
+# We explicitly define "traefik" entrypoint to ensure it uses port 8080 and prevent default "http" entrypoint
+entryPoints:
+  traefik:
+    address: "0.0.0.0:8080"  # Cloud Run uses port 8080, must bind to 0.0.0.0
+
+# Providers - minimal: only file provider for API proxy routes
+# No Docker provider, no other providers - this is dashboard-only
+# The file provider is only used to proxy /api/* requests to main Traefik
+providers:
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+  # No Docker provider - this service doesn't do service discovery
+  # No other providers - dashboard-only mode
+
+# API and Dashboard
+# Serve dashboard on port 8080
+# API requests (/api/*) are proxied to main Traefik service via dynamic routes
+# Note: For dashboard-only service, api.insecure: true is safe (no conflict with main Traefik)
+# When insecure: true, API is served on the entrypoint (dashboard:8080)
+api:
+  dashboard: true
+  insecure: true  # Dashboard accessible without auth (internal service)
+  # Note: In v2.10, when insecure: true, entryPoint cannot be set
+  # API is automatically served on the entrypoint (dashboard:8080)
+
+# Logging - minimal for dashboard service
+log:
+  level: INFO
+  format: json
+
+# Access logs - minimal
+accessLog:
+  format: json
+
+# Health check endpoint
+ping:
+  entryPoint: traefik  # Enable ping endpoint on traefik entrypoint for health checks
+
+# Global settings
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false

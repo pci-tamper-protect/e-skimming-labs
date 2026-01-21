@@ -1,0 +1,87 @@
+# Traefik Dockerfile for Google Cloud Run
+# Core principle: Containers are simple - routing/middleware externalized
+# This Dockerfile creates a Traefik image that routes to Cloud Run backend services
+# Identical to Dockerfile.test except runs as traefik user (for security in Cloud Run)
+
+FROM traefik:v2.10
+
+# Install curl, bash, jq, and Go for health checks, entrypoint, and plugin compilation
+# Install Go 1.24 (latest supported) from official releases instead of Alpine packages
+# Go 1.22 reached EOL on 2025-02-11, so we need a supported version
+# Note: gcloud CLI is NOT needed - plugin uses Go client libraries (google.golang.org/api)
+USER root
+RUN apk add --no-cache curl ca-certificates bash jq wget tar && \
+    GO_VERSION=1.24.0 && \
+    wget -q https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz -O /tmp/go.tar.gz && \
+    tar -C /usr/local -xzf /tmp/go.tar.gz && \
+    rm /tmp/go.tar.gz && \
+    ln -s /usr/local/go/bin/go /usr/local/bin/go && \
+    ln -s /usr/local/go/bin/gofmt /usr/local/bin/gofmt && \
+    # Verify Go is accessible and working
+    go version && \
+    which go && \
+    # Ensure Go is in PATH for all users (including traefik user)
+    echo 'export PATH="/usr/local/go/bin:/usr/local/bin:$PATH"' >> /etc/profile && \
+    echo 'export PATH="/usr/local/go/bin:/usr/local/bin:$PATH"' >> /etc/bash.bashrc && \
+    # Verify all tools are installed and accessible
+    which curl && curl --version | head -1 && \
+    which bash && bash --version | head -1 && \
+    which jq && jq --version && \
+    echo "✅ Go ${GO_VERSION} installed and verified" && \
+    echo "✅ All required tools installed: curl, bash, jq, go"
+
+# Copy Traefik configuration
+# Create /etc/traefik directory first (base image doesn't have it)
+RUN mkdir -p /etc/traefik/dynamic
+COPY traefik.cloudrun.yml /etc/traefik/traefik.yml
+COPY dynamic/ /etc/traefik/dynamic/
+# Ensure config file is readable by traefik user (we'll create the user later)
+RUN chmod 644 /etc/traefik/traefik.yml && \
+    chmod -R 755 /etc/traefik/dynamic && \
+    echo "✅ Traefik config files ready"
+
+# Copy plugin source code for local plugin mode
+# Plugin must be in ./plugins-local/src/github.com/pci-tamper-protect/traefik-cloudrun-provider
+COPY plugins-local/ /plugins-local/
+
+# Ensure plugin directory is readable by traefik user (for local plugin compilation)
+# Traefik v3.0 compiles plugins at runtime, so it needs read access
+RUN chmod -R a+rX /plugins-local && \
+    echo "✅ Plugin directory permissions set"
+
+# Create traefik user (base image doesn't have one by design - provides flexibility)
+# Traefik does NOT need root - running as non-root is a security best practice
+# Cloud Run uses port 8080 (not privileged ports 80/443), so no root privileges needed
+# Use UID 1000 to match common non-root user conventions
+RUN addgroup -g 1000 traefik && \
+    adduser -D -u 1000 -G traefik traefik && \
+    echo "✅ traefik user created"
+
+# Copy simplified entrypoint script (plugin handles route generation)
+WORKDIR /
+COPY entrypoint-plugin.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh && \
+    test -f /entrypoint.sh && \
+    test -x /entrypoint.sh && \
+    echo "✅ entrypoint.sh ready"
+
+# Switch to traefik user for security (Cloud Run best practice)
+# Traefik does not require root - port 8080 is not privileged
+# Note: /plugins-local is readable by all users (a+rX) so traefik user can compile plugins
+# Verify traefik user can access Go before switching
+RUN su traefik -c "go version" && \
+    su traefik -c "which go" && \
+    echo "✅ Verified traefik user can access Go"
+
+USER traefik
+
+# Expose ports
+EXPOSE 80 443 8080
+
+# Health check
+HEALTHCHECK --interval=10s --timeout=3s --retries=3 \
+    CMD traefik healthcheck --ping || exit 1
+
+# Use custom entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["traefik"]
