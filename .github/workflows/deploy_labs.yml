@@ -1750,15 +1750,19 @@ jobs:
       - name: Check GCP credentials availability
         if: needs.setup.outputs.environment == 'stg'
         id: check-gcp-creds
+        env:
+          # Pass the SA key as env var to avoid shell expansion issues with multi-line JSON
+          SA_KEY: ${{ env.LABS_GCP_SA_KEY }}
         run: |
-          if [ -n "${{ env.LABS_GCP_SA_KEY }}" ]; then
+          # Use env var to check - avoids shell expansion issues with JSON strings
+          if [ -n "$SA_KEY" ]; then
             echo "has_creds=true" >> $GITHUB_OUTPUT
             echo "✅ GCP credentials available for proxy"
           else
             echo "has_creds=false" >> $GITHUB_OUTPUT
             echo "⚠️  GCP credentials not available - proxy will not be started"
             echo "   Tests will fail with 401 errors when accessing staging services directly"
-            echo "   Ensure GCP_SA_KEY_STG secret is set in repository or environment secrets"
+            echo "   Ensure GCP_LABS_SA_KEY_STG secret is set in repository or environment secrets"
           fi
 
       - name: Authenticate to Google Cloud (for proxy)
