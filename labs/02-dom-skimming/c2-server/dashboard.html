@@ -364,10 +364,13 @@
           .sort((a, b) => b.timestamp - a.timestamp)
       }
 
+      // Use path-based routing - dashboard is served from /lab2/c2/
+      const API_BASE = '/lab2/c2'
+
       async function loadData() {
         try {
           // Load statistics
-          const statsResponse = await fetch('/stats')
+          const statsResponse = await fetch(`${API_BASE}/stats`)
           const stats = await statsResponse.json()
 
           document.getElementById('totalAttacks').textContent = stats.totalRequests || 0
@@ -380,7 +383,7 @@
           }
 
           // Load all stolen data (like Lab 1)
-          const stolenResponse = await fetch('/api/stolen')
+          const stolenResponse = await fetch(`${API_BASE}/api/stolen`)
           const allData = await stolenResponse.json()
 
           const recentContainer = document.getElementById('recentData')
