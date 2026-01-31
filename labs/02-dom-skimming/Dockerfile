@@ -3,16 +3,14 @@ FROM us-central1-docker.pkg.dev/pcioasis-operations/containers/nginx-base:latest
 # Install node for C2 server
 RUN apk add --no-cache nodejs npm
 
-# Copy C2 server dependencies first (for better caching)
+# C2 server (sibling to vulnerable-site)
 WORKDIR /app/c2-server
-# Copy package.json (package-lock.json is optional and will be generated if missing)
-COPY package.json ./
+COPY c2-server/package*.json ./
 RUN npm install --production
+COPY c2-server/server.js c2-server/dashboard.html ./
+RUN mkdir -p stolen-data analysis
 
-# Copy C2 server source files (this layer will be invalidated only when C2 code changes)
-COPY malicious-code/c2-server.js malicious-code/c2-server/dashboard.html ./
-
-# Copy vulnerable site files last (this layer will be invalidated only when site files change)
+# Vulnerable site (includes malicious-code/ with dom-monitor, form-overlay, shadow-skimmer)
 COPY vulnerable-site/ /usr/share/nginx/html/
 
 # Copy nginx config

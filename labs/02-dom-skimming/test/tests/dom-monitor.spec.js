@@ -9,6 +9,8 @@ const { currentEnv, TEST_ENV } = require(testEnvPath)
 // Get URLs for lab 2
 const lab2VulnerableUrl = currentEnv.lab2.vulnerable
 const lab2C2Url = currentEnv.lab2.c2
+// Malicious code lives under vulnerable-site/malicious-code/
+const maliciousCodeDir = path.resolve(__dirname, '../../vulnerable-site/malicious-code')
 
 console.log(`🧪 Test environment: ${TEST_ENV}`)
 console.log(`📍 Lab 2 Vulnerable URL: ${lab2VulnerableUrl}`)
@@ -55,7 +57,7 @@ test.describe('Lab 2: DOM-Based Skimming - Real-Time Field Monitor', () => {
 
     // Inject DOM monitor attack
     await page.addScriptTag({
-      path: './malicious-code/dom-monitor.js'
+      path: path.join(maliciousCodeDir, 'dom-monitor.js')
     })
 
     await expect(page).toHaveTitle(/SecureBank/)
@@ -112,7 +114,7 @@ test.describe('Lab 2: DOM-Based Skimming - Real-Time Field Monitor', () => {
 
     // Inject DOM monitor attack
     await page.addScriptTag({
-      path: './malicious-code/dom-monitor.js'
+      path: path.join(maliciousCodeDir, 'dom-monitor.js')
     })
 
     // Navigate to payments section
@@ -177,7 +179,7 @@ test.describe('Lab 2: DOM-Based Skimming - Real-Time Field Monitor', () => {
 
     // Inject DOM monitor attack
     await page.addScriptTag({
-      path: './malicious-code/dom-monitor.js'
+      path: path.join(maliciousCodeDir, 'dom-monitor.js')
     })
 
     // Wait for initial setup
@@ -257,7 +259,7 @@ test.describe('Lab 2: DOM-Based Skimming - Real-Time Field Monitor', () => {
 
     // Inject DOM monitor attack
     await page.addScriptTag({
-      path: './malicious-code/dom-monitor.js'
+      path: path.join(maliciousCodeDir, 'dom-monitor.js')
     })
 
     // Navigate to cards section for high-value fields
@@ -321,7 +323,7 @@ test.describe('Lab 2: DOM-Based Skimming - Real-Time Field Monitor', () => {
 
     // Inject DOM monitor attack and analyze the code
     await page.addScriptTag({
-      path: './malicious-code/dom-monitor.js'
+      path: path.join(maliciousCodeDir, 'dom-monitor.js')
     })
 
     await page.waitForTimeout(2000)
@@ -384,7 +386,7 @@ test.describe('Lab 2: DOM-Based Skimming - Real-Time Field Monitor', () => {
 
     // Inject DOM monitor attack
     await page.addScriptTag({
-      path: './malicious-code/dom-monitor.js'
+      path: path.join(maliciousCodeDir, 'dom-monitor.js')
     })
 
     // Generate some activity

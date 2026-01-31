@@ -9,6 +9,7 @@ const { currentEnv, TEST_ENV } = require(testEnvPath)
 // Get URLs for lab 2
 const lab2VulnerableUrl = currentEnv.lab2.vulnerable
 const lab2C2Url = currentEnv.lab2.c2
+const maliciousCodeDir = path.resolve(__dirname, '../../vulnerable-site/malicious-code')
 
 console.log(`🧪 Test environment: ${TEST_ENV}`)
 console.log(`📍 Lab 2 Vulnerable URL: ${lab2VulnerableUrl}`)
@@ -53,7 +54,7 @@ test.describe('Lab 2: DOM-Based Skimming - Form Overlay Injection', () => {
 
     // Inject form overlay attack
     await page.addScriptTag({
-      path: './malicious-code/form-overlay.js'
+      path: path.join(maliciousCodeDir, 'form-overlay.js')
     })
 
     await expect(page).toHaveTitle(/SecureBank/)
@@ -116,7 +117,7 @@ test.describe('Lab 2: DOM-Based Skimming - Form Overlay Injection', () => {
 
     // Inject form overlay attack
     await page.addScriptTag({
-      path: './malicious-code/form-overlay.js'
+      path: path.join(maliciousCodeDir, 'form-overlay.js')
     })
 
     // Navigate to cards section for security verification
@@ -205,7 +206,7 @@ test.describe('Lab 2: DOM-Based Skimming - Form Overlay Injection', () => {
 
     // Inject form overlay attack
     await page.addScriptTag({
-      path: './malicious-code/form-overlay.js'
+      path: path.join(maliciousCodeDir, 'form-overlay.js')
     })
 
     // Test different form types
@@ -251,7 +252,7 @@ test.describe('Lab 2: DOM-Based Skimming - Form Overlay Injection', () => {
 
     // Inject form overlay attack
     await page.addScriptTag({
-      path: './malicious-code/form-overlay.js'
+      path: path.join(maliciousCodeDir, 'form-overlay.js')
     })
 
     // Navigate to trigger overlay
@@ -310,7 +311,7 @@ test.describe('Lab 2: DOM-Based Skimming - Form Overlay Injection', () => {
 
     // Inject form overlay attack
     await page.addScriptTag({
-      path: './malicious-code/form-overlay.js'
+      path: path.join(maliciousCodeDir, 'form-overlay.js')
     })
 
     await page.waitForTimeout(2000)
@@ -375,7 +376,7 @@ test.describe('Lab 2: DOM-Based Skimming - Form Overlay Injection', () => {
 
     // Inject form overlay attack
     await page.addScriptTag({
-      path: './malicious-code/form-overlay.js'
+      path: path.join(maliciousCodeDir, 'form-overlay.js')
     })
 
     // Navigate to trigger overlay
@@ -413,7 +414,7 @@ test.describe('Lab 2: DOM-Based Skimming - Form Overlay Injection', () => {
       // Re-trigger overlay for cancel button test
       await page.reload()
       await page.addScriptTag({
-        path: './malicious-code/form-overlay.js'
+        path: path.join(maliciousCodeDir, 'form-overlay.js')
       })
       await page.click('[data-section="cards"]')
       await page.waitForTimeout(3000)
@@ -448,7 +449,7 @@ test.describe('Lab 2: DOM-Based Skimming - Form Overlay Injection', () => {
 
     // Inject form overlay attack
     await page.addScriptTag({
-      path: './malicious-code/form-overlay.js'
+      path: path.join(maliciousCodeDir, 'form-overlay.js')
     })
 
     // Navigate to trigger overlay

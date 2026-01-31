@@ -6,8 +6,12 @@ RUN apk add --no-cache \
     curl \
     wget
 
-# Copy website files to nginx html directory
+# Copy website files (includes malicious-code/ with dom-monitor, form-overlay, shadow-skimmer)
 COPY . /usr/share/nginx/html/
+
+# Entrypoint selects LAB2_VARIANT (default dom-monitor) and copies to js/skimmer.js
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 # Create default nginx config for banking site
 RUN echo 'server { \
@@ -37,4 +41,4 @@ RUN echo 'server { \
 # Expose port 80
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+ENTRYPOINT ["/docker-entrypoint.sh"]
