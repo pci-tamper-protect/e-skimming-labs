@@ -1,0 +1,47 @@
+version: '3.8'
+
+# Override file for authenticated local development
+# Usage:
+#   Use the helper script: ./deploy/docker-compose-auth.sh up
+#   This script decrypts .env.stg (in project root) using dotenvx and sets FIREBASE_API_KEY
+#
+#   Or manually:
+#   1. Export DOTENV_PRIVATE_KEY: export DOTENV_PRIVATE_KEY="$(cat .env.keys.stg)"
+#   2. Decrypt and run: dotenvx run --env-file=.env.stg -- docker-compose -f docker-compose.yml -f docker-compose.auth.yml up
+#
+# This file adds Firebase authentication environment variables to services.
+# The base docker-compose.yml runs without authentication.
+
+services:
+  # Home Index Service - Add Firebase auth environment variables
+  home-index:
+    environment:
+      # Firebase authentication - REQUIRED for auth to work
+      # FIREBASE_SERVICE_ACCOUNT_KEY: Service account JSON (server-side Admin SDK) - for token validation
+      # FIREBASE_API_KEY: Web API key (client-side Web SDK) - for sign-in page
+      - FIREBASE_SERVICE_ACCOUNT_KEY=${FIREBASE_SERVICE_ACCOUNT_KEY:-}
+      - FIREBASE_API_KEY=${FIREBASE_API_KEY:-}
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-ui-firebase-pcioasis-stg}
+      # Enable auth if FIREBASE_API_KEY is set (auto-detected by service)
+      - ENABLE_AUTH=${ENABLE_AUTH:-true}
+      # Require auth for lab writeups (home, mitre-attack, threat-model remain public)
+      - REQUIRE_AUTH=${REQUIRE_AUTH:-true}
+    volumes:
+      # Mount dotenvx key for local development (matches Cloud Run mount path)
+      # Note: Currently not used for local dev, but kept for consistency
+      - ./.env.keys.stg:/etc/secrets/dotenvx-key:ro
+
+  # SEO Service - Add dotenvx key mount (if needed for future auth)
+  home-seo:
+    volumes:
+      # Mount dotenvx key for local development (matches Cloud Run mount path)
+      - ./.env.keys.stg:/etc/secrets/dotenvx-key:ro
+
+  # Analytics Service - Add Firebase credentials for Firestore
+  labs-analytics:
+    environment:
+      # Firebase service account JSON (for Firestore access)
+      - FIREBASE_SERVICE_ACCOUNT_KEY=${FIREBASE_SERVICE_ACCOUNT_KEY:-}
+    volumes:
+      # Mount dotenvx key for local development (matches Cloud Run mount path)
+      - ./.env.keys.stg:/etc/secrets/dotenvx-key:ro

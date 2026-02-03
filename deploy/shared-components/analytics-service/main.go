@@ -1,5 +1,27 @@
 package main
 
+/*
+ * ============================================================================
+ * ROUTING ARCHITECTURE PRINCIPLE - DO NOT REGRESS
+ * ============================================================================
+ *
+ * **CRITICAL**: Services MUST NOT contain routing logic. All routing belongs to Traefik.
+ *
+ * Services should ALWAYS return relative URLs for navigation.
+ * Traefik handles all routing based on path prefixes.
+ *
+ * **DO NOT** add logic to:
+ *   - Detect if service is behind Traefik
+ *   - Conditionally use relative vs absolute URLs
+ *   - Check X-Forwarded-Host or X-Forwarded-For for routing decisions
+ *   - Generate different URLs based on environment
+ *
+ * If you find yourself adding routing logic to a service, STOP and ask:
+ * "Why can't Traefik handle this routing?"
+ *
+ * ============================================================================
+ */
+
 import (
 	"context"
 	"encoding/json"
@@ -12,7 +34,7 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"github.com/gorilla/mux"
-	// "google.golang.org/api/option"
+	"google.golang.org/api/option"
 )
 
 type AnalyticsService struct {
@@ -65,12 +87,26 @@ func main() {
 	var client *firestore.Client
 	if !disableFirestore {
 		ctx := context.Background()
-		c, err := firestore.NewClient(ctx, projectID)
+		
+		// Check for Firebase service account credentials
+		firebaseServiceAccount := os.Getenv("FIREBASE_SERVICE_ACCOUNT_KEY")
+		var opts []option.ClientOption
+		
+		if firebaseServiceAccount != "" {
+			// Use credentials from environment variable (JSON string)
+			log.Printf("🔑 Loading Firestore credentials from FIREBASE_SERVICE_ACCOUNT_KEY")
+			opts = append(opts, option.WithCredentialsJSON([]byte(firebaseServiceAccount)))
+		} else {
+			log.Printf("⚠️  No FIREBASE_SERVICE_ACCOUNT_KEY provided, using application default credentials")
+		}
+		
+		c, err := firestore.NewClient(ctx, projectID, opts...)
 		if err != nil {
 			log.Printf("Firestore disabled due to init error (running in local mode): %v", err)
 		} else {
 			client = c
 			defer client.Close()
+			log.Printf("✅ Firestore client initialized successfully")
 		}
 	} else {
 		log.Printf("DISABLE_FIRESTORE=true detected; running analytics in local mode without Firestore")

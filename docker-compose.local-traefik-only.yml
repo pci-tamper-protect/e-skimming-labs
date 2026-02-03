@@ -1,0 +1,121 @@
+version: '3.9'
+
+# Local Traefik with Cloud Run Provider
+# This configuration runs Traefik locally with the Cloud Run provider plugin,
+# routing to real Cloud Run services in labs-stg or labs-home-stg.
+#
+# Purpose:
+# - Test Traefik Cloud Run provider locally
+# - Debug routing issues with real Cloud Run services
+# - Test identity token injection to Cloud Run services
+# - Validate Traefik configuration before deploying to staging
+# - Debug Traefik behavior with full access to logs and dashboard
+#
+# Usage:
+#   1. Set up ADC credentials:
+#      gcloud auth application-default login
+#      # Or with impersonation:
+#      gcloud auth application-default login --impersonate-service-account=<service-account>
+#
+#   2. Ensure .env file exists (or symlink to .env.stg) with:
+#      TRAEFIK_LOCAL_ONLY_PORT=8084
+#      TRAEFIK_LOCAL_ONLY_DASHBOARD_PORT=8085
+#      LABS_PROJECT_ID=labs-stg
+#      HOME_PROJECT_ID=labs-home-stg
+#      REGION=us-central1
+#      GOOGLE_APPLICATION_CREDENTIALS=$HOME/.config/gcloud/application_default_credentials.json
+#      # Or use absolute path:
+#      # GOOGLE_APPLICATION_CREDENTIALS=/Users/$(whoami)/.config/gcloud/application_default_credentials.json
+#
+#   3. Start Traefik (docker-compose automatically loads .env file):
+#      docker-compose -f docker-compose.local-traefik-only.yml up -d --build
+#
+#   4. Access:
+#      - Main entry point: http://localhost:${TRAEFIK_LOCAL_ONLY_PORT:-8084}
+#      - Traefik dashboard: http://localhost:${TRAEFIK_LOCAL_ONLY_DASHBOARD_PORT:-8085}/dashboard/
+#      - Routes to Cloud Run services:
+#        * http://localhost:${TRAEFIK_LOCAL_ONLY_PORT:-8084}/ (home-index)
+#        * http://localhost:${TRAEFIK_LOCAL_ONLY_PORT:-8084}/lab1 (lab1)
+#        * http://localhost:${TRAEFIK_LOCAL_ONLY_PORT:-8084}/lab2 (lab2)
+#        * etc.
+#      - API endpoint: http://localhost:${TRAEFIK_LOCAL_ONLY_PORT:-8084}/api/http/routers
+#
+# Note: The Cloud Run provider automatically:
+# - Discovers services from LABS_PROJECT_ID and HOME_PROJECT_ID
+# - Fetches identity tokens from ADC for private services
+# - Uses Traefik Headers middleware (customRequestHeaders) to inject:
+#   X-Serverless-Authorization: Bearer ID_TOKEN
+#   (See: https://doc.traefik.io/traefik/reference/routing-configuration/http/middlewares/headers/)
+# - Routes based on path: / -> home-index, /lab1 -> lab1, etc.
+#
+# Environment Variables:
+# Docker Compose automatically loads .env file from project root.
+# Required variables (with defaults):
+#   TRAEFIK_LOCAL_ONLY_PORT=8084 (defaults to 8084 to avoid conflicts with port 8080)
+#   TRAEFIK_LOCAL_ONLY_DASHBOARD_PORT=8085
+#   LABS_PROJECT_ID=labs-stg
+#   HOME_PROJECT_ID=labs-home-stg
+#   REGION=us-central1
+#   GOOGLE_APPLICATION_CREDENTIALS=$HOME/.config/gcloud/application_default_credentials.json (REQUIRED - no default)
+
+services:
+  # Traefik - Local instance with Cloud Run provider
+  traefik-local-cloudrun:
+    build:
+      context: ./deploy/traefik
+      dockerfile: Dockerfile.local.cloudrun
+    container_name: e-skimming-labs-traefik-local-cloudrun
+    restart: unless-stopped
+    ports:
+      # Main HTTP entry point (routes to Cloud Run services)
+      # Port mapping: host:container (both use TRAEFIK_LOCAL_ONLY_PORT from .env)
+      - "${TRAEFIK_LOCAL_ONLY_PORT:-8084}:${TRAEFIK_LOCAL_ONLY_PORT:-8084}"
+      # Traefik dashboard (separate port)
+      - "${TRAEFIK_LOCAL_ONLY_DASHBOARD_PORT:-8085}:${TRAEFIK_LOCAL_ONLY_DASHBOARD_PORT:-8085}"
+    volumes:
+      # Use local Cloud Run config (with configurable ports and insecure dashboard)
+      - ./deploy/traefik/traefik.local.cloudrun.yml:/etc/traefik/traefik.yml:ro
+      - ./deploy/traefik/dynamic:/etc/traefik/dynamic:ro
+      # Mount ADC credentials from host (for local development)
+      # REQUIRED: Set GOOGLE_APPLICATION_CREDENTIALS in .env file (can use $HOME there)
+      # Example in .env: GOOGLE_APPLICATION_CREDENTIALS=$HOME/.config/gcloud/application_default_credentials.json
+      # Or absolute path: GOOGLE_APPLICATION_CREDENTIALS=/Users/username/.config/gcloud/application_default_credentials.json
+      # Note: Defaults to /tmp/placeholder if not set (entrypoint will detect and error clearly)
+      - "${GOOGLE_APPLICATION_CREDENTIALS:-/tmp/placeholder-adc-credentials}:/run/secrets/gcp_credentials:ro"
+      # Mount scripts for debugging/testing (entrypoint handles env var substitution)
+      - ./deploy/traefik/entrypoint-local-cloudrun.sh:/entrypoint.sh:ro
+    environment:
+      - ENVIRONMENT=local-cloudrun
+      - DOMAIN=localhost:${TRAEFIK_LOCAL_ONLY_PORT:-8084}
+      - LABS_PROJECT_ID=${LABS_PROJECT_ID:-labs-stg}
+      - HOME_PROJECT_ID=${HOME_PROJECT_ID:-labs-home-stg}
+      - REGION=${REGION:-us-central1}
+      # Ports for Traefik (used in traefik.local.cloudrun.yml)
+      - TRAEFIK_LOCAL_ONLY_PORT=${TRAEFIK_LOCAL_ONLY_PORT:-8084}
+      - TRAEFIK_LOCAL_ONLY_DASHBOARD_PORT=${TRAEFIK_LOCAL_ONLY_DASHBOARD_PORT:-8085}
+      # Point to mounted ADC credentials
+      - GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/gcp_credentials
+      # Enable dev mode for ADC token fetching (required for local development)
+      - CLOUDRUN_PROVIDER_DEV_MODE=true
+      # Enable debug logging for local development
+      - LOG_LEVEL=DEBUG
+      - LOG_FORMAT=json
+      # Go environment variables for plugin compilation
+      - GOPATH=/root/go
+      - GOMODCACHE=/root/go/pkg/mod
+      - GOCACHE=/root/.cache/go-build
+      - GOPROXY=https://proxy.golang.org,direct
+    networks:
+      - labs-network
+    healthcheck:
+      test: ['CMD', 'traefik', 'healthcheck', '--ping']
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    # Run as root for local development (easier debugging)
+    # In production (Cloud Run), it runs as traefik user
+    user: root
+
+networks:
+  labs-network:
+    driver: bridge

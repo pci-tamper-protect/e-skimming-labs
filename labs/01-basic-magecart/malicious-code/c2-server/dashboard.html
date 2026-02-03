@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>C2 Server Dashboard - Lab 1 Basic Magecart</title>
+    <base href="/lab1/c2/" />
     <style>
       * {
         margin: 0;
@@ -343,43 +344,16 @@
       // Auto-refresh every 5 seconds
       setInterval(loadData, 5000)
 
-      // Environment-aware URL configuration
+      // Update navigation links with relative paths
       ;(function () {
-        const hostname = window.location.hostname
-        let labUrl = 'http://localhost:9001'
-        let homeUrl = 'http://localhost:3000'
-
-        // Check if we're in staging
-        if (hostname.includes('stg.pcioasis.com') || hostname.includes('staging')) {
-          labUrl = 'https://labs.stg.pcioasis.com/01-basic-magecart'
-          homeUrl = 'https://labs.stg.pcioasis.com'
-        }
-        // Check if we're in production
-        else if (hostname.includes('pcioasis.com') && !hostname.includes('stg')) {
-          labUrl = 'https://labs.pcioasis.com/01-basic-magecart'
-          homeUrl = 'https://labs.pcioasis.com'
-        }
-        // Check if we're in Cloud Run
-        else if (hostname.includes('run.app')) {
-          const baseUrl = window.location.origin
-          // Lab 1 has both vulnerable site and C2 in same container
-          // C2 is accessible at /stolen, lab is at root
-          labUrl = baseUrl.replace('/stolen', '').replace('/api/stolen', '')
-          homeUrl = baseUrl.replace('/01-basic-magecart-c2', '').replace('/stolen', '').replace('/api/stolen', '')
-          // Try to extract home URL from hostname
-          if (hostname.includes('lab-01-basic-magecart')) {
-            homeUrl = 'https://labs.pcioasis.com'
-          }
-        }
-
         const backButton = document.getElementById('back-button')
         const homeButton = document.getElementById('home-button')
 
         if (backButton) {
-          backButton.href = labUrl
+          backButton.href = '/lab1'
         }
         if (homeButton) {
-          homeButton.href = homeUrl
+          homeButton.href = '/'
         }
       })()
     </script>

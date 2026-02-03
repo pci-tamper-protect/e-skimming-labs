@@ -1,0 +1,106 @@
+# Traefik Dockerfile for Local Development with Cloud Run Provider
+# This Dockerfile creates a Traefik image for local testing with Cloud Run backend services.
+# Similar to Dockerfile.cloudrun but optimized for local development:
+# - Runs as root for easier debugging
+# - Mounts ADC credentials from host
+# - Enables debug logging
+# - Provides full access to logs and dashboard
+
+FROM traefik:v3.0
+
+# Install curl, bash, jq, and Go for health checks, entrypoint, and plugin compilation
+# Install Go 1.24 (latest supported) from official releases instead of Alpine packages
+# Go 1.22 reached EOL on 2025-02-11, so we need a supported version
+# Note: gcloud CLI is NOT needed - plugin uses Go client libraries (google.golang.org/api)
+USER root
+RUN apk add --no-cache curl ca-certificates bash jq wget tar && \
+    GO_VERSION=1.24.0 && \
+    wget -q https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz -O /tmp/go.tar.gz && \
+    tar -C /usr/local -xzf /tmp/go.tar.gz && \
+    rm /tmp/go.tar.gz && \
+    ln -s /usr/local/go/bin/go /usr/local/bin/go && \
+    ln -s /usr/local/go/bin/gofmt /usr/local/bin/gofmt && \
+    # Verify Go is accessible and working
+    go version && \
+    which go && \
+    # Ensure Go is in PATH for all users
+    echo 'export PATH="/usr/local/go/bin:/usr/local/bin:$PATH"' >> /etc/profile && \
+    echo 'export PATH="/usr/local/go/bin:/usr/local/bin:$PATH"' >> /etc/bash.bashrc && \
+    # Verify all tools are installed and accessible
+    which curl && curl --version | head -1 && \
+    which bash && bash --version | head -1 && \
+    which jq && jq --version && \
+    echo "✅ Go ${GO_VERSION} installed and verified" && \
+    echo "✅ All required tools installed: curl, bash, jq, go"
+
+# Copy Traefik configuration
+# Create /etc/traefik directory first (base image doesn't have it)
+RUN mkdir -p /etc/traefik/dynamic && \
+    mkdir -p /run/secrets
+COPY traefik.cloudrun.yml /etc/traefik/traefik.yml
+COPY dynamic/ /etc/traefik/dynamic/
+# Ensure config file is readable
+RUN chmod 644 /etc/traefik/traefik.yml && \
+    chmod -R 755 /etc/traefik/dynamic && \
+    echo "✅ Traefik config files ready"
+
+# Copy plugin source code for local plugin mode
+# Plugin must be in ./plugins-local/src/github.com/pci-tamper-protect/traefik-cloudrun-provider
+COPY plugins-local/ /plugins-local/
+
+# Pre-download Go module dependencies for the plugin
+# This ensures dependencies are available when Traefik compiles the plugin at runtime
+# Go modules require network access, which is available in the container
+# Set Go environment variables to ensure module cache is accessible
+ENV GOPATH=/root/go
+ENV GOMODCACHE=/root/go/pkg/mod
+ENV GOCACHE=/root/.cache/go-build
+RUN cd /plugins-local/src/github.com/pci-tamper-protect/traefik-cloudrun-provider && \
+    go mod download && \
+    go mod verify && \
+    echo "✅ Plugin dependencies downloaded and verified"
+
+# Ensure plugin directory is readable (for local plugin compilation)
+# Traefik v3.0 compiles plugins at runtime, so it needs read access
+RUN chmod -R a+rX /plugins-local && \
+    echo "✅ Plugin directory permissions set"
+
+# Create directory for ADC credentials mount point
+# Credentials will be mounted from host at runtime
+RUN mkdir -p /run/secrets && \
+    chmod 755 /run/secrets && \
+    echo "✅ Secrets directory ready for ADC credentials mount"
+
+# Install envsubst for environment variable substitution (gettext package)
+RUN apk add --no-cache gettext && \
+    which envsubst && \
+    echo "✅ envsubst installed for config substitution"
+
+# Copy entrypoint script (local version with env var substitution)
+WORKDIR /
+COPY entrypoint-local-cloudrun.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh && \
+    test -f /entrypoint.sh && \
+    test -x /entrypoint.sh && \
+    echo "✅ entrypoint.sh ready"
+
+# Keep running as root for local development (easier debugging, file access, etc.)
+# In production (Cloud Run), Dockerfile.cloudrun switches to traefik user
+# For local dev, root access makes it easier to:
+# - Debug permission issues
+# - Access mounted credentials
+# - View logs without permission problems
+USER root
+
+# Expose ports
+# Port 8080: Main HTTP entry point (routes to Cloud Run services)
+# Port 8081: Traefik dashboard (mapped via docker-compose)
+EXPOSE 80 443 8080
+
+# Health check
+HEALTHCHECK --interval=10s --timeout=3s --retries=3 \
+    CMD traefik healthcheck --ping || exit 1
+
+# Use custom entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["traefik"]

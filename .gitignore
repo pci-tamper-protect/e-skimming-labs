@@ -1,15 +1,19 @@
 # Node modules
 node_modules/
 package-lock.json
+!test/package-lock.json
 
 # npm cache files
 **/_update-notifier-last-checked
 **/clean/
 
+deploy/traefik/debug/*
 .env.keys.*
 .env.keys
 .env.*.bak.*
 .env.*.bak
+
+.playwright-mcp/traces/
 
 # Stolen data
 **/stolen-data/*
@@ -23,6 +27,7 @@ labs/01-basic-magecart/malicious-code/c2-server/stolen-data/master-log.jsonl
 
 **/playwright-report/*
 **/test-results/*
+test/.auth/
 
 *.png
 *.webm
@@ -43,8 +48,13 @@ npm-debug.log*
 # Environment
 .env
 .env.local
-# Note: .env.stg and .env.prd in deploy/ are tracked
-# deploy/.env should be a symlink to one of them
+# Note: Encrypted .env.stg and .env.prd files ARE tracked (they're encrypted, safe to commit)
+# BUT: deploy/.env.* files should NEVER be committed (only root-level .env.* files exist)
+deploy/.env.*
+deploy/.env
+# Private keys (.env.keys.*) are NOT tracked (must be kept secret)
+# Hash files (.env.hashes.*) ARE tracked (for audit trail)
+# dotenvx-ops project files (.env.x, .env.x.*) ARE tracked (contains only public DOTENVX_PROJECT_ID)
 
 # Terraform
 **/.terraform/**
@@ -60,6 +70,8 @@ deploy/*-sa-key.json
 deploy/*.json
 *.json
 !package.json
+!package-lock.json
+!test/package-lock.json
 !go.mod
 !go.sum
 !tsconfig.json

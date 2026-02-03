@@ -2505,25 +2505,24 @@ Object.defineProperty(HTMLInputElement.prototype, 'value', {
           }
 
           const hostname = window.location.hostname
+          const port = window.location.port
+          const protocol = window.location.protocol
 
-          let backUrl
-          if (hostname === 'localhost' || hostname === '127.0.0.1') {
-            backUrl = 'http://localhost:3000'
-          } else if (hostname === 'labs.pcioasis.com') {
-            backUrl = 'https://labs.pcioasis.com'
-          } else if (hostname === 'labs.stg.pcioasis.com') {
-            backUrl = 'https://labs.stg.pcioasis.com'
-          } else {
-            // Fallback for other environments
-            backUrl =
-              window.location.protocol +
-              '//' +
-              hostname +
-              (window.location.port ? ':' + window.location.port : '')
-          }
-
-          backBtn.href = backUrl
-          console.log('Back button URL set to:', backUrl)
+          /*
+           * ============================================================================
+           * ROUTING ARCHITECTURE PRINCIPLE - DO NOT REGRESS
+           * ============================================================================
+           * 
+           * **CRITICAL**: Client-side code MUST NOT contain routing logic. All routing belongs to Traefik.
+           * 
+           * Always use relative URLs for navigation - Traefik handles routing.
+           * 
+           * ============================================================================
+           */
+          // IMPORTANT: Always use relative URL - Traefik handles routing
+          // DO NOT add logic to detect environment or generate absolute URLs
+          backBtn.href = '/'
+          console.log('Back button URL set to: / (relative - Traefik handles routing)')
         }
 
         // Set back button URL on page load

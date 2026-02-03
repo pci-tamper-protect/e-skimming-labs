@@ -1,0 +1,83 @@
+# Traefik Static Configuration
+# This configuration is environment-agnostic and works for local, staging, and production
+
+# Entry points - where Traefik listens for incoming connections
+entryPoints:
+  web:
+    address: ":80"
+    # Trust forwarded headers from internal networks (for local development and Cloud Run)
+    forwardedHeaders:
+      insecure: true  # Allow insecure headers (for local development and Cloud Run)
+      trustedIPs:
+        - "127.0.0.1/32"
+        - "10.0.0.0/8"      # GCP internal network
+        - "172.16.0.0/12"   # Docker networks
+        - "192.168.0.0/16"  # Private networks
+    # Redirect HTTP to HTTPS in production/staging (disabled for local)
+    # http:
+    #   redirections:
+    #     entryPoint:
+    #       to: websecure
+    #       scheme: https
+
+  websecure:
+    address: ":443"
+    # Trust forwarded headers from internal networks
+    forwardedHeaders:
+      insecure: true
+      trustedIPs:
+        - "127.0.0.1/32"
+        - "10.0.0.0/8"
+        - "172.16.0.0/12"
+        - "192.168.0.0/16"
+
+# Providers - how Traefik discovers services
+providers:
+  # Docker provider for local development
+  docker:
+    exposedByDefault: false  # Only expose services with traefik.enable=true label
+    network: e-skimming-labs-network    # Use the labs network for service discovery (Docker Compose adds project prefix)
+    watch: true              # Watch for container changes
+    # Note: Traefik filters unhealthy/starting containers by default
+    # Containers must pass their health check before Traefik creates routes
+
+  # File provider for static configuration and overrides
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+# API and Dashboard
+api:
+  dashboard: true
+  insecure: true  # Dashboard accessible without auth (local development only)
+
+# Logging
+log:
+  level: DEBUG  # Enable DEBUG logging to see ForwardAuth middleware behavior
+  format: json
+
+# Access logs
+accessLog:
+  format: json
+  fields:
+    headers:
+      defaultMode: keep
+      names:
+        User-Agent: keep
+        X-Forwarded-For: keep
+
+# Metrics for monitoring
+metrics:
+  prometheus:
+    addEntryPointsLabels: true
+    addRoutersLabels: true
+    addServicesLabels: true
+
+# Health check endpoint
+ping:
+  entryPoint: web
+
+# Global settings
+global:
+  checkNewVersion: true
+  sendAnonymousUsage: false
