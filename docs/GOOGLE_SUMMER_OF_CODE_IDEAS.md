@@ -22,7 +22,7 @@ Each lab has several variants.  Variants give a broader base for training ML det
 Using standard or GenAI techniques, create workflows for generating reliable variants of attacks.
 
 Make the detection/obfuscation section interactive.
-The ideal end state would be successful detections and avoidances would be deployable and teststable in the website allowing rapid collection of new Techniques, Tactics and Procedure (TTP) examples.
+The ideal end state would be successful detections and avoidances would be deployable and testable in the website allowing rapid collection of new Techniques, Tactics and Procedure (TTP) examples.
 
 ## Interactive Lab Writeup
 
