@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog - E-Skimming Labs</title>
+    <meta name="description"
+        content="Insights, tutorials, and research on e-skimming attacks, detection, and defense from the E-Skimming Labs team.">
+
+    <!-- SEO Meta Tags -->
+    <meta name="robots" content="index, follow">
+    <meta name="keywords" content="e-skimming, magecart, web security, payment fraud, cybersecurity blog">
+    <link rel="canonical" href="https://labs.pcioasis.com/blog">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Blog - E-Skimming Labs">
+    <meta property="og:description" content="Insights, tutorials, and research on e-skimming attacks and defense">
+    <meta property="og:url" content="https://labs.pcioasis.com/blog">
+    <meta property="og:type" content="website">
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+        :root {
+            --bg-primary: #0a0e27;
+            --bg-secondary: #121733;
+            --bg-tertiary: #1a1f3a;
+            --bg-card: #1e2440;
+            --bg-hover: #252b4a;
+
+            --text-primary: #ffffff;
+            --text-secondary: #b8c5db;
+            --text-muted: #8b9dc3;
+
+            --accent-red: #ff6b6b;
+            --accent-orange: #ff922b;
+            --accent-green: #51cf66;
+            --accent-blue: #748ffc;
+            --accent-purple: #b197fc;
+            --accent-pink: #e64980;
+            --accent-yellow: #ffd43b;
+
+            --border-color: #2a3f5f;
+            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
+
+            --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-2: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --gradient-3: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 20px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 20px;
+        }
+
+        .nav-tab {
+            padding: 10px 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .nav-tab:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .nav-tab.active {
+            background: var(--gradient-1);
+            color: var(--text-primary);
+            border-color: transparent;
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 80px 0;
+            text-align: center;
+            background: var(--gradient-1);
+            margin-bottom: 60px;
+        }
+
+        .hero h1 {
+            font-size: 48px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #fff 0%, #e0e0e0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 20px;
+            color: rgba(255, 255, 255, 0.9);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Blog Section */
+        .blog-section {
+            padding: 60px 0;
+        }
+
+        .section-title {
+            font-size: 36px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+
+        .section-subtitle {
+            font-size: 18px;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 50px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .blog-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 60px;
+        }
+
+        /* Blog Card - matches lab-card exactly */
+        .blog-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 30px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .blog-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-2);
+        }
+
+        .blog-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--accent-blue);
+        }
+
+        .blog-card.featured::before {
+            background: var(--gradient-1);
+        }
+
+        .post-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .post-date {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .post-tag {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            background: rgba(177, 151, 252, 0.2);
+            color: var(--accent-purple);
+        }
+
+        .post-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--text-primary);
+        }
+
+        .post-excerpt {
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .post-button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: var(--gradient-1);
+            color: var(--text-primary);
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            width: 100%;
+            text-align: center;
+        }
+
+        .post-button:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .coming-soon .post-button {
+            background: var(--bg-tertiary);
+            cursor: not-allowed;
+        }
+
+        .coming-soon .post-button:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Resources Section - for GSoC CTA */
+        .resources-section {
+            padding: 60px 0;
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            margin: 60px 0;
+        }
+
+        .resources-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        .resource-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .resource-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--accent-purple);
+        }
+
+        .resource-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .resource-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--text-primary);
+        }
+
+        .resource-description {
+            color: var(--text-secondary);
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+
+        .resource-button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: var(--gradient-3);
+            color: var(--text-primary);
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .resource-button:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            padding: 40px 0;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .footer a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 36px;
+            }
+
+            .hero p {
+                font-size: 18px;
+            }
+
+            .nav-tabs {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .blog-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .resources-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <a href="/" class="logo">E-Skimming Labs</a>
+                <nav class="nav-tabs">
+                    <a href="/" class="nav-tab">Home</a>
+                    <a href="/mitre-attack" class="nav-tab">MITRE ATT&CK</a>
+                    <a href="/threat-model" class="nav-tab">Threat Model</a>
+                    <a href="/blog" class="nav-tab active">Blog</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <h1>Blog</h1>
+                <p>Insights, tutorials, and research on e-skimming attacks, detection techniques, and defense strategies
+                </p>
+            </div>
+        </section>
+
+        <section class="blog-section">
+            <div class="container">
+                <h2 class="section-title">Latest Articles</h2>
+                <p class="section-subtitle">Explore our technical writeups and security research on payment card
+                    skimming attacks.</p>
+
+                <div class="blog-grid">
+                    <article class="blog-card featured">
+                        <div class="post-meta">
+                            <span class="post-date">February 5, 2026</span>
+                            <span class="post-tag">Lab Writeup</span>
+                        </div>
+                        <h3 class="post-title">Understanding Magecart: How E-Skimming Attacks Steal Payment Data</h3>
+                        <p class="post-excerpt">Dive deep into the mechanics of Magecart-style attacks with our Lab 1
+                            walkthrough. Learn how attackers inject malicious JavaScript to intercept payment form data,
+                            understand the exfiltration techniques used, and discover effective detection and prevention
+                            strategies.</p>
+                        <a href="/blog/understanding-magecart" class="post-button">Read Article</a>
+                    </article>
+
+                    <article class="blog-card coming-soon">
+                        <div class="post-meta">
+                            <span class="post-date">Coming Soon</span>
+                            <span class="post-tag">Detection</span>
+                        </div>
+                        <h3 class="post-title">DOM-Based Skimming: Advanced Attack Techniques</h3>
+                        <p class="post-excerpt">Explore sophisticated DOM manipulation techniques used by modern
+                            e-skimming attacks. Learn about MutationObserver abuse, Shadow DOM attacks, and how to
+                            detect real-time field monitoring.</p>
+                        <span class="post-button">Coming Soon</span>
+                    </article>
+
+                    <article class="blog-card coming-soon">
+                        <div class="post-meta">
+                            <span class="post-date">Coming Soon</span>
+                            <span class="post-tag">Research</span>
+                        </div>
+                        <h3 class="post-title">Supply Chain Attacks: When Trusted Scripts Go Rogue</h3>
+                        <p class="post-excerpt">Analyze third-party script compromises and how they enable large-scale
+                            skimming campaigns. Understand the Ticketmaster, British Airways, and other major breaches.
+                        </p>
+                        <span class="post-button">Coming Soon</span>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="resources-section">
+            <div class="container">
+                <h2 class="section-title">Contribute to E-Skimming Labs</h2>
+                <p class="section-subtitle">Join our community and help advance e-skimming research and defense.</p>
+
+                <div class="resources-grid">
+                    <div class="resource-card">
+                        <div class="resource-icon">🎓</div>
+                        <h3 class="resource-title">Google Summer of Code</h3>
+                        <p class="resource-description">We're participating in GSoC! Create new attack labs, build
+                            detection tools, or develop ML-based detection engines.</p>
+                        <a href="https://github.com/pci-tamper-protect/e-skimming-labs/blob/stg/docs/GOOGLE_SUMMER_OF_CODE_IDEAS.md"
+                            class="resource-button" target="_blank">View Ideas</a>
+                    </div>
+
+                    <div class="resource-card">
+                        <div class="resource-icon">🔬</div>
+                        <h3 class="resource-title">Try the Labs</h3>
+                        <p class="resource-description">Get hands-on experience with real e-skimming attack techniques
+                            in our interactive lab environment.</p>
+                        <a href="/" class="resource-button">Explore Labs</a>
+                    </div>
+
+                    <div class="resource-card">
+                        <div class="resource-icon">💻</div>
+                        <h3 class="resource-title">GitHub Repository</h3>
+                        <p class="resource-description">View our source code, submit issues, and contribute to the
+                            project on GitHub.</p>
+                        <a href="https://github.com/pci-tamper-protect/e-skimming-labs" class="resource-button"
+                            target="_blank">View on GitHub</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>© 2026 E-Skimming Labs. Part of <a href="https://pcioasis.com">PCI Oasis</a> cybersecurity training
+                platform.</p>
+        </div>
+    </footer>
+</body>
+
+</html>
