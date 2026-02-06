@@ -382,6 +382,15 @@ func main() {
 		serveLabWriteup(w, r, "03-extension-hijacking", homeData, authValidator)
 	})
 
+	// Blog routes
+	mux.HandleFunc("/blog", func(w http.ResponseWriter, r *http.Request) {
+		serveBlogPage(w, r, homeData, authValidator)
+	})
+
+	mux.HandleFunc("/blog/understanding-magecart", func(w http.ResponseWriter, r *http.Request) {
+		serveBlogPost(w, r, "understanding-magecart", homeData, authValidator)
+	})
+
 	mux.HandleFunc("/api/labs", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(labs)
@@ -1433,6 +1442,99 @@ func serveThreatModelPage(w http.ResponseWriter, r *http.Request, homeData HomeP
 
 	// Inject auth buttons into the HTML (Threat Model is public, so authRequired=false)
 	htmlStr := string(threatModelHTML)
+	htmlStr = injectAuthButtons(htmlStr, homeData, false)
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write([]byte(htmlStr))
+}
+
+// serveBlogPage serves the blog landing page
+func serveBlogPage(w http.ResponseWriter, r *http.Request, homeData HomePageData, validator *auth.TokenValidator) {
+	// Try multiple paths for local development and container environments
+	paths := []string{
+		"/app/blog-preview.html",        // Container path
+		"blog-preview.html",             // Local dev from service directory
+		"../../deploy/shared-components/home-index-service/blog-preview.html", // Local dev from root
+	}
+
+	var blogHTML []byte
+	var err error
+
+	for _, path := range paths {
+		blogHTML, err = os.ReadFile(path)
+		if err == nil {
+			log.Printf("Served Blog page from: %s", path)
+			break
+		}
+	}
+
+	if err != nil {
+		log.Printf("Failed to read Blog page from all paths: %v", err)
+		http.Error(w, "Blog page not found", http.StatusNotFound)
+		return
+	}
+
+	// Get user info if authenticated
+	userInfo := auth.GetUserInfo(r)
+	if userInfo != nil {
+		homeData.UserEmail = userInfo.Email
+		homeData.UserID = userInfo.UserID
+	}
+
+	// Inject auth buttons into the HTML (Blog is public, so authRequired=false)
+	htmlStr := string(blogHTML)
+	htmlStr = injectAuthButtons(htmlStr, homeData, false)
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write([]byte(htmlStr))
+}
+
+// serveBlogPost serves individual blog posts
+func serveBlogPost(w http.ResponseWriter, r *http.Request, postID string, homeData HomePageData, validator *auth.TokenValidator) {
+	// Map post IDs to file names
+	postFiles := map[string]string{
+		"understanding-magecart": "blog-post-preview.html",
+	}
+
+	filename, exists := postFiles[postID]
+	if !exists {
+		http.Error(w, "Blog post not found", http.StatusNotFound)
+		return
+	}
+
+	// Try multiple paths for local development and container environments
+	paths := []string{
+		fmt.Sprintf("/app/%s", filename),        // Container path
+		filename,                                 // Local dev from service directory
+		fmt.Sprintf("../../deploy/shared-components/home-index-service/%s", filename), // Local dev from root
+	}
+
+	var postHTML []byte
+	var err error
+
+	for _, path := range paths {
+		postHTML, err = os.ReadFile(path)
+		if err == nil {
+			log.Printf("Served Blog post '%s' from: %s", postID, path)
+			break
+		}
+	}
+
+	if err != nil {
+		log.Printf("Failed to read Blog post '%s' from all paths: %v", postID, err)
+		http.Error(w, "Blog post not found", http.StatusNotFound)
+		return
+	}
+
+	// Get user info if authenticated
+	userInfo := auth.GetUserInfo(r)
+	if userInfo != nil {
+		homeData.UserEmail = userInfo.Email
+		homeData.UserID = userInfo.UserID
+	}
+
+	// Inject auth buttons into the HTML (Blog posts are public, so authRequired=false)
+	htmlStr := string(postHTML)
 	htmlStr = injectAuthButtons(htmlStr, homeData, false)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
