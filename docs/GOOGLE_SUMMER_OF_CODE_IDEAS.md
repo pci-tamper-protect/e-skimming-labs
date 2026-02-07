@@ -1,4 +1,4 @@
-# Google Summer of Code 2025 - Project Ideas
+# Google Summer of Code 2026 - Project Ideas
 
 Welcome to the E-Skimming Labs GSoC project ideas! We're excited to mentor students working on payment security research and education.
 
@@ -111,7 +111,7 @@ E-Skimming Labs is an educational platform for learning about payment card skimm
 ## How to Apply
 
 1. **Join our community** - Star the repo and join discussions
-2. **Explore the labs** - Try all three labs at [labs.pcioasis.com](https://labs.pcioasis.com)
+2. **Explore the labs** - Try the available labs at [labs.pcioasis.com](https://labs.pcioasis.com)
 3. **Read the codebase** - Understand the architecture and deployment
 4. **Start contributing** - Look for "good first issue" labels
 5. **Reach out** - Contact mentors with your proposal draft
