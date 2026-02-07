@@ -109,7 +109,10 @@
       "Bash(go mod tidy:*)",
       "Bash(./test-e2e.sh:*)",
       "Bash(docker run:*)",
-      "Bash(trufflehog git:*)"
+      "Bash(trufflehog git:*)",
+      "Bash(docker compose ps:*)",
+      "Bash(docker compose logs:*)",
+      "Bash(docker compose up:*)"
     ],
     "deny": [],
     "ask": []

@@ -57,7 +57,7 @@ async function testLab2() {
 
     // Update the port in the attack script to match our server
     const domMonitorCode = (
-      await fs.readFile(path.join(__dirname, 'malicious-code/dom-monitor.js'), 'utf8')
+      await fs.readFile(path.join(__dirname, 'vulnerable-site/malicious-code/dom-monitor.js'), 'utf8')
     ).replace('http://localhost:9004/collect', 'http://localhost:9004/collect')
 
     // Inject the attack script
@@ -94,7 +94,7 @@ async function testLab2() {
     console.log('\n🎭 Testing Form Overlay Attack...')
 
     const formOverlayCode = (
-      await fs.readFile(path.join(__dirname, 'malicious-code/form-overlay.js'), 'utf8')
+      await fs.readFile(path.join(__dirname, 'vulnerable-site/malicious-code/form-overlay.js'), 'utf8')
     ).replace('http://localhost:9004/collect', 'http://localhost:9004/collect')
 
     await page.evaluate(formOverlayCode)
@@ -104,7 +104,7 @@ async function testLab2() {
     console.log('\n👻 Testing Shadow DOM Attack...')
 
     const shadowSkimmerCode = (
-      await fs.readFile(path.join(__dirname, 'malicious-code/shadow-skimmer.js'), 'utf8')
+      await fs.readFile(path.join(__dirname, 'vulnerable-site/malicious-code/shadow-skimmer.js'), 'utf8')
     ).replace('http://localhost:9004/collect', 'http://localhost:9004/collect')
 
     await page.evaluate(shadowSkimmerCode)

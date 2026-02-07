@@ -44,8 +44,7 @@ dist/
 *.tmp
 
 # Analysis and stolen data (runtime data)
-malicious-code/analysis/
-malicious-code/stolen-data/
+# Note: malicious-code/ now lives under vulnerable-site/
 
 # Docker
 Dockerfile*
