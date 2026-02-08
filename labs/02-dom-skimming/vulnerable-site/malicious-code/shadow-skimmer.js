@@ -159,7 +159,7 @@
       document.documentElement.appendChild(shadowHost)
     }
 
-    const shadowId = 'shadow_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+    const shadowId = 'shadow_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11)
     shadowHosts.set(shadowId, {
       host: shadowHost,
       root: shadowRoot,
@@ -491,7 +491,7 @@
     const name = element.name || 'no-name'
     const type = element.type || 'no-type'
     const timestamp = Date.now()
-    const random = Math.random().toString(36).substr(2, 5)
+    const random = Math.random().toString(36).substring(2, 7)
     return `shadow_${tagName}_${id}_${name}_${type}_${timestamp}_${random}`
   }
 
@@ -639,8 +639,7 @@
         configurable: false
       })
 
-      // Hide from querySelectorAll
-      const originalMatches = host.matches
+      // Hide from querySelectorAll (override matches to always return false)
       host.matches = function () {
         return false
       }

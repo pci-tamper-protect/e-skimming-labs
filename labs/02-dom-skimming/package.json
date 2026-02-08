@@ -2,10 +2,10 @@
   "name": "dom-skimming-lab",
   "version": "1.0.0",
   "description": "DOM-based skimming attack laboratory for security research and ML training",
-  "main": "malicious-code/c2-server.js",
+  "main": "c2-server/server.js",
   "scripts": {
-    "start": "node malicious-code/c2-server.js",
-    "dev": "nodemon malicious-code/c2-server.js",
+    "start": "node c2-server/server.js",
+    "dev": "nodemon c2-server/server.js",
     "serve": "python3 -m http.server 8080 --directory vulnerable-site",
     "test": "playwright test",
     "test:headed": "playwright test --headed",
@@ -13,7 +13,7 @@
     "test:dom-monitor": "playwright test test/tests/dom-monitor.spec.js",
     "test:form-overlay": "playwright test test/tests/form-overlay.spec.js",
     "test:shadow-skimmer": "playwright test test/tests/shadow-skimmer.spec.js",
-    "clean": "rm -rf malicious-code/stolen-data/* malicious-code/analysis/*",
+    "clean": "rm -rf c2-server/stolen-data/* c2-server/analysis/*",
     "demo": "concurrently \"npm run serve\" \"npm run start\" \"npm run test:headed\"",
     "setup": "npm install && npx playwright install"
   },

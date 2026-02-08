@@ -1,8 +1,9 @@
 version: '3.8'
 
-# Docker Compose automatically loads .env file from project root
-# For Firebase auth, use: ./deploy/docker-compose-auth.sh up
-# Or set FIREBASE_* environment variables before running docker-compose
+# Runs without auth by default. For Firebase auth locally, use:
+#   ./deploy/docker-compose-auth.sh up
+#   or: docker compose -f docker-compose.yml -f docker-compose.auth.yml up
+# Docker Compose automatically loads .env from project root.
 
 services:
   # =============================================================================
@@ -82,6 +83,7 @@ services:
       - "traefik.http.routers.home-index.priority=50"
       - "traefik.http.routers.home-index.entrypoints=web"
       - "traefik.http.services.home-index.loadbalancer.server.port=8080"
+      - "traefik.http.routers.home-index.service=home-index"
       # Sign-in route with COOP headers for Firebase popup
       - "traefik.http.routers.home-index-signin.rule=Path(`/sign-in`) || Path(`/sign-up`)"
       - "traefik.http.routers.home-index-signin.priority=100"
@@ -190,6 +192,7 @@ services:
       - "traefik.http.routers.lab1.priority=200"
       - "traefik.http.routers.lab1.entrypoints=web"
       - "traefik.http.routers.lab1.middlewares=lab1-auth-check@file,strip-lab1-prefix@file"
+      - "traefik.http.routers.lab1.service=lab1"
       - "traefik.http.services.lab1.loadbalancer.server.port=80"
 
   # Lab 1 - C2 Server (Data Collection)
@@ -223,6 +226,9 @@ services:
   lab2-vulnerable-site:
     build: ./labs/02-dom-skimming/vulnerable-site
     container_name: lab2-securebank
+    environment:
+      - LAB2_VARIANT=${LAB2_VARIANT:-}
+      - LAB2_VARIANT_DEFAULT=${LAB2_VARIANT_DEFAULT:-dom-monitor}
     networks:
       - labs-network
     depends_on:
@@ -242,18 +248,17 @@ services:
       - "traefik.http.routers.lab2-main.priority=200"
       - "traefik.http.routers.lab2-main.entrypoints=web"
       - "traefik.http.routers.lab2-main.middlewares=lab2-auth-check@file,strip-lab2-prefix@file"
+      - "traefik.http.routers.lab2-main.service=lab2-vulnerable-site"
       - "traefik.http.services.lab2-vulnerable-site.loadbalancer.server.port=80"
 
   # Lab 2 - C2 Server (DOM Skimming Data Collection)
   lab2-c2-server:
-    build:
-      context: ./labs/02-dom-skimming
-      dockerfile: Dockerfile.c2
+    build: ./labs/02-dom-skimming/c2-server
     container_name: lab2-dom-c2-server
     networks:
       - labs-network
     volumes:
-      - ./labs/02-dom-skimming/malicious-code/stolen-data:/app/stolen-data
+      - ./labs/02-dom-skimming/c2-server/stolen-data:/app/stolen-data
     environment:
       - NODE_ENV=development
       - PORT=3000
@@ -302,6 +307,7 @@ services:
       - "traefik.http.routers.lab3-main.priority=200"
       - "traefik.http.routers.lab3-main.entrypoints=web"
       - "traefik.http.routers.lab3-main.middlewares=lab3-auth-check@file,strip-lab3-prefix@file"
+      - "traefik.http.routers.lab3-main.service=lab3-vulnerable-site"
       - "traefik.http.services.lab3-vulnerable-site.loadbalancer.server.port=80"
 
   # Lab 3 - Extension Data Server
