@@ -287,7 +287,7 @@ For more deployment options see [deploy/DEPLOYMENT_GUIDE.md](deploy/DEPLOYMENT_G
 git clone https://github.com/pci-tamper-protect/e-skimming-labs.git
 cd e-skimming-labs
 
-docker-compose up -d
+docker compose up -d
 
 ```
 Visit http://localhost:8080 to see the vulnerable site

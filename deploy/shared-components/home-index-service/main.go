@@ -596,16 +596,35 @@ func main() {
 		// Build absolute URL for redirects - ForwardAuth resolves relative URLs against its own address
 		// which causes browser to redirect to internal hostname (e.g., home-index:8080) instead of public hostname
 		buildRedirectURL := func(path string) string {
+			// Prefer an explicit public base URL if configured (e.g., https://labs.example.com)
+			if publicBase := os.Getenv("PUBLIC_BASE_URL"); publicBase != "" {
+				if u, err := url.Parse(publicBase); err == nil && u.Scheme != "" && u.Host != "" {
+					return fmt.Sprintf("%s://%s%s", u.Scheme, u.Host, path)
+				}
+			}
+
 			scheme := "http"
-			if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+			// X-Forwarded-Proto can be comma-separated (e.g., "https,http"); use the first value
+			if xfProto := r.Header.Get("X-Forwarded-Proto"); xfProto != "" {
+				firstProto := strings.TrimSpace(strings.SplitN(xfProto, ",", 2)[0])
+				if strings.EqualFold(firstProto, "https") {
+					scheme = "https"
+				}
+			} else if r.TLS != nil {
 				scheme = "https"
 			}
-			// Get public hostname from X-Forwarded-Host
+
+			// Prefer X-Forwarded-Host when present, but fall back to r.Host
 			host := r.Header.Get("X-Forwarded-Host")
+			if host == "" {
+				host = r.Host
+			}
+
 			environment := os.Getenv("ENVIRONMENT")
-			if host == "" || environment == "local" {
-				// In local environment, always use localhost:8080
-				// X-Forwarded-Host might be empty or set to internal hostname
+			// Treat hosts without a dot (e.g., "home-index:8080") as internal/invalid for redirects
+			isLikelyInternalHost := !strings.Contains(host, ".")
+			if environment == "local" || isLikelyInternalHost {
+				// In local environment, or when we detect an internal hostname, use localhost:8080
 				host = "localhost:8080"
 			}
 			return fmt.Sprintf("%s://%s%s", scheme, host, path)

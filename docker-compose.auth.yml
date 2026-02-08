@@ -14,10 +14,11 @@ version: '3.8'
 #   2. Overrides empty auth stubs with real ForwardAuth middlewares
 #
 # Auth behavior:
-#   - NO auth required: / (home), /mitre-attack, /threat-model
-#   - Auth REQUIRED: /lab1, /lab2, /lab3, /lab-*-writeup, C2 endpoints
+#   - NO auth required: / (home), /mitre-attack, /threat-model, /lab*/c2/collect
+#   - Auth REQUIRED: /lab1, /lab2, /lab3, /lab-*-writeup, C2 dashboard (except /lab*/c2/collect)
 #
 # The base docker-compose.yml runs without authentication (uses empty auth stubs).
+# It also defines the public /lab*/c2/collect routes that bypass auth.
 
 services:
   # Traefik - Override auth stubs with real ForwardAuth middlewares
