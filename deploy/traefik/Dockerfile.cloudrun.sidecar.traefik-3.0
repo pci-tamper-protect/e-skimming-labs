@@ -17,6 +17,9 @@ RUN mkdir -p /etc/traefik/dynamic /shared/traefik/dynamic
 COPY traefik.cloudrun.sidecar.traefik-3.0.yml /etc/traefik/traefik.yml
 # Copy static middlewares file - these are referenced by provider-generated routes
 # The provider generates routes.yml with routers/services, this file provides middlewares
+# NOTE: We intentionally do NOT copy local-auth-stubs.yml - those empty auth chains
+# are only for local development. In Cloud Run, real auth middlewares are generated
+# by the provider or defined in production config.
 COPY dynamic/routes.yml /etc/traefik/dynamic/middlewares.yml
 # Ensure config file is readable
 RUN chmod 644 /etc/traefik/traefik.yml && \
