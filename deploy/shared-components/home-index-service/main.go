@@ -593,13 +593,31 @@ func main() {
 			acceptHeader == "" ||
 			strings.Contains(acceptHeader, "*/*")
 
+		// Build absolute URL for redirects - ForwardAuth resolves relative URLs against its own address
+		// which causes browser to redirect to internal hostname (e.g., home-index:8080) instead of public hostname
+		buildRedirectURL := func(path string) string {
+			scheme := "http"
+			if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+				scheme = "https"
+			}
+			// Get public hostname from X-Forwarded-Host
+			host := r.Header.Get("X-Forwarded-Host")
+			environment := os.Getenv("ENVIRONMENT")
+			if host == "" || environment == "local" {
+				// In local environment, always use localhost:8080
+				// X-Forwarded-Host might be empty or set to internal hostname
+				host = "localhost:8080"
+			}
+			return fmt.Sprintf("%s://%s%s", scheme, host, path)
+		}
+
 		if token == "" {
 			// No token provided
 			if isBrowserRequest {
-				// Redirect browser requests to sign-in
-				// Always use relative URL - Traefik handles routing
-				redirectURL := fmt.Sprintf("/sign-in?redirect=%s", originalURI)
-				log.Printf("🔗 Redirecting to: %s (relative URL, Traefik routes)", sanitizeForLog(redirectURL, 200))
+				// Redirect browser requests to sign-in using absolute URL
+				redirectPath := fmt.Sprintf("/sign-in?redirect=%s", url.QueryEscape(originalURI))
+				redirectURL := buildRedirectURL(redirectPath)
+				log.Printf("🔗 Redirecting to: %s (absolute URL for ForwardAuth)", sanitizeForLog(redirectURL, 200))
 				w.Header().Set("Location", redirectURL)
 				w.WriteHeader(http.StatusFound)
 				return
@@ -613,10 +631,10 @@ func main() {
 		userInfo, err := authValidator.ValidateToken(r.Context(), token)
 		if err != nil || userInfo == nil {
 			if isBrowserRequest {
-				// Redirect browser requests to sign-in
-				// Always use relative URL - Traefik handles routing
-				redirectURL := fmt.Sprintf("/sign-in?redirect=%s", originalURI)
-				log.Printf("🔗 Redirecting to: %s (relative URL, Traefik routes)", sanitizeForLog(redirectURL, 200))
+				// Redirect browser requests to sign-in using absolute URL
+				redirectPath := fmt.Sprintf("/sign-in?redirect=%s", url.QueryEscape(originalURI))
+				redirectURL := buildRedirectURL(redirectPath)
+				log.Printf("🔗 Redirecting to: %s (absolute URL for ForwardAuth)", sanitizeForLog(redirectURL, 200))
 				w.Header().Set("Location", redirectURL)
 				w.WriteHeader(http.StatusFound)
 				return
