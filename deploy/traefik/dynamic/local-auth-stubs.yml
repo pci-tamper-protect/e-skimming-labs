@@ -23,3 +23,8 @@ http:
     lab3-auth-check:
       chain:
         middlewares: []
+
+    # Lab 4 auth stub - no-op for local development
+    lab4-auth-check:
+      chain:
+        middlewares: []
