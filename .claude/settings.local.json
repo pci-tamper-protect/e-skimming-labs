@@ -120,7 +120,12 @@
       "Bash(gcloud auth print-access-token:*)",
       "Bash(for f in \"traefik.cloudrun.sidecar.traefik-3.0.yml\" \"dynamic/routes.yml\" \"entrypoint-sidecar.traefik-3.0.sh\" \"dashboard-entrypoint.sh\")",
       "Bash(if [ -f \"$f\" ])",
-      "Bash(else)"
+      "Bash(else)",
+      "Bash(./deploy/traefik/generate-lab-labels.sh:*)",
+      "Bash(source:*)",
+      "Bash(get_lab_labels:*)",
+      "Bash(get_lab_labels \"lab1-c2-server\")",
+      "Bash(get_lab_labels \"lab2-vulnerable-site\")"
     ],
     "deny": [],
     "ask": []

@@ -78,6 +78,9 @@ echo ""
 
 cd "$REPO_ROOT"
 
+# Source generated Cloud Run labels (from docker-compose.yml)
+source "$SCRIPT_DIR/traefik/lab-labels.sh"
+
 # Authenticate to Artifact Registry
 echo "🔐 Authenticating to Artifact Registry..."
 gcloud auth configure-docker ${LABS_GAR_LOCATION}-docker.pkg.dev --quiet
@@ -139,7 +142,7 @@ deploy_analytics() {
     --max-instances=5 \
     --set-env-vars="PROJECT_ID=${LABS_PROJECT_ID},LABS_PROJECT_ID=${LABS_PROJECT_ID},ENVIRONMENT=${ENVIRONMENT},FIRESTORE_DATABASE=(default)" \
     --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
-    --labels="environment=${ENVIRONMENT},component=analytics,project=e-skimming-labs,traefik_enable=true,traefik_http_routers_labs-analytics_rule_id=labs-analytics,traefik_http_routers_labs-analytics_priority=500,traefik_http_routers_labs-analytics_entrypoints=web,traefik_http_routers_labs-analytics_middlewares=strip-analytics-prefix-file,traefik_http_services_labs-analytics_lb_port=8080"
+    --labels="environment=${ENVIRONMENT},component=analytics,project=e-skimming-labs,$(get_lab_labels labs-analytics)"
 
   echo "   ✅ Analytics service deployed"
 }
@@ -162,7 +165,7 @@ deploy_lab01() {
     "Dockerfile" \
     "$LAB1_C2_IMAGE"
 
-  LAB1_C2_TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab1-c2_rule_id=lab1-c2,traefik_http_routers_lab1-c2_priority=300,traefik_http_routers_lab1-c2_entrypoints=web,traefik_http_routers_lab1-c2_middlewares=strip-lab1-c2-prefix-file,traefik_http_routers_lab1-c2_service=lab1-c2-server,traefik_http_services_lab1-c2-server_lb_port=8080"
+  LAB1_C2_TRAEFIK_LABELS=$(get_lab_labels "lab1-c2-server")
 
   gcloud run deploy lab1-c2-${ENVIRONMENT} \
     --image="$LAB1_C2_IMAGE" \
@@ -191,7 +194,7 @@ deploy_lab01() {
     "Dockerfile" \
     "$LAB1_IMAGE"
 
-  TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab1-static_rule_id=lab1-static,traefik_http_routers_lab1-static_priority=250,traefik_http_routers_lab1-static_entrypoints=web,traefik_http_routers_lab1-static_middlewares=strip-lab1-prefix-file,traefik_http_routers_lab1-static_service=lab1,traefik_http_routers_lab1_rule_id=lab1,traefik_http_routers_lab1_priority=200,traefik_http_routers_lab1_entrypoints=web,traefik_http_routers_lab1_middlewares=lab1-auth-check-file__strip-lab1-prefix-file,traefik_http_routers_lab1_service=lab1,traefik_http_services_lab1_lb_port=8080"
+  TRAEFIK_LABELS=$(get_lab_labels "lab1-vulnerable-site")
 
   gcloud run deploy lab-01-basic-magecart-${ENVIRONMENT} \
     --image="$LAB1_IMAGE" \
@@ -230,7 +233,7 @@ deploy_lab02() {
     "Dockerfile" \
     "$LAB2_C2_IMAGE"
 
-  LAB2_C2_TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab2-c2_rule_id=lab2-c2,traefik_http_routers_lab2-c2_priority=300,traefik_http_routers_lab2-c2_entrypoints=web,traefik_http_routers_lab2-c2_middlewares=strip-lab2-c2-prefix-file,traefik_http_routers_lab2-c2_service=lab2-c2-server,traefik_http_services_lab2-c2-server_lb_port=8080"
+  LAB2_C2_TRAEFIK_LABELS=$(get_lab_labels "lab2-c2-server")
 
   gcloud run deploy lab2-c2-${ENVIRONMENT} \
     --image="$LAB2_C2_IMAGE" \
@@ -259,7 +262,7 @@ deploy_lab02() {
     "Dockerfile" \
     "$LAB2_IMAGE"
 
-  TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab2-static_rule_id=lab2-static,traefik_http_routers_lab2-static_priority=250,traefik_http_routers_lab2-static_entrypoints=web,traefik_http_routers_lab2-static_middlewares=strip-lab2-prefix-file,traefik_http_routers_lab2-static_service=lab2-vulnerable-site,traefik_http_routers_lab2-main_rule_id=lab2,traefik_http_routers_lab2-main_priority=200,traefik_http_routers_lab2-main_entrypoints=web,traefik_http_routers_lab2-main_middlewares=lab2-auth-check-file__strip-lab2-prefix-file,traefik_http_services_lab2-vulnerable-site_lb_port=8080"
+  TRAEFIK_LABELS=$(get_lab_labels "lab2-vulnerable-site")
 
   gcloud run deploy lab-02-dom-skimming-${ENVIRONMENT} \
     --image="$LAB2_IMAGE" \
@@ -298,7 +301,7 @@ deploy_lab03() {
     "Dockerfile" \
     "$LAB3_EXT_IMAGE"
 
-  LAB3_EXT_TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab3-extension_rule_id=lab3-extension,traefik_http_routers_lab3-extension_priority=300,traefik_http_routers_lab3-extension_entrypoints=web,traefik_http_routers_lab3-extension_middlewares=strip-lab3-extension-prefix-file,traefik_http_routers_lab3-extension_service=lab3-extension-server,traefik_http_services_lab3-extension-server_lb_port=8080"
+  LAB3_EXT_TRAEFIK_LABELS=$(get_lab_labels "lab3-extension-server")
 
   gcloud run deploy lab3-extension-${ENVIRONMENT} \
     --image="$LAB3_EXT_IMAGE" \
@@ -327,7 +330,7 @@ deploy_lab03() {
     "Dockerfile" \
     "$LAB3_IMAGE"
 
-  TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab3-static_rule_id=lab3-static,traefik_http_routers_lab3-static_priority=250,traefik_http_routers_lab3-static_entrypoints=web,traefik_http_routers_lab3-static_middlewares=strip-lab3-prefix-file,traefik_http_routers_lab3-static_service=lab3-vulnerable-site,traefik_http_routers_lab3-main_rule_id=lab3,traefik_http_routers_lab3-main_priority=200,traefik_http_routers_lab3-main_entrypoints=web,traefik_http_routers_lab3-main_middlewares=lab3-auth-check-file__strip-lab3-prefix-file,traefik_http_services_lab3-vulnerable-site_lb_port=8080"
+  TRAEFIK_LABELS=$(get_lab_labels "lab3-vulnerable-site")
 
   gcloud run deploy lab-03-extension-hijacking-${ENVIRONMENT} \
     --image="$LAB3_IMAGE" \
@@ -366,6 +369,7 @@ deploy_lab04() {
     "Dockerfile" \
     "$LAB4_IMAGE"
 
+  # Lab 4 is not yet in docker-compose.yml; labels are hardcoded until it's added
   TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab4-static_rule_id=lab4-static,traefik_http_routers_lab4-static_priority=250,traefik_http_routers_lab4-static_entrypoints=web,traefik_http_routers_lab4-static_middlewares=strip-lab4-prefix-file,traefik_http_routers_lab4-static_service=lab4,traefik_http_routers_lab4_rule_id=lab4,traefik_http_routers_lab4_priority=200,traefik_http_routers_lab4_entrypoints=web,traefik_http_routers_lab4_middlewares=lab4-auth-check-file__strip-lab4-prefix-file,traefik_http_routers_lab4_service=lab4,traefik_http_services_lab4_lb_port=8080"
 
   gcloud run deploy lab-04-steganography-favicon-${ENVIRONMENT} \
