@@ -287,13 +287,19 @@ gcloud run services logs read traefik-dashboard-stg \
 
 ## Migration from Plugin Architecture
 
-To migrate from the plugin-based architecture:
+Migration to sidecar is complete. The plugin code in `plugins-local/` is retained
+for reference but is not used in deployments.
 
-1. **Build new images**: Use sidecar Dockerfiles
-2. **Update deployment**: Use `deploy-sidecar.sh` or `cloudrun-sidecar.yaml`
-3. **Verify routes**: Check that `routes.yml` is generated correctly
-4. **Test dashboard**: Verify dashboard is accessible
-5. **Monitor**: Watch logs for any issues
+**What changed:**
+- `deploy.sh` now wraps `deploy-sidecar-traefik-3.0.sh` (was the legacy plugin deploy)
+- Legacy plugin deploy renamed to `deploy-plugin-v2.sh`
+- `plugins-local/vendor/` is gitignored (run `go mod vendor` to restore if needed)
+- Provider runs as a compiled sidecar binary instead of being interpreted by Yaegi
+
+**Why we moved away from plugins:**
+Traefik local plugins use Yaegi (a Go interpreter). Yaegi cannot handle the GCP Go SDK
+due to library conflicts (grpc panics, unsupported reflection patterns). The sidecar
+approach compiles the provider to a native binary, avoiding Yaegi entirely.
 
 ## User Authentication
 

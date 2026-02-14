@@ -1,4 +1,10 @@
-# Traefik Cloud Run Plugin Migration
+# Traefik Cloud Run Plugin Migration (Superseded)
+
+> **Status: SUPERSEDED by sidecar architecture.**
+> The plugin approach using Yaegi failed due to GCP SDK library conflicts
+> (grpc panics, unsupported reflection). See [SIDECAR_ARCHITECTURE.md](./SIDECAR_ARCHITECTURE.md)
+> for the current deployment approach. This document is retained for historical reference.
+> The plugin source in `plugins-local/` is kept but its `vendor/` directory is gitignored.
 
 ## Overview
 
