@@ -112,7 +112,15 @@
       "Bash(trufflehog git:*)",
       "Bash(docker compose ps:*)",
       "Bash(docker compose logs:*)",
-      "Bash(docker compose up:*)"
+      "Bash(docker compose up:*)",
+      "Bash(gcloud auth print-identity-token:*)",
+      "Bash(gcloud version:*)",
+      "Bash(gcloud auth list:*)",
+      "Bash(kill:*)",
+      "Bash(gcloud auth print-access-token:*)",
+      "Bash(for f in \"traefik.cloudrun.sidecar.traefik-3.0.yml\" \"dynamic/routes.yml\" \"entrypoint-sidecar.traefik-3.0.sh\" \"dashboard-entrypoint.sh\")",
+      "Bash(if [ -f \"$f\" ])",
+      "Bash(else)"
     ],
     "deny": [],
     "ask": []

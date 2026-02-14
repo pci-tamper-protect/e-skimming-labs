@@ -11,15 +11,18 @@ import (
 	"time"
 
 	"google.golang.org/api/idtoken"
+	"google.golang.org/api/impersonate"
 )
 
 // TokenManager manages GCP identity tokens with caching and refresh
 type TokenManager struct {
-	cache           map[string]*CachedToken
-	mu              sync.RWMutex
-	devMode         bool // Use ADC in local development
-	metadataChecked bool // Have we checked if metadata server is available?
-	hasMetadata     bool // Is metadata server available?
+	cache                    map[string]*CachedToken
+	mu                       sync.RWMutex
+	devMode                  bool          // Use ADC in local development
+	metadataChecked          bool          // Have we checked if metadata server is available?
+	hasMetadata              bool          // Is metadata server available?
+	impersonateServiceAccount string       // Service account to impersonate for identity tokens
+	tokenCacheDuration       time.Duration // How long to cache tokens (default 55 minutes)
 }
 
 // CachedToken represents a cached identity token with expiry
@@ -34,9 +37,23 @@ func NewTokenManager() *TokenManager {
 	devMode := os.Getenv("CLOUDRUN_PROVIDER_DEV_MODE") == "true" ||
 		os.Getenv("K_SERVICE") == "" // K_SERVICE is set in Cloud Run
 
+	// Check for service account impersonation (for local development with user credentials)
+	impersonateSA := os.Getenv("IMPERSONATE_SERVICE_ACCOUNT")
+
+	// Token cache duration - default 55 minutes (tokens expire after 1 hour)
+	// Can be overridden with TOKEN_CACHE_DURATION env var (e.g., "25m" for 25 minutes)
+	cacheDuration := 55 * time.Minute
+	if durationStr := os.Getenv("TOKEN_CACHE_DURATION"); durationStr != "" {
+		if d, err := time.ParseDuration(durationStr); err == nil {
+			cacheDuration = d
+		}
+	}
+
 	return &TokenManager{
-		cache:   make(map[string]*CachedToken),
-		devMode: devMode,
+		cache:                    make(map[string]*CachedToken),
+		devMode:                  devMode,
+		impersonateServiceAccount: impersonateSA,
+		tokenCacheDuration:       cacheDuration,
 	}
 }
 
@@ -93,12 +110,12 @@ func (tm *TokenManager) GetToken(audience string) (string, error) {
 		return "", fmt.Errorf("metadata server not available and dev mode disabled")
 	}
 
-	// Cache token (GCP tokens expire after 1 hour)
-	// Refresh 5 minutes before expiry to avoid edge cases
+	// Cache token using configured duration
+	// Default is 55 minutes (GCP tokens expire after 1 hour)
 	tm.mu.Lock()
 	tm.cache[audience] = &CachedToken{
 		Token:     token,
-		ExpiresAt: time.Now().Add(55 * time.Minute),
+		ExpiresAt: time.Now().Add(tm.tokenCacheDuration),
 	}
 	tm.mu.Unlock()
 
@@ -148,12 +165,32 @@ func (tm *TokenManager) fetchFromMetadata(audience string) (string, error) {
 
 // fetchFromADC fetches an identity token using Application Default Credentials
 // This is used for local development when metadata server is not available
+//
+// If IMPERSONATE_SERVICE_ACCOUNT is set, it will impersonate that service account
+// to generate identity tokens. This is required when using user credentials
+// (from 'gcloud auth application-default login') because user credentials cannot
+// directly generate identity tokens - only service accounts can.
 func (tm *TokenManager) fetchFromADC(audience string) (string, error) {
 	ctx := context.Background()
 
-	// Use idtoken package to create token source with ADC
+	// If impersonation is configured, use it to generate identity tokens
+	// This is required for local development with user credentials
+	if tm.impersonateServiceAccount != "" {
+		return tm.fetchWithImpersonation(ctx, audience)
+	}
+
+	// Try direct ADC (only works with service account credentials, not user credentials)
 	tokenSource, err := idtoken.NewTokenSource(ctx, audience)
 	if err != nil {
+		// Check if it's the "unsupported credentials type" error
+		if strings.Contains(err.Error(), "unsupported credentials type") ||
+			strings.Contains(err.Error(), "authorized_user") {
+			return "", fmt.Errorf("failed to create token source with ADC: %w\n"+
+				"  HINT: User credentials cannot generate identity tokens directly.\n"+
+				"  Set IMPERSONATE_SERVICE_ACCOUNT=<service-account>@<project>.iam.gserviceaccount.com\n"+
+				"  to impersonate a service account that can generate identity tokens.\n"+
+				"  Your user account needs 'Service Account Token Creator' role on that SA.", err)
+		}
 		return "", fmt.Errorf("failed to create token source with ADC (did you run 'gcloud auth application-default login'?): %w", err)
 	}
 
@@ -164,6 +201,39 @@ func (tm *TokenManager) fetchFromADC(audience string) (string, error) {
 
 	if token.AccessToken == "" {
 		return "", fmt.Errorf("ADC returned empty token")
+	}
+
+	return token.AccessToken, nil
+}
+
+// fetchWithImpersonation fetches an identity token by impersonating a service account
+// This allows user credentials to generate identity tokens for Cloud Run services
+func (tm *TokenManager) fetchWithImpersonation(ctx context.Context, audience string) (string, error) {
+	// Create impersonated credentials config for ID token
+	// The impersonate.IDTokenSource automatically uses ADC as base credentials
+	idTokenConfig := impersonate.IDTokenConfig{
+		TargetPrincipal: tm.impersonateServiceAccount,
+		Audience:        audience,
+		IncludeEmail:    true,
+	}
+
+	// Create ID token source with impersonation
+	// This uses ADC (user credentials) to impersonate the service account
+	idTokenSource, err := impersonate.IDTokenSource(ctx, idTokenConfig)
+	if err != nil {
+		return "", fmt.Errorf("failed to create impersonated ID token source for %s: %w\n"+
+			"  HINT: Ensure your user account has 'Service Account Token Creator' role on %s",
+			tm.impersonateServiceAccount, err, tm.impersonateServiceAccount)
+	}
+
+	// Get the identity token
+	token, err := idTokenSource.Token()
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch impersonated identity token: %w", err)
+	}
+
+	if token.AccessToken == "" {
+		return "", fmt.Errorf("impersonation returned empty identity token")
 	}
 
 	return token.AccessToken, nil

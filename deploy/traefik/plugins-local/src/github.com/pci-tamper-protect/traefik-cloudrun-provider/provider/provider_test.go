@@ -177,9 +177,52 @@ func TestProcessService_WithValidLabels(t *testing.T) {
 		t.Error("Expected at least one service to be configured")
 	}
 
-	if len(dynamicConfig.HTTP.Middlewares) == 0 {
-		t.Error("Expected at least one middleware to be configured")
+	// Note: auth middleware is only created when a valid token is available.
+	// In test environment, token fetch fails so no middleware is expected.
+}
+
+func TestSetRuleMap(t *testing.T) {
+	// Reset ruleMap to empty
+	SetRuleMap(map[string]string{})
+
+	// Verify rule_id doesn't resolve without ruleMap
+	labels := map[string]string{
+		"traefik_http_routers_myrouter_rule_id": "lab1",
 	}
+	routers := extractRouterConfigs(labels, "test-svc")
+	if r, ok := routers["myrouter"]; ok && r.Rule != "" {
+		t.Error("Expected empty rule when ruleMap has no entry for lab1")
+	}
+
+	// Now set the ruleMap and verify rule_id resolves
+	SetRuleMap(map[string]string{
+		"lab1": "PathPrefix(`/lab1`)",
+	})
+	routers = extractRouterConfigs(labels, "test-svc")
+	if r, ok := routers["myrouter"]; !ok || r.Rule != "PathPrefix(`/lab1`)" {
+		t.Errorf("Expected rule_id=lab1 to resolve to PathPrefix(`/lab1`), got: %+v", routers)
+	}
+
+	// Clean up
+	SetRuleMap(map[string]string{})
+}
+
+func TestSetRuleMap_Nil(t *testing.T) {
+	// Set a non-empty ruleMap first
+	SetRuleMap(map[string]string{"test": "value"})
+	// Passing nil should not clear the map
+	SetRuleMap(nil)
+
+	labels := map[string]string{
+		"traefik_http_routers_r_rule_id": "test",
+	}
+	routers := extractRouterConfigs(labels, "svc")
+	if r, ok := routers["r"]; !ok || r.Rule != "value" {
+		t.Error("SetRuleMap(nil) should not clear existing ruleMap")
+	}
+
+	// Clean up
+	SetRuleMap(map[string]string{})
 }
 
 func TestDynamicConfig_AddRouter(t *testing.T) {
@@ -282,15 +325,9 @@ func TestDynamicConfig_AddAuthMiddleware_EmptyToken(t *testing.T) {
 
 	config.AddAuthMiddleware("test-auth", "")
 
-	middleware, ok := config.HTTP.Middlewares["test-auth"]
-	if !ok {
-		t.Fatal("Middleware not found in config")
-	}
-
-	// When token is empty, no X-Serverless-Authorization header should be set
-	// This allows the service to return 401 naturally
-	if len(middleware.Headers.CustomRequestHeaders) != 0 {
-		t.Errorf("Expected no custom headers for empty token, got %d", len(middleware.Headers.CustomRequestHeaders))
+	// When token is empty, middleware should not be created at all
+	if _, ok := config.HTTP.Middlewares["test-auth"]; ok {
+		t.Error("Expected no middleware to be created for empty token")
 	}
 }
 

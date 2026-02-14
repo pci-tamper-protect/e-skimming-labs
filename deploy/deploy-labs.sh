@@ -2,7 +2,7 @@
 # Deploy Labs Services to Cloud Run (gcloud only, no Terraform)
 # This script builds, pushes, and deploys lab services
 # Usage: ./deploy/deploy-labs.sh [stg|prd] [lab-number|all] [image-tag] [--force-rebuild]
-#        lab-number: 01, 02, 03, or "all" (default: all)
+#        lab-number: 01, 02, 03, 04, or "all" (default: all)
 #        If image-tag is not provided, uses current git SHA
 
 set -e
@@ -33,7 +33,7 @@ for arg in "$@"; do
     FORCE_REBUILD=true
   elif [ "$arg" = "stg" ] || [ "$arg" = "prd" ]; then
     ENVIRONMENT="$arg"
-  elif [ "$arg" = "01" ] || [ "$arg" = "02" ] || [ "$arg" = "03" ] || [ "$arg" = "all" ]; then
+  elif [ "$arg" = "01" ] || [ "$arg" = "02" ] || [ "$arg" = "03" ] || [ "$arg" = "04" ] || [ "$arg" = "all" ]; then
     LAB_NUMBER="$arg"
   elif [ -z "$IMAGE_TAG" ] && [ "$arg" != "--force-rebuild" ]; then
     IMAGE_TAG="$arg"
@@ -43,7 +43,7 @@ done
 # Require environment
 if [ -z "$ENVIRONMENT" ]; then
   echo "❌ Environment required: stg or prd"
-  echo "Usage: $0 [stg|prd] [01|02|03|all] [image-tag] [--force-rebuild]"
+  echo "Usage: $0 [stg|prd] [01|02|03|04|all] [image-tag] [--force-rebuild]"
   exit 1
 fi
 
@@ -226,8 +226,8 @@ deploy_lab02() {
 
   build_and_push \
     "lab2-c2-${ENVIRONMENT}" \
-    "labs/02-dom-skimming" \
-    "Dockerfile.c2" \
+    "labs/02-dom-skimming/c2-server" \
+    "Dockerfile" \
     "$LAB2_C2_IMAGE"
 
   LAB2_C2_TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab2-c2_rule_id=lab2-c2,traefik_http_routers_lab2-c2_priority=300,traefik_http_routers_lab2-c2_entrypoints=web,traefik_http_routers_lab2-c2_middlewares=strip-lab2-c2-prefix-file,traefik_http_routers_lab2-c2_service=lab2-c2-server,traefik_http_services_lab2-c2-server_lb_port=8080"
@@ -244,7 +244,7 @@ deploy_lab02() {
     --cpu=1 \
     --min-instances=0 \
     --max-instances=5 \
-    --set-env-vars="ENVIRONMENT=${ENVIRONMENT}" \
+    --set-env-vars="ENVIRONMENT=${ENVIRONMENT},C2_STANDALONE=true" \
     --labels="environment=${ENVIRONMENT},component=c2,lab=02-dom-skimming,project=e-skimming-labs,${LAB2_C2_TRAEFIK_LABELS}"
 
   echo "   ✅ Lab 2 C2 deployed"
@@ -349,11 +349,52 @@ deploy_lab03() {
 }
 
 # ============================================================================
+# LAB 4: Steganography Favicon
+# ============================================================================
+
+deploy_lab04() {
+  echo ""
+  echo "🔬 Deploying Lab 04: Steganography Favicon..."
+
+  # Lab 4 Main Service
+  echo "   📦 Building lab-04-steganography-favicon-${ENVIRONMENT}..."
+  LAB4_IMAGE="${LABS_GAR_LOCATION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/04-steganography-favicon:${IMAGE_TAG}"
+
+  build_and_push \
+    "lab-04-steganography-favicon-${ENVIRONMENT}" \
+    "labs/04-steganography-favicon" \
+    "Dockerfile" \
+    "$LAB4_IMAGE"
+
+  TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab4-static_rule_id=lab4-static,traefik_http_routers_lab4-static_priority=250,traefik_http_routers_lab4-static_entrypoints=web,traefik_http_routers_lab4-static_middlewares=strip-lab4-prefix-file,traefik_http_routers_lab4-static_service=lab4,traefik_http_routers_lab4_rule_id=lab4,traefik_http_routers_lab4_priority=200,traefik_http_routers_lab4_entrypoints=web,traefik_http_routers_lab4_middlewares=lab4-auth-check-file__strip-lab4-prefix-file,traefik_http_routers_lab4_service=lab4,traefik_http_services_lab4_lb_port=8080"
+
+  gcloud run deploy lab-04-steganography-favicon-${ENVIRONMENT} \
+    --image="$LAB4_IMAGE" \
+    --region=${LABS_GAR_LOCATION} \
+    --platform=managed \
+    --project=${LABS_PROJECT_ID} \
+    --no-allow-unauthenticated \
+    --service-account=labs-runtime-sa@${LABS_PROJECT_ID}.iam.gserviceaccount.com \
+    --port=8080 \
+    --memory=512Mi \
+    --cpu=1 \
+    --min-instances=0 \
+    --max-instances=10 \
+    --set-env-vars="LAB_NAME=04-steganography-favicon,ENVIRONMENT=${ENVIRONMENT},DOMAIN=${DOMAIN_PREFIX},HOME_URL=https://${DOMAIN_PREFIX}" \
+    --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
+    --labels="environment=${ENVIRONMENT},lab=04-steganography-favicon,project=e-skimming-labs,${TRAEFIK_LABELS}"
+
+  echo "   ✅ Lab 4 Main deployed"
+}
+
+# ============================================================================
 # MAIN DEPLOYMENT LOGIC
 # ============================================================================
 
-# Always deploy analytics (shared service)
-deploy_analytics
+# Deploy analytics (shared service) only when deploying all labs
+if [ "$LAB_NUMBER" = "all" ]; then
+  deploy_analytics
+fi
 
 # Deploy requested lab(s)
 case "$LAB_NUMBER" in
@@ -366,10 +407,14 @@ case "$LAB_NUMBER" in
   "03")
     deploy_lab03
     ;;
+  "04")
+    deploy_lab04
+    ;;
   "all")
     deploy_lab01
     deploy_lab02
     deploy_lab03
+    deploy_lab04
     ;;
 esac
 
@@ -381,7 +426,9 @@ echo ""
 echo "✅ Labs deployment complete!"
 echo ""
 echo "📋 Deployed services:"
-echo "   - labs-analytics-${ENVIRONMENT}"
+if [ "$LAB_NUMBER" = "all" ]; then
+  echo "   - labs-analytics-${ENVIRONMENT}"
+fi
 
 case "$LAB_NUMBER" in
   "01"|"all")
@@ -395,5 +442,8 @@ case "$LAB_NUMBER" in
   "03"|"all")
     echo "   - lab3-extension-${ENVIRONMENT}"
     echo "   - lab-03-extension-hijacking-${ENVIRONMENT}"
+    ;;&
+  "04"|"all")
+    echo "   - lab-04-steganography-favicon-${ENVIRONMENT}"
     ;;
 esac

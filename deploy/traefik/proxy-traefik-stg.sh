@@ -2,8 +2,6 @@
 # Proxy Traefik staging service with support for both localhost and 127.0.0.1
 # This script addresses the issue where localhost gives 404 but 127.0.0.1 works
 
-set -e
-
 ENVIRONMENT="stg"
 PROJECT_ID="labs-stg"
 REGION="us-central1"
@@ -62,6 +60,21 @@ echo ""
 
 # Use socat or similar to bind to both addresses if available
 # Otherwise, just use the standard gcloud command
+PROXY_PID=""
+SOCAT_PID=""
+
+cleanup() {
+  echo ""
+  echo "   🛑 Shutting down proxy..."
+  [ -n "$SOCAT_PID" ] && kill "$SOCAT_PID" 2>/dev/null && wait "$SOCAT_PID" 2>/dev/null
+  [ -n "$PROXY_PID" ] && kill "$PROXY_PID" 2>/dev/null && wait "$PROXY_PID" 2>/dev/null
+  # Kill any orphaned cloud-run-proxy on our port
+  lsof -i :$PORT -sTCP:LISTEN -t 2>/dev/null | xargs kill 2>/dev/null
+  echo "   ✅ Proxy stopped"
+}
+
+trap cleanup EXIT
+
 if command -v socat &> /dev/null; then
   echo "   Using socat to bind to both localhost and 127.0.0.1..."
   # Start gcloud proxy in background, then use socat to forward
@@ -71,8 +84,19 @@ if command -v socat &> /dev/null; then
     --port=$PORT &
   PROXY_PID=$!
 
-  # Wait a moment for proxy to start
-  sleep 2
+  # Wait for proxy to start listening
+  echo "   Waiting for proxy to start..."
+  for i in $(seq 1 10); do
+    if lsof -i :$PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
+      break
+    fi
+    sleep 1
+  done
+
+  if ! lsof -i :$PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
+    echo "   ❌ Proxy failed to start"
+    exit 1
+  fi
 
   # Use socat to forward from IPv6 localhost to IPv4 127.0.0.1
   # This allows both localhost and 127.0.0.1 to work
@@ -85,9 +109,12 @@ if command -v socat &> /dev/null; then
   echo "   Socat PID: $SOCAT_PID"
   echo ""
 
-  # Wait for user interrupt
-  trap "kill $PROXY_PID $SOCAT_PID 2>/dev/null; exit" INT TERM
-  wait
+  # Wait for either process to exit; poll since macOS bash 3.2 lacks wait -n
+  while kill -0 "$PROXY_PID" 2>/dev/null && kill -0 "$SOCAT_PID" 2>/dev/null; do
+    sleep 1
+  done
+  echo "   ⚠️  A process exited unexpectedly"
+  exit 1
 else
   # Standard gcloud proxy (only binds to 127.0.0.1)
   echo "   ℹ️  socat not found - proxy will only work with 127.0.0.1:$PORT"
