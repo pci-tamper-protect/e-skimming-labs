@@ -1,4 +1,4 @@
-version: '3.8'
+
 
 # Runs without auth by default. For Firebase auth locally, use:
 #   ./deploy/docker-compose-auth.sh up
@@ -10,15 +10,15 @@ services:
   # TRAEFIK REVERSE PROXY - Single Entry Point
   # =============================================================================
   traefik:
-    image: traefik:v3.0
+    image: traefik:v3.6.2
     container_name: e-skimming-labs-traefik
     restart: unless-stopped
     ports:
       - '8080:80'      # Main HTTP entry point (all services accessible here)
       - '8443:443'     # HTTPS entry point (for production-like testing)
       - '8081:8080'    # Traefik dashboard (http://localhost:8081/dashboard/)
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro  # Docker socket for service discovery
+    volumes:  # Docker socket for service discovery
+      - /var/run/docker.sock:/var/run/docker.sock
       - ./deploy/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       - ./deploy/traefik/dynamic:/etc/traefik/dynamic:ro
     networks:
@@ -252,6 +252,12 @@ services:
       - "traefik.http.routers.lab2-static.entrypoints=web"
       - "traefik.http.routers.lab2-static.middlewares=strip-lab2-prefix@file"
       - "traefik.http.routers.lab2-static.service=lab2-vulnerable-site"
+      # Malicious JS (added)
+      - "traefik.http.routers.lab2-malicious.rule=PathPrefix(`/lab2/malicious-code/`)"
+      - "traefik.http.routers.lab2-malicious.priority=260"
+      - "traefik.http.routers.lab2-malicious.entrypoints=web"
+      - "traefik.http.routers.lab2-malicious.middlewares=strip-lab2-prefix@file"
+      - "traefik.http.routers.lab2-malicious.service=lab2-vulnerable-site"
       # Main router (with auth, lower priority)
       - "traefik.http.routers.lab2-main.rule=PathPrefix(`/lab2`)"
       - "traefik.http.routers.lab2-main.priority=200"
@@ -273,6 +279,8 @@ services:
       - PORT=3000
     depends_on:
       - traefik
+    ports:
+      - "3000:3000"
     labels:
       - "lab=lab2-dom-skimming"
       - "component=c2-server"

