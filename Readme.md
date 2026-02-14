@@ -395,6 +395,7 @@ Comprehensive documentation is available in the `docs/` directory:
 ### Quick Links
 
 - 🏠 **Landing Page:** http://localhost:3000
+- 📝 **Blog:** http://localhost:3000/blog
 - 📊 **MITRE ATT&CK Matrix:** http://localhost:3000/mitre-attack
 - 🕸️ **Threat Model:** http://localhost:3000/threat-model
 - 🔬 **Interactive Labs:** Ports 9001, 9003, 9005
