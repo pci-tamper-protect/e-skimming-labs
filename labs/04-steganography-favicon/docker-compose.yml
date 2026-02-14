@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  # Vulnerable Shop with Steganography Loader
+  vulnerable-site:
+    build: ./vulnerable-site
+    container_name: lab4-shop
+    ports:
+      - '8084:80' # Lab 4 Port
+    networks:
+      - lab-network
+
+  # Reuse Lab 1 C2 Server (Must be built/available)
+  # If running standalone, we need to define it here.
+  # If running via main docker-compose, this file is for local testing only.
+  c2-server:
+    build: ../01-basic-magecart/malicious-code/c2-server
+    container_name: lab4-c2
+    ports:
+      - '3004:3000'
+    networks:
+      - lab-network
+    environment:
+      - PORT=3000
+
+networks:
+  lab-network:
+    driver: bridge
