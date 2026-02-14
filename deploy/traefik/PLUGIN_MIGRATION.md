@@ -181,9 +181,21 @@ traefik_http_routers_myapp_middlewares=retry-cold-start-file"
 - Check metadata server is accessible
 - Review token manager logs
 
-## Next Steps
+## Next Steps (Historical)
 
-1. Test plugin in local environment
-2. Deploy to staging and verify routes
-3. Test token forwarding with private services
-4. Remove old bash scripts once verified
+These steps were planned but superseded by the sidecar architecture:
+
+1. ~~Test plugin in local environment~~ - Yaegi fails with GCP SDK
+2. ~~Deploy to staging and verify routes~~ - Sidecar deployed instead
+3. ~~Test token forwarding with private services~~ - Working via sidecar
+4. ~~Remove old bash scripts once verified~~ - Plugin code retained for reference
+
+## Why Plugin Approach Failed
+
+Traefik's local plugin mode uses **Yaegi**, a Go interpreter. Yaegi cannot handle:
+- `google.golang.org/grpc` — panics during `grpclog.init()`
+- Complex reflection patterns in the GCP Go SDK
+- Some `unsafe` operations required by protobuf/grpc
+
+The sidecar architecture avoids this by compiling the provider to a native Go binary
+that runs alongside Traefik in a separate container, communicating via a shared volume.
