@@ -285,6 +285,41 @@ gcloud run services logs read traefik-dashboard-stg \
 # Dashboard should proxy requests to main Traefik's /api/* endpoints
 ```
 
+### Plugin config silently rejected (404 on all routes)
+
+**Symptom**: Traefik returns 404 on all app routes. `/ping` returns 200 (Traefik is running).
+Querying the router API shows only internal routers, no app routers:
+
+```bash
+# Via Cloud Run proxy
+gcloud run services proxy traefik-stg --port=8082
+curl http://localhost:8082/api/http/routers | jq '.[].name'
+# Shows only: "api@internal", "dashboard@internal", "ping@internal"
+# No lab1@plugin, home-index@plugin, etc.
+```
+
+**Root cause**: The plugin's YAML config in `traefik.cloudrun.yml` contains a field
+that doesn't exist in the Go `Config` struct (e.g. `ruleMap:` without a matching
+`RuleMap` field in `plugin/plugin.go`). Traefik silently rejects the entire plugin
+config — no error is logged at the default log level.
+
+**Key diagnostic insight**: These errors do NOT appear in the Cloud Run console's
+default log view. You must query Cloud Logging directly with a severity filter:
+
+```bash
+gcloud logging read \
+  'resource.type="cloud_run_revision" AND resource.labels.service_name="traefik-stg" AND severity>=WARNING' \
+  --project=labs-stg \
+  --limit=50 \
+  --format="table(timestamp, severity, textPayload)"
+```
+
+Look for timeout or config-related warnings that indicate the plugin failed to initialize.
+
+**Fix**: Ensure every field in the YAML plugin config has a matching exported field
+with correct JSON/YAML struct tags in the Go `Config` struct. When adding new config
+fields, always update both the YAML and Go code in the same deploy.
+
 ## Migration from Plugin Architecture
 
 Migration to sidecar is complete. The plugin code in `plugins-local/` is retained
