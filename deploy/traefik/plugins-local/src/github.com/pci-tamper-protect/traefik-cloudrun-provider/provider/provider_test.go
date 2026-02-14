@@ -349,3 +349,73 @@ func TestDynamicConfig_AddTraefikInternalRouters(t *testing.T) {
 		t.Error("Expected traefik-dashboard router")
 	}
 }
+
+func TestAddRouterWithSource_DedicatedBeatsNonDedicated(t *testing.T) {
+	config := NewDynamicConfig()
+
+	nonDedicated := RouterConfig{Rule: "PathPrefix(`/lab1/c2`)", Service: "lab1-main", Priority: 300}
+	dedicated := RouterConfig{Rule: "PathPrefix(`/lab1/c2`)", Service: "lab1-c2-server", Priority: 300}
+
+	// Non-dedicated added first
+	config.AddRouterWithSource("lab1-c2", nonDedicated, "lab-01-basic-magecart-stg")
+	// Dedicated should replace it
+	config.AddRouterWithSource("lab1-c2", dedicated, "lab1-c2-stg")
+
+	router := config.HTTP.Routers["lab1-c2"]
+	if router.Service != "lab1-c2-server" {
+		t.Errorf("Expected dedicated service 'lab1-c2-server', got '%s'", router.Service)
+	}
+}
+
+func TestAddRouterWithSource_NonDedicatedDoesNotOverwriteDedicated(t *testing.T) {
+	config := NewDynamicConfig()
+
+	dedicated := RouterConfig{Rule: "PathPrefix(`/lab1/c2`)", Service: "lab1-c2-server", Priority: 300}
+	nonDedicated := RouterConfig{Rule: "PathPrefix(`/lab1/c2`)", Service: "lab1-main", Priority: 300}
+
+	// Dedicated added first
+	config.AddRouterWithSource("lab1-c2", dedicated, "lab1-c2-stg")
+	// Non-dedicated should NOT replace it
+	config.AddRouterWithSource("lab1-c2", nonDedicated, "lab-01-basic-magecart-stg")
+
+	router := config.HTTP.Routers["lab1-c2"]
+	if router.Service != "lab1-c2-server" {
+		t.Errorf("Expected dedicated service to be preserved ('lab1-c2-server'), got '%s'", router.Service)
+	}
+}
+
+func TestAddRouterWithSource_BothDedicatedLastWins(t *testing.T) {
+	config := NewDynamicConfig()
+
+	first := RouterConfig{Rule: "PathPrefix(`/lab1/c2`)", Service: "first-service", Priority: 300}
+	second := RouterConfig{Rule: "PathPrefix(`/lab1/c2`)", Service: "second-service", Priority: 300}
+
+	config.AddRouterWithSource("lab1-c2", first, "lab1-c2-stg")
+	config.AddRouterWithSource("lab1-c2", second, "lab1-c2-prd")
+
+	router := config.HTTP.Routers["lab1-c2"]
+	if router.Service != "second-service" {
+		t.Errorf("Expected last-write-wins ('second-service'), got '%s'", router.Service)
+	}
+}
+
+func TestIsDedicatedService(t *testing.T) {
+	tests := []struct {
+		routerName  string
+		serviceName string
+		want        bool
+	}{
+		{"lab1-c2", "lab1-c2-stg", true},
+		{"lab1-c2", "lab-01-basic-magecart-stg", false},
+		{"lab2-c2", "lab2-c2-prd", true},
+		{"lab3-extension", "lab3-extension-stg", true},
+		{"lab1", "lab1-stg", true},
+	}
+
+	for _, tt := range tests {
+		got := isDedicatedService(tt.routerName, tt.serviceName)
+		if got != tt.want {
+			t.Errorf("isDedicatedService(%q, %q) = %v, want %v", tt.routerName, tt.serviceName, got, tt.want)
+		}
+	}
+}

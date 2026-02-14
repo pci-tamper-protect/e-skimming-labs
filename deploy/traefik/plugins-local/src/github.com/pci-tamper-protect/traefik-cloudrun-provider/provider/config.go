@@ -62,17 +62,6 @@ func NewDynamicConfig() *DynamicConfig {
 	}
 }
 
-// routerSources tracks which Cloud Run service defined each router
-// This is used to resolve conflicts when multiple services define the same router
-// Key: router name, Value: Cloud Run service name that defined it
-// This field is not serialized to YAML
-type routerSourceTracker struct {
-	sources map[string]string
-}
-
-// DynamicConfig with router source tracking (internal field, not serialized)
-// routerSources is added to DynamicConfig struct below
-
 // AddRouter adds a router to the configuration
 // If a router with the same name already exists, it will be replaced only if
 // the new source is a "dedicated" service for that router (e.g., lab1-c2-stg for lab1-c2 router)

@@ -53,16 +53,15 @@ convert_label() {
   # Convert key: dots → underscores
   local cr_key="${key//\./_}"
 
-  # Handle rule values: if > 63 chars (Cloud Run label limit), use rule_id shorthand
+  # Handle rule values: always use rule_id shorthand
+  # Cloud Run labels only allow lowercase letters, numbers, underscores, and dashes.
+  # Rule values like PathPrefix(`/lab1`) contain backticks, parens, uppercase — not allowed.
   if [[ "$key" == *".rule" ]]; then
-    if [ ${#value} -gt 63 ]; then
-      # Extract router name from key: traefik.http.routers.<router-name>.rule
-      local router_name
-      router_name=$(echo "$key" | sed 's/traefik\.http\.routers\.\(.*\)\.rule/\1/')
-      # Use rule_id instead of rule
-      cr_key="${cr_key%_rule}_rule_id"
-      value="$router_name"
-    fi
+    # Extract router name from key: traefik.http.routers.<router-name>.rule
+    local router_name
+    router_name=$(echo "$key" | sed 's/traefik\.http\.routers\.\(.*\)\.rule/\1/')
+    cr_key="${cr_key%_rule}_rule_id"
+    value="$router_name"
     echo "${cr_key}=${value}"
     return
   fi

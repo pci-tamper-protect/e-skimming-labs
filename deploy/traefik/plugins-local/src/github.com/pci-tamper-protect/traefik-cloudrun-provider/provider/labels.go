@@ -37,10 +37,16 @@ var ruleMap = map[string]string{}
 
 // SetRuleMap replaces the package-level ruleMap with the provided mappings.
 // This is called during provider initialization to inject rule mappings from config.
+// The provided map is copied so callers cannot mutate provider state after initialization.
 func SetRuleMap(m map[string]string) {
-	if m != nil {
-		ruleMap = m
+	if m == nil {
+		return
 	}
+	copied := make(map[string]string, len(m))
+	for k, v := range m {
+		copied[k] = v
+	}
+	ruleMap = copied
 }
 
 // defaultPriorityMap maps router names to default priorities
@@ -128,6 +134,8 @@ func extractRouterConfigs(labels map[string]string, serviceName string) map[stri
 		case "rule_id":
 			if mappedRule, ok := ruleMap[value]; ok {
 				router.Rule = mappedRule
+			} else {
+				fmt.Fprintf(os.Stderr, "   WARNING: rule_id '%s' for router '%s' (service '%s') not found in ruleMap — router will have empty rule\n", value, routerName, serviceName)
 			}
 		case "service":
 			router.Service = value

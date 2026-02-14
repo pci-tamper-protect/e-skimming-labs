@@ -268,6 +268,7 @@ func (p *Provider) updateConfig(configChan chan<- *DynamicConfig) error {
 		config.AddForwardAuthMiddleware("lab1-auth-check", homeIndexURL)
 		config.AddForwardAuthMiddleware("lab2-auth-check", homeIndexURL)
 		config.AddForwardAuthMiddleware("lab3-auth-check", homeIndexURL)
+		config.AddForwardAuthMiddleware("lab4-auth-check", homeIndexURL)
 	} else if userAuthEnabled && homeIndexURL == "" {
 		p.logger.Warn("USER_AUTH_ENABLED=true but home-index URL not found - user auth middlewares not generated")
 	} else {
@@ -436,7 +437,7 @@ func (p *Provider) processService(service CloudRunService, config *DynamicConfig
 		// Auto-inject strip-prefix middleware for lab routes if not already present
 		// This ensures /lab1 requests get their prefix stripped before reaching the backend
 		// Lab services expect requests at / (root), not /lab1
-		stripPrefixMiddleware := getStripPrefixMiddleware(routerName, routerConfig.Rule)
+		stripPrefixMiddleware := getStripPrefixMiddleware(routerName)
 		if stripPrefixMiddleware != "" {
 			hasStripPrefix := false
 			for _, mw := range routerConfig.Middlewares {
@@ -539,7 +540,7 @@ func (p *Provider) processService(service CloudRunService, config *DynamicConfig
 // This function automatically injects strip-prefix middlewares for lab routes
 // because lab services expect requests at / (root), not /labN.
 // The middlewares must be pre-defined in the static routes.yml file.
-func getStripPrefixMiddleware(routerName, rule string) string {
+func getStripPrefixMiddleware(routerName string) string {
 	// Map of router name patterns to their strip-prefix middleware
 	// These middlewares are defined in deploy/traefik/dynamic/routes.yml
 	stripPrefixMap := map[string]string{
