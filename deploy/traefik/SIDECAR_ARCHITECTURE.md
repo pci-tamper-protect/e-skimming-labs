@@ -19,14 +19,30 @@ See [TESTING.md](./TESTING.md#local-sidecar-simulation-fast-debugging) for detai
 
 ---
 
+## Architecture Decision: Sidecar vs Plugin
+
+We originally implemented a Traefik **local plugin** using Yaegi (Traefik's Go interpreter).
+This approach failed because Yaegi cannot interpret the GCP Go SDK — library conflicts
+cause panics at runtime. The plugin source is retained in `plugins-local/` for reference,
+but the **sidecar architecture is the active deployment mechanism**.
+
+| Approach | Status | Why |
+|----------|--------|-----|
+| **Sidecar** (active) | Working in stg/prd | Provider runs as compiled Go binary, avoids Yaegi limitations |
+| **Plugin** (legacy) | Kept for reference | Yaegi can't handle GCP SDK deps; may revisit if Yaegi improves |
+
+The `plugins-local/vendor/` directory is gitignored (26MB of third-party deps).
+Only our provider source code is tracked. If you need to restore vendor for plugin
+mode, run `go mod vendor` inside the provider directory.
+
 ## Version Strategy
 
 | Version | Status | Deploy Script | Use Case |
 |---------|--------|---------------|----------|
-| **v2.10** | Stable (Default) | `deploy-sidecar.sh` | Production deployments |
-| **v3.0** | Latest Features | `deploy-sidecar-traefik-3.0.sh` | New features, testing |
+| **v2.10** | Stable | `deploy-sidecar.sh` | Fallback if v3.0 has issues |
+| **v3.0** | Default | `deploy.sh` / `deploy-sidecar-traefik-3.0.sh` | Active deployments |
 
-All default Dockerfiles and scripts use Traefik v2.10. Traefik v3.0 variants are available when v3.0-specific features are needed.
+`deploy.sh` is a wrapper that calls `deploy-sidecar-traefik-3.0.sh`.
 
 ## Overview
 
@@ -186,21 +202,24 @@ docker build -f Dockerfile.cloudrun.sidecar.traefik-3.0 -t us-central1-docker.pk
 docker build -f Dockerfile.dashboard-sidecar.traefik-3.0 -t us-central1-docker.pkg.dev/labs-stg/e-skimming-labs/traefik-dashboard:v3.0 .
 ```
 
-**Version Notes**: 
-- **Default is Traefik v2.10** (stable, production-ready) via `deploy-sidecar.sh`
-- **Traefik v3.0** is available via `deploy-sidecar-traefik-3.0.sh`
+**Version Notes**:
+- **Default is Traefik v3.0** via `deploy.sh` (wrapper for `deploy-sidecar-traefik-3.0.sh`)
+- **Traefik v2.10** is available as fallback via `deploy-sidecar.sh`
 - v3.0 images are tagged `:v3.0`, v2.10 images use `:latest`
 
 ### Deploy
 
 ```bash
-# Traefik v2.10 (default, stable)
-./deploy-sidecar.sh stg
+# Default (Traefik v3.0 sidecar)
+./deploy/traefik/deploy.sh stg
 
-# Traefik v3.0 (latest features)
-./deploy-sidecar-traefik-3.0.sh stg
+# Explicitly use v3.0
+./deploy/traefik/deploy-sidecar-traefik-3.0.sh stg
 
-# Or using YAML directly (v2.10)
+# Fallback to v2.10
+./deploy/traefik/deploy-sidecar.sh stg
+
+# Or using YAML directly
 gcloud run services replace cloudrun-sidecar.yaml \
   --region=us-central1 \
   --project=labs-stg
