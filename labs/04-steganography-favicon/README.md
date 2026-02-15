@@ -153,14 +153,14 @@ grep -r "new Function" .
 -   **Lab 2**: Modifies the DOM to add listeners.
 -   **Lab 4**: Can operate in memory without modifying the visible DOM structure until the moment of theft.
 
-## Verification via Browser
-1.  **Open the Lab**: Navigate to `http://localhost:8080/lab4/`.
+## Verification (Local Development)
+1.  **Open the Lab**: Navigate to `http://localhost:8084/`.
 2.  **Inspect Network Traffic**: Open DevTools (F12) -> Network tab. Reload the page. You will see `original-favicon.ico` being loaded.
     
     ![Network Traffic](/static/images/lab4-network.png)
 
-3.  **Observe Execution**: Check the Console tab. You might see logs indicating the loader is extracting data.
+3.  **Observe Execution**: Check the Console tab. You will see logs indicating the loader is extracting data and the skimmer payload is intercepted.
     
     ![Skimmer Execution](/static/images/lab4-execution.png)
 
-4.  **Verify Theft**: Go to the **View Stolen Data** page (`/lab4/c2/stolen`).
+4.  **Verify Theft**: Go to the **View Stolen Data** page (`http://localhost:8084/c2/stolen` or `http://localhost:3004/stolen`).

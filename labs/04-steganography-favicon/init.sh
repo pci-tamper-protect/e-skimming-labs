@@ -5,6 +5,15 @@
 cd /app/c2-server && node server.js &
 C2_PID=$!
 
+# Signal trapping to ensure graceful shutdown
+cleanup() {
+  echo "Stopping C2 server (PID $C2_PID)..."
+  kill -TERM "$C2_PID" 2>/dev/null
+  wait "$C2_PID"
+  exit 0
+}
+trap cleanup SIGTERM SIGINT
+
 # Wait for C2 server to be ready (check health endpoint)
 echo "Waiting for C2 server to start..."
 MAX_ATTEMPTS=30
