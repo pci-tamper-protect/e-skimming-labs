@@ -122,6 +122,19 @@ http:
         prefixes:
           - "/lab3/extension"
 
+    # Lab 4 middlewares
+    # Note: lab4-auth-check is defined in local-auth-stubs.yml for local dev.
+
+    strip-lab4-prefix:
+      stripPrefix:
+        prefixes:
+          - "/lab4"
+
+    strip-lab4-c2-prefix:
+      stripPrefix:
+        prefixes:
+          - "/lab4/c2"
+
     # Security headers
     security-headers:
       headers:

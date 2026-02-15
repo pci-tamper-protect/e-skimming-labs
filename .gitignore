@@ -78,6 +78,9 @@ deploy/*.json
 
 test/MITRE_ATTACK_FIX_REPORT.md
 
+# Provider plugin vendor directory (not needed for sidecar builds)
+deploy/traefik/plugins-local/**/vendor/
+
 # dotenvx encryption keys (added by dotenvx-converter)
 .env.*.keys
 

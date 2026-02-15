@@ -14,8 +14,7 @@ COPY server.js dashboard.html ./
 # Create directory for stolen data
 RUN mkdir -p stolen-data
 
-# Expose port (8080 for Cloud Run, 3000 for local)
-# Server uses PORT env var, defaults to 3000 if not set
+# Expose port: Cloud Run sets PORT=8080, local dev defaults to 3000
 EXPOSE 8080
 EXPOSE 3000
 

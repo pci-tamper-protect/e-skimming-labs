@@ -31,22 +31,61 @@ type ServerConfig struct {
 	URL string
 }
 
-// ruleMap maps rule IDs to Traefik rule expressions
-// Extracted from cmd/generate-routes/main.go:23-37
-var ruleMap = map[string]string{
-	"home-index-root":    "PathPrefix(`/`)",
-	"home-index-signin":  "Path(`/sign-in`) || Path(`/sign-up`)",
-	"home-seo":           "PathPrefix(`/api/seo`)",
-	"labs-analytics":     "PathPrefix(`/api/analytics`)",
-	"lab1":               "PathPrefix(`/lab1`)",
-	"lab1-static":        "PathPrefix(`/lab1/css/`) || PathPrefix(`/lab1/js/`) || PathPrefix(`/lab1/images/`) || PathPrefix(`/lab1/img/`) || PathPrefix(`/lab1/static/`) || PathPrefix(`/lab1/assets/`)",
-	"lab1-c2":            "PathPrefix(`/lab1/c2`)",
-	"lab2":               "PathPrefix(`/lab2`)",
-	"lab2-static":        "PathPrefix(`/lab2/css/`) || PathPrefix(`/lab2/js/`) || PathPrefix(`/lab2/images/`) || PathPrefix(`/lab2/img/`) || PathPrefix(`/lab2/static/`) || PathPrefix(`/lab2/assets/`)",
-	"lab2-c2":            "PathPrefix(`/lab2/c2`)",
-	"lab3":               "PathPrefix(`/lab3`)",
-	"lab3-static":        "PathPrefix(`/lab3/css/`) || PathPrefix(`/lab3/js/`) || PathPrefix(`/lab3/images/`) || PathPrefix(`/lab3/img/`) || PathPrefix(`/lab3/static/`) || PathPrefix(`/lab3/assets/`)",
-	"lab3-extension":     "PathPrefix(`/lab3/extension`)",
+// ruleMap maps rule IDs to Traefik rule expressions.
+// It starts empty and is populated from config via SetRuleMap.
+var ruleMap = map[string]string{}
+
+// SetRuleMap replaces the package-level ruleMap with the provided mappings.
+// This is called during provider initialization to inject rule mappings from config.
+// The provided map is copied so callers cannot mutate provider state after initialization.
+func SetRuleMap(m map[string]string) {
+	if m == nil {
+		return
+	}
+	copied := make(map[string]string, len(m))
+	for k, v := range m {
+		copied[k] = v
+	}
+	ruleMap = copied
+}
+
+// defaultPriorityMap maps router names to default priorities
+// Higher priority = matched first. home-index has lowest priority (catch-all)
+// Priority guide:
+//   - 1: catch-all routes (home-index root "/")
+//   - 100: sign-in/sign-up routes
+//   - 200: main lab routes (/lab1, /lab2, /lab3)
+//   - 250: static asset routes (/lab1/css/, etc.)
+//   - 300: sub-routes (/lab1/c2, /lab3/extension)
+//   - 500: API routes (/api/seo, /api/analytics)
+//   - 1000: internal routes (dashboard, api)
+var defaultPriorityMap = map[string]int{
+	"home-index":        1,   // Lowest priority - catch-all for "/"
+	"home-index-root":   1,   // Lowest priority - catch-all for "/"
+	"home-index-signin": 100, // Sign-in pages
+	"home-seo":          500, // API routes
+	"labs-analytics":    500, // API routes
+	"lab1":              200, // Main lab routes
+	"lab1-static":       250, // Static assets (more specific)
+	"lab1-c2":           300, // Sub-routes (most specific)
+	"lab2":              200,
+	"lab2-main":         200,
+	"lab2-static":       250,
+	"lab2-c2":           300,
+	"lab3":              200,
+	"lab3-main":         200,
+	"lab3-static":       250,
+	"lab3-extension":    300,
+}
+
+// getDefaultPriority returns the default priority for a router name
+// Falls back to 200 for unknown routers (reasonable default for app routes)
+func getDefaultPriority(routerName string) int {
+	if priority, ok := defaultPriorityMap[routerName]; ok {
+		return priority
+	}
+	// Default to 200 for unknown routes (higher than home-index catch-all)
+	return 200
 }
 
 // extractRouterConfigs extracts router configurations from Cloud Run service labels
@@ -71,7 +110,7 @@ func extractRouterConfigs(labels map[string]string, serviceName string) map[stri
 
 		if routers[routerName].Rule == "" {
 			routers[routerName] = RouterConfig{
-				Priority:    1,
+				Priority:    getDefaultPriority(routerName), // Use smart default based on router name
 				EntryPoints: []string{"web"}, // Always set entryPoints (plural) - required by Traefik
 				Middlewares: []string{},
 			}
@@ -95,6 +134,8 @@ func extractRouterConfigs(labels map[string]string, serviceName string) map[stri
 		case "rule_id":
 			if mappedRule, ok := ruleMap[value]; ok {
 				router.Rule = mappedRule
+			} else {
+				fmt.Fprintf(os.Stderr, "   WARNING: rule_id '%s' for router '%s' (service '%s') not found in ruleMap — router will have empty rule\n", value, routerName, serviceName)
 			}
 		case "service":
 			router.Service = value

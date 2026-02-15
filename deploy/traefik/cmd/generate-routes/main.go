@@ -34,6 +34,9 @@ var ruleMap = map[string]string{
 	"lab3":               "PathPrefix(`/lab3`)",
 	"lab3-static":        "PathPrefix(`/lab3/css/`) || PathPrefix(`/lab3/js/`) || PathPrefix(`/lab3/images/`) || PathPrefix(`/lab3/img/`) || PathPrefix(`/lab3/static/`) || PathPrefix(`/lab3/assets/`)",
 	"lab3-extension":     "PathPrefix(`/lab3/extension`)",
+	"lab4":               "PathPrefix(`/lab4`)",
+	"lab4-static":        "PathPrefix(`/lab4/css/`) || PathPrefix(`/lab4/js/`) || PathPrefix(`/lab4/images/`) || PathPrefix(`/lab4/img/`) || PathPrefix(`/lab4/static/`) || PathPrefix(`/lab4/assets/`)",
+	"lab4-c2":            "PathPrefix(`/lab4/c2`)",
 }
 
 type Config struct {

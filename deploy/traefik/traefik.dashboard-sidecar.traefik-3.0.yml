@@ -1,0 +1,43 @@
+# Traefik Static Configuration for Dashboard Service (Dashboard-Only Mode) - Traefik v3.0
+# This Traefik instance serves ONLY the dashboard UI - no routing, no providers
+# It proxies API requests to the main Traefik service's API
+# Main Traefik API URL is provided via TRAEFIK_API_URL environment variable
+
+# Entry points
+# IMPORTANT: Explicitly define entrypoint to prevent Traefik from creating default "http" entrypoint on port 80
+entryPoints:
+  traefik:
+    address: "0.0.0.0:8080"  # Cloud Run uses port 8080, must bind to 0.0.0.0
+
+# Providers - minimal: only file provider for API proxy routes
+# No Docker provider, no other providers - this is dashboard-only
+# The file provider is only used to proxy /api/* requests to main Traefik
+providers:
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+# API and Dashboard
+# Serve dashboard on port 8080
+# API requests (/api/*) are proxied to main Traefik service via dynamic routes
+api:
+  dashboard: true
+  insecure: true  # Dashboard accessible without auth (internal service)
+
+# Logging - minimal for dashboard service
+log:
+  level: INFO
+  format: json
+
+# Access logs - minimal
+accessLog:
+  format: json
+
+# Health check endpoint
+ping:
+  entryPoint: traefik
+
+# Global settings
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
