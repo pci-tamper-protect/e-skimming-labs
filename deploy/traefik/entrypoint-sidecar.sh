@@ -32,12 +32,37 @@ if [ -f /etc/traefik/dynamic/middlewares.yml ]; then
   log "✅ Middlewares copied to /shared/traefik/dynamic/middlewares.yml"
 fi
 
-# Check if routes.yml exists (may not exist initially - provider will create it)
-# Note: Route generation is handled by the traefik-cloudrun-provider sidecar
+# Wait for routes.yml to be created by the provider sidecar
+# This ensures Traefik has routes to serve before accepting traffic
+# The provider sidecar runs in parallel and generates routes.yml
+log "⏳ Waiting for provider sidecar to generate routes.yml..."
+WAIT_TIMEOUT=60
+WAIT_INTERVAL=2
+WAITED=0
+while [ ! -f /shared/traefik/dynamic/routes.yml ] || [ ! -s /shared/traefik/dynamic/routes.yml ]; do
+  if [ $WAITED -ge $WAIT_TIMEOUT ]; then
+    log "⚠️  Timeout waiting for routes.yml after ${WAIT_TIMEOUT}s"
+    log "⚠️  Creating placeholder routes.yml - provider may update it later"
+    # Create a minimal placeholder so Traefik can start
+    cat > /shared/traefik/dynamic/routes.yml << 'PLACEHOLDER'
+# Placeholder routes - provider sidecar will overwrite this
+http:
+  routers: {}
+  services: {}
+PLACEHOLDER
+    break
+  fi
+  sleep $WAIT_INTERVAL
+  WAITED=$((WAITED + WAIT_INTERVAL))
+  log "   Waiting... (${WAITED}s/${WAIT_TIMEOUT}s)"
+done
+
 if [ -f /shared/traefik/dynamic/routes.yml ]; then
-  log "✅ routes.yml found (size: $(stat -c%s /shared/traefik/dynamic/routes.yml 2>/dev/null || stat -f%z /shared/traefik/dynamic/routes.yml 2>/dev/null || echo 'unknown') bytes)"
-else
-  log "⚠️  routes.yml not found yet (provider will generate it)"
+  ROUTES_SIZE=$(stat -c%s /shared/traefik/dynamic/routes.yml 2>/dev/null || stat -f%z /shared/traefik/dynamic/routes.yml 2>/dev/null || echo 'unknown')
+  log "✅ routes.yml found (size: ${ROUTES_SIZE} bytes)"
+  # Count routers in the file for debugging
+  ROUTER_COUNT=$(grep -c "rule:" /shared/traefik/dynamic/routes.yml 2>/dev/null || echo "0")
+  log "   Contains approximately ${ROUTER_COUNT} router rules"
 fi
 
 # Verify we can write to shared volume

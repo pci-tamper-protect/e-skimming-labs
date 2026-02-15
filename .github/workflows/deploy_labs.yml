@@ -533,6 +533,8 @@ jobs:
         run: |
           echo "📤 Pushing Index service images to Artifact Registry..."
           SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
+          REPO_NAME="${{ env.HOME_REPOSITORY }}"
+          REPO_PROJECT="${{ env.HOME_PROJECT_ID }}"
           echo "Using service account: $SA_EMAIL"
 
           IMAGE_BASE="${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index"
@@ -1418,6 +1420,37 @@ jobs:
         run: |
           ENV="${{ needs.setup.outputs.environment }}"
 
+          # Traefik needs to access all services, so it needs appropriate permissions
+          if [[ "$ENV" == "stg" ]]; then
+            gcloud run deploy traefik-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/traefik:${{ github.sha }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --platform=managed \
+              --no-allow-unauthenticated \
+              --service-account=traefik-${{ needs.setup.outputs.environment }}@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=8080 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=1 \
+              --max-instances=5 \
+              --set-env-vars="ENVIRONMENT=${{ needs.setup.outputs.environment }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }}" \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=traefik,project=e-skimming-labs"
+          else
+            gcloud run deploy traefik-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/traefik:${{ github.sha }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --platform=managed \
+              --allow-unauthenticated \
+              --service-account=traefik-${{ needs.setup.outputs.environment }}@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=8080 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=1 \
+              --max-instances=5 \
+              --set-env-vars="ENVIRONMENT=${{ needs.setup.outputs.environment }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }}" \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=traefik,project=e-skimming-labs"
+          fi
+
           # Generate Cloud Run YAML with environment-specific values
           sed "s/labs-stg/${{ env.LABS_PROJECT_ID }}/g; \
                s/labs-home-stg/${{ env.HOME_PROJECT_ID }}/g; \
@@ -1473,7 +1506,7 @@ jobs:
             gcloud run services add-iam-policy-binding "$SERVICE" \
               --region=${{ env.LABS_GAR_LOCATION }} \
               --member="group:core-eng@pcioasis.com" \
-              --role="roles/run.invoker" || true
+              --role="roles/run.invoker"
           done
 
   notify-deployment:
