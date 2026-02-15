@@ -352,27 +352,55 @@ deploy_lab03() {
 }
 
 # ============================================================================
-# LAB 4: Steganography Favicon
+# LAB 4: Steganography / Favicon Trojan
 # ============================================================================
 
 deploy_lab04() {
   echo ""
-  echo "🔬 Deploying Lab 04: Steganography Favicon..."
+  echo "🔬 Deploying Lab 04: Steganography..."
 
-  # Lab 4 Main Service
-  echo "   📦 Building lab-04-steganography-favicon-${ENVIRONMENT}..."
-  LAB4_IMAGE="${LABS_GAR_LOCATION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/04-steganography-favicon:${IMAGE_TAG}"
+  # Lab 4 C2 Server
+  echo "   📦 Building lab4-c2-${ENVIRONMENT}..."
+  LAB4_C2_IMAGE="${LABS_GAR_LOCATION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/lab4-c2:${IMAGE_TAG}"
 
   build_and_push \
-    "lab-04-steganography-favicon-${ENVIRONMENT}" \
-    "labs/04-steganography-favicon" \
+    "lab4-c2-${ENVIRONMENT}" \
+    "labs/04-steganography-favicon/malicious-code/c2-server" \
+    "Dockerfile" \
+    "$LAB4_C2_IMAGE"
+
+  LAB4_C2_TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab4-c2_rule_id=lab4-c2,traefik_http_routers_lab4-c2_priority=300,traefik_http_routers_lab4-c2_entrypoints=web,traefik_http_routers_lab4-c2_middlewares=strip-lab4-c2-prefix-file,traefik_http_routers_lab4-c2_service=lab4-c2-server,traefik_http_services_lab4-c2-server_lb_port=8080"
+
+  gcloud run deploy lab4-c2-${ENVIRONMENT} \
+    --image="$LAB4_C2_IMAGE" \
+    --region=${LABS_GAR_LOCATION} \
+    --platform=managed \
+    --project=${LABS_PROJECT_ID} \
+    --no-allow-unauthenticated \
+    --service-account=labs-runtime-sa@${LABS_PROJECT_ID}.iam.gserviceaccount.com \
+    --port=8080 \
+    --memory=256Mi \
+    --cpu=1 \
+    --min-instances=0 \
+    --max-instances=5 \
+    --set-env-vars="ENVIRONMENT=${ENVIRONMENT}" \
+    --labels="environment=${ENVIRONMENT},component=c2,lab=04-steganography,project=e-skimming-labs,${LAB4_C2_TRAEFIK_LABELS}"
+
+  echo "   ✅ Lab 4 C2 deployed"
+
+  # Lab 4 Main Service
+  echo "   📦 Building lab-04-steganography-${ENVIRONMENT}..."
+  LAB4_IMAGE="${LABS_GAR_LOCATION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/04-steganography:${IMAGE_TAG}"
+
+  build_and_push \
+    "lab-04-steganography-${ENVIRONMENT}" \
+    "labs/04-steganography-favicon/vulnerable-site" \
     "Dockerfile" \
     "$LAB4_IMAGE"
 
-  # Lab 4 is not yet in docker-compose.yml; labels are hardcoded until it's added
-  TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab4-static_rule_id=lab4-static,traefik_http_routers_lab4-static_priority=250,traefik_http_routers_lab4-static_entrypoints=web,traefik_http_routers_lab4-static_middlewares=strip-lab4-prefix-file,traefik_http_routers_lab4-static_service=lab4,traefik_http_routers_lab4_rule_id=lab4,traefik_http_routers_lab4_priority=200,traefik_http_routers_lab4_entrypoints=web,traefik_http_routers_lab4_middlewares=lab4-auth-check-file__strip-lab4-prefix-file,traefik_http_routers_lab4_service=lab4,traefik_http_services_lab4_lb_port=8080"
+  TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab4-static_rule_id=lab4-static,traefik_http_routers_lab4-static_priority=250,traefik_http_routers_lab4-static_entrypoints=web,traefik_http_routers_lab4-static_middlewares=strip-lab4-prefix-file,traefik_http_routers_lab4-static_service=lab4-vulnerable-site,traefik_http_routers_lab4-main_rule_id=lab4,traefik_http_routers_lab4-main_priority=200,traefik_http_routers_lab4-main_entrypoints=web,traefik_http_routers_lab4-main_middlewares=lab4-auth-check-file__strip-lab4-prefix-file,traefik_http_services_lab4-vulnerable-site_lb_port=8080"
 
-  gcloud run deploy lab-04-steganography-favicon-${ENVIRONMENT} \
+  gcloud run deploy lab-04-steganography-${ENVIRONMENT} \
     --image="$LAB4_IMAGE" \
     --region=${LABS_GAR_LOCATION} \
     --platform=managed \
@@ -384,9 +412,9 @@ deploy_lab04() {
     --cpu=1 \
     --min-instances=0 \
     --max-instances=10 \
-    --set-env-vars="LAB_NAME=04-steganography-favicon,ENVIRONMENT=${ENVIRONMENT},DOMAIN=${DOMAIN_PREFIX},HOME_URL=https://${DOMAIN_PREFIX}" \
+    --set-env-vars="LAB_NAME=04-steganography,ENVIRONMENT=${ENVIRONMENT},DOMAIN=${DOMAIN_PREFIX},HOME_URL=https://${DOMAIN_PREFIX},C2_URL=https://${DOMAIN_PREFIX}/lab4/c2" \
     --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
-    --labels="environment=${ENVIRONMENT},lab=04-steganography-favicon,project=e-skimming-labs,${TRAEFIK_LABELS}"
+    --labels="environment=${ENVIRONMENT},lab=04-steganography,project=e-skimming-labs,${TRAEFIK_LABELS}"
 
   echo "   ✅ Lab 4 Main deployed"
 }
@@ -448,6 +476,7 @@ case "$LAB_NUMBER" in
     echo "   - lab-03-extension-hijacking-${ENVIRONMENT}"
     ;;&
   "04"|"all")
-    echo "   - lab-04-steganography-favicon-${ENVIRONMENT}"
+    echo "   - lab4-c2-${ENVIRONMENT}"
+    echo "   - lab-04-steganography-${ENVIRONMENT}"
     ;;
 esac
