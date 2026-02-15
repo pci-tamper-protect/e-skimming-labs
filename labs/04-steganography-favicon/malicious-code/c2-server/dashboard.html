@@ -233,8 +233,20 @@
 
 <body>
   <div class="header">
-    <h1>Lab 4 — Steganography C2</h1>
-    <div class="badge">Attacker Dashboard</div>
+    <div style="display:flex; align-items:center; gap:15px;">
+      <h1>Lab 4 — Steganography C2</h1>
+      <div class="badge">Attacker Dashboard</div>
+    </div>
+    <div style="display:flex; gap:10px;">
+      <a href="/"
+        style="color:white; text-decoration:none; background:rgba(255,255,255,0.1); padding:6px 12px; border-radius:4px; font-size:0.9rem; transition:background 0.2s;"
+        onmouseover="this.style.background='rgba(255,255,255,0.2)'"
+        onmouseout="this.style.background='rgba(255,255,255,0.1)'">🏠 Home</a>
+      <a href="/lab4/"
+        style="color:white; text-decoration:none; background:rgba(255,255,255,0.1); padding:6px 12px; border-radius:4px; font-size:0.9rem; transition:background 0.2s;"
+        onmouseover="this.style.background='rgba(255,255,255,0.2)'"
+        onmouseout="this.style.background='rgba(255,255,255,0.1)'">🧪 Lab</a>
+    </div>
   </div>
 
   <div class="container">
@@ -273,7 +285,11 @@
 
     <div class="records-header">
       <h2>Stolen Cards</h2>
-      <button class="refresh-btn" onclick="loadData()">Refresh</button>
+      <div style="display:flex; gap:10px;">
+        <button class="refresh-btn" onclick="clearData()"
+          style="background:transparent; border:1px solid var(--accent); color:var(--accent);">Clear Data</button>
+        <button class="refresh-btn" onclick="loadData()">Refresh</button>
+      </div>
     </div>
 
     <div class="card-list" id="card-list">
@@ -345,6 +361,24 @@
       if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
       if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
       return Math.floor(seconds / 86400) + 'd ago';
+    }
+
+    async function clearData() {
+      if (!confirm('Are you sure you want to delete all stolen data? This cannot be undone.')) return;
+
+      try {
+        const res = await fetch('/lab4/c2/api/clear', { method: 'POST' });
+        const json = await res.json();
+
+        if (json.success) {
+          loadData(); // Refresh list
+        } else {
+          alert('Error: ' + (json.error || 'Failed to clear'));
+        }
+      } catch (e) {
+        console.error('Clear failed:', e);
+        alert('Failed to connect to server');
+      }
     }
 
     loadData();
