@@ -12,7 +12,7 @@ const path = require('path')
 const fs = require('fs').promises
 
 const app = express()
-const PORT = process.env.PORT || 3000
+const PORT = process.env.PORT || 8080
 
 // Rate limiter — prevents abuse of expensive I/O routes
 const collectLimiter = rateLimit({

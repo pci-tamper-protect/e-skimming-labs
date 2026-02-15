@@ -437,7 +437,7 @@ services:
     depends_on:
       - traefik
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:80/']
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:8080/']
       interval: 10s
       timeout: 3s
       retries: 3
@@ -470,7 +470,7 @@ services:
       - ./labs/04-steganography-favicon/c2-data:/app/stolen-data
     environment:
       - NODE_ENV=development
-      - PORT=3000
+      - PORT=8080
     depends_on:
       - traefik
     labels:
