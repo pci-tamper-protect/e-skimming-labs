@@ -460,7 +460,7 @@ services:
       - "traefik.http.routers.lab4-main.service=lab4-vulnerable-site"
       - "traefik.http.services.lab4-vulnerable-site.loadbalancer.server.port=80"
       
-  # Lab 4 - C2 Server (Reusing Lab 1 Image)
+  # Lab 4 - C2 Server
   lab4-c2-server:
     build: ./labs/04-steganography-favicon/malicious-code/c2-server
     container_name: lab4-c2
