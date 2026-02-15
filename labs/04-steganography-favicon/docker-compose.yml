@@ -17,11 +17,11 @@ services:
     build: ./malicious-code/c2-server
     container_name: lab4-c2
     ports:
-      - '3004:3000'
+      - '3004:8080'
     networks:
       - lab-network
     environment:
-      - PORT=3000
+      - PORT=8080
 
 networks:
   lab-network:

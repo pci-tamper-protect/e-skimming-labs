@@ -369,7 +369,7 @@ deploy_lab04() {
     "Dockerfile" \
     "$LAB4_C2_IMAGE"
 
-  LAB4_C2_TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab4-c2_rule_id=lab4-c2,traefik_http_routers_lab4-c2_priority=300,traefik_http_routers_lab4-c2_entrypoints=web,traefik_http_routers_lab4-c2_middlewares=strip-lab4-c2-prefix-file,traefik_http_routers_lab4-c2_service=lab4-c2-server,traefik_http_services_lab4-c2-server_lb_port=8080"
+  LAB4_C2_TRAEFIK_LABELS=$(get_lab_labels "lab4-c2-server")
 
   gcloud run deploy lab4-c2-${ENVIRONMENT} \
     --image="$LAB4_C2_IMAGE" \
@@ -383,7 +383,7 @@ deploy_lab04() {
     --cpu=1 \
     --min-instances=0 \
     --max-instances=5 \
-    --set-env-vars="ENVIRONMENT=${ENVIRONMENT}" \
+    --set-env-vars="ENVIRONMENT=${ENVIRONMENT},PORT=8080" \
     --labels="environment=${ENVIRONMENT},component=c2,lab=04-steganography,project=e-skimming-labs,${LAB4_C2_TRAEFIK_LABELS}"
 
   echo "   ✅ Lab 4 C2 deployed"
@@ -398,7 +398,7 @@ deploy_lab04() {
     "Dockerfile" \
     "$LAB4_IMAGE"
 
-  TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab4-static_rule_id=lab4-static,traefik_http_routers_lab4-static_priority=250,traefik_http_routers_lab4-static_entrypoints=web,traefik_http_routers_lab4-static_middlewares=strip-lab4-prefix-file,traefik_http_routers_lab4-static_service=lab4-vulnerable-site,traefik_http_routers_lab4-main_rule_id=lab4,traefik_http_routers_lab4-main_priority=200,traefik_http_routers_lab4-main_entrypoints=web,traefik_http_routers_lab4-main_middlewares=lab4-auth-check-file__strip-lab4-prefix-file,traefik_http_services_lab4-vulnerable-site_lb_port=8080"
+  TRAEFIK_LABELS=$(get_lab_labels "lab4-vulnerable-site")
 
   gcloud run deploy lab-04-steganography-${ENVIRONMENT} \
     --image="$LAB4_IMAGE" \

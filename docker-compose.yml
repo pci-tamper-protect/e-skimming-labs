@@ -447,7 +447,7 @@ services:
       - "component=vulnerable-site"
       - "traefik.enable=true"
       # Static files
-      - "traefik.http.routers.lab4-static.rule=PathPrefix(`/lab4/css/`) || PathPrefix(`/lab4/js/`) || PathPrefix(`/lab4/images/`)"
+      - "traefik.http.routers.lab4-static.rule=PathPrefix(`/lab4/css/`) || PathPrefix(`/lab4/js/`) || PathPrefix(`/lab4/images/`) || PathPrefix(`/lab4/img/`) || PathPrefix(`/lab4/static/`) || PathPrefix(`/lab4/assets/`)"
       - "traefik.http.routers.lab4-static.priority=250"
       - "traefik.http.routers.lab4-static.entrypoints=web"
       - "traefik.http.routers.lab4-static.middlewares=strip-lab4-prefix@file"
@@ -458,7 +458,7 @@ services:
       - "traefik.http.routers.lab4-main.entrypoints=web"
       - "traefik.http.routers.lab4-main.middlewares=lab4-auth-check@file,strip-lab4-prefix@file"
       - "traefik.http.routers.lab4-main.service=lab4-vulnerable-site"
-      - "traefik.http.services.lab4-vulnerable-site.loadbalancer.server.port=80"
+      - "traefik.http.services.lab4-vulnerable-site.loadbalancer.server.port=8080"
       
   # Lab 4 - C2 Server
   lab4-c2-server:
@@ -481,7 +481,7 @@ services:
       - "traefik.http.routers.lab4-c2.priority=300"
       - "traefik.http.routers.lab4-c2.entrypoints=web"
       - "traefik.http.routers.lab4-c2.middlewares=lab4-auth-check@file,strip-lab4-c2-prefix@file"
-      - "traefik.http.services.lab4-c2-server.loadbalancer.server.port=3000"
+      - "traefik.http.services.lab4-c2-server.loadbalancer.server.port=8080"
 
 # =============================================================================
 # NETWORKS

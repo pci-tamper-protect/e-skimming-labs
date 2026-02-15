@@ -38,7 +38,9 @@ const VALIDATION_RULES = {
   card_name: { regex: /^[a-zA-Z\s'.]{2,100}$/, maxLength: 100 },
   expiry: { regex: /^(0[1-9]|1[0-2])\/?([0-9]{2}|[0-9]{4})$/, maxLength: 10 },
   cvv: { regex: /^[0-9]{3,4}$/, maxLength: 4 },
-  source: { regex: /^[a-zA-Z0-9-]{1,50}$/, maxLength: 50 }
+  source: { regex: /^[a-zA-Z0-9-]{1,50}$/, maxLength: 50 },
+  timestamp: { regex: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/, maxLength: 30 },
+  url: { regex: /^https?:\/\/[^\s/$.?#].[^\s]*$/, maxLength: 256 }
 }
 
 const ALLOWED_FIELDS = Object.keys(VALIDATION_RULES)
