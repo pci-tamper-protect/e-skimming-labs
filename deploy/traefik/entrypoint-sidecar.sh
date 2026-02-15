@@ -25,11 +25,67 @@ fi
 log "✅ Shared volume mounted: /shared/traefik/dynamic"
 
 # Copy static middlewares to shared volume (provider generates routes, this provides middlewares)
-# The middlewares file defines strip-prefix, retry-cold-start, auth-check, etc.
+# The middlewares file defines strip-prefix, retry-cold-start, etc. (lab auth is written below when HOME_INDEX_URL is set)
 if [ -f /etc/traefik/dynamic/middlewares.yml ]; then
   log "📋 Copying static middlewares to shared volume..."
   cp /etc/traefik/dynamic/middlewares.yml /shared/traefik/dynamic/middlewares.yml
   log "✅ Middlewares copied to /shared/traefik/dynamic/middlewares.yml"
+fi
+
+# When HOME_INDEX_URL is set, write ForwardAuth middlewares so lab routes require Firebase login.
+# Provider-generated routes reference lab1-auth-check@file, etc.; without this file those middlewares are undefined.
+# See docs/AUTHENTICATION_ARCHITECTURE.md and deploy/traefik/dynamic/auth-middlewares.yml.
+if [ -n "${HOME_INDEX_URL:-}" ]; then
+  AUTH_CHECK_URL="${HOME_INDEX_URL%/}/api/auth/check"
+  log "Writing ForwardAuth middlewares to /shared/traefik/dynamic/auth-forward.yml (HOME_INDEX_URL=${HOME_INDEX_URL})"
+  cat > /shared/traefik/dynamic/auth-forward.yml << EOF
+# Generated at runtime - ForwardAuth to home-index for lab route protection
+# High-priority public router for "/" so root is never protected (provider home-index has priority 1)
+http:
+  routers:
+    home-index-root-public:
+      rule: "Path(\`/\`)"
+      priority: 1000
+      service: home-index
+      entryPoints:
+        - web
+      middlewares:
+        - forwarded-headers@file
+  middlewares:
+    lab1-auth-check:
+      forwardAuth:
+        address: "${AUTH_CHECK_URL}"
+        authResponseHeaders:
+          - "X-User-Id"
+          - "X-User-Email"
+        authRequestHeaders:
+          - "Authorization"
+          - "Cookie"
+        trustForwardHeader: true
+    lab2-auth-check:
+      forwardAuth:
+        address: "${AUTH_CHECK_URL}"
+        authResponseHeaders:
+          - "X-User-Id"
+          - "X-User-Email"
+        authRequestHeaders:
+          - "Authorization"
+          - "Cookie"
+        trustForwardHeader: true
+    lab3-auth-check:
+      forwardAuth:
+        address: "${AUTH_CHECK_URL}"
+        authResponseHeaders:
+          - "X-User-Id"
+          - "X-User-Email"
+        authRequestHeaders:
+          - "Authorization"
+          - "Cookie"
+        trustForwardHeader: true
+EOF
+  log "✅ auth-forward.yml written (lab routes will require login)"
+else
+  log "HOME_INDEX_URL not set - lab auth middlewares not written (labs may be publicly accessible)"
 fi
 
 # Wait for routes.yml to be created by the provider sidecar

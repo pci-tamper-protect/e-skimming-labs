@@ -466,12 +466,17 @@ func main() {
 		forwardedHost == "127.0.0.1:9090" || forwardedHost == "localhost:9090" ||
 		strings.HasSuffix(forwardedHost, ":9090")
 
+		// Check for force_auth query param to skip proxy bypass (for testing auth flow via proxy)
+		// The original request URI is in X-Forwarded-Uri header (set by Traefik ForwardAuth)
+		forwardedUri := r.Header.Get("X-Forwarded-Uri")
+		forceAuth := strings.Contains(forwardedUri, "force_auth=true") || r.URL.Query().Get("force_auth") == "true"
+
 		// Bypass authentication for proxy access (local testing)
 		// User is already authenticated to gcloud when using proxy
-		log.Printf("🔍 Bypass check - env:%s, isProxy:%v, isFwdProxy:%v, isLocal:%v, isBehindTraefik:%v",
-			environment, isProxyHost, isForwardedProxyHost, isLocalProxy, isBehindTraefik)
+		log.Printf("🔍 Bypass check - env:%s, isProxy:%v, isFwdProxy:%v, isLocal:%v, isBehindTraefik:%v, forceAuth:%v",
+			environment, isProxyHost, isForwardedProxyHost, isLocalProxy, isBehindTraefik, forceAuth)
 
-		if environment == "stg" && (isProxyHost || isForwardedProxyHost || isLocalProxy || isBehindTraefik) {
+		if !forceAuth && environment == "stg" && (isProxyHost || isForwardedProxyHost || isLocalProxy || isBehindTraefik) {
 			log.Printf("🔓 Bypassing auth for proxy access (Host: %s, Forwarded-Host: %s, Forwarded-For: %s)",
 				sanitizeForLog(host, 200), sanitizeForLog(forwardedHost, 200), sanitizeForLog(forwardedFor, 200))
 			w.Header().Set("X-User-Id", "proxy-user")

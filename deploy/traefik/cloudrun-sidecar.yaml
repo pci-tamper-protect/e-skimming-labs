@@ -52,6 +52,9 @@ spec:
           value: "labs-home-stg"
         - name: REGION
           value: "us-central1"
+        # Set by deploy script: entrypoint writes ForwardAuth middlewares so /lab1, /lab2, /lab3 require login
+        - name: HOME_INDEX_URL
+          value: "__HOME_INDEX_URL__"
         resources:
           limits:
             cpu: "1"  # Main container: 1 CPU

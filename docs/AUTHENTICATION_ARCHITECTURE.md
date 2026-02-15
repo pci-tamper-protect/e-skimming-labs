@@ -242,10 +242,76 @@ This script:
 
 ### Issue: Lab routes not protected
 
-**Check:**
-1. Traefik ForwardAuth middleware is configured in `deploy/traefik/dynamic/routes.yml`
-2. Lab routes in `docker-compose.yml` include the auth middleware: `lab1-auth-check@file`
-3. `home-index-service` is running and `/api/auth/check` endpoint is accessible
+**Local (docker-compose):**
+1. Use `./deploy/docker-compose-auth.sh up` so `auth-middlewares.yml` is mounted (ForwardAuth to home-index).
+2. Lab routes in `docker-compose.yml` include `lab1-auth-check@file`.
+3. `home-index-service` is running and `/api/auth/check` is accessible.
+
+**Staging/Production (Cloud Run):**
+1. The Traefik image does *not* include `local-auth-stubs.yml` (empty chains). It only includes `routes.yml` (strip-prefix, retry).
+2. ForwardAuth middlewares (`lab1-auth-check`, etc.) are written at runtime by the entrypoint when `HOME_INDEX_URL` is set:
+   - **Sidecar deploy** (traefik + provider containers): `deploy/traefik/entrypoint-sidecar.sh` writes `/shared/traefik/dynamic/auth-forward.yml`. Set `HOME_INDEX_URL` in `cloudrun-sidecar.yaml`; `deploy-sidecar.sh` and `deploy-sidecar-traefik-3.0.sh` substitute the home-index service URL when deploying.
+   - **Plugin deploy** (single container): `deploy/traefik/entrypoint-plugin.sh` writes `/etc/traefik/dynamic/auth-forward.yml`; the deploy workflow or `deploy.sh` sets `HOME_INDEX_URL` on the service.
+3. If lab routes are still public: (a) Verify `HOME_INDEX_URL` is set on the Traefik Cloud Run service (e.g. in the GCP Console or `gcloud run services describe traefik-stg --region=us-central1 --project=labs-stg --format='yaml(spec.template.spec.containers[0].env)'`). (b) If it is missing, run `./deploy/traefik/set-home-index-url.sh stg` to set it and create a new revision (no full redeploy needed). (c) Check Traefik logs for "auth-forward.yml written".
+
+### Issue: Root path (/) returns 401 Unauthorized
+
+**Cause:** The home page must stay public. Two safeguards are in place:
+
+1. **Traefik:** When `HOME_INDEX_URL` is set, the sidecar entrypoint writes `auth-forward.yml` with a high-priority router `home-index-root-public` (rule `Path(\`/\`)`, priority 1000) so the exact path `/` is always served by home-index with no auth middleware, even if the provider’s home router had auth attached.
+2. **home-index-service:** The Go auth middleware treats an empty path as `/` and has `/` in the public paths list, so the app never requires auth for the root.
+
+**If you still see 401 on `/`:** (a) Confirm the Traefik image includes the updated entrypoint that adds `home-index-root-public` in `auth-forward.yml`. (b) Confirm home-index has the path normalization that sets `normalizedPath = "/"` when `r.URL.Path == ""`. (c) Check home-index logs for "Skipping auth for public path" vs "Auth middleware checking" to see whether the request is treated as public.
+
+### Redeploy commands (rebuild and push after auth fixes)
+
+Run from the repo root (`e-skimming-labs`).
+
+**Home-index (staging)** — after changing `deploy/shared-components/home-index-service/` (e.g. auth middleware):
+
+```bash
+./deploy/shared-components/home-index-service/deploy-stg.sh
+```
+
+Optional image tag: `./deploy/shared-components/home-index-service/deploy-stg.sh my-tag`
+
+**Home-index (staging or production)** — full home deploy (SEO + home-index):
+
+```bash
+./deploy/deploy-home.sh stg
+# or
+./deploy/deploy-home.sh prd
+```
+
+Optional: `./deploy/deploy-home.sh stg $(git rev-parse --short HEAD) --force-rebuild`
+
+**Traefik sidecar (staging)** — after changing entrypoint or Traefik config (e.g. `auth-forward.yml`):
+
+```bash
+./deploy/traefik/deploy-sidecar.sh stg
+```
+
+**Traefik sidecar (production):**
+
+```bash
+./deploy/traefik/deploy-sidecar.sh prd
+```
+
+**Traefik v3.0 sidecar** (if you use the v3.0 image):
+
+```bash
+./deploy/traefik/deploy-sidecar-traefik-3.0.sh stg
+# or
+./deploy/traefik/deploy-sidecar-traefik-3.0.sh prd
+```
+
+**Only set HOME_INDEX_URL** (no image rebuild; new revision so lab auth works):
+
+```bash
+./deploy/traefik/set-home-index-url.sh stg
+# or
+./deploy/traefik/set-home-index-url.sh prd
+```
 
 ### Issue: "Service account does not exist" error
 

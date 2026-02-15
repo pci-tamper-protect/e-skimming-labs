@@ -134,11 +134,34 @@ fi
 echo "🔐 Service account found: ${SERVICE_ACCOUNT}"
 echo ""
 
-# Generate Cloud Run YAML with environment-specific values and v3.0 image tags
+# Get home-index URL so Traefik entrypoint can write ForwardAuth middlewares (lab routes require login)
+# Must query the HOME project (labs-home-stg); ensure gcloud can access it.
+HOME_INDEX_URL=$(gcloud run services describe "home-index-${ENVIRONMENT}" \
+  --region="${REGION}" \
+  --project="${HOME_PROJECT_ID}" \
+  --format='value(status.url)' 2>/dev/null || echo "")
+if [ -z "${HOME_INDEX_URL}" ]; then
+  # Fallback: try service name without env suffix (some deploys use "home-index" only)
+  HOME_INDEX_URL=$(gcloud run services describe "home-index" \
+    --region="${REGION}" \
+    --project="${HOME_PROJECT_ID}" \
+    --format='value(status.url)' 2>/dev/null || echo "")
+fi
+if [ -n "${HOME_INDEX_URL}" ]; then
+  echo "✅ HOME_INDEX_URL set for lab auth: ${HOME_INDEX_URL}"
+else
+  echo "⚠️  Could not get home-index URL (project=${HOME_PROJECT_ID}, region=${REGION})"
+  echo "   Lab routes will NOT require login until HOME_INDEX_URL is set."
+  echo "   After deploy, run: ./deploy/traefik/set-home-index-url.sh ${ENVIRONMENT}"
+fi
+echo ""
+
+# Generate Cloud Run YAML with environment-specific values and v3.0 image tags (use | for URL sed delimiter)
 TEMP_YAML=$(mktemp)
 sed "s/labs-stg/${PROJECT_ID}/g; \
      s/labs-home-stg/${HOME_PROJECT_ID}/g; \
      s/stg/${ENVIRONMENT}/g; \
+     s|__HOME_INDEX_URL__|${HOME_INDEX_URL}|g; \
      s|traefik:latest|traefik:v3.0|g" \
     "${TRAEFIK_DEPLOY_DIR}/cloudrun-sidecar.yaml" > "${TEMP_YAML}"
 
@@ -149,6 +172,23 @@ gcloud run services replace "${TEMP_YAML}" \
   --project="${PROJECT_ID}"
 
 rm "${TEMP_YAML}"
+
+# If we didn't have HOME_INDEX_URL before, retry once (e.g. project permissions)
+if [ -z "${HOME_INDEX_URL}" ]; then
+  HOME_INDEX_URL=$(gcloud run services describe "home-index-${ENVIRONMENT}" \
+    --region="${REGION}" \
+    --project="${HOME_PROJECT_ID}" \
+    --format='value(status.url)' 2>/dev/null || echo "")
+fi
+# Ensure Traefik service has HOME_INDEX_URL so entrypoint writes auth-forward.yml (lab routes require login)
+if [ -n "${HOME_INDEX_URL}" ]; then
+  echo "🔐 Setting HOME_INDEX_URL on Traefik service (lab auth)..."
+  gcloud run services update "${SERVICE_NAME}" \
+    --region="${REGION}" \
+    --project="${PROJECT_ID}" \
+    --set-env-vars "HOME_INDEX_URL=${HOME_INDEX_URL}" \
+    --quiet
+fi
 
 # Get the actual service URL after deployment (needed for dashboard service)
 echo "🔍 Getting main Traefik service URL..."
