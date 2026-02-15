@@ -205,7 +205,7 @@ services:
       - ./labs/01-basic-magecart/malicious-code/c2-server/stolen-data:/app/stolen-data
     environment:
       - NODE_ENV=development
-      - PORT=3000
+      - PORT=8080
     depends_on:
       - traefik
     labels:
@@ -261,7 +261,7 @@ services:
       - ./labs/02-dom-skimming/c2-server/stolen-data:/app/stolen-data
     environment:
       - NODE_ENV=development
-      - PORT=3000
+      - PORT=8080
     depends_on:
       - traefik
     labels:
@@ -320,7 +320,7 @@ services:
       - labs-network
     environment:
       - NODE_ENV=development
-      - PORT=3000
+      - PORT=8080
     depends_on:
       - traefik
     labels:

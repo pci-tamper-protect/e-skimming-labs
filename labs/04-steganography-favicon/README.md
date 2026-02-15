@@ -60,15 +60,14 @@ ctx.getImageData(0, 0, width, height)
 ├── vulnerable-site/              # Target e-commerce site
 │   ├── index.html                # Main entry point with loader reference
 │   ├── original-favicon.ico      # The malicious favicon container
-│   ├── css/                      # Styles
-│   └── js/
-│       └── loader.js             # The decoder script
+│   ├── js/
+│   │   └── loader.js             # The decoder script
+│   └── nginx.conf                # Web server configuration
 ├── malicious-code/
 │   ├── stego-generator/          # Tools to create malicious images
 │   └── c2-server/                # Command & Control server
 │       ├── server.js             # Node.js server handling exfiltration
 │       └── dashboard.html        # Attacker dashboard
-├── nginx.conf                    # Web server configuration
 └── docker-compose.yml            # Container orchestration
 
 ## Attack Techniques Demonstrated
