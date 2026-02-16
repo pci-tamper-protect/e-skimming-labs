@@ -1450,6 +1450,7 @@ func serveThreatModelPage(w http.ResponseWriter, r *http.Request, homeData HomeP
 
 // serveBlogPage serves the blog landing page
 func serveBlogPage(w http.ResponseWriter, r *http.Request, homeData HomePageData, validator *auth.TokenValidator) {
+	_ = validator // kept for API consistency; future use for gated blog content
 	// Try multiple paths for local development and container environments
 	paths := []string{
 		"/app/blog-preview.html",        // Container path
@@ -1491,6 +1492,7 @@ func serveBlogPage(w http.ResponseWriter, r *http.Request, homeData HomePageData
 
 // serveBlogPost serves individual blog posts
 func serveBlogPost(w http.ResponseWriter, r *http.Request, postID string, homeData HomePageData, validator *auth.TokenValidator) {
+	_ = validator // kept for API consistency; future use for gated blog content
 	// Map post IDs to file names
 	postFiles := map[string]string{
 		"understanding-magecart": "blog-post-preview.html",
