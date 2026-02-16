@@ -138,6 +138,15 @@ echo "   HEAD (curl -I; some ForwardAuth setups handle HEAD differently):"
 if curl -sf --max-time 5 -I -o /dev/null -w "   HTTP %{http_code}\n" "http://127.0.0.1:${PROXY_PORT}/lab1?force_auth=true" 2>/dev/null; then
   :
 fi
+echo "   Consistency check (3 HEAD requests - should all be 401 when unauthenticated):"
+R1=$(curl -sf --max-time 5 -I -o /dev/null -w "%{http_code}" "http://127.0.0.1:${PROXY_PORT}/lab1?force_auth=true" 2>/dev/null || echo "ERR")
+R2=$(curl -sf --max-time 5 -I -o /dev/null -w "%{http_code}" "http://127.0.0.1:${PROXY_PORT}/lab1?force_auth=true" 2>/dev/null || echo "ERR")
+R3=$(curl -sf --max-time 5 -I -o /dev/null -w "%{http_code}" "http://127.0.0.1:${PROXY_PORT}/lab1?force_auth=true" 2>/dev/null || echo "ERR")
+echo "   Request 1: $R1 | Request 2: $R2 | Request 3: $R3"
+if [ "$R1" != "$R2" ] || [ "$R2" != "$R3" ]; then
+  echo "   ⚠️  Inconsistent responses - different Traefik instances may have different config (some missing lab1-auth-check)"
+  echo "   Fix: Redeploy Traefik so all instances get USER_AUTH_ENABLED=true"
+fi
 echo ""
 
 # 9. Home-index auth/check logs (last 2 min)
@@ -147,6 +156,7 @@ echo ""
 
 echo "=========================================="
 echo "Quick fixes:"
+echo "  - 401 then 200 (no sign-in): Different instances have different config. Redeploy Traefik."
 echo "  - 200 instead of 302:"
 echo "    1. home-index ENABLE_AUTH must be true (step 7)"
 echo "    2. Try GET not HEAD: curl -s -o /dev/null -w '%{http_code}' 'http://127.0.0.1:${PROXY_PORT}/lab1?force_auth=true'"

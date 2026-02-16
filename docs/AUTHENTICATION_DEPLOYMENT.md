@@ -164,6 +164,11 @@ If the debug script reports `HOME_INDEX_URL not set on Traefik`, either:
 
 1. **Missing permissions**: Labs deploy SA needs `roles/run.viewer` on `labs-home-stg`. Run `./deploy/traefik/APPLY_PERMISSIONS.sh stg`.
 2. **Traefik not redeployed**: Traefik only deploys when `deploy/traefik/` changes (or `[force-all]`). Pushes that only change home-index do not redeploy Traefik; use `set-home-index-url.sh` to fix without a full redeploy.
+3. **Provider missing USER_AUTH_ENABLED**: If the provider container has no env vars (or USER_AUTH_ENABLED≠true), it filters out `lab1-auth-check` from routers. Requests then bypass auth and return 200. Redeploy with `./deploy/traefik/deploy-sidecar-traefik-3.0.sh stg` or push a change to `deploy/traefik/`.
+
+### Intermittent 401 Then 200 (No Sign-In)
+
+If the first request returns 401 and the second returns 200 without signing in, different Traefik instances likely have different config: some have `lab1-auth-check`, others do not (provider missing USER_AUTH_ENABLED). Fix by redeploying Traefik so all instances get the correct provider env.
 
 ## Security Considerations
 

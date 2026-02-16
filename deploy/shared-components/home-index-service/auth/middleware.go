@@ -223,8 +223,8 @@ func respondAuthError(w http.ResponseWriter, r *http.Request, statusCode int, me
 		acceptHeader == "" ||
 		strings.Contains(acceptHeader, "*/*")
 
-	if isBrowserRequest && mainAppURL != "" {
-		// Redirect browser requests to sign-in page
+	if isBrowserRequest {
+		// Redirect browser requests to sign-in page (URL built from request; mainAppURL unused when empty)
 		// Use X-Forwarded-Host if available (when behind proxy like Traefik),
 		// otherwise use request's Host header to avoid container hostname issues
 		scheme := "http"

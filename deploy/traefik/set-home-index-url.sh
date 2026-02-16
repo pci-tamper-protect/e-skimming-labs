@@ -47,7 +47,7 @@ echo "Updating ${SERVICE_NAME} to set HOME_INDEX_URL (will create a new revision
 gcloud run services update "${SERVICE_NAME}" \
   --region="${REGION}" \
   --project="${PROJECT_ID}" \
-  --set-env-vars "HOME_INDEX_URL=${HOME_INDEX_URL}"
+  --update-env-vars "HOME_INDEX_URL=${HOME_INDEX_URL}"
 
 echo ""
 echo "✅ Done. New instances will write auth-forward.yml and lab routes will require login."

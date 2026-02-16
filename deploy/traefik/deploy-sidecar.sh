@@ -173,7 +173,7 @@ if [ -n "${HOME_INDEX_URL}" ]; then
   echo "🔐 Setting HOME_INDEX_URL on Traefik service (lab auth)..."
   gcloud run services update "${SERVICE_NAME}" \
     --region="${REGION}" --project="${PROJECT_ID}" \
-    --set-env-vars "HOME_INDEX_URL=${HOME_INDEX_URL}" --quiet
+    --update-env-vars "HOME_INDEX_URL=${HOME_INDEX_URL}" --quiet
 fi
 
 # Get the actual service URL after deployment (needed for dashboard service)
