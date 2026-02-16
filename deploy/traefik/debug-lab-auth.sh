@@ -76,13 +76,13 @@ echo ""
 # Naming: lab1-auth = Cloud Run IAM token (backend invocation); lab1-auth-check = ForwardAuth (user JWT)
 # lab1 router MUST have lab1-auth-check for user auth; lab1-c2 has lab1-c2-server-auth (different backend)
 echo "3. Lab1 router config (via proxy at localhost:${PROXY_PORT}):"
-if curl -sf --max-time 3 "http://127.0.0.1:${PROXY_PORT}/api/http/routers" 2>/dev/null | jq -r '.[] | select(.name | contains("lab1")) | select(.name | contains("static") | not) | "\(.name): middlewares=\(.middlewares | join(", "))"' 2>/dev/null | head -5; then
-  echo "   Expected: lab1 has lab1-auth-check@file (user auth); lab1-c2 has lab1-c2-server-auth@file (backend auth)"
-  LAB1_MW=$(curl -sf --max-time 3 "http://127.0.0.1:${PROXY_PORT}/api/http/routers" 2>/dev/null | jq -r '.[] | select(.name | contains("lab1")) | select(.name | contains("static") | not) | .middlewares | join(" ")' 2>/dev/null | head -1)
+if curl -sf --max-time 3 "http://127.0.0.1:${PROXY_PORT}/api/http/routers" 2>/dev/null | jq -r '.[] | select((.name == "lab1-main" or .name == "lab1" or (.name | startswith("lab1-c2"))) and (.name | contains("static") | not)) | "\(.name): middlewares=\(.middlewares | join(", "))"' 2>/dev/null | head -5; then
+  echo "   Expected: lab1 or lab1-main has lab1-auth-check@file (user auth); lab1-c2 has lab1-c2-server-auth@file (backend auth)"
+  LAB1_MW=$(curl -sf --max-time 3 "http://127.0.0.1:${PROXY_PORT}/api/http/routers" 2>/dev/null | jq -r '.[] | select(.name == "lab1-main" or .name == "lab1") | select(.name | contains("static") | not) | .middlewares | join(" ")' 2>/dev/null | head -1)
   if echo "$LAB1_MW" | grep -q "lab1-auth-check"; then
-    echo "   ✅ lab1 has lab1-auth-check (user auth enabled)"
+    echo "   ✅ lab1/lab1-main has lab1-auth-check (user auth enabled)"
   else
-    echo "   ❌ lab1 missing lab1-auth-check - set USER_AUTH_ENABLED=true on provider container"
+    echo "   ❌ lab1/lab1-main missing lab1-auth-check - set USER_AUTH_ENABLED=true on provider container"
   fi
 else
   echo "   ⚠️  Proxy not running or Traefik API not accessible."

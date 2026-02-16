@@ -170,6 +170,13 @@ If the debug script reports `HOME_INDEX_URL not set on Traefik`, either:
 
 If the first request returns 401 and the second returns 200 without signing in, different Traefik instances likely have different config: some have `lab1-auth-check`, others do not (provider missing USER_AUTH_ENABLED). Fix by redeploying Traefik so all instances get the correct provider env.
 
+### Lab1 Not Redirecting While Lab2/Lab3 Do
+
+Lab1 was using router `lab1` while lab2/lab3 use `lab2-main`/`lab3-main`. Lab1 is now aligned to use `lab1-main` (same structure as lab2/lab3). After this change:
+1. Redeploy lab1: `./deploy/deploy-labs.sh stg` (or push to trigger workflow)
+2. Redeploy Traefik: push a change to `deploy/traefik/` or run `./deploy/traefik/deploy-sidecar-traefik-3.0.sh stg`
+3. Run `./deploy/traefik/debug-lab-auth.sh stg` to verify lab1-main has lab1-auth-check
+
 ## Security Considerations
 
 1. **Token Storage**: Tokens are stored in `sessionStorage` (not `localStorage`) for better security
