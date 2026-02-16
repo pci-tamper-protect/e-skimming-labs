@@ -407,8 +407,9 @@ func main() {
 		// This endpoint is called by Traefik ForwardAuth middleware
 		// According to Traefik docs, ForwardAuth forwards headers specified in authRequestHeaders
 		// Reference: https://github.com/traefik/traefik/blob/master/pkg/middlewares/forwardauth/forwardauth.go
-		log.Printf("🔍 /api/auth/check called - Host: %s, X-Forwarded-Host: %s, X-Forwarded-For: %s",
-			sanitizeForLog(r.Host, 200), sanitizeForLog(r.Header.Get("X-Forwarded-Host"), 200), sanitizeForLog(r.Header.Get("X-Forwarded-For"), 200))
+		userAuthEnv := os.Getenv("USER_AUTH_ENABLED")
+		log.Printf("🔍 /api/auth/check called - Host: %s, X-Forwarded-Host: %s, X-Forwarded-For: %s, USER_AUTH_ENABLED=%s, authValidator.IsEnabled=%v",
+			sanitizeForLog(r.Host, 200), sanitizeForLog(r.Header.Get("X-Forwarded-Host"), 200), sanitizeForLog(r.Header.Get("X-Forwarded-For"), 200), userAuthEnv, authValidator.IsEnabled())
 
 		// DEBUG: Log ALL headers to see what Traefik ForwardAuth is actually forwarding
 		// According to Traefik ForwardAuth implementation, it should forward headers listed in authRequestHeaders
@@ -429,7 +430,8 @@ func main() {
 			r.URL.Path, r.Method, sanitizeForLog(r.Header.Get("X-Forwarded-Uri"), 200))
 
 		if !authValidator.IsEnabled() {
-			// Auth disabled, allow access
+			// Auth disabled (ENABLE_AUTH not true), allow access
+			log.Printf("🔓 Returning 200 - auth disabled (authValidator.IsEnabled=false, ENABLE_AUTH may be unset)")
 			w.WriteHeader(http.StatusOK)
 			return
 		}
