@@ -622,7 +622,7 @@ jobs:
               --cpu=1 \
               --min-instances=0 \
               --max-instances=5 \
-              --set-env-vars="HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/banking.html,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/index.html,ENABLE_AUTH=true,REQUIRE_AUTH=true,FIREBASE_PROJECT_ID=ui-firebase-pcioasis-${{ needs.setup.outputs.environment }}" \
+              --set-env-vars="HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/banking.html,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/index.html,ENABLE_AUTH=true,REQUIRE_AUTH=true,FIREBASE_PROJECT_ID=ui-firebase-pcioasis-${{ needs.setup.outputs.environment }},USER_AUTH_ENABLED=true" \
               --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
               --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs-home,traefik_enable=true,traefik_http_routers_home-index_rule_id=home-index-root,traefik_http_routers_home-index_priority=1,traefik_http_routers_home-index_entrypoints=web,traefik_http_routers_home-index_middlewares=forwarded-headers-file,traefik_http_services_home-index_lb_port=8080,traefik_http_routers_home-index-signin_rule_id=home-index-signin,traefik_http_routers_home-index-signin_priority=100,traefik_http_routers_home-index-signin_entrypoints=web,traefik_http_routers_home-index-signin_middlewares=signin-headers-file,traefik_http_routers_home-index-signin_service=home-index"
 
@@ -1469,9 +1469,11 @@ jobs:
           fi
 
           # Generate Cloud Run YAML with environment-specific values
+          # Substitute __HOME_INDEX_URL__ so Traefik entrypoint writes ForwardAuth middlewares (lab routes require login)
           sed "s/labs-stg/${{ env.LABS_PROJECT_ID }}/g; \
                s/labs-home-stg/${{ env.HOME_PROJECT_ID }}/g; \
                s/stg/${ENV}/g; \
+               s|__HOME_INDEX_URL__|${HOME_INDEX_URL}|g; \
                s|traefik:latest|traefik:v3.0|g" \
             deploy/traefik/cloudrun-sidecar.yaml > /tmp/traefik-deploy.yaml
 

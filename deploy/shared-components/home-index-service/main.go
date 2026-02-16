@@ -471,10 +471,16 @@ func main() {
 		forwardedUri := r.Header.Get("X-Forwarded-Uri")
 		forceAuth := strings.Contains(forwardedUri, "force_auth=true") || r.URL.Query().Get("force_auth") == "true"
 
-		// Bypass authentication for proxy access (local testing)
+		// When USER_AUTH_ENABLED is set (stg), always enforce auth - no proxy bypass
+		userAuthEnabled := os.Getenv("USER_AUTH_ENABLED") == "true"
+		if userAuthEnabled {
+			forceAuth = true
+		}
+
+		// Bypass authentication for proxy access (local testing only when USER_AUTH_ENABLED is not set)
 		// User is already authenticated to gcloud when using proxy
-		log.Printf("🔍 Bypass check - env:%s, isProxy:%v, isFwdProxy:%v, isLocal:%v, isBehindTraefik:%v, forceAuth:%v",
-			environment, isProxyHost, isForwardedProxyHost, isLocalProxy, isBehindTraefik, forceAuth)
+		log.Printf("🔍 Bypass check - env:%s, isProxy:%v, isFwdProxy:%v, isLocal:%v, isBehindTraefik:%v, forceAuth:%v, userAuthEnabled:%v",
+			environment, isProxyHost, isForwardedProxyHost, isLocalProxy, isBehindTraefik, forceAuth, userAuthEnabled)
 
 		if !forceAuth && environment == "stg" && (isProxyHost || isForwardedProxyHost || isLocalProxy || isBehindTraefik) {
 			log.Printf("🔓 Bypassing auth for proxy access (Host: %s, Forwarded-Host: %s, Forwarded-For: %s)",
