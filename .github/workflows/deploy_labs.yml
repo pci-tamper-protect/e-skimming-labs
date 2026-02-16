@@ -1359,12 +1359,12 @@ jobs:
           path: traefik-cloudrun-provider
           token: ${{ secrets.GH_PAT || github.token }}
 
-      - name: Overlay provider config from plugins-local (authRequestHeaders: no Authorization)
+      - name: Overlay provider config from plugins-local
         run: |
           if [ -f deploy/traefik/plugins-local/src/github.com/pci-tamper-protect/traefik-cloudrun-provider/provider/config.go ]; then
             cp deploy/traefik/plugins-local/src/github.com/pci-tamper-protect/traefik-cloudrun-provider/provider/config.go \
                traefik-cloudrun-provider/provider/config.go
-            echo "✅ Overlaid config.go (ForwardAuth: Cookie only, no Authorization)"
+            echo "✅ Overlaid config.go (ForwardAuth with Authorization, Cookie, X-Forwarded-Uri)"
           fi
 
       - name: Authenticate to Google Cloud (Labs Project)
