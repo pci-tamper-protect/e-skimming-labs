@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"strings"
 )
 
@@ -42,16 +43,15 @@ func sanitizeEmail(email string) string {
 func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Normalize path (remove trailing slashes except for root)
-			normalizedPath := r.URL.Path
-			if normalizedPath == "" {
+			// Normalize path using path.Clean which:
+			// - Collapses multiple slashes (///x -> /x)
+			// - Resolves . and .. components
+			// - Removes trailing slashes (except root)
+			// - Returns "/" for empty paths
+			normalizedPath := path.Clean(r.URL.Path)
+			if normalizedPath == "." {
 				normalizedPath = "/"
 			}
-			if normalizedPath != "/" && strings.HasSuffix(normalizedPath, "/") {
-				normalizedPath = strings.TrimSuffix(normalizedPath, "/")
-			}
-			// Handle double slashes
-			normalizedPath = strings.ReplaceAll(normalizedPath, "//", "/")
 
 			// Explicit protected paths: always require auth when validator is enabled (no public bypass)
 			// Note: /lab1, /lab2, /lab3 are protected by Traefik ForwardAuth, not this middleware

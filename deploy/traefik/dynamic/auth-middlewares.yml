@@ -8,11 +8,11 @@
 #   - / (home)
 #   - /mitre-attack
 #   - /threat-model
-#   - /lab*/c2/collect (public data collection endpoint for skimmers)
+#   - /lab*/c2/collect (exact path only - public data collection endpoint for skimmers)
 #
 # Routes that REQUIRE auth (use these middlewares):
-#   - /lab1, /lab1/c2 (except /lab1/c2/collect), /lab1/variants/*
-#   - /lab2, /lab2/c2 (except /lab2/c2/collect)
+#   - /lab1, /lab1/c2/* (except exact /lab1/c2/collect), /lab1/variants/*
+#   - /lab2, /lab2/c2/* (except exact /lab2/c2/collect)
 #   - /lab3, /lab3/extension
 #   - /lab-*-writeup
 

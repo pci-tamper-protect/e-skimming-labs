@@ -213,7 +213,8 @@ services:
       - "component=c2-server"
       - "traefik.enable=true"
       # Collect endpoint - no auth required (skimmer needs to POST data)
-      - "traefik.http.routers.lab1-c2-collect.rule=PathPrefix(`/lab1/c2/collect`)"
+      # Use exact Path match to prevent bypassing auth via /lab1/c2/collect-admin etc.
+      - "traefik.http.routers.lab1-c2-collect.rule=Path(`/lab1/c2/collect`)"
       - "traefik.http.routers.lab1-c2-collect.priority=350"
       - "traefik.http.routers.lab1-c2-collect.entrypoints=web"
       - "traefik.http.routers.lab1-c2-collect.middlewares=strip-lab1-c2-prefix@file"
@@ -277,7 +278,8 @@ services:
       - "component=c2-server"
       - "traefik.enable=true"
       # Collect endpoint - no auth required (skimmer needs to POST data)
-      - "traefik.http.routers.lab2-c2-collect.rule=PathPrefix(`/lab2/c2/collect`)"
+      # Use exact Path match to prevent bypassing auth via /lab2/c2/collect-admin etc.
+      - "traefik.http.routers.lab2-c2-collect.rule=Path(`/lab2/c2/collect`)"
       - "traefik.http.routers.lab2-c2-collect.priority=350"
       - "traefik.http.routers.lab2-c2-collect.entrypoints=web"
       - "traefik.http.routers.lab2-c2-collect.middlewares=strip-lab2-c2-prefix@file"
