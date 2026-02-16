@@ -1453,16 +1453,6 @@ jobs:
               --set-env-vars="$ENV_VARS" \
               --labels="environment=${{ needs.setup.outputs.environment }},component=traefik,project=e-skimming-labs"
           else
-            # Production: also set HOME_INDEX_URL for lab auth if home-index exists
-            if [[ -z "$HOME_INDEX_URL" ]]; then
-              HOME_INDEX_URL=$(gcloud run services describe home-index-${{ needs.setup.outputs.environment }} \
-                --region=${{ env.LABS_GAR_LOCATION }} \
-                --project=${{ env.HOME_PROJECT_ID }} \
-                --format='value(status.url)' 2>/dev/null || echo "")
-            fi
-            if [[ -n "$HOME_INDEX_URL" ]]; then
-              ENV_VARS="$ENV_VARS,HOME_INDEX_URL=$HOME_INDEX_URL"
-            fi
             gcloud run deploy traefik-${{ needs.setup.outputs.environment }} \
               --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/traefik:${{ github.sha }} \
               --region=${{ env.LABS_GAR_LOCATION }} \
