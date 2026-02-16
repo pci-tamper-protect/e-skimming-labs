@@ -471,18 +471,30 @@ func main() {
 		forwardedUri := r.Header.Get("X-Forwarded-Uri")
 		forceAuth := strings.Contains(forwardedUri, "force_auth=true") || r.URL.Query().Get("force_auth") == "true"
 
-		// When USER_AUTH_ENABLED is set (stg), always enforce auth - no proxy bypass
+		// USER_AUTH_ENABLED controls auth for all environments - when true, always enforce (no bypass)
 		userAuthEnabled := os.Getenv("USER_AUTH_ENABLED") == "true"
 		if userAuthEnabled {
 			forceAuth = true
 		}
 
-		// Bypass authentication for proxy access (local testing only when USER_AUTH_ENABLED is not set)
-		// User is already authenticated to gcloud when using proxy
-		log.Printf("🔍 Bypass check - env:%s, isProxy:%v, isFwdProxy:%v, isLocal:%v, isBehindTraefik:%v, forceAuth:%v, userAuthEnabled:%v",
-			environment, isProxyHost, isForwardedProxyHost, isLocalProxy, isBehindTraefik, forceAuth, userAuthEnabled)
+		// Quick check: only bypass if we have a firebase_token (never bypass unauthenticated users)
+		hasFirebaseToken := false
+		if ch := r.Header.Get("Cookie"); ch != "" {
+			for _, part := range strings.Split(ch, ";") {
+				part = strings.TrimSpace(part)
+				if strings.HasPrefix(part, "firebase_token=") && len(strings.TrimPrefix(part, "firebase_token=")) > 10 {
+					hasFirebaseToken = true
+					break
+				}
+			}
+		}
 
-		if !forceAuth && environment == "stg" && (isProxyHost || isForwardedProxyHost || isLocalProxy || isBehindTraefik) {
+		// Bypass only when USER_AUTH_ENABLED is false (auth off) and user has firebase_token (proxy dev convenience)
+		// When USER_AUTH_ENABLED=true, auth is always enforced regardless of environment
+		log.Printf("🔍 Bypass check - env:%s, isProxy:%v, isFwdProxy:%v, isLocal:%v, isBehindTraefik:%v, forceAuth:%v, userAuthEnabled:%v, hasFirebaseToken:%v",
+			environment, isProxyHost, isForwardedProxyHost, isLocalProxy, isBehindTraefik, forceAuth, userAuthEnabled, hasFirebaseToken)
+
+		if !forceAuth && hasFirebaseToken && (isProxyHost || isForwardedProxyHost || isLocalProxy || isBehindTraefik) {
 			log.Printf("🔓 Bypassing auth for proxy access (Host: %s, Forwarded-Host: %s, Forwarded-For: %s)",
 				sanitizeForLog(host, 200), sanitizeForLog(forwardedHost, 200), sanitizeForLog(forwardedFor, 200))
 			w.Header().Set("X-User-Id", "proxy-user")
