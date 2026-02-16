@@ -275,23 +275,23 @@ This repository uses PR-based deployment with branch protection:
 
 - Docker & Docker Compose
 - Node.js 18+ (for some labs)
-- Python 3.8+ (for analysis tools)
+- Python 3.11+ (for analysis tools)
 - Modern browser (Chrome/Firefox recommended)
 
 ### Quick Start
 
+For more deployment options see [deploy/DEPLOYMENT_GUIDE.md](deploy/DEPLOYMENT_GUIDE.md).
+
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/e-skimming-labs.git
+# Fork or Clone the repository
+git clone https://github.com/pci-tamper-protect/e-skimming-labs.git
 cd e-skimming-labs
 
-# Start with Lab 01 - Basic Magecart
-cd labs/01-basic-magecart
-docker-compose up
+docker compose up -d
 
-# Visit http://localhost:3000
-# Follow the README.md in the lab folder
 ```
+Visit http://localhost:8080 to see the vulnerable site
+Follow the README.md in the lab folder
 
 ### Recommended Learning Path
 

@@ -18,18 +18,21 @@ providers:
     watch: true
 
 # API and Dashboard
-# Serve dashboard on port 8080
-# API requests (/api/*) are proxied to main Traefik service via dynamic routes
+# Serve dashboard on port 8080; API requests (/api/*) are proxied to main Traefik via dynamic routes
+# SECURITY NOTE: insecure: true exposes the dashboard without Traefik-level auth.
+# This is acceptable because Cloud Run IAM controls access to this service
+# (--no-allow-unauthenticated). If you add public domain mapping, add explicit
+# router with auth middleware instead of using insecure mode.
 api:
   dashboard: true
-  insecure: true  # Dashboard accessible without auth (internal service)
+  insecure: true  # Dashboard accessible without Traefik auth (Cloud Run IAM protects access)
 
-# Logging - minimal for dashboard service
+# Logging
 log:
   level: INFO
   format: json
 
-# Access logs - minimal
+# Access logs
 accessLog:
   format: json
 

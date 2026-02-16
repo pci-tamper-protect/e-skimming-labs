@@ -9,10 +9,24 @@ version: '3.8'
 #   1. Export DOTENV_PRIVATE_KEY: export DOTENV_PRIVATE_KEY="$(cat .env.keys.stg)"
 #   2. Decrypt and run: dotenvx run --env-file=.env.stg -- docker-compose -f docker-compose.yml -f docker-compose.auth.yml up
 #
-# This file adds Firebase authentication environment variables to services.
-# The base docker-compose.yml runs without authentication.
+# This file:
+#   1. Adds Firebase authentication environment variables to services
+#   2. Overrides empty auth stubs with real ForwardAuth middlewares
+#
+# Auth behavior:
+#   - NO auth required: / (home), /mitre-attack, /threat-model, /lab*/c2/collect (exact path only)
+#   - Auth REQUIRED: /lab1, /lab2, /lab3, /lab-*-writeup, C2 dashboard and other C2 routes
+#
+# The base docker-compose.yml runs without authentication (uses empty auth stubs).
+# It also defines the public /lab*/c2/collect routes (exact path match) that bypass auth.
 
 services:
+  # Traefik - Override auth stubs with real ForwardAuth middlewares
+  traefik:
+    volumes:
+      # Override local-auth-stubs.yml with real ForwardAuth config
+      # This makes lab1-auth-check, lab2-auth-check, lab3-auth-check call home-index /api/auth/check
+      - ./deploy/traefik/dynamic/auth-middlewares.yml:/etc/traefik/dynamic/local-auth-stubs.yml:ro
   # Home Index Service - Add Firebase auth environment variables
   home-index:
     environment:

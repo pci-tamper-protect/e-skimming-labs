@@ -212,10 +212,19 @@ services:
       - "lab=lab1-basic-magecart"
       - "component=c2-server"
       - "traefik.enable=true"
+      # Collect endpoint - no auth required (skimmer needs to POST data)
+      # Use exact Path match to prevent bypassing auth via /lab1/c2/collect-admin etc.
+      - "traefik.http.routers.lab1-c2-collect.rule=Path(`/lab1/c2/collect`)"
+      - "traefik.http.routers.lab1-c2-collect.priority=350"
+      - "traefik.http.routers.lab1-c2-collect.entrypoints=web"
+      - "traefik.http.routers.lab1-c2-collect.middlewares=strip-lab1-c2-prefix@file"
+      - "traefik.http.routers.lab1-c2-collect.service=lab1-c2-server"
+      # Dashboard and other C2 routes - with auth
       - "traefik.http.routers.lab1-c2.rule=PathPrefix(`/lab1/c2`)"
       - "traefik.http.routers.lab1-c2.priority=300"
       - "traefik.http.routers.lab1-c2.entrypoints=web"
       - "traefik.http.routers.lab1-c2.middlewares=lab1-auth-check@file,strip-lab1-c2-prefix@file"
+      - "traefik.http.routers.lab1-c2.service=lab1-c2-server"
       - "traefik.http.services.lab1-c2-server.loadbalancer.server.port=3000"
 
   # =============================================================================
@@ -268,10 +277,19 @@ services:
       - "lab=lab2-dom-skimming"
       - "component=c2-server"
       - "traefik.enable=true"
+      # Collect endpoint - no auth required (skimmer needs to POST data)
+      # Use exact Path match to prevent bypassing auth via /lab2/c2/collect-admin etc.
+      - "traefik.http.routers.lab2-c2-collect.rule=Path(`/lab2/c2/collect`)"
+      - "traefik.http.routers.lab2-c2-collect.priority=350"
+      - "traefik.http.routers.lab2-c2-collect.entrypoints=web"
+      - "traefik.http.routers.lab2-c2-collect.middlewares=strip-lab2-c2-prefix@file"
+      - "traefik.http.routers.lab2-c2-collect.service=lab2-c2-server"
+      # Dashboard and other C2 routes - with auth
       - "traefik.http.routers.lab2-c2.rule=PathPrefix(`/lab2/c2`)"
       - "traefik.http.routers.lab2-c2.priority=300"
       - "traefik.http.routers.lab2-c2.entrypoints=web"
       - "traefik.http.routers.lab2-c2.middlewares=lab2-auth-check@file,strip-lab2-c2-prefix@file"
+      - "traefik.http.routers.lab2-c2.service=lab2-c2-server"
       - "traefik.http.services.lab2-c2-server.loadbalancer.server.port=3000"
 
   # =============================================================================

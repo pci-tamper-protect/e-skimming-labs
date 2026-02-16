@@ -533,6 +533,8 @@ jobs:
         run: |
           echo "📤 Pushing Index service images to Artifact Registry..."
           SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
+          REPO_NAME="${{ env.HOME_REPOSITORY }}"
+          REPO_PROJECT="${{ env.HOME_PROJECT_ID }}"
           echo "Using service account: $SA_EMAIL"
 
           IMAGE_BASE="${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index"
@@ -620,7 +622,7 @@ jobs:
               --cpu=1 \
               --min-instances=0 \
               --max-instances=5 \
-              --set-env-vars="HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/banking.html,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/index.html,ENABLE_AUTH=true,REQUIRE_AUTH=true,FIREBASE_PROJECT_ID=ui-firebase-pcioasis-${{ needs.setup.outputs.environment }}" \
+              --set-env-vars="HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/banking.html,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/index.html,ENABLE_AUTH=true,REQUIRE_AUTH=true,FIREBASE_PROJECT_ID=ui-firebase-pcioasis-${{ needs.setup.outputs.environment }},USER_AUTH_ENABLED=true" \
               --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
               --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs-home,traefik_enable=true,traefik_http_routers_home-index_rule_id=home-index-root,traefik_http_routers_home-index_priority=1,traefik_http_routers_home-index_entrypoints=web,traefik_http_routers_home-index_middlewares=forwarded-headers-file,traefik_http_services_home-index_lb_port=8080,traefik_http_routers_home-index-signin_rule_id=home-index-signin,traefik_http_routers_home-index-signin_priority=100,traefik_http_routers_home-index-signin_entrypoints=web,traefik_http_routers_home-index-signin_middlewares=signin-headers-file,traefik_http_routers_home-index-signin_service=home-index"
 
@@ -647,7 +649,7 @@ jobs:
               --cpu=1 \
               --min-instances=0 \
               --max-instances=5 \
-              --set-env-vars="HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/banking.html,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/index.html,ENABLE_AUTH=true,REQUIRE_AUTH=true,FIREBASE_PROJECT_ID=ui-firebase-pcioasis-${{ needs.setup.outputs.environment }}" \
+              --set-env-vars="HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/banking.html,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/index.html,ENABLE_AUTH=true,REQUIRE_AUTH=true,FIREBASE_PROJECT_ID=ui-firebase-pcioasis-${{ needs.setup.outputs.environment }},USER_AUTH_ENABLED=true" \
               --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_PRD:latest \
               --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs-home,traefik_enable=true,traefik_http_routers_home-index_rule_id=home-index-root,traefik_http_routers_home-index_priority=1,traefik_http_routers_home-index_entrypoints=web,traefik_http_routers_home-index_middlewares=forwarded-headers-file,traefik_http_services_home-index_lb_port=8080,traefik_http_routers_home-index-signin_rule_id=home-index-signin,traefik_http_routers_home-index-signin_priority=100,traefik_http_routers_home-index-signin_entrypoints=web,traefik_http_routers_home-index-signin_middlewares=signin-headers-file,traefik_http_routers_home-index-signin_service=home-index"
           fi
@@ -1357,6 +1359,14 @@ jobs:
           path: traefik-cloudrun-provider
           token: ${{ secrets.GH_PAT || github.token }}
 
+      - name: Overlay provider config from plugins-local
+        run: |
+          if [ -f deploy/traefik/plugins-local/src/github.com/pci-tamper-protect/traefik-cloudrun-provider/provider/config.go ]; then
+            cp deploy/traefik/plugins-local/src/github.com/pci-tamper-protect/traefik-cloudrun-provider/provider/config.go \
+               traefik-cloudrun-provider/provider/config.go
+            echo "✅ Overlaid config.go (ForwardAuth with Authorization, Cookie, X-Forwarded-Uri)"
+          fi
+
       - name: Authenticate to Google Cloud (Labs Project)
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
         uses: google-github-actions/auth@v3
@@ -1418,10 +1428,60 @@ jobs:
         run: |
           ENV="${{ needs.setup.outputs.environment }}"
 
+          # For stg: fetch HOME_INDEX_URL so entrypoint writes ForwardAuth middlewares (lab routes require login)
+          # Labs deploy SA needs roles/run.viewer on labs-home-* (run: ./deploy/traefik/APPLY_PERMISSIONS.sh stg)
+          HOME_INDEX_URL=""
+          if [[ "$ENV" == "stg" ]]; then
+            HOME_INDEX_URL=$(gcloud run services describe home-index-${{ needs.setup.outputs.environment }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --project=${{ env.HOME_PROJECT_ID }} \
+              --format='value(status.url)' 2>/dev/null || echo "")
+            if [[ -n "$HOME_INDEX_URL" ]]; then
+              echo "✅ HOME_INDEX_URL set for lab auth: $HOME_INDEX_URL"
+            else
+              echo "⚠️ Could not get home-index URL; run ./deploy/traefik/APPLY_PERMISSIONS.sh stg to grant Labs SA run.viewer on Home project"
+            fi
+          fi
+          ENV_VARS="ENVIRONMENT=${{ needs.setup.outputs.environment }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }}"
+          if [[ -n "$HOME_INDEX_URL" ]]; then
+            ENV_VARS="$ENV_VARS,HOME_INDEX_URL=$HOME_INDEX_URL"
+          fi
+          if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
+            gcloud run deploy traefik-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/traefik:${{ github.sha }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --platform=managed \
+              --no-allow-unauthenticated \
+              --service-account=traefik-${{ needs.setup.outputs.environment }}@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=8080 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=1 \
+              --max-instances=5 \
+              --set-env-vars="$ENV_VARS" \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=traefik,project=e-skimming-labs"
+          else
+            gcloud run deploy traefik-${{ needs.setup.outputs.environment }} \
+              --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/traefik:${{ github.sha }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --platform=managed \
+              --allow-unauthenticated \
+              --service-account=traefik-${{ needs.setup.outputs.environment }}@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
+              --port=8080 \
+              --memory=512Mi \
+              --cpu=1 \
+              --min-instances=1 \
+              --max-instances=5 \
+              --set-env-vars="$ENV_VARS" \
+              --labels="environment=${{ needs.setup.outputs.environment }},component=traefik,project=e-skimming-labs"
+          fi
+
           # Generate Cloud Run YAML with environment-specific values
+          # Substitute __HOME_INDEX_URL__ so Traefik entrypoint writes ForwardAuth middlewares (lab routes require login)
           sed "s/labs-stg/${{ env.LABS_PROJECT_ID }}/g; \
                s/labs-home-stg/${{ env.HOME_PROJECT_ID }}/g; \
                s/stg/${ENV}/g; \
+               s|__HOME_INDEX_URL__|${HOME_INDEX_URL}|g; \
                s|traefik:latest|traefik:v3.0|g" \
             deploy/traefik/cloudrun-sidecar.yaml > /tmp/traefik-deploy.yaml
 
@@ -1473,7 +1533,7 @@ jobs:
             gcloud run services add-iam-policy-binding "$SERVICE" \
               --region=${{ env.LABS_GAR_LOCATION }} \
               --member="group:core-eng@pcioasis.com" \
-              --role="roles/run.invoker" || true
+              --role="roles/run.invoker"
           done
 
   notify-deployment:
