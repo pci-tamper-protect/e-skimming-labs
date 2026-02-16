@@ -112,10 +112,48 @@ echo "6. Provider logs (home-index discovery):"
 echo "   gcloud logging read \"resource.type=cloud_run_revision AND resource.labels.service_name=traefik-${ENV} AND textPayload=~\\\"home-index\\\"\" --limit=5 --project=$LABS_PROJECT --format='value(textPayload)'"
 echo ""
 
+# 7. Check home-index ENABLE_AUTH (auth disabled = 200, no redirect)
+echo "7. Home-index ENABLE_AUTH (must be true for auth to run):"
+HOME_INDEX_AUTH=$(gcloud run services describe "home-index-${ENV}" \
+  --region="$REGION" \
+  --project="$HOME_PROJECT" \
+  --format='yaml(spec.template.spec.containers[0].env)' 2>/dev/null | grep -A1 "ENABLE_AUTH" || echo "NOT FOUND")
+if echo "$HOME_INDEX_AUTH" | grep -qE 'value:.*true'; then
+  echo "   ✅ ENABLE_AUTH=true"
+else
+  echo "   ❌ ENABLE_AUTH not 'true' - auth disabled, /api/auth/check returns 200!"
+  echo "$HOME_INDEX_AUTH"
+fi
+echo ""
+
+# 8. Test /lab1 response (requires proxy)
+echo "8. /lab1 response (via proxy):"
+echo "   GET (expected 302 when unauthenticated):"
+if curl -sf --max-time 5 -o /dev/null -w "   HTTP %{http_code} -> %{redirect_url}\n" "http://127.0.0.1:${PROXY_PORT}/lab1?force_auth=true" 2>/dev/null; then
+  :
+else
+  echo "   ⚠️  Proxy not running"
+fi
+echo "   HEAD (curl -I; some ForwardAuth setups handle HEAD differently):"
+if curl -sf --max-time 5 -I -o /dev/null -w "   HTTP %{http_code}\n" "http://127.0.0.1:${PROXY_PORT}/lab1?force_auth=true" 2>/dev/null; then
+  :
+fi
+echo ""
+
+# 9. Home-index auth/check logs (last 2 min)
+echo "9. Recent home-index /api/auth/check logs:"
+echo "   gcloud logging read \"resource.type=cloud_run_revision AND resource.labels.service_name=home-index-${ENV} AND textPayload=~\\\"auth/check\\\"\" --limit=5 --project=$HOME_PROJECT --format='value(textPayload)' --freshness=2m"
+echo ""
+
 echo "=========================================="
 echo "Quick fixes:"
+echo "  - 200 instead of 302:"
+echo "    1. home-index ENABLE_AUTH must be true (step 7)"
+echo "    2. Try GET not HEAD: curl -s -o /dev/null -w '%{http_code}' 'http://127.0.0.1:${PROXY_PORT}/lab1?force_auth=true'"
+echo "    3. If GET also returns 200, check step 9 - if no auth/check logs, request is not reaching home-index"
 echo "  - lab1-auth-check missing: cloudrun-sidecar.yaml must have USER_AUTH_ENABLED=true on provider"
 echo "  - auth-forward.yml not written: Ensure workflow sed substitutes __HOME_INDEX_URL__"
+echo "  - Set ENABLE_AUTH: gcloud run services update home-index-${ENV} --region=$REGION --project=$HOME_PROJECT --update-env-vars=ENABLE_AUTH=true"
 echo "  - Or run: ./deploy/traefik/set-home-index-url.sh $ENV"
 echo "  - Wait 2-3 min for new instances to receive traffic after changes"
 echo "=========================================="

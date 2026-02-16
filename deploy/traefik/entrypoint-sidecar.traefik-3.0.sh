@@ -66,9 +66,11 @@ http:
         authRequestHeaders:
           - "Authorization"
           - "Cookie"
+          - "Accept"
           - "X-Forwarded-For"
           - "X-Forwarded-Host"
           - "X-Forwarded-Uri"
+          - "X-Forwarded-Proto"
         trustForwardHeader: true
     lab2-auth-check:
       forwardAuth:
@@ -79,9 +81,11 @@ http:
         authRequestHeaders:
           - "Authorization"
           - "Cookie"
+          - "Accept"
           - "X-Forwarded-For"
           - "X-Forwarded-Host"
           - "X-Forwarded-Uri"
+          - "X-Forwarded-Proto"
         trustForwardHeader: true
     lab3-auth-check:
       forwardAuth:
@@ -92,9 +96,11 @@ http:
         authRequestHeaders:
           - "Authorization"
           - "Cookie"
+          - "Accept"
           - "X-Forwarded-For"
           - "X-Forwarded-Host"
           - "X-Forwarded-Uri"
+          - "X-Forwarded-Proto"
         trustForwardHeader: true
 EOF
   log "✅ auth-forward.yml written (lab routes will require login)"

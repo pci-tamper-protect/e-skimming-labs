@@ -141,6 +141,30 @@ TEST_ENV=stg \
 - Check browser console for CORS errors
 - Verify token is being passed correctly
 
+## Traefik HOME_INDEX_URL (Lab Auth)
+
+For lab routes to require login, Traefik needs `HOME_INDEX_URL` so its entrypoint can write ForwardAuth middlewares. The deploy workflow fetches this from the Home project using the Labs deploy SA (`labs-deploy-sa`).
+
+### Grant Labs SA Permissions
+
+The Labs deploy SA must have `roles/run.viewer` on the Home project to describe `home-index-stg`:
+
+```bash
+./deploy/traefik/APPLY_PERMISSIONS.sh stg
+```
+
+### When HOME_INDEX_URL Is Not Set
+
+If the debug script reports `HOME_INDEX_URL not set on Traefik`, either:
+
+1. Run `./deploy/traefik/APPLY_PERMISSIONS.sh stg` (then redeploy Traefik), or
+2. Run `./deploy/traefik/set-home-index-url.sh stg` (fix without redeploy)
+
+### Why It May Not Deploy Correctly
+
+1. **Missing permissions**: Labs deploy SA needs `roles/run.viewer` on `labs-home-stg`. Run `./deploy/traefik/APPLY_PERMISSIONS.sh stg`.
+2. **Traefik not redeployed**: Traefik only deploys when `deploy/traefik/` changes (or `[force-all]`). Pushes that only change home-index do not redeploy Traefik; use `set-home-index-url.sh` to fix without a full redeploy.
+
 ## Security Considerations
 
 1. **Token Storage**: Tokens are stored in `sessionStorage` (not `localStorage`) for better security

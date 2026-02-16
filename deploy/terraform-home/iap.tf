@@ -117,3 +117,11 @@ resource "google_project_iam_member" "traefik_home_viewer" {
   role    = "roles/run.viewer"
   member  = "serviceAccount:traefik-${var.environment}@${data.google_project.labs_project.project_id}.iam.gserviceaccount.com"
 }
+
+# Grant Labs deploy SA permission to describe Cloud Run services in home project
+# Needed for deploy workflow: gcloud run services describe home-index-stg --project=labs-home-stg (HOME_INDEX_URL fetch)
+resource "google_project_iam_member" "labs_deploy_home_viewer" {
+  project = local.home_project_id
+  role    = "roles/run.viewer"
+  member  = "serviceAccount:labs-deploy-sa@${data.google_project.labs_project.project_id}.iam.gserviceaccount.com"
+}

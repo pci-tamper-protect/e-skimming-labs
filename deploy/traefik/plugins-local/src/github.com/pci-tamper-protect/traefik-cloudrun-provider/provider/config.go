@@ -280,9 +280,11 @@ func (c *DynamicConfig) AddForwardAuthMiddleware(name, homeIndexURL string) {
 		AuthRequestHeaders: []string{
 				"Authorization",
 				"Cookie",
+				"Accept",
 				"X-Forwarded-For",
 				"X-Forwarded-Host",
 				"X-Forwarded-Uri",
+				"X-Forwarded-Proto",
 			},
 		},
 	}
