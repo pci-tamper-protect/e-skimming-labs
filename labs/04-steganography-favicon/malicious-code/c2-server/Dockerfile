@@ -14,10 +14,10 @@ COPY server.js dashboard.html ./
 # Create directory for stolen data
 RUN mkdir -p stolen-data
 
-ENV PORT=8080
+ENV PORT=3000
 
-# Expose port (8080 for Cloud Run standard)
-EXPOSE 8080
+# Expose port (3000 for internal/local use)
+EXPOSE 3000
 
 # Start server
 CMD ["node", "server.js"]

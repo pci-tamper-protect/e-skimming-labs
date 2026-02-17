@@ -22,12 +22,12 @@ services:
       dockerfile: Dockerfile
     container_name: lab4-c2
     ports:
-      - "3004:8080"          # ✅ CORRECT — container listens on 8080 (ENV PORT=8080 in Dockerfile)
+      - "3004:3000"          # ✅ CORRECT — container listens on 3000 (ENV PORT=3000 in Dockerfile)
     volumes:
       - ./c2-data:/app/stolen-data
     environment:
       - NODE_ENV=development
-      - PORT=8080
+      - PORT=3000
     networks:
       - lab4-network
 
