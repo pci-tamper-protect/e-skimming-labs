@@ -63,14 +63,17 @@ for (let y = 0; y < outH; y++) {
 
 console.log('[*] Original pixels loaded. Embedding payload into Alpha channel...');
 
+const payloadBuffer = Buffer.from(payload, 'utf8');
+console.log(`[+] Payload buffer size: ${payloadBuffer.length} bytes`);
+
 // Embed payload into Alpha channel
 let dataIdx = 0;
 for (let y = 0; y < outH; y++) {
     for (let x = 0; x < outW; x++) {
         const pixelIdx = (outW * y + x) << 2;
 
-        if (dataIdx < payload.length) {
-            png.data[pixelIdx + 3] = payload.charCodeAt(dataIdx);
+        if (dataIdx < payloadBuffer.length) {
+            png.data[pixelIdx + 3] = payloadBuffer[dataIdx];
             dataIdx++;
         } else {
             // Null terminator
@@ -78,7 +81,7 @@ for (let y = 0; y < outH; y++) {
             break;
         }
     }
-    if (dataIdx >= payload.length) break;
+    if (dataIdx >= payloadBuffer.length) break;
 }
 
 console.log(`[+] Embedded ${dataIdx} characters (R, G, B preserved from original)`);

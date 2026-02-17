@@ -329,18 +329,26 @@
               <div class="stolen-card">
                 <div class="card-visual">
                   <div class="chip"></div>
-                  <div class="card-num">${formatCard(cardNum)}</div>
+                  <div class="card-num"></div>
                   <div class="card-meta">
-                    <span>${name.toUpperCase()}</span>
-                    <span>EXP ${expiry}</span>
+                    <span class="card-name"></span>
+                    <span class="card-expiry"></span>
                   </div>
                 </div>
                 <div class="card-details-row">
-                  <span>CVV: ${cvv} &bull; ${ts}</span>
-                  <span class="source-tag">${source}</span>
+                  <span class="card-cvv-ts"></span>
+                  <span class="source-tag"></span>
                 </div>
               </div>
             `;
+
+            // Securely set text content to prevent XSS
+            const cardEl = list.lastElementChild;
+            cardEl.querySelector('.card-num').textContent = formatCard(cardNum);
+            cardEl.querySelector('.card-name').textContent = name.toUpperCase();
+            cardEl.querySelector('.card-expiry').textContent = `EXP ${expiry}`;
+            cardEl.querySelector('.card-cvv-ts').textContent = `CVV: ${cvv} • ${ts}`;
+            cardEl.querySelector('.source-tag').textContent = source;
           });
         } else {
           document.getElementById('last-time').textContent = '--';

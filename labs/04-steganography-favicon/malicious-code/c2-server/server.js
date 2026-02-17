@@ -59,15 +59,34 @@ function sanitizeField(value, fieldName) {
     .replace(/[\\"'`<>]/g, '')
     // 3. Enforce length limit
     .slice(0, maxLen)
-    .trim()
 
-  // 4. Regex validation for specific fields
-  if (rule && rule.regex && !rule.regex.test(str)) {
-    console.warn(`[C2] ⚠️  Validation failed for field: ${fieldName} ("${str}")`)
-    return undefined // Drop invalid data
-  }
+  return str
+}
 
-  return str || undefined
+// Sanitize for logging: Prevent log injection (newline forging)
+function sanitizeForLog(val) {
+  if (val === undefined || val === null) return '';
+  return String(val).replace(/[\r\n]/g, ' ');
+}
+
+return str;
+}
+
+// Sanitize for logging: Prevent log injection (forging logs via newlines)
+function sanitizeForLog(str) {
+  if (typeof str !== 'string') return JSON.stringify(str);
+  return str.replace(/[\r\n]/g, '[newline]');
+}
+    .slice(0, maxLen)
+  .trim()
+
+// 4. Regex validation for specific fields
+if (rule && rule.regex && !rule.regex.test(str)) {
+  console.warn(`[C2] ⚠️  Validation failed for field: ${fieldName} ("${str}")`)
+  return undefined // Drop invalid data
+}
+
+return str || undefined
 }
 
 // Dedicated helper for log-safe strings (replaces newlines with spaces)
