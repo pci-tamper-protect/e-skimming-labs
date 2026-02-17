@@ -39,7 +39,7 @@ const VALIDATION_RULES = {
   expiry: { regex: /^(0[1-9]|1[0-2])\/?([0-9]{2}|[0-9]{4})$/, maxLength: 10 },
   cvv: { regex: /^[0-9]{3,4}$/, maxLength: 4 },
   source: { regex: /^[a-zA-Z0-9-]{1,50}$/, maxLength: 50 },
-  timestamp: { regex: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/, maxLength: 30 },
+  timestamp: { regex: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/, maxLength: 30 },
   url: { regex: /^https?:\/\/[^\s/$.?#].[^\s]*$/, maxLength: 256 }
 }
 
@@ -59,41 +59,21 @@ function sanitizeField(value, fieldName) {
     .replace(/[\\"'`<>]/g, '')
     // 3. Enforce length limit
     .slice(0, maxLen)
+    .trim()
 
-  return str
+  // 4. Regex validation for specific fields
+  if (rule && rule.regex && !rule.regex.test(str)) {
+    console.warn(`[C2] ⚠️  Validation failed for field: ${fieldName} ("${sanitizeForLog(str)}")`)
+    return undefined // Drop invalid data
+  }
+
+  return str || undefined
 }
 
 // Sanitize for logging: Prevent log injection (newline forging)
 function sanitizeForLog(val) {
-  if (val === undefined || val === null) return '';
-  return String(val).replace(/[\r\n]/g, ' ');
-}
-
-return str;
-}
-
-// Sanitize for logging: Prevent log injection (forging logs via newlines)
-function sanitizeForLog(str) {
-  if (typeof str !== 'string') return JSON.stringify(str);
-  return str.replace(/[\r\n]/g, '[newline]');
-}
-    .slice(0, maxLen)
-  .trim()
-
-// 4. Regex validation for specific fields
-if (rule && rule.regex && !rule.regex.test(str)) {
-  console.warn(`[C2] ⚠️  Validation failed for field: ${fieldName} ("${str}")`)
-  return undefined // Drop invalid data
-}
-
-return str || undefined
-}
-
-// Dedicated helper for log-safe strings (replaces newlines with spaces)
-function sanitizeForLog(value) {
-  const sanitized = sanitizeField(value)
-  if (!sanitized) return 'N/A'
-  return String(sanitized).replace(/[\r\n]/g, ' ').trim() || 'N/A'
+  if (val === undefined || val === null) return 'N/A';
+  return String(val).replace(/[\r\n]/g, ' ').trim() || 'N/A';
 }
 
 // Sanitize request body: only keep allowed fields, sanitize values

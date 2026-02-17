@@ -1,6 +1,5 @@
-version: '3.8'
-
-services:
+    environment:
+      - NGINX_PROXY_PASS_C2=http://lab4-c2:8080/lab4/c2
   # Vulnerable Shop with Steganography Loader
   vulnerable-site:
     build: ./vulnerable-site
