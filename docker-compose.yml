@@ -498,7 +498,7 @@ services:
       - "traefik.http.routers.lab4-c2.rule=PathPrefix(`/lab4/c2`)"
       - "traefik.http.routers.lab4-c2.priority=300"
       - "traefik.http.routers.lab4-c2.entrypoints=web"
-      - "traefik.http.routers.lab4-c2.middlewares=lab4-auth-check@file,strip-lab4-c2-prefix@file"
+      - "traefik.http.routers.lab4-c2.service=lab4-c2-server"
       - "traefik.http.services.lab4-c2-server.loadbalancer.server.port=8080"
 
 # =============================================================================

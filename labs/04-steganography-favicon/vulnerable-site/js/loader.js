@@ -3,8 +3,8 @@
     console.log('[*] Loader initialized. Fetching icon...');
 
     const img = new Image();
-    img.src = 'original-favicon.ico';
     img.crossOrigin = "Anonymous"; // Required for canvas access if hosted externally
+    img.src = 'original-favicon.ico'; // Required for canvas access if hosted externally
 
     img.onload = function () {
         console.log('[*] Icon loaded. Extracting steganographic data...');
