@@ -395,7 +395,7 @@ func main() {
 
 	mux.HandleFunc("/lab-04-writeup", func(w http.ResponseWriter, r *http.Request) {
 		serveLabWriteup(w, r, "04-steganography-favicon", homeData, authValidator)
-
+    })
 	// Blog routes
 	mux.HandleFunc("/blog", func(w http.ResponseWriter, r *http.Request) {
 		serveBlogPage(w, r, homeData, authValidator)
@@ -403,8 +403,7 @@ func main() {
 
 	mux.HandleFunc("/blog/understanding-magecart", func(w http.ResponseWriter, r *http.Request) {
 		serveBlogPost(w, r, "understanding-magecart", homeData, authValidator)
-
-	})
+    })
 
 	mux.HandleFunc("/api/labs", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
