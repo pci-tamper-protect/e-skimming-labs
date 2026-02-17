@@ -1,0 +1,55 @@
+# ForwardAuth Middlewares for Authenticated Local Development
+# Used when running: docker-compose -f docker-compose.yml -f docker-compose.auth.yml up
+#
+# These middlewares call home-index's /api/auth/check endpoint to validate
+# Firebase tokens before allowing access to labs and their components.
+#
+# Routes that DO NOT require auth (defined elsewhere, no middleware):
+#   - / (home)
+#   - /mitre-attack
+#   - /threat-model
+#   - /lab*/c2/collect (exact path only - public data collection endpoint for skimmers)
+#
+# Routes that REQUIRE auth (use these middlewares):
+#   - /lab1, /lab1/c2/* (except exact /lab1/c2/collect), /lab1/variants/*
+#   - /lab2, /lab2/c2/* (except exact /lab2/c2/collect)
+#   - /lab3, /lab3/extension
+#   - /lab-*-writeup
+
+http:
+  middlewares:
+    # Lab 1 auth - ForwardAuth to home-index
+    lab1-auth-check:
+      forwardAuth:
+        address: "http://home-index:8080/api/auth/check"
+        authResponseHeaders:
+          - "X-User-Id"
+          - "X-User-Email"
+        authRequestHeaders:
+          - "Authorization"
+          - "Cookie"
+        trustForwardHeader: true
+
+    # Lab 2 auth - ForwardAuth to home-index
+    lab2-auth-check:
+      forwardAuth:
+        address: "http://home-index:8080/api/auth/check"
+        authResponseHeaders:
+          - "X-User-Id"
+          - "X-User-Email"
+        authRequestHeaders:
+          - "Authorization"
+          - "Cookie"
+        trustForwardHeader: true
+
+    # Lab 3 auth - ForwardAuth to home-index
+    lab3-auth-check:
+      forwardAuth:
+        address: "http://home-index:8080/api/auth/check"
+        authResponseHeaders:
+          - "X-User-Id"
+          - "X-User-Email"
+        authRequestHeaders:
+          - "Authorization"
+          - "Cookie"
+        trustForwardHeader: true

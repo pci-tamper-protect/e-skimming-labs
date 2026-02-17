@@ -65,7 +65,8 @@ var defaultPriorityMap = map[string]int{
 	"home-index-signin": 100, // Sign-in pages
 	"home-seo":          500, // API routes
 	"labs-analytics":    500, // API routes
-	"lab1":              200, // Main lab routes
+	"lab1":              200, // Main lab routes (legacy)
+	"lab1-main":         200, // Main lab routes (aligned with lab2-main, lab3-main)
 	"lab1-static":       250, // Static assets (more specific)
 	"lab1-c2":           300, // Sub-routes (most specific)
 	"lab2":              200,

@@ -126,6 +126,9 @@
       "Bash(get_lab_labels:*)",
       "Bash(get_lab_labels \"lab1-c2-server\")",
       "Bash(get_lab_labels \"lab2-vulnerable-site\")"
+      "Bash(gcloud auth list:*)"
+      "Bash(gcloud auth list:*)",
+      "Bash(jq:*)"
     ],
     "deny": [],
     "ask": []

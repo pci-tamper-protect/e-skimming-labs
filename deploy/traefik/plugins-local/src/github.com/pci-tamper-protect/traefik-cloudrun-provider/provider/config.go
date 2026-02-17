@@ -275,11 +275,16 @@ func (c *DynamicConfig) AddForwardAuthMiddleware(name, homeIndexURL string) {
 				"X-User-Email",
 				"X-Authorization",
 			},
-			AuthRequestHeaders: []string{
+			// Authorization: Firebase Bearer token. Cookie: firebase_token fallback.
+		// Service-to-service Cloud Run auth uses X-Serverless-Authorization (lab1-auth middleware).
+		AuthRequestHeaders: []string{
 				"Authorization",
 				"Cookie",
+				"Accept",
 				"X-Forwarded-For",
 				"X-Forwarded-Host",
+				"X-Forwarded-Uri",
+				"X-Forwarded-Proto",
 			},
 		},
 	}

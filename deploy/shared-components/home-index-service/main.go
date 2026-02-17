@@ -392,8 +392,18 @@ func main() {
 		serveLabWriteup(w, r, "03-extension-hijacking", homeData, authValidator)
 	})
 
+
 	mux.HandleFunc("/lab-04-writeup", func(w http.ResponseWriter, r *http.Request) {
 		serveLabWriteup(w, r, "04-steganography-favicon", homeData, authValidator)
+
+	// Blog routes
+	mux.HandleFunc("/blog", func(w http.ResponseWriter, r *http.Request) {
+		serveBlogPage(w, r, homeData, authValidator)
+	})
+
+	mux.HandleFunc("/blog/understanding-magecart", func(w http.ResponseWriter, r *http.Request) {
+		serveBlogPost(w, r, "understanding-magecart", homeData, authValidator)
+
 	})
 
 	mux.HandleFunc("/api/labs", func(w http.ResponseWriter, r *http.Request) {
@@ -421,8 +431,9 @@ func main() {
 		// This endpoint is called by Traefik ForwardAuth middleware
 		// According to Traefik docs, ForwardAuth forwards headers specified in authRequestHeaders
 		// Reference: https://github.com/traefik/traefik/blob/master/pkg/middlewares/forwardauth/forwardauth.go
-		log.Printf("🔍 /api/auth/check called - Host: %s, X-Forwarded-Host: %s, X-Forwarded-For: %s",
-			sanitizeForLog(r.Host, 200), sanitizeForLog(r.Header.Get("X-Forwarded-Host"), 200), sanitizeForLog(r.Header.Get("X-Forwarded-For"), 200))
+		userAuthEnv := os.Getenv("USER_AUTH_ENABLED")
+		log.Printf("🔍 /api/auth/check called - Host: %s, X-Forwarded-Host: %s, X-Forwarded-For: %s, USER_AUTH_ENABLED=%s, authValidator.IsEnabled=%v",
+			sanitizeForLog(r.Host, 200), sanitizeForLog(r.Header.Get("X-Forwarded-Host"), 200), sanitizeForLog(r.Header.Get("X-Forwarded-For"), 200), userAuthEnv, authValidator.IsEnabled())
 
 		// DEBUG: Log ALL headers to see what Traefik ForwardAuth is actually forwarding
 		// According to Traefik ForwardAuth implementation, it should forward headers listed in authRequestHeaders
@@ -443,7 +454,8 @@ func main() {
 			r.URL.Path, r.Method, sanitizeForLog(r.Header.Get("X-Forwarded-Uri"), 200))
 
 		if !authValidator.IsEnabled() {
-			// Auth disabled, allow access
+			// Auth disabled (ENABLE_AUTH not true), allow access
+			log.Printf("🔓 Returning 200 - auth disabled (authValidator.IsEnabled=false, ENABLE_AUTH may be unset)")
 			w.WriteHeader(http.StatusOK)
 			return
 		}
@@ -480,12 +492,35 @@ func main() {
 		forwardedHost == "127.0.0.1:9090" || forwardedHost == "localhost:9090" ||
 		strings.HasSuffix(forwardedHost, ":9090")
 
-		// Bypass authentication for proxy access (local testing)
-		// User is already authenticated to gcloud when using proxy
-		log.Printf("🔍 Bypass check - env:%s, isProxy:%v, isFwdProxy:%v, isLocal:%v, isBehindTraefik:%v",
-			environment, isProxyHost, isForwardedProxyHost, isLocalProxy, isBehindTraefik)
+		// Check for force_auth query param to skip proxy bypass (for testing auth flow via proxy)
+		// The original request URI is in X-Forwarded-Uri header (set by Traefik ForwardAuth)
+		forwardedUri := r.Header.Get("X-Forwarded-Uri")
+		forceAuth := strings.Contains(forwardedUri, "force_auth=true") || r.URL.Query().Get("force_auth") == "true"
 
-		if environment == "stg" && (isProxyHost || isForwardedProxyHost || isLocalProxy || isBehindTraefik) {
+		// USER_AUTH_ENABLED controls auth for all environments - when true, always enforce (no bypass)
+		userAuthEnabled := os.Getenv("USER_AUTH_ENABLED") == "true"
+		if userAuthEnabled {
+			forceAuth = true
+		}
+
+		// Quick check: only bypass if we have a firebase_token (never bypass unauthenticated users)
+		hasFirebaseToken := false
+		if ch := r.Header.Get("Cookie"); ch != "" {
+			for _, part := range strings.Split(ch, ";") {
+				part = strings.TrimSpace(part)
+				if strings.HasPrefix(part, "firebase_token=") && len(strings.TrimPrefix(part, "firebase_token=")) > 10 {
+					hasFirebaseToken = true
+					break
+				}
+			}
+		}
+
+		// Bypass only when USER_AUTH_ENABLED is false (auth off) and user has firebase_token (proxy dev convenience)
+		// When USER_AUTH_ENABLED=true, auth is always enforced regardless of environment
+		log.Printf("🔍 Bypass check - env:%s, isProxy:%v, isFwdProxy:%v, isLocal:%v, isBehindTraefik:%v, forceAuth:%v, userAuthEnabled:%v, hasFirebaseToken:%v",
+			environment, isProxyHost, isForwardedProxyHost, isLocalProxy, isBehindTraefik, forceAuth, userAuthEnabled, hasFirebaseToken)
+
+		if !forceAuth && hasFirebaseToken && (isProxyHost || isForwardedProxyHost || isLocalProxy || isBehindTraefik) {
 			log.Printf("🔓 Bypassing auth for proxy access (Host: %s, Forwarded-Host: %s, Forwarded-For: %s)",
 				sanitizeForLog(host, 200), sanitizeForLog(forwardedHost, 200), sanitizeForLog(forwardedFor, 200))
 			w.Header().Set("X-User-Id", "proxy-user")
@@ -607,13 +642,50 @@ func main() {
 			acceptHeader == "" ||
 			strings.Contains(acceptHeader, "*/*")
 
+		// Build absolute URL for redirects - ForwardAuth resolves relative URLs against its own address
+		// which causes browser to redirect to internal hostname (e.g., home-index:8080) instead of public hostname
+		buildRedirectURL := func(path string) string {
+			// Prefer an explicit public base URL if configured (e.g., https://labs.example.com)
+			if publicBase := os.Getenv("PUBLIC_BASE_URL"); publicBase != "" {
+				if u, err := url.Parse(publicBase); err == nil && u.Scheme != "" && u.Host != "" {
+					return fmt.Sprintf("%s://%s%s", u.Scheme, u.Host, path)
+				}
+			}
+
+			scheme := "http"
+			// X-Forwarded-Proto can be comma-separated (e.g., "https,http"); use the first value
+			if xfProto := r.Header.Get("X-Forwarded-Proto"); xfProto != "" {
+				firstProto := strings.TrimSpace(strings.SplitN(xfProto, ",", 2)[0])
+				if strings.EqualFold(firstProto, "https") {
+					scheme = "https"
+				}
+			} else if r.TLS != nil {
+				scheme = "https"
+			}
+
+			// Prefer X-Forwarded-Host when present, but fall back to r.Host
+			host := r.Header.Get("X-Forwarded-Host")
+			if host == "" {
+				host = r.Host
+			}
+
+			environment := os.Getenv("ENVIRONMENT")
+			// Treat hosts without a dot (e.g., "home-index:8080") as internal/invalid for redirects
+			isLikelyInternalHost := !strings.Contains(host, ".")
+			if environment == "local" || isLikelyInternalHost {
+				// In local environment, or when we detect an internal hostname, use localhost:8080
+				host = "localhost:8080"
+			}
+			return fmt.Sprintf("%s://%s%s", scheme, host, path)
+		}
+
 		if token == "" {
 			// No token provided
 			if isBrowserRequest {
-				// Redirect browser requests to sign-in
-				// Always use relative URL - Traefik handles routing
-				redirectURL := fmt.Sprintf("/sign-in?redirect=%s", originalURI)
-				log.Printf("🔗 Redirecting to: %s (relative URL, Traefik routes)", sanitizeForLog(redirectURL, 200))
+				// Redirect browser requests to sign-in using absolute URL
+				redirectPath := fmt.Sprintf("/sign-in?redirect=%s", url.QueryEscape(originalURI))
+				redirectURL := buildRedirectURL(redirectPath)
+				log.Printf("🔗 Redirecting to: %s (absolute URL for ForwardAuth)", sanitizeForLog(redirectURL, 200))
 				w.Header().Set("Location", redirectURL)
 				w.WriteHeader(http.StatusFound)
 				return
@@ -627,10 +699,10 @@ func main() {
 		userInfo, err := authValidator.ValidateToken(r.Context(), token)
 		if err != nil || userInfo == nil {
 			if isBrowserRequest {
-				// Redirect browser requests to sign-in
-				// Always use relative URL - Traefik handles routing
-				redirectURL := fmt.Sprintf("/sign-in?redirect=%s", originalURI)
-				log.Printf("🔗 Redirecting to: %s (relative URL, Traefik routes)", sanitizeForLog(redirectURL, 200))
+				// Redirect browser requests to sign-in using absolute URL
+				redirectPath := fmt.Sprintf("/sign-in?redirect=%s", url.QueryEscape(originalURI))
+				redirectURL := buildRedirectURL(redirectPath)
+				log.Printf("🔗 Redirecting to: %s (absolute URL for ForwardAuth)", sanitizeForLog(redirectURL, 200))
 				w.Header().Set("Location", redirectURL)
 				w.WriteHeader(http.StatusFound)
 				return
@@ -1451,6 +1523,101 @@ func serveThreatModelPage(w http.ResponseWriter, r *http.Request, homeData HomeP
 
 	// Inject auth buttons into the HTML (Threat Model is public, so authRequired=false)
 	htmlStr := string(threatModelHTML)
+	htmlStr = injectAuthButtons(htmlStr, homeData, false)
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write([]byte(htmlStr))
+}
+
+// serveBlogPage serves the blog landing page
+func serveBlogPage(w http.ResponseWriter, r *http.Request, homeData HomePageData, validator *auth.TokenValidator) {
+	_ = validator // kept for API consistency; future use for gated blog content
+	// Try multiple paths for local development and container environments
+	paths := []string{
+		"/app/blog-preview.html",        // Container path
+		"blog-preview.html",             // Local dev from service directory
+		"../../deploy/shared-components/home-index-service/blog-preview.html", // Local dev from root
+	}
+
+	var blogHTML []byte
+	var err error
+
+	for _, path := range paths {
+		blogHTML, err = os.ReadFile(path)
+		if err == nil {
+			log.Printf("Served Blog page from: %s", path)
+			break
+		}
+	}
+
+	if err != nil {
+		log.Printf("Failed to read Blog page from all paths: %v", err)
+		http.Error(w, "Blog page not found", http.StatusNotFound)
+		return
+	}
+
+	// Get user info if authenticated
+	userInfo := auth.GetUserInfo(r)
+	if userInfo != nil {
+		homeData.UserEmail = userInfo.Email
+		homeData.UserID = userInfo.UserID
+	}
+
+	// Inject auth buttons into the HTML (Blog is public, so authRequired=false)
+	htmlStr := string(blogHTML)
+	htmlStr = injectAuthButtons(htmlStr, homeData, false)
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write([]byte(htmlStr))
+}
+
+// serveBlogPost serves individual blog posts
+func serveBlogPost(w http.ResponseWriter, r *http.Request, postID string, homeData HomePageData, validator *auth.TokenValidator) {
+	_ = validator // kept for API consistency; future use for gated blog content
+	// Map post IDs to file names
+	postFiles := map[string]string{
+		"understanding-magecart": "blog-post-preview.html",
+	}
+
+	filename, exists := postFiles[postID]
+	if !exists {
+		http.Error(w, "Blog post not found", http.StatusNotFound)
+		return
+	}
+
+	// Try multiple paths for local development and container environments
+	paths := []string{
+		fmt.Sprintf("/app/%s", filename),        // Container path
+		filename,                                 // Local dev from service directory
+		fmt.Sprintf("../../deploy/shared-components/home-index-service/%s", filename), // Local dev from root
+	}
+
+	var postHTML []byte
+	var err error
+
+	for _, path := range paths {
+		postHTML, err = os.ReadFile(path)
+		if err == nil {
+			log.Printf("Served Blog post '%s' from: %s", postID, path)
+			break
+		}
+	}
+
+	if err != nil {
+		log.Printf("Failed to read Blog post '%s' from all paths: %v", postID, err)
+		http.Error(w, "Blog post not found", http.StatusNotFound)
+		return
+	}
+
+	// Get user info if authenticated
+	userInfo := auth.GetUserInfo(r)
+	if userInfo != nil {
+		homeData.UserEmail = userInfo.Email
+		homeData.UserID = userInfo.UserID
+	}
+
+	// Inject auth buttons into the HTML (Blog posts are public, so authRequired=false)
+	htmlStr := string(postHTML)
 	htmlStr = injectAuthButtons(htmlStr, homeData, false)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

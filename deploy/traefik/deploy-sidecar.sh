@@ -134,9 +134,27 @@ fi
 echo "🔐 Service account found: ${SERVICE_ACCOUNT}"
 echo ""
 
-# Generate Cloud Run YAML with environment-specific values
+# Get home-index URL so Traefik entrypoint can write ForwardAuth middlewares (lab routes require login)
+HOME_INDEX_URL=$(gcloud run services describe "home-index-${ENVIRONMENT}" \
+  --region="${REGION}" \
+  --project="${HOME_PROJECT_ID}" \
+  --format='value(status.url)' 2>/dev/null || echo "")
+if [ -z "${HOME_INDEX_URL}" ]; then
+  HOME_INDEX_URL=$(gcloud run services describe "home-index" \
+    --region="${REGION}" \
+    --project="${HOME_PROJECT_ID}" \
+    --format='value(status.url)' 2>/dev/null || echo "")
+fi
+if [ -n "${HOME_INDEX_URL}" ]; then
+  echo "✅ HOME_INDEX_URL set for lab auth: ${HOME_INDEX_URL}"
+else
+  echo "⚠️  Could not get home-index URL; lab routes may not require login. Run: ./deploy/traefik/set-home-index-url.sh ${ENVIRONMENT}"
+fi
+echo ""
+
+# Generate Cloud Run YAML with environment-specific values (use | for URL sed delimiter to avoid escaping slashes)
 TEMP_YAML=$(mktemp)
-sed "s/labs-stg/${PROJECT_ID}/g; s/labs-home-stg/${HOME_PROJECT_ID}/g; s/stg/${ENVIRONMENT}/g" \
+sed "s/labs-stg/${PROJECT_ID}/g; s/labs-home-stg/${HOME_PROJECT_ID}/g; s/stg/${ENVIRONMENT}/g; s|__HOME_INDEX_URL__|${HOME_INDEX_URL}|g" \
     "${TRAEFIK_DEPLOY_DIR}/cloudrun-sidecar.yaml" > "${TEMP_YAML}"
 
 # Deploy main Traefik service with provider sidecar
@@ -146,6 +164,17 @@ gcloud run services replace "${TEMP_YAML}" \
   --project="${PROJECT_ID}"
 
 rm "${TEMP_YAML}"
+
+if [ -z "${HOME_INDEX_URL}" ]; then
+  HOME_INDEX_URL=$(gcloud run services describe "home-index-${ENVIRONMENT}" \
+    --region="${REGION}" --project="${HOME_PROJECT_ID}" --format='value(status.url)' 2>/dev/null || echo "")
+fi
+if [ -n "${HOME_INDEX_URL}" ]; then
+  echo "🔐 Setting HOME_INDEX_URL on Traefik service (lab auth)..."
+  gcloud run services update "${SERVICE_NAME}" \
+    --region="${REGION}" --project="${PROJECT_ID}" \
+    --update-env-vars "HOME_INDEX_URL=${HOME_INDEX_URL}" --quiet
+fi
 
 # Get the actual service URL after deployment (needed for dashboard service)
 echo "🔍 Getting main Traefik service URL..."

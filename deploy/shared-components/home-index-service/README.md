@@ -7,6 +7,7 @@ platform, featuring:
 
 - **Interactive Lab Directory**: Lists all available labs with detailed
   descriptions
+- **Blog**: Technical articles and lab writeups on e-skimming attack techniques
 - **MITRE ATT&CK Integration**: Direct access to the MITRE ATT&CK matrix for
   e-skimming attacks
 - **Threat Model Visualization**: Interactive threat modeling tool
@@ -39,8 +40,13 @@ malicious extensions.
 ## API Endpoints
 
 - `GET /` - Main landing page
+- `GET /blog` - Blog landing page with article index
+- `GET /blog/understanding-magecart` - Magecart attack deep-dive (Lab 1 writeup)
 - `GET /mitre-attack` - MITRE ATT&CK matrix page
 - `GET /threat-model` - Interactive threat model
+- `GET /lab-01-writeup` - Lab 1 technical writeup
+- `GET /lab-02-writeup` - Lab 2 technical writeup
+- `GET /lab-03-writeup` - Lab 3 technical writeup
 - `GET /api/labs` - JSON API for lab information
 - `GET /health` - Health check endpoint
 
@@ -57,6 +63,14 @@ malicious extensions.
 
 This service is deployed as part of the `labs-home-prd` project using Cloud Run.
 The Docker image includes the MITRE ATT&CK and threat model HTML files from the
-`docs/` directory.
+`docs/` directory, and blog HTML files from the service directory.
+
+### Blog Files
+
+Blog content is served from standalone HTML files:
+- `blog-preview.html` - Blog landing page (served at `/blog`)
+- `blog-post-preview.html` - Magecart article (served at `/blog/understanding-magecart`)
+
+These are copied into the container via the Dockerfile.
 
 

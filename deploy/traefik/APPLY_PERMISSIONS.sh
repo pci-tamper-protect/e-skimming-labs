@@ -1,5 +1,5 @@
 #!/bin/bash
-# Apply run.viewer permissions to Traefik service account
+# Apply run.viewer permissions to Traefik and Labs deploy service accounts
 # Run this script to grant permissions immediately (in addition to Terraform)
 
 set -e
@@ -14,30 +14,39 @@ fi
 PROJECT_ID="labs-${ENVIRONMENT}"
 HOME_PROJECT_ID="labs-home-${ENVIRONMENT}"
 TRAEFIK_SA="traefik-${ENVIRONMENT}@${PROJECT_ID}.iam.gserviceaccount.com"
+LABS_DEPLOY_SA="labs-deploy-sa@${PROJECT_ID}.iam.gserviceaccount.com"
 
-echo "🔐 Applying run.viewer permissions to Traefik service account"
+echo "🔐 Applying run.viewer permissions"
 echo "   Environment: ${ENVIRONMENT}"
-echo "   Traefik SA: ${TRAEFIK_SA}"
 echo ""
 
-# Apply to labs project
-echo "1️⃣  Granting roles/run.viewer on labs project..."
+# --- Traefik SA (runtime) ---
+echo "1️⃣  Traefik SA: ${TRAEFIK_SA}"
+echo "   Granting roles/run.viewer on labs project..."
 gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
   --member="serviceAccount:${TRAEFIK_SA}" \
   --role="roles/run.viewer" \
   --condition=None
 
-echo "   ✅ Granted roles/run.viewer on ${PROJECT_ID}"
-echo ""
-
-# Apply to home project
-echo "2️⃣  Granting roles/run.viewer on home project..."
+echo "   Granting roles/run.viewer on home project..."
 gcloud projects add-iam-policy-binding "${HOME_PROJECT_ID}" \
   --member="serviceAccount:${TRAEFIK_SA}" \
   --role="roles/run.viewer" \
   --condition=None
 
-echo "   ✅ Granted roles/run.viewer on ${HOME_PROJECT_ID}"
+echo "   ✅ Traefik SA permissions applied"
+echo ""
+
+# --- Labs deploy SA (CI/CD) ---
+# Needed so deploy workflow can run: gcloud run services describe home-index-stg --project=labs-home-stg
+echo "2️⃣  Labs deploy SA: ${LABS_DEPLOY_SA}"
+echo "   Granting roles/run.viewer on home project (for HOME_INDEX_URL fetch)..."
+gcloud projects add-iam-policy-binding "${HOME_PROJECT_ID}" \
+  --member="serviceAccount:${LABS_DEPLOY_SA}" \
+  --role="roles/run.viewer" \
+  --condition=None
+
+echo "   ✅ Labs deploy SA can describe home-index services"
 echo ""
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
