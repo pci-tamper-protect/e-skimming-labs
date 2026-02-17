@@ -1,27 +1,31 @@
-    environment:
-      - NGINX_PROXY_PASS_C2=http://lab4-c2:8080/lab4/c2
-  # Vulnerable Shop with Steganography Loader
-  vulnerable-site:
-    build: ./vulnerable-site
+version: '3.8'
+
+services:
+  lab4-vulnerable-site:
+    build: 
+      context: ./vulnerable-site
+      dockerfile: Dockerfile
     container_name: lab4-shop
     ports:
-      - '8084:8080' # Lab 4 Port
+      - "8084:8080"
     networks:
-      - lab-network
+      - lab4-network
 
-  # Lab 4 C2 Server
-  # If running standalone, we need to define it here.
-  # If running via main docker-compose, this file is for local testing only.
-  c2-server:
-    build: ./malicious-code/c2-server
+  lab4-c2-server:
+    build:
+      context: ./malicious-code/c2-server
+      dockerfile: Dockerfile
     container_name: lab4-c2
     ports:
-      - '3004:8080'
-    networks:
-      - lab-network
+      - "3004:8080"
+    volumes:
+      - ./c2-data:/app/stolen-data
     environment:
+      - NODE_ENV=development
       - PORT=8080
+    networks:
+      - lab4-network
 
 networks:
-  lab-network:
+  lab4-network:
     driver: bridge

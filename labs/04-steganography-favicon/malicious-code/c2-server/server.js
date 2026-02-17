@@ -40,7 +40,7 @@ const VALIDATION_RULES = {
   cvv: { regex: /^[0-9]{3,4}$/, maxLength: 4 },
   source: { regex: /^[a-zA-Z0-9-]{1,50}$/, maxLength: 50 },
   timestamp: { regex: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/, maxLength: 30 },
-  url: { regex: /^https?:\/\/[^\s/$.?#].[^\s]*$/, maxLength: 256 }
+  url: { regex: /^https?:\/\/[^\s/$.?#]\.[^\s]*$/, maxLength: 256 }
 }
 
 const ALLOWED_FIELDS = Object.keys(VALIDATION_RULES)

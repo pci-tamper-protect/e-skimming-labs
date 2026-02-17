@@ -18,10 +18,6 @@
             console.error('[-] Failed to obtain 2D canvas context. Steganographic data extraction aborted.');
             return;
         }
-        if (!ctx) {
-            console.error('[-] Failed to get 2D context from canvas.');
-            return;
-        }
         ctx.drawImage(img, 0, 0);
 
         // Get pixel data

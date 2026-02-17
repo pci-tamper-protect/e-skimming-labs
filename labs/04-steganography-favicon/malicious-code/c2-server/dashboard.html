@@ -325,30 +325,33 @@
             const source = d.source || 'unknown';
             const ts = new Date(rec.timestamp).toLocaleString();
 
-            list.innerHTML += `
-              <div class="stolen-card">
-                <div class="card-visual">
-                  <div class="chip"></div>
-                  <div class="card-num"></div>
-                  <div class="card-meta">
-                    <span class="card-name"></span>
-                    <span class="card-expiry"></span>
-                  </div>
+            const cardMarkup = `
+              <div class="card-visual">
+                <div class="chip"></div>
+                <div class="card-num"></div>
+                <div class="card-meta">
+                  <span class="card-name"></span>
+                  <span class="card-expiry"></span>
                 </div>
-                <div class="card-details-row">
-                  <span class="card-cvv-ts"></span>
-                  <span class="source-tag"></span>
-                </div>
+              </div>
+              <div class="card-details-row">
+                <span class="card-cvv-ts"></span>
+                <span class="source-tag"></span>
               </div>
             `;
 
+            const cardDiv = document.createElement('div');
+            cardDiv.className = 'stolen-card';
+            cardDiv.innerHTML = cardMarkup;
+
             // Securely set text content to prevent XSS
-            const cardEl = list.lastElementChild;
-            cardEl.querySelector('.card-num').textContent = formatCard(cardNum);
-            cardEl.querySelector('.card-name').textContent = name.toUpperCase();
-            cardEl.querySelector('.card-expiry').textContent = `EXP ${expiry}`;
-            cardEl.querySelector('.card-cvv-ts').textContent = `CVV: ${cvv} • ${ts}`;
-            cardEl.querySelector('.source-tag').textContent = source;
+            cardDiv.querySelector('.card-num').textContent = formatCard(cardNum);
+            cardDiv.querySelector('.card-name').textContent = name.toUpperCase();
+            cardDiv.querySelector('.card-expiry').textContent = `EXP ${expiry}`;
+            cardDiv.querySelector('.card-cvv-ts').textContent = `CVV: ${cvv} • ${ts}`;
+            cardDiv.querySelector('.source-tag').textContent = source;
+
+            list.appendChild(cardDiv);
           });
         } else {
           document.getElementById('last-time').textContent = '--';

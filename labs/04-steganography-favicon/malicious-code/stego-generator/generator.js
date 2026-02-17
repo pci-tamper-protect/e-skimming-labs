@@ -14,7 +14,8 @@ const MIN_SIZE = 48; // 48x48 = 2304 pixels, plenty for a ~1400 char payload
 
 // Read payload
 const payload = fs.readFileSync(PAYLOAD_FILE, 'utf8');
-console.log(`[+] Payload size: ${payload.length} bytes`);
+const payloadBuffer = Buffer.from(payload, 'utf8');
+console.log(`[+] Payload size: ${payload.length} chars, ${payloadBuffer.length} bytes`);
 
 // Read and decode the original favicon
 const icoBuffer = fs.readFileSync(SOURCE_ICON);
@@ -28,17 +29,20 @@ const source = images.reduce((best, img) => img.width >= best.width ? img : best
 const srcW = source.width;
 const srcH = source.height;
 
-// Determine output size — scale up if needed to fit payload
+// Determine output size — scale up dynamically if needed to fit payload
 let outW = srcW;
 let outH = srcH;
-if (outW * outH < payload.length + 1) {
-    outW = MIN_SIZE;
-    outH = MIN_SIZE;
+const reqPixels = payloadBuffer.length + 1; // +1 for null terminator
+
+if (outW * outH < reqPixels) {
+    const side = Math.max(MIN_SIZE, Math.ceil(Math.sqrt(reqPixels)));
+    outW = side;
+    outH = side;
     console.log(`[*] Scaling up from ${srcW}x${srcH} to ${outW}x${outH} to fit payload`);
 }
 
 const totalPixels = outW * outH;
-console.log(`[+] Output: ${outW}x${outH} (${totalPixels} pixel capacity for ${payload.length} chars)`);
+console.log(`[+] Output: ${outW}x${outH} (${totalPixels} pixel capacity for ${payloadBuffer.length} bytes)`);
 
 // Create output PNG
 const png = new PNG({ width: outW, height: outH, filterType: -1 });
@@ -62,9 +66,6 @@ for (let y = 0; y < outH; y++) {
 }
 
 console.log('[*] Original pixels loaded. Embedding payload into Alpha channel...');
-
-const payloadBuffer = Buffer.from(payload, 'utf8');
-console.log(`[+] Payload buffer size: ${payloadBuffer.length} bytes`);
 
 // Embed payload into Alpha channel
 let dataIdx = 0;
