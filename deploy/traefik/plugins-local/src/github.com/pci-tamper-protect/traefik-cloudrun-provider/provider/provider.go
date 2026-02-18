@@ -252,6 +252,17 @@ func (p *Provider) updateConfig(configChan chan<- *DynamicConfig) error {
 		}
 	}
 
+	// Fallback: use HOME_INDEX_URL env when discovery didn't find home-index
+	// (e.g. home-index in labs-home-* project, provider SA lacks run.viewer, or service not yet deployed)
+	if homeIndexURL == "" {
+		homeIndexURL = strings.TrimSpace(os.Getenv("HOME_INDEX_URL"))
+		if homeIndexURL != "" {
+			p.logger.Info("Using HOME_INDEX_URL from env (discovery did not find home-index)",
+				logging.String("homeIndexURL", homeIndexURL),
+			)
+		}
+	}
+
 	// Note: Common middlewares like forwarded-headers are defined in routes.yml
 	// and loaded via the file provider, since dynamic.Headers doesn't support
 	// forwarded headers configuration. The file provider is still enabled for

@@ -56,7 +56,7 @@ echo ""
 echo "Next steps:"
 echo "  1. Redeploy Traefik to pick up the new permissions"
 echo "  2. Check logs to verify route generation is working"
-echo "  3. Run: ./deploy/traefik/debug/check-stg-middleware-actual.sh ${ENVIRONMENT}"
+echo "  3. Run: ./deploy/traefik/check-routes.sh ${ENVIRONMENT}"
 echo ""
 
 

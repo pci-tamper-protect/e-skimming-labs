@@ -134,13 +134,6 @@ fi
 echo "📋 Setting GCP project..."
 gcloud config set project $PROJECT_ID
 
-# Build and push Docker images before deploying services
-if [ "${BUILD_IMAGES:-true}" != "false" ]; then
-    echo "🏗️  Building Docker images..."
-    "$SCRIPT_DIR/build-images.sh"
-    echo ""
-fi
-
 # Enable required APIs
 echo "🔧 Enabling required APIs..."
 gcloud services enable \

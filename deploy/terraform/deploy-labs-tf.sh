@@ -11,7 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Load environment configuration using dotenvx (supports encrypted .env files)
-source "$SCRIPT_DIR/load-env.sh"
+source "$SCRIPT_DIR/../load-env.sh"
 
 PROJECT_ID="$LABS_PROJECT_ID"
 REGION="$LABS_REGION"
@@ -101,7 +101,7 @@ gcloud config set project $PROJECT_ID
 # Build and push Docker images before deploying services
 if [ "${BUILD_IMAGES:-true}" != "false" ]; then
     echo "🏗️  Building Docker images..."
-    "$SCRIPT_DIR/build-images.sh"
+    "$SCRIPT_DIR/../build-images.sh"
     echo ""
 fi
 
@@ -118,8 +118,8 @@ gcloud services enable \
     iam.googleapis.com \
     servicenetworking.googleapis.com
 
-# Navigate to terraform directory (relative to script location)
-cd "$SCRIPT_DIR/$TERRAFORM_DIR"
+# Navigate to terraform directory (deploy/terraform-labs is sibling of deploy/terraform)
+cd "$SCRIPT_DIR/../$TERRAFORM_DIR"
 TERRAFORM_DIR_ABS=$(pwd)
 
 # Initialize Terraform with environment-specific backend config
@@ -131,7 +131,7 @@ if [ -f "$BACKEND_CONFIG" ]; then
     terraform init -backend-config="$BACKEND_CONFIG"
 else
     echo "❌ Backend config file not found: $BACKEND_CONFIG"
-    echo "   Expected location: $SCRIPT_DIR/$TERRAFORM_DIR/$BACKEND_CONFIG"
+    echo "   Expected location: $SCRIPT_DIR/../$TERRAFORM_DIR/$BACKEND_CONFIG"
     echo "   Please create backend config files: backend-prd.conf and backend-stg.conf"
     exit 1
 fi
@@ -164,7 +164,7 @@ echo "   Running: terraform apply -auto-approve tfplan"
 terraform apply -auto-approve tfplan || {
     echo ""
     echo "⚠️  If the error is about missing Docker images, make sure to run:"
-    echo "   $SCRIPT_DIR/build-images.sh"
+    echo "   $SCRIPT_DIR/../build-images.sh"
     echo ""
     exit 1
 }
