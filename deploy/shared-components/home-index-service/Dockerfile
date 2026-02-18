@@ -40,6 +40,10 @@ COPY --from=builder /app/main .
 # Copy the docs directory for MITRE ATT&CK and threat model pages
 COPY docs ./docs
 
+# Copy blog HTML files
+COPY deploy/shared-components/home-index-service/blog-preview.html ./blog-preview.html
+COPY deploy/shared-components/home-index-service/blog-post-preview.html ./blog-post-preview.html
+
 # Copy lab README files from their original locations
 # Prefers LabXX-README.md naming convention, falls back to README.md
 # Structure: labs/{lab-id}/LabXX-README.md or README.md -> docs/labs/{lab-id}/README.md

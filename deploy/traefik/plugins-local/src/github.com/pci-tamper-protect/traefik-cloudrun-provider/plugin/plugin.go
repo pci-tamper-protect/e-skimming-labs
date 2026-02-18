@@ -22,6 +22,10 @@ type Config struct {
 	Region       string        `json:"region,omitempty" yaml:"region,omitempty"`
 	PollInterval time.Duration `json:"pollInterval,omitempty" yaml:"pollInterval,omitempty"`
 
+	// RuleMap maps rule IDs to Traefik rule expressions.
+	// Configured in traefik.cloudrun.yml so the provider stays generic.
+	RuleMap map[string]string `json:"ruleMap,omitempty" yaml:"ruleMap,omitempty"`
+
 	// Token cache settings
 	TokenRefreshBefore time.Duration `json:"tokenRefreshBefore,omitempty" yaml:"tokenRefreshBefore,omitempty"`
 }
@@ -262,6 +266,7 @@ func (p *PluginProvider) updateConfig(cfgChan chan<- json.Marshaler) error {
 		ProjectIDs:   p.config.ProjectIDs,
 		Region:       p.config.Region,
 		PollInterval: p.config.PollInterval,
+		RuleMap:      p.config.RuleMap,
 	}
 
 	internalProvider, err := provider.New(providerConfig)

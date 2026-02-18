@@ -38,6 +38,7 @@ providers:
     exposedByDefault: false  # Only expose services with traefik.enable=true label
     network: e-skimming-labs-network    # Use the labs network for service discovery (Docker Compose adds project prefix)
     watch: true              # Watch for container changes
+    allowEmptyServices: true # Keep routers when backend is empty (503 instead of 404 until backend is up)
     # Note: Traefik filters unhealthy/starting containers by default
     # Containers must pass their health check before Traefik creates routes
 

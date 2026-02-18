@@ -125,6 +125,9 @@ services:
   lab2-vulnerable-site:
     build: ./labs/02-dom-skimming/vulnerable-site
     container_name: lab2-securebank
+    environment:
+      - LAB2_VARIANT=${LAB2_VARIANT:-}
+      - LAB2_VARIANT_DEFAULT=${LAB2_VARIANT_DEFAULT:-dom-monitor}
     ports:
       - '9003:80'
     networks:
@@ -135,16 +138,14 @@ services:
 
   # Lab 2 - C2 Server (DOM Skimming Data Collection)
   lab2-c2-server:
-    build:
-      context: ./labs/02-dom-skimming
-      dockerfile: Dockerfile.c2
+    build: ./labs/02-dom-skimming/c2-server
     container_name: lab2-dom-c2-server
     ports:
       - '9004:3000'
     networks:
       - labs-network
     volumes:
-      - ./labs/02-dom-skimming/malicious-code/stolen-data:/app/stolen-data
+      - ./labs/02-dom-skimming/c2-server/stolen-data:/app/stolen-data
     environment:
       - NODE_ENV=development
       - PORT=3000

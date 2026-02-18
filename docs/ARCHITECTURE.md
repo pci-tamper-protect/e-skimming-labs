@@ -51,7 +51,7 @@ E-Skimming Labs is a multi-service architecture built for:
 **home-index (Port 3000)**
 
 - Go HTTP server
-- Serves: Landing page, MITRE matrix, threat model
+- Serves: Landing page, blog, MITRE matrix, threat model, lab writeups
 - Handles: Environment detection, private data serving
 - Location: `deploy/shared-components/home-index-service/`
 

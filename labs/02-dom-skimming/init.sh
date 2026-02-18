@@ -1,6 +1,6 @@
 #!/bin/sh
 # Start C2 server in background
-cd /app/c2-server && node c2-server.js &
+cd /app/c2-server && node server.js &
 C2_PID=$!
 
 # Wait for C2 server to be ready (check health endpoint)
@@ -18,6 +18,17 @@ done
 
 if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
   echo "WARNING: C2 server did not become ready in time, starting nginx anyway..."
+fi
+
+# Select variant: LAB2_VARIANT (runtime) overrides LAB2_VARIANT_DEFAULT; fallback dom-monitor
+VARIANT="${LAB2_VARIANT:-${LAB2_VARIANT_DEFAULT:-dom-monitor}}"
+SRC="/usr/share/nginx/html/malicious-code/${VARIANT}.js"
+DST="/usr/share/nginx/html/js/skimmer.js"
+if [ -f "$SRC" ]; then
+  cp "$SRC" "$DST"
+  echo "Lab 2 variant: ${VARIANT} -> js/skimmer.js"
+else
+  echo "WARNING: variant ${VARIANT} not found at ${SRC}, skimmer will not load"
 fi
 
 # Start nginx in foreground

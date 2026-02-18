@@ -32,10 +32,13 @@ RUN apk add --no-cache curl ca-certificates bash jq wget tar && \
 
 # Copy Traefik configuration
 # Create /etc/traefik directory first (base image doesn't have it)
+# Only copy routes.yml (strip-prefix, retry-cold-start, etc.). Do NOT copy local-auth-stubs.yml
+# (empty auth chains would make lab routes public). ForwardAuth middlewares are written at
+# runtime by entrypoint when HOME_INDEX_URL is set (see AUTHENTICATION_ARCHITECTURE.md).
 RUN mkdir -p /etc/traefik/dynamic
 COPY traefik.cloudrun.yml /etc/traefik/traefik.yml
-COPY dynamic/ /etc/traefik/dynamic/
-# Ensure config file is readable by traefik user (we'll create the user later)
+COPY dynamic/routes.yml /etc/traefik/dynamic/
+# Ensure config readable and dynamic dir writable so entrypoint can write auth-forward.yml
 RUN chmod 644 /etc/traefik/traefik.yml && \
     chmod -R 755 /etc/traefik/dynamic && \
     echo "✅ Traefik config files ready"
@@ -55,6 +58,7 @@ RUN chmod -R a+rX /plugins-local && \
 # Use UID 1000 to match common non-root user conventions
 RUN addgroup -g 1000 traefik && \
     adduser -D -u 1000 -G traefik traefik && \
+    chown -R traefik:traefik /etc/traefik/dynamic && \
     echo "✅ traefik user created"
 
 # Copy simplified entrypoint script (plugin handles route generation)

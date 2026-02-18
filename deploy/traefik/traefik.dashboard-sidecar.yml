@@ -26,9 +26,13 @@ providers:
 # API requests (/api/*) are proxied to main Traefik service via dynamic routes
 # Note: For dashboard-only service, api.insecure: true is safe (no conflict with main Traefik)
 # When insecure: true, API is served on the entrypoint (dashboard:8080)
+# SECURITY NOTE: insecure: true exposes the dashboard without Traefik-level auth.
+# This is acceptable because Cloud Run IAM controls access to this service
+# (--no-allow-unauthenticated). If you add public domain mapping, add explicit
+# router with auth middleware instead of using insecure mode.
 api:
   dashboard: true
-  insecure: true  # Dashboard accessible without auth (internal service)
+  insecure: true  # Dashboard accessible without Traefik auth (Cloud Run IAM protects access)
   # Note: In v2.10, when insecure: true, entryPoint cannot be set
   # API is automatically served on the entrypoint (dashboard:8080)
 

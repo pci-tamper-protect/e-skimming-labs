@@ -1,0 +1,25 @@
+# Local Development Auth Stubs
+# These empty chain middlewares disable auth for local Docker Compose development.
+#
+# IMPORTANT: This file is intentionally NOT copied to Cloud Run deployments.
+# In Cloud Run, the real auth middlewares (ForwardAuth to Firebase) are generated
+# by the traefik-cloudrun-provider or defined in a separate production config.
+#
+# This separation prevents the empty stubs from overriding real auth in production.
+
+http:
+  middlewares:
+    # Lab 1 auth stub - no-op for local development
+    lab1-auth-check:
+      chain:
+        middlewares: []
+
+    # Lab 2 auth stub - no-op for local development
+    lab2-auth-check:
+      chain:
+        middlewares: []
+
+    # Lab 3 auth stub - no-op for local development
+    lab3-auth-check:
+      chain:
+        middlewares: []

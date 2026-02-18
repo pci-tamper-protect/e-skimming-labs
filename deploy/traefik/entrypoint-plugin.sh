@@ -59,6 +59,52 @@ mkdir -p /etc/traefik/dynamic || {
   exit 1
 }
 
+# When HOME_INDEX_URL is set (e.g. stg/prod), write ForwardAuth middlewares so lab routes
+# require Firebase login. Without this, lab1-auth-check@file would be undefined and routes would fail.
+# See docs/AUTHENTICATION_ARCHITECTURE.md and deploy/traefik/dynamic/auth-middlewares.yml.
+if [ -n "${HOME_INDEX_URL:-}" ]; then
+  AUTH_CHECK_URL="${HOME_INDEX_URL%/}/api/auth/check"
+  log "Writing ForwardAuth middlewares to /etc/traefik/dynamic/auth-forward.yml (HOME_INDEX_URL=${HOME_INDEX_URL})"
+  cat > /etc/traefik/dynamic/auth-forward.yml << EOF
+# Generated at runtime - ForwardAuth to home-index for lab route protection
+http:
+  middlewares:
+    lab1-auth-check:
+      forwardAuth:
+        address: "${AUTH_CHECK_URL}"
+        authResponseHeaders:
+          - "X-User-Id"
+          - "X-User-Email"
+        authRequestHeaders:
+          - "Authorization"
+          - "Cookie"
+        trustForwardHeader: true
+    lab2-auth-check:
+      forwardAuth:
+        address: "${AUTH_CHECK_URL}"
+        authResponseHeaders:
+          - "X-User-Id"
+          - "X-User-Email"
+        authRequestHeaders:
+          - "Authorization"
+          - "Cookie"
+        trustForwardHeader: true
+    lab3-auth-check:
+      forwardAuth:
+        address: "${AUTH_CHECK_URL}"
+        authResponseHeaders:
+          - "X-User-Id"
+          - "X-User-Email"
+        authRequestHeaders:
+          - "Authorization"
+          - "Cookie"
+        trustForwardHeader: true
+EOF
+  log "✅ auth-forward.yml written (lab routes will require login)"
+else
+  log "HOME_INDEX_URL not set - lab auth middlewares not written (local or auth disabled)"
+fi
+
 # Ensure plugins-local directory exists and is readable
 if [ -d "/plugins-local" ]; then
   log "✅ Plugin directory found at /plugins-local"

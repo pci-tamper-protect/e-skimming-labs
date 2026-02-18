@@ -1,0 +1,19 @@
+# Static route for remote Cloud Run home-index service
+# Do NOT put this file in dynamic/ for local docker-compose - use Docker provider's home-index (local container) instead.
+# For Cloud Run or when routing / to a remote URL, include this in the file provider config and substitute HOME_INDEX_URL at deploy time.
+
+http:
+  services:
+    home-index:
+      loadBalancer:
+        servers:
+          - url: "${HOME_INDEX_URL:-https://home-index-stg-171147998109.us-central1.run.app}"
+        passHostHeader: false
+
+  routers:
+    home-index:
+      rule: "PathPrefix(`/`)"
+      service: home-index
+      priority: 1
+      entryPoints:
+        - web

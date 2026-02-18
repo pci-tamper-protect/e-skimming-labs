@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"strings"
 )
 
@@ -26,15 +27,15 @@ func sanitizeEmail(email string) string {
 		// Not a valid email format, return as-is
 		return email
 	}
-	
+
 	localPart := email[:atIndex]
 	domain := email[atIndex+1:]
-	
+
 	// Show first 2 characters of local part, or all if less than 2
 	if len(localPart) <= 2 {
 		return email // Too short to sanitize meaningfully
 	}
-	
+
 	return localPart[:2] + "@" + domain
 }
 
@@ -42,44 +43,64 @@ func sanitizeEmail(email string) string {
 func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Skip auth for public pages: home, mitre-attack, threat-model
-			// Also skip health check, static assets, and auth API endpoints
-			publicPaths := []string{
-				"/",
-				"/mitre-attack",
-				"/threat-model",
-				"/health",
-				"/status",     // Startup status page (public)
-				"/sign-in",    // Sign-in page (public)
-				"/sign-up",    // Sign-up page (public)
-				"/api/auth",   // All auth API endpoints (sign-in, validate, etc.)
-				"/api/labs",   // Labs listing API (public)
-				"/api/status", // Status API endpoint (public)
+			// Normalize path using path.Clean which:
+			// - Collapses multiple slashes (///x -> /x)
+			// - Resolves . and .. components
+			// - Removes trailing slashes (except root)
+			// - Returns "/" for empty paths
+			normalizedPath := path.Clean(r.URL.Path)
+			if normalizedPath == "." {
+				normalizedPath = "/"
 			}
 
-			// Normalize path (remove trailing slashes except for root)
-			normalizedPath := r.URL.Path
-			if normalizedPath != "/" && strings.HasSuffix(normalizedPath, "/") {
-				normalizedPath = strings.TrimSuffix(normalizedPath, "/")
+			// Explicit protected paths: always require auth when validator is enabled (no public bypass)
+			// Note: /lab1, /lab2, /lab3 are protected by Traefik ForwardAuth, not this middleware
+			protectedPathPrefixes := []string{
+				"/lab-01-writeup",
+				"/lab-02-writeup",
+				"/lab-03-writeup",
 			}
-			// Handle double slashes
-			normalizedPath = strings.ReplaceAll(normalizedPath, "//", "/")
-
-			isPublicPath := false
-			for _, path := range publicPaths {
-				if normalizedPath == path || strings.HasPrefix(normalizedPath, path+"/") {
-					isPublicPath = true
+			isProtectedPath := false
+			for _, prefix := range protectedPathPrefixes {
+				if normalizedPath == prefix || strings.HasPrefix(normalizedPath, prefix+"/") {
+					isProtectedPath = true
+					log.Printf("🔒 Auth middleware (protected path): %s (normalized: %s)", r.URL.Path, normalizedPath)
 					break
 				}
 			}
 
-			if isPublicPath || strings.HasPrefix(r.URL.Path, "/static/") {
-				log.Printf("🔓 Skipping auth for public path: %s (normalized: %s)", r.URL.Path, normalizedPath)
-				next.ServeHTTP(w, r)
-				return
-			}
+			if !isProtectedPath {
+				// Skip auth for public pages: home, mitre-attack, threat-model
+				// Also skip health check, static assets, and auth API endpoints
+				publicPaths := []string{
+					"/",
+					"/mitre-attack",
+					"/threat-model",
+					"/health",
+					"/status",     // Startup status page (public)
+					"/sign-in",    // Sign-in page (public)
+					"/sign-up",    // Sign-up page (public)
+					"/api/auth",   // All auth API endpoints (sign-in, validate, etc.)
+					"/api/labs",   // Labs listing API (public)
+					"/api/status", // Status API endpoint (public)
+				}
 
-			log.Printf("🔒 Auth middleware checking: %s (normalized: %s)", r.URL.Path, normalizedPath)
+				isPublicPath := false
+				for _, path := range publicPaths {
+					if normalizedPath == path || strings.HasPrefix(normalizedPath, path+"/") {
+						isPublicPath = true
+						break
+					}
+				}
+
+				if isPublicPath || strings.HasPrefix(r.URL.Path, "/static/") {
+					log.Printf("🔓 Skipping auth for public path: %s (normalized: %s)", r.URL.Path, normalizedPath)
+					next.ServeHTTP(w, r)
+					return
+				}
+
+				log.Printf("🔒 Auth middleware checking: %s (normalized: %s)", r.URL.Path, normalizedPath)
+			}
 
 			// If auth is disabled, proceed without validation
 			if !validator.IsEnabled() {
@@ -202,8 +223,8 @@ func respondAuthError(w http.ResponseWriter, r *http.Request, statusCode int, me
 		acceptHeader == "" ||
 		strings.Contains(acceptHeader, "*/*")
 
-	if isBrowserRequest && mainAppURL != "" {
-		// Redirect browser requests to sign-in page
+	if isBrowserRequest {
+		// Redirect browser requests to sign-in page (URL built from request; mainAppURL unused when empty)
 		// Use X-Forwarded-Host if available (when behind proxy like Traefik),
 		// otherwise use request's Host header to avoid container hostname issues
 		scheme := "http"
@@ -233,8 +254,8 @@ func respondAuthError(w http.ResponseWriter, r *http.Request, statusCode int, me
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"error":   "authentication_required",
-		"message": message,
+		"error":     "authentication_required",
+		"message":   message,
 		"signInUrl": "/api/auth/sign-in-url",
 	})
 }

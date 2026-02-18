@@ -203,6 +203,46 @@ docker logs e-skimming-labs-traefik
 docker-compose restart traefik
 ```
 
+### Problem: localhost:8080 returns 404
+
+**Solution:**
+```bash
+# Ensure home-index (and any other required services) are up
+docker compose ps
+
+# Check if Traefik sees the home-index router and service
+curl -s http://localhost:8081/api/http/routers | jq '.[] | select(.name | contains("home-index"))'
+curl -s http://localhost:8081/api/http/services | jq '.[] | select(.name | contains("home-index"))'
+
+# Confirm home-index container is on the labs network
+docker inspect e-skimming-labs-home-index --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}'
+# Should show: e-skimming-labs-network
+
+# Restart Traefik after changing traefik.yml or dynamic/ config
+docker compose restart traefik
+```
+
+With `allowEmptyServices: true` in `traefik.yml`, the home-index router stays defined even when the backend is down; you get **503** instead of 404 until the home-index container is healthy.
+
+### Problem: Clicking on a lab shows the home page instead
+
+Lab routes (`/lab1`, `/lab2`, `/lab3`) are created by Traefik from the **lab containers**. If those containers are not running, Traefik has no router for `/lab1` (etc.), so the request falls through to the catch-all home-index route and you see the home page again.
+
+**Solution:** Start the lab containers you need:
+```bash
+# Start all labs
+docker compose up -d lab1-vulnerable-site lab2-vulnerable-site lab3-vulnerable-site
+
+# Or start only the labs you use
+docker compose up -d lab1-vulnerable-site lab2-vulnerable-site
+
+# Verify containers and routers
+docker compose ps
+curl -s http://localhost:8081/api/http/routers | jq '.[] | select(.name | test("lab1|lab2|lab3")) | .name'
+```
+
+Then open http://localhost:8080/lab1 (or /lab2, /lab3) again.
+
 ### Problem: Lab returns 404
 
 **Solution:**

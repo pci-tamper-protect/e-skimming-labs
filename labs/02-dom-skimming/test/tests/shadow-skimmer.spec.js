@@ -9,6 +9,7 @@ const { currentEnv, TEST_ENV } = require(testEnvPath)
 // Get URLs for lab 2
 const lab2VulnerableUrl = currentEnv.lab2.vulnerable
 const lab2C2Url = currentEnv.lab2.c2
+const maliciousCodeDir = path.resolve(__dirname, '../../vulnerable-site/malicious-code')
 
 console.log(`🧪 Test environment: ${TEST_ENV}`)
 console.log(`📍 Lab 2 Vulnerable URL: ${lab2VulnerableUrl}`)
@@ -53,7 +54,7 @@ test.describe('Lab 2: DOM-Based Skimming - Shadow DOM Stealth Attack', () => {
 
     // Inject shadow skimmer attack
     await page.addScriptTag({
-      path: './malicious-code/shadow-skimmer.js'
+      path: path.join(maliciousCodeDir, 'shadow-skimmer.js')
     })
 
     await expect(page).toHaveTitle(/SecureBank/)
@@ -108,7 +109,7 @@ test.describe('Lab 2: DOM-Based Skimming - Shadow DOM Stealth Attack', () => {
 
     // Inject shadow skimmer attack
     await page.addScriptTag({
-      path: './malicious-code/shadow-skimmer.js'
+      path: path.join(maliciousCodeDir, 'shadow-skimmer.js')
     })
 
     // Wait for shadow setup
@@ -175,7 +176,7 @@ test.describe('Lab 2: DOM-Based Skimming - Shadow DOM Stealth Attack', () => {
 
     // Inject shadow skimmer attack
     await page.addScriptTag({
-      path: './malicious-code/shadow-skimmer.js'
+      path: path.join(maliciousCodeDir, 'shadow-skimmer.js')
     })
 
     await page.waitForTimeout(3000)
@@ -272,7 +273,7 @@ test.describe('Lab 2: DOM-Based Skimming - Shadow DOM Stealth Attack', () => {
 
     // Inject shadow skimmer attack
     await page.addScriptTag({
-      path: './malicious-code/shadow-skimmer.js'
+      path: path.join(maliciousCodeDir, 'shadow-skimmer.js')
     })
 
     await page.waitForTimeout(3000)
@@ -344,7 +345,7 @@ test.describe('Lab 2: DOM-Based Skimming - Shadow DOM Stealth Attack', () => {
 
     // Inject shadow skimmer attack
     await page.addScriptTag({
-      path: './malicious-code/shadow-skimmer.js'
+      path: path.join(maliciousCodeDir, 'shadow-skimmer.js')
     })
 
     await page.waitForTimeout(3000)
@@ -451,7 +452,7 @@ test.describe('Lab 2: DOM-Based Skimming - Shadow DOM Stealth Attack', () => {
 
     // Inject shadow skimmer attack
     await page.addScriptTag({
-      path: './malicious-code/shadow-skimmer.js'
+      path: path.join(maliciousCodeDir, 'shadow-skimmer.js')
     })
 
     await page.waitForTimeout(3000)
@@ -512,7 +513,7 @@ test.describe('Lab 2: DOM-Based Skimming - Shadow DOM Stealth Attack', () => {
 
     // Inject shadow skimmer attack
     await page.addScriptTag({
-      path: './malicious-code/shadow-skimmer.js'
+      path: path.join(maliciousCodeDir, 'shadow-skimmer.js')
     })
 
     await page.waitForTimeout(3000)
@@ -577,7 +578,7 @@ test.describe('Lab 2: DOM-Based Skimming - Shadow DOM Stealth Attack', () => {
 
     // Inject shadow skimmer attack
     await page.addScriptTag({
-      path: './malicious-code/shadow-skimmer.js'
+      path: path.join(maliciousCodeDir, 'shadow-skimmer.js')
     })
 
     await page.waitForTimeout(3000)

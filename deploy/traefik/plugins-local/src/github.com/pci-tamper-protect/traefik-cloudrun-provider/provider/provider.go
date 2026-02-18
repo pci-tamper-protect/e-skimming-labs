@@ -19,6 +19,10 @@ type Config struct {
 	Region       string        // GCP region (e.g., "us-central1")
 	PollInterval time.Duration // How often to poll Cloud Run API
 
+	// RuleMap maps rule IDs to Traefik rule expressions.
+	// Populated from plugin config (traefik.cloudrun.yml).
+	RuleMap map[string]string
+
 	// Optional: Eventarc configuration (future)
 	EventarcEnabled bool
 	EventarcTopic   string
@@ -51,6 +55,11 @@ func New(config *Config) (*Provider, error) {
 	}
 	if config.PollInterval == 0 {
 		config.PollInterval = 30 * time.Second
+	}
+
+	// Initialize ruleMap from config if provided
+	if len(config.RuleMap) > 0 {
+		SetRuleMap(config.RuleMap)
 	}
 
 	// Setup logger
@@ -159,6 +168,9 @@ func (p *Provider) updateConfig(configChan chan<- *DynamicConfig) error {
 	config := NewDynamicConfig()
 
 	totalServices := 0
+	
+	// Track home-index URL for user auth middleware generation
+	var homeIndexURL string
 
 	// Discover services from all configured projects
 	for _, projectID := range p.config.ProjectIDs {
@@ -208,6 +220,14 @@ func (p *Provider) updateConfig(configChan chan<- *DynamicConfig) error {
 					logging.GetCodeField(logging.CodeServiceProcessingSuccess),
 					logging.String("service", service.Name),
 				)
+				
+				// Track home-index URL for user auth middleware
+				if strings.Contains(service.Name, "home-index") && service.URL != "" {
+					homeIndexURL = service.URL
+					p.logger.Info("Found home-index service for user auth",
+						logging.String("url", homeIndexURL),
+					)
+				}
 			} else {
 				p.logger.Debug("Skipping service (traefik_enable != true)",
 					logging.GetCodeField(logging.CodeServiceSkipped),
@@ -236,6 +256,24 @@ func (p *Provider) updateConfig(configChan chan<- *DynamicConfig) error {
 	// and loaded via the file provider, since dynamic.Headers doesn't support
 	// forwarded headers configuration. The file provider is still enabled for
 	// static middlewares like retry-cold-start@file and forwarded-headers@file.
+
+	// Generate user auth middlewares if USER_AUTH_ENABLED is true
+	// These forwardAuth middlewares call home-index /api/auth/check for JWT validation
+	userAuthEnabled := os.Getenv("USER_AUTH_ENABLED") == "true"
+	if userAuthEnabled && homeIndexURL != "" {
+		p.logger.Info("USER_AUTH_ENABLED=true, generating forwardAuth middlewares",
+			logging.String("homeIndexURL", homeIndexURL),
+		)
+		// Generate lab auth-check middlewares that point to the Cloud Run home-index URL
+		config.AddForwardAuthMiddleware("lab1-auth-check", homeIndexURL)
+		config.AddForwardAuthMiddleware("lab2-auth-check", homeIndexURL)
+		config.AddForwardAuthMiddleware("lab3-auth-check", homeIndexURL)
+		config.AddForwardAuthMiddleware("lab4-auth-check", homeIndexURL)
+	} else if userAuthEnabled && homeIndexURL == "" {
+		p.logger.Warn("USER_AUTH_ENABLED=true but home-index URL not found - user auth middlewares not generated")
+	} else {
+		p.logger.Info("USER_AUTH_ENABLED not set or false - skipping user auth middlewares")
+	}
 
 	// Add Traefik API/Dashboard routers
 	p.logger.Debug("Adding Traefik internal routers (API/Dashboard)...")
@@ -294,6 +332,17 @@ func (p *Provider) processService(service CloudRunService, config *DynamicConfig
 			break
 		}
 	}
+	
+	// Set service name on routers that don't have it explicitly set
+	// This ensures all routers point to the correct service
+	// Note: Cannot directly assign to struct field in map - must get, modify, and put back
+	for routerName := range routerConfigs {
+		if routerConfigs[routerName].Service == "" {
+			routerConfig := routerConfigs[routerName]
+			routerConfig.Service = serviceNameFromLabel
+			routerConfigs[routerName] = routerConfig
+		}
+	}
 
 	// Get identity token for service
 	// This token will be used in Authorization header for Cloud Run service-to-service auth
@@ -347,27 +396,82 @@ func (p *Provider) processService(service CloudRunService, config *DynamicConfig
 		}
 	}
 
-	// Create auth middleware
+	// Create auth middleware (only if token is available)
 	authMiddlewareName := fmt.Sprintf("%s-auth", serviceNameFromLabel)
-	config.AddAuthMiddleware(authMiddlewareName, serviceToken)
+	authMiddlewareCreated := false
+	if serviceToken != "" {
+		config.AddAuthMiddleware(authMiddlewareName, serviceToken)
+		authMiddlewareCreated = true
+	} else {
+		// Skip creating middleware if no token (avoids empty headers: {} in YAML)
+		p.logger.Debug("Skipping auth middleware creation (no token)",
+			logging.String("middleware", authMiddlewareName),
+		)
+	}
 
 	// Add routers (with auth middleware and retry middleware)
+	// USER_AUTH_ENABLED controls whether user JWT auth is required for labs
+	// - When false (default): Skip auth-check middlewares (no user auth required)
+	// - When true: Include auth-check middlewares (user must be authenticated)
+	// Note: SKIP_AUTH_CHECK is deprecated, use USER_AUTH_ENABLED=false instead
+	userAuthEnabled := os.Getenv("USER_AUTH_ENABLED") == "true"
+	skipAuthCheck := os.Getenv("SKIP_AUTH_CHECK") == "true" || !userAuthEnabled
+	
 	for routerName, routerConfig := range routerConfigs {
-		// Add service auth middleware if not already present
-		// Note: Middleware order doesn't matter for header conflicts since we use
-		// X-Serverless-Authorization (doesn't conflict with user's Authorization header)
-		hasServiceAuth := false
-		for _, mw := range routerConfig.Middlewares {
-			if mw == authMiddlewareName || mw == fmt.Sprintf("%s@file", authMiddlewareName) {
-				hasServiceAuth = true
-				break
+		// Filter out auth-check middlewares if user auth is disabled
+		// These middlewares use forwardAuth which requires home-index service
+		if skipAuthCheck {
+			filteredMiddlewares := make([]string, 0, len(routerConfig.Middlewares))
+			for _, mw := range routerConfig.Middlewares {
+				if !strings.Contains(mw, "auth-check") {
+					filteredMiddlewares = append(filteredMiddlewares, mw)
+				} else {
+					p.logger.Debug("Skipping auth-check middleware (USER_AUTH_ENABLED=false)",
+						logging.String("router", routerName),
+						logging.String("middleware", mw))
+				}
 			}
+			routerConfig.Middlewares = filteredMiddlewares
 		}
 
-		if !hasServiceAuth {
-			// Prepend service auth middleware (runs before other middlewares)
-			// This ensures service-to-service auth is set early in the request chain
-			routerConfig.Middlewares = append([]string{authMiddlewareName}, routerConfig.Middlewares...)
+		// Auto-inject strip-prefix middleware for lab routes if not already present
+		// This ensures /lab1 requests get their prefix stripped before reaching the backend
+		// Lab services expect requests at / (root), not /lab1
+		stripPrefixMiddleware := getStripPrefixMiddleware(routerName)
+		if stripPrefixMiddleware != "" {
+			hasStripPrefix := false
+			for _, mw := range routerConfig.Middlewares {
+				if strings.Contains(mw, "strip-") && strings.Contains(mw, "-prefix") {
+					hasStripPrefix = true
+					break
+				}
+			}
+			if !hasStripPrefix {
+				// Add strip-prefix middleware after auth but before retry
+				routerConfig.Middlewares = append(routerConfig.Middlewares, stripPrefixMiddleware)
+				p.logger.Debug("Auto-injected strip-prefix middleware",
+					logging.String("router", routerName),
+					logging.String("middleware", stripPrefixMiddleware))
+			}
+		}
+		
+		// Add service auth middleware if it was created and not already present
+		// Note: Middleware order doesn't matter for header conflicts since we use
+		// X-Serverless-Authorization (doesn't conflict with user's Authorization header)
+		if authMiddlewareCreated {
+			hasServiceAuth := false
+			for _, mw := range routerConfig.Middlewares {
+				if mw == authMiddlewareName || mw == fmt.Sprintf("%s@file", authMiddlewareName) {
+					hasServiceAuth = true
+					break
+				}
+			}
+
+			if !hasServiceAuth {
+				// Prepend service auth middleware (runs before other middlewares)
+				// This ensures service-to-service auth is set early in the request chain
+				routerConfig.Middlewares = append([]string{authMiddlewareName}, routerConfig.Middlewares...)
+			}
 		}
 
 		// Always add retry middleware for cold starts (at the end)
@@ -407,7 +511,9 @@ func (p *Provider) processService(service CloudRunService, config *DynamicConfig
 			logging.String("hasAuthMiddleware", fmt.Sprintf("%v", hasAuthMw)),
 		)
 
-		config.AddRouter(routerName, routerConfig)
+		// Use AddRouterWithSource to handle conflicts when multiple services define the same router
+		// Dedicated services (e.g., lab1-c2-stg for lab1-c2 router) take precedence
+		config.AddRouterWithSource(routerName, routerConfig, service.Name)
 	}
 
 	// Add service definition
@@ -425,4 +531,55 @@ func (p *Provider) processService(service CloudRunService, config *DynamicConfig
 	)
 
 	return nil
+}
+
+// getStripPrefixMiddleware returns the appropriate strip-prefix middleware name
+// for a given router based on its name and rule. Returns empty string if no
+// strip-prefix middleware should be auto-injected.
+//
+// This function automatically injects strip-prefix middlewares for lab routes
+// because lab services expect requests at / (root), not /labN.
+// The middlewares must be pre-defined in the static routes.yml file.
+func getStripPrefixMiddleware(routerName string) string {
+	// Map of router name patterns to their strip-prefix middleware
+	// These middlewares are defined in deploy/traefik/dynamic/routes.yml
+	stripPrefixMap := map[string]string{
+		// Lab 1 routes
+		"lab1":        "strip-lab1-prefix@file",
+		"lab1-static": "strip-lab1-prefix@file",
+		"lab1-c2":     "strip-lab1-c2-prefix@file",
+		// Lab 2 routes
+		"lab2":        "strip-lab2-prefix@file",
+		"lab2-main":   "strip-lab2-prefix@file",
+		"lab2-static": "strip-lab2-prefix@file",
+		"lab2-c2":     "strip-lab2-c2-prefix@file",
+		// Lab 3 routes
+		"lab3":        "strip-lab3-prefix@file",
+		"lab3-main":   "strip-lab3-prefix@file",
+		"lab3-static": "strip-lab3-prefix@file",
+		"lab3-extension": "strip-lab3-extension-prefix@file",
+		// API routes
+		"home-seo":       "strip-seo-prefix@file",
+		"labs-analytics": "strip-analytics-prefix@file",
+	}
+
+	// Check for exact match first
+	if middleware, ok := stripPrefixMap[routerName]; ok {
+		return middleware
+	}
+
+	// Check for prefix match (e.g., "lab1-something" matches "lab1")
+	// But skip if already handled by exact match above
+	for prefix, middleware := range stripPrefixMap {
+		if strings.HasPrefix(routerName, prefix+"-") {
+			// Skip if this is a more specific route that should have its own middleware
+			// (these are already in the map above)
+			if strings.Contains(routerName, "-c2") || strings.Contains(routerName, "-extension") {
+				continue
+			}
+			return middleware
+		}
+	}
+
+	return ""
 }

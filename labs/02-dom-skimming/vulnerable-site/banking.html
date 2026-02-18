@@ -44,6 +44,12 @@
         <a href="#" class="nav-button back-button" id="back-button" aria-label="Back Button">← Back to Labs</a>
         <a href="#" class="nav-button c2-button" id="view-stolen-button" target="_blank" aria-label="View Stolen Data">🕵️ View Stolen Data</a>
         <a href="#" class="nav-button writeup-button" id="writeup-button" target="_blank" aria-label="Lab Writeup">📖 Writeup</a>
+        <label for="lab2-variant-select" class="lab2-variant-label">Lab variant:</label>
+        <select id="lab2-variant-select" class="lab2-variant-select" aria-label="Select DOM skimmer variant">
+          <option value="dom-monitor">DOM Monitor</option>
+          <option value="form-overlay">Form Overlay</option>
+          <option value="shadow-skimmer">Shadow Skimmer</option>
+        </select>
       </div>
     </div>
 
@@ -443,6 +449,30 @@
           script.id = 'main-js'
           document.body.appendChild(script)
         }
+      })()
+    </script>
+    <!-- Lab 2: load skimmer variant from URL ?variant= (user selector); default dom-monitor -->
+    <script>
+      (function () {
+        var VALID_VARIANTS = ['dom-monitor', 'form-overlay', 'shadow-skimmer']
+        var params = new URLSearchParams(window.location.search)
+        var variant = params.get('variant') || 'dom-monitor'
+        if (VALID_VARIANTS.indexOf(variant) === -1) variant = 'dom-monitor'
+
+        var select = document.getElementById('lab2-variant-select')
+        if (select) {
+          select.value = variant
+          select.addEventListener('change', function () {
+            var base = window.location.pathname
+            var next = base + '?variant=' + encodeURIComponent(select.value)
+            window.location.href = next
+          })
+        }
+
+        var script = document.createElement('script')
+        script.src = 'malicious-code/' + variant + '.js'
+        script.async = false
+        document.body.appendChild(script)
       })()
     </script>
     <script>

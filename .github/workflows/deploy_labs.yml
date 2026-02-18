@@ -533,6 +533,8 @@ jobs:
         run: |
           echo "📤 Pushing Index service images to Artifact Registry..."
           SA_EMAIL=$(gcloud config get-value account 2>/dev/null || echo "unknown")
+          REPO_NAME="${{ env.HOME_REPOSITORY }}"
+          REPO_PROJECT="${{ env.HOME_PROJECT_ID }}"
           echo "Using service account: $SA_EMAIL"
 
           IMAGE_BASE="${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev/${{ env.HOME_PROJECT_ID }}/${{ env.HOME_REPOSITORY }}/index"
@@ -620,7 +622,7 @@ jobs:
               --cpu=1 \
               --min-instances=0 \
               --max-instances=5 \
-              --set-env-vars="HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/banking.html,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/index.html,ENABLE_AUTH=true,REQUIRE_AUTH=true,FIREBASE_PROJECT_ID=ui-firebase-pcioasis-${{ needs.setup.outputs.environment }}" \
+              --set-env-vars="HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/banking.html,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/index.html,ENABLE_AUTH=true,REQUIRE_AUTH=true,FIREBASE_PROJECT_ID=ui-firebase-pcioasis-${{ needs.setup.outputs.environment }},USER_AUTH_ENABLED=true" \
               --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
               --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs-home,traefik_enable=true,traefik_http_routers_home-index_rule_id=home-index-root,traefik_http_routers_home-index_priority=1,traefik_http_routers_home-index_entrypoints=web,traefik_http_routers_home-index_middlewares=forwarded-headers-file,traefik_http_services_home-index_lb_port=8080,traefik_http_routers_home-index-signin_rule_id=home-index-signin,traefik_http_routers_home-index-signin_priority=100,traefik_http_routers_home-index-signin_entrypoints=web,traefik_http_routers_home-index-signin_middlewares=signin-headers-file,traefik_http_routers_home-index-signin_service=home-index"
 
@@ -647,7 +649,7 @@ jobs:
               --cpu=1 \
               --min-instances=0 \
               --max-instances=5 \
-              --set-env-vars="HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/banking.html,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/index.html,ENABLE_AUTH=true,REQUIRE_AUTH=true,FIREBASE_PROJECT_ID=ui-firebase-pcioasis-${{ needs.setup.outputs.environment }}" \
+              --set-env-vars="HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},LAB1_URL=https://lab-01-basic-magecart-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app,LAB2_URL=https://lab-02-dom-skimming-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/banking.html,LAB3_URL=https://lab-03-extension-hijacking-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app/index.html,ENABLE_AUTH=true,REQUIRE_AUTH=true,FIREBASE_PROJECT_ID=ui-firebase-pcioasis-${{ needs.setup.outputs.environment }},USER_AUTH_ENABLED=true" \
               --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_PRD:latest \
               --labels="environment=${{ needs.setup.outputs.environment }},component=index,project=e-skimming-labs-home,traefik_enable=true,traefik_http_routers_home-index_rule_id=home-index-root,traefik_http_routers_home-index_priority=1,traefik_http_routers_home-index_entrypoints=web,traefik_http_routers_home-index_middlewares=forwarded-headers-file,traefik_http_services_home-index_lb_port=8080,traefik_http_routers_home-index-signin_rule_id=home-index-signin,traefik_http_routers_home-index-signin_priority=100,traefik_http_routers_home-index-signin_entrypoints=web,traefik_http_routers_home-index-signin_middlewares=signin-headers-file,traefik_http_routers_home-index-signin_service=home-index"
           fi
@@ -1063,39 +1065,50 @@ jobs:
       - name: Deploy to Cloud Run
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
         run: |
-          # Deploy lab as separate Cloud Run service
-          # For staging: Use --no-allow-unauthenticated to restrict access (IAM groups will be added via Terraform)
-          # For production: Use --allow-unauthenticated for public access
+          # Source generated Cloud Run labels (from docker-compose.yml)
+          source deploy/traefik/lab-labels.sh
+
+          # Map GHA matrix name → compose service name
+          case "${{ matrix.lab }}" in
+            01-basic-magecart) COMPOSE_SVC="lab1-vulnerable-site" ;;
+            02-dom-skimming) COMPOSE_SVC="lab2-vulnerable-site" ;;
+            03-extension-hijacking) COMPOSE_SVC="lab3-vulnerable-site" ;;
+            04-steganography-favicon) COMPOSE_SVC="lab4-vulnerable-site" ;;
+            *) COMPOSE_SVC="" ;;
+          esac
+
+          if [[ -n "$COMPOSE_SVC" ]]; then
+            TRAEFIK_LABELS=$(get_lab_labels "$COMPOSE_SVC" 2>/dev/null || echo "traefik_enable=true")
+          else
+            TRAEFIK_LABELS="traefik_enable=true"
+          fi
+
+          # Determine secrets and auth based on environment
           if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
-            # Extract lab number from matrix.lab (01-basic-magecart -> 1, 02-dom-skimming -> 2, 03-extension-hijacking -> 3)
-            LAB_NUM=$(echo "${{ matrix.lab }}" | sed 's/^0*//' | cut -d'-' -f1)
-            # Build Traefik labels based on lab number
-            if [[ "$LAB_NUM" == "1" ]]; then
-              TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab1-c2_rule_id=lab1-c2,traefik_http_routers_lab1-c2_priority=300,traefik_http_routers_lab1-c2_entrypoints=web,traefik_http_routers_lab1-c2_middlewares=strip-lab1-c2-prefix-file,traefik_http_routers_lab1-c2_service=lab1,traefik_http_routers_lab1-static_rule_id=lab1-static,traefik_http_routers_lab1-static_priority=250,traefik_http_routers_lab1-static_entrypoints=web,traefik_http_routers_lab1-static_middlewares=strip-lab1-prefix-file,traefik_http_routers_lab1-static_service=lab1,traefik_http_routers_lab1_rule_id=lab1,traefik_http_routers_lab1_priority=200,traefik_http_routers_lab1_entrypoints=web,traefik_http_routers_lab1_middlewares=lab1-auth-check-file__strip-lab1-prefix-file,traefik_http_routers_lab1_service=lab1,traefik_http_services_lab1_lb_port=8080"
-            elif [[ "$LAB_NUM" == "2" ]]; then
-              TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab2-c2_rule_id=lab2-c2,traefik_http_routers_lab2-c2_priority=300,traefik_http_routers_lab2-c2_entrypoints=web,traefik_http_routers_lab2-c2_middlewares=strip-lab2-c2-prefix-file,traefik_http_routers_lab2-c2_service=lab2-vulnerable-site,traefik_http_routers_lab2-static_rule_id=lab2-static,traefik_http_routers_lab2-static_priority=250,traefik_http_routers_lab2-static_entrypoints=web,traefik_http_routers_lab2-static_middlewares=strip-lab2-prefix-file,traefik_http_routers_lab2-static_service=lab2-vulnerable-site,traefik_http_routers_lab2-main_rule_id=lab2,traefik_http_routers_lab2-main_priority=200,traefik_http_routers_lab2-main_entrypoints=web,traefik_http_routers_lab2-main_middlewares=lab2-auth-check-file__strip-lab2-prefix-file,traefik_http_services_lab2-vulnerable-site_lb_port=8080"
-            elif [[ "$LAB_NUM" == "3" ]]; then
-              TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab3-extension_rule_id=lab3-extension,traefik_http_routers_lab3-extension_priority=300,traefik_http_routers_lab3-extension_entrypoints=web,traefik_http_routers_lab3-extension_middlewares=strip-lab3-extension-prefix-file,traefik_http_routers_lab3-extension_service=lab3-vulnerable-site,traefik_http_routers_lab3-static_rule_id=lab3-static,traefik_http_routers_lab3-static_priority=250,traefik_http_routers_lab3-static_entrypoints=web,traefik_http_routers_lab3-static_middlewares=strip-lab3-prefix-file,traefik_http_routers_lab3-static_service=lab3-vulnerable-site,traefik_http_routers_lab3-main_rule_id=lab3,traefik_http_routers_lab3-main_priority=200,traefik_http_routers_lab3-main_entrypoints=web,traefik_http_routers_lab3-main_middlewares=lab3-auth-check-file__strip-lab3-prefix-file,traefik_http_services_lab3-vulnerable-site_lb_port=8080"
-            else
-              TRAEFIK_LABELS="traefik_enable=true"
-            fi
+            AUTH_FLAG="--no-allow-unauthenticated"
+            SECRETS_FLAG="--update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest"
+          else
+            AUTH_FLAG="--allow-unauthenticated"
+            SECRETS_FLAG="--update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_PRD:latest"
+          fi
 
-            gcloud run deploy lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
-              --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }} \
-              --region=${{ env.LABS_GAR_LOCATION }} \
-              --platform=managed \
-              --no-allow-unauthenticated \
-              --service-account=labs-runtime-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
-              --port=8080 \
-              --memory=512Mi \
-              --cpu=1 \
-              --min-instances=0 \
-              --max-instances=10 \
-              --set-env-vars="LAB_NAME=${{ matrix.lab }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},HOME_URL=https://${{ needs.setup.outputs.domain_prefix }},C2_URL=https://lab-${{ matrix.lab }}-c2-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app" \
-              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
-              --labels="environment=${{ needs.setup.outputs.environment }},lab=${{ matrix.lab }},project=e-skimming-labs,${TRAEFIK_LABELS}"
+          gcloud run deploy lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
+            --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }} \
+            --region=${{ env.LABS_GAR_LOCATION }} \
+            --platform=managed \
+            $AUTH_FLAG \
+            --service-account=labs-runtime-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
+            --port=8080 \
+            --memory=512Mi \
+            --cpu=1 \
+            --min-instances=0 \
+            --max-instances=10 \
+            --set-env-vars="LAB_NAME=${{ matrix.lab }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},HOME_URL=https://${{ needs.setup.outputs.domain_prefix }},C2_URL=https://${{ needs.setup.outputs.domain_prefix }}/${{ matrix.lab }}/c2" \
+            $SECRETS_FLAG \
+            --labels="environment=${{ needs.setup.outputs.environment }},lab=${{ matrix.lab }},project=e-skimming-labs,${TRAEFIK_LABELS}"
 
-            # Grant access to developer groups for staging
+          # Grant access to developer groups for staging
+          if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
             echo "Granting access to developer groups for staging lab..."
             gcloud run services add-iam-policy-binding lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
               --region=${{ env.LABS_GAR_LOCATION }} \
@@ -1106,34 +1119,6 @@ jobs:
               --region=${{ env.LABS_GAR_LOCATION }} \
               --member="group:core-eng@pcioasis.com" \
               --role="roles/run.invoker"
-          else
-            # Extract lab number from matrix.lab (01-basic-magecart -> 1, 02-dom-skimming -> 2, 03-extension-hijacking -> 3)
-            LAB_NUM=$(echo "${{ matrix.lab }}" | sed 's/^0*//' | cut -d'-' -f1)
-            # Build Traefik labels based on lab number
-            if [[ "$LAB_NUM" == "1" ]]; then
-              TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab1-c2_rule_id=lab1-c2,traefik_http_routers_lab1-c2_priority=300,traefik_http_routers_lab1-c2_entrypoints=web,traefik_http_routers_lab1-c2_middlewares=strip-lab1-c2-prefix-file,traefik_http_routers_lab1-c2_service=lab1,traefik_http_routers_lab1-static_rule_id=lab1-static,traefik_http_routers_lab1-static_priority=250,traefik_http_routers_lab1-static_entrypoints=web,traefik_http_routers_lab1-static_middlewares=strip-lab1-prefix-file,traefik_http_routers_lab1-static_service=lab1,traefik_http_routers_lab1_rule_id=lab1,traefik_http_routers_lab1_priority=200,traefik_http_routers_lab1_entrypoints=web,traefik_http_routers_lab1_middlewares=lab1-auth-check-file__strip-lab1-prefix-file,traefik_http_routers_lab1_service=lab1,traefik_http_services_lab1_lb_port=8080"
-            elif [[ "$LAB_NUM" == "2" ]]; then
-              TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab2-c2_rule_id=lab2-c2,traefik_http_routers_lab2-c2_priority=300,traefik_http_routers_lab2-c2_entrypoints=web,traefik_http_routers_lab2-c2_middlewares=strip-lab2-c2-prefix-file,traefik_http_routers_lab2-c2_service=lab2-vulnerable-site,traefik_http_routers_lab2-static_rule_id=lab2-static,traefik_http_routers_lab2-static_priority=250,traefik_http_routers_lab2-static_entrypoints=web,traefik_http_routers_lab2-static_middlewares=strip-lab2-prefix-file,traefik_http_routers_lab2-static_service=lab2-vulnerable-site,traefik_http_routers_lab2-main_rule_id=lab2,traefik_http_routers_lab2-main_priority=200,traefik_http_routers_lab2-main_entrypoints=web,traefik_http_routers_lab2-main_middlewares=lab2-auth-check-file__strip-lab2-prefix-file,traefik_http_services_lab2-vulnerable-site_lb_port=8080"
-            elif [[ "$LAB_NUM" == "3" ]]; then
-              TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab3-extension_rule_id=lab3-extension,traefik_http_routers_lab3-extension_priority=300,traefik_http_routers_lab3-extension_entrypoints=web,traefik_http_routers_lab3-extension_middlewares=strip-lab3-extension-prefix-file,traefik_http_routers_lab3-extension_service=lab3-vulnerable-site,traefik_http_routers_lab3-static_rule_id=lab3-static,traefik_http_routers_lab3-static_priority=250,traefik_http_routers_lab3-static_entrypoints=web,traefik_http_routers_lab3-static_middlewares=strip-lab3-prefix-file,traefik_http_routers_lab3-static_service=lab3-vulnerable-site,traefik_http_routers_lab3-main_rule_id=lab3,traefik_http_routers_lab3-main_priority=200,traefik_http_routers_lab3-main_entrypoints=web,traefik_http_routers_lab3-main_middlewares=lab3-auth-check-file__strip-lab3-prefix-file,traefik_http_services_lab3-vulnerable-site_lb_port=8080"
-            else
-              TRAEFIK_LABELS="traefik_enable=true"
-            fi
-
-            gcloud run deploy lab-${{ matrix.lab }}-${{ needs.setup.outputs.environment }} \
-              --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/${{ matrix.lab }}:${{ github.sha }} \
-              --region=${{ env.LABS_GAR_LOCATION }} \
-              --platform=managed \
-              --allow-unauthenticated \
-              --service-account=labs-runtime-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
-              --port=8080 \
-              --memory=512Mi \
-              --cpu=1 \
-              --min-instances=0 \
-              --max-instances=10 \
-              --set-env-vars="LAB_NAME=${{ matrix.lab }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},HOME_URL=https://${{ needs.setup.outputs.domain_prefix }},C2_URL=https://lab-${{ matrix.lab }}-c2-${{ needs.setup.outputs.environment }}-mmwwcfi5za-uc.a.run.app" \
-              --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_PRD:latest \
-              --labels="environment=${{ needs.setup.outputs.environment }},lab=${{ matrix.lab }},project=e-skimming-labs,${TRAEFIK_LABELS}"
           fi
 
       - name: Configure custom domain mapping
@@ -1347,7 +1332,7 @@ jobs:
           echo "Index service deployed at: https://labs-index-${{ needs.setup.outputs.environment }}-hash.a.run.app"
 
   # ============================================================================
-  # TRAEFIK - API Gateway (only if traefik config changed)
+  # TRAEFIK - API Gateway with Sidecar Architecture (only if traefik config changed)
   # ============================================================================
   deploy-traefik:
     needs: [setup]
@@ -1361,12 +1346,26 @@ jobs:
       LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
       HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
       # Use environment-specific secrets - fallback to generic secret
-      # Secret names: GCP_LABS_SA_KEY_STG, GCP_LABS_SA_KEY_PRD, GCP_LABS_SA_KEY (fallback)
       LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+
+      - name: Checkout traefik-cloudrun-provider
+        uses: actions/checkout@v6
+        with:
+          repository: pci-tamper-protect/traefik-cloudrun-provider
+          path: traefik-cloudrun-provider
+          token: ${{ secrets.GH_PAT || github.token }}
+
+      - name: Overlay provider config from plugins-local
+        run: |
+          if [ -f deploy/traefik/plugins-local/src/github.com/pci-tamper-protect/traefik-cloudrun-provider/provider/config.go ]; then
+            cp deploy/traefik/plugins-local/src/github.com/pci-tamper-protect/traefik-cloudrun-provider/provider/config.go \
+               traefik-cloudrun-provider/provider/config.go
+            echo "✅ Overlaid config.go (ForwardAuth with Authorization, Cookie, X-Forwarded-Uri)"
+          fi
 
       - name: Authenticate to Google Cloud (Labs Project)
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
@@ -1382,59 +1381,71 @@ jobs:
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
         run: |
           gcloud auth configure-docker ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev
-          # Also configure cross-project access for golden images
           gcloud auth configure-docker us-central1-docker.pkg.dev
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Check if Traefik image exists
-        id: check-traefik-image
+      - name: Build and push Traefik v3.0 sidecar images
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
         run: |
-          IMAGE="${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/traefik:${{ github.sha }}"
-          if gcloud artifacts docker images describe "$IMAGE" --project="${{ env.LABS_PROJECT_ID }}" --location="${{ env.LABS_GAR_LOCATION }}" &>/dev/null; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-            echo "✅ Image already exists: $IMAGE"
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-            echo "ℹ️  Image not found, will build: $IMAGE"
+          IMAGE_BASE="${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}"
+
+          # 1. Build main Traefik v3.0 image
+          echo "📦 Building main Traefik v3.0 image..."
+          docker build \
+            -f deploy/traefik/Dockerfile.cloudrun.sidecar.traefik-3.0 \
+            -t "${IMAGE_BASE}/traefik:v3.0" \
+            -t "${IMAGE_BASE}/traefik:${{ github.sha }}" \
+            deploy/traefik
+          docker push "${IMAGE_BASE}/traefik:v3.0"
+          docker push "${IMAGE_BASE}/traefik:${{ github.sha }}"
+
+          # 2. Build provider sidecar image
+          echo "📦 Building provider sidecar image..."
+          docker build \
+            -f traefik-cloudrun-provider/Dockerfile.provider.sidecar \
+            -t "${IMAGE_BASE}/traefik-cloudrun-provider:latest" \
+            -t "${IMAGE_BASE}/traefik-cloudrun-provider:${{ github.sha }}" \
+            traefik-cloudrun-provider
+          docker push "${IMAGE_BASE}/traefik-cloudrun-provider:latest"
+          docker push "${IMAGE_BASE}/traefik-cloudrun-provider:${{ github.sha }}"
+
+          # 3. Build dashboard sidecar image (Traefik v3.0)
+          echo "📦 Building dashboard sidecar image..."
+          docker build \
+            -f deploy/traefik/Dockerfile.dashboard-sidecar.traefik-3.0 \
+            -t "${IMAGE_BASE}/traefik-dashboard:v3.0" \
+            -t "${IMAGE_BASE}/traefik-dashboard:${{ github.sha }}" \
+            deploy/traefik
+          docker push "${IMAGE_BASE}/traefik-dashboard:v3.0"
+          docker push "${IMAGE_BASE}/traefik-dashboard:${{ github.sha }}"
+
+          echo "✅ All sidecar images built and pushed"
+
+      - name: Deploy Traefik with sidecar architecture
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        run: |
+          ENV="${{ needs.setup.outputs.environment }}"
+
+          # For stg: fetch HOME_INDEX_URL so entrypoint writes ForwardAuth middlewares (lab routes require login)
+          # Labs deploy SA needs roles/run.viewer on labs-home-* (run: ./deploy/traefik/APPLY_PERMISSIONS.sh stg)
+          HOME_INDEX_URL=""
+          if [[ "$ENV" == "stg" ]]; then
+            HOME_INDEX_URL=$(gcloud run services describe home-index-${{ needs.setup.outputs.environment }} \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --project=${{ env.HOME_PROJECT_ID }} \
+              --format='value(status.url)' 2>/dev/null || echo "")
+            if [[ -n "$HOME_INDEX_URL" ]]; then
+              echo "✅ HOME_INDEX_URL set for lab auth: $HOME_INDEX_URL"
+            else
+              echo "⚠️ Could not get home-index URL; run ./deploy/traefik/APPLY_PERMISSIONS.sh stg to grant Labs SA run.viewer on Home project"
+            fi
           fi
-
-      - name: Build Traefik container
-        if: steps.check-traefik-image.outputs.exists != 'true'
-        uses: docker/build-push-action@v6
-        with:
-          context: deploy/traefik
-          file: deploy/traefik/Dockerfile.cloudrun
-          push: false
-          tags: |
-            ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/traefik:${{ github.sha }}
-            ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/traefik:latest
-          cache-from: type=gha,scope=traefik
-          cache-to: type=gha,mode=max,scope=traefik
-          load: true
-
-      - name: Push Traefik container to Artifact Registry
-        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null && steps.check-traefik-image.outputs.exists != 'true'
-        run: |
-          IMAGE_BASE="${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/traefik"
-          IMAGE_SHA="${IMAGE_BASE}:${{ github.sha }}"
-          IMAGE_LATEST="${IMAGE_BASE}:latest"
-
-          docker push "$IMAGE_SHA" || {
-            echo "❌ Failed to push Traefik image with SHA tag"
-            exit 1
-          }
-          docker push "$IMAGE_LATEST" || {
-            echo "❌ Failed to push Traefik image with latest tag"
-            exit 1
-          }
-
-      - name: Deploy Traefik to Cloud Run
-        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
-        run: |
-          # Traefik needs to access all services, so it needs appropriate permissions
+          ENV_VARS="ENVIRONMENT=${{ needs.setup.outputs.environment }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }}"
+          if [[ -n "$HOME_INDEX_URL" ]]; then
+            ENV_VARS="$ENV_VARS,HOME_INDEX_URL=$HOME_INDEX_URL"
+          fi
           if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
             gcloud run deploy traefik-${{ needs.setup.outputs.environment }} \
               --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/traefik:${{ github.sha }} \
@@ -1442,25 +1453,13 @@ jobs:
               --platform=managed \
               --no-allow-unauthenticated \
               --service-account=traefik-${{ needs.setup.outputs.environment }}@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
-              --port=80 \
+              --port=8080 \
               --memory=512Mi \
               --cpu=1 \
               --min-instances=1 \
               --max-instances=5 \
-              --set-env-vars="ENVIRONMENT=${{ needs.setup.outputs.environment }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }}" \
+              --set-env-vars="$ENV_VARS" \
               --labels="environment=${{ needs.setup.outputs.environment }},component=traefik,project=e-skimming-labs"
-
-            # Grant access to developer groups for staging
-            echo "Granting access to developer groups for staging Traefik service..."
-            gcloud run services add-iam-policy-binding traefik-${{ needs.setup.outputs.environment }} \
-              --region=${{ env.LABS_GAR_LOCATION }} \
-              --member="group:2025-interns@pcioasis.com" \
-              --role="roles/run.invoker"
-
-            gcloud run services add-iam-policy-binding traefik-${{ needs.setup.outputs.environment }} \
-              --region=${{ env.LABS_GAR_LOCATION }} \
-              --member="group:core-eng@pcioasis.com" \
-              --role="roles/run.invoker"
           else
             gcloud run deploy traefik-${{ needs.setup.outputs.environment }} \
               --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/traefik:${{ github.sha }} \
@@ -1468,14 +1467,74 @@ jobs:
               --platform=managed \
               --allow-unauthenticated \
               --service-account=traefik-${{ needs.setup.outputs.environment }}@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
-              --port=80 \
+              --port=8080 \
               --memory=512Mi \
               --cpu=1 \
               --min-instances=1 \
               --max-instances=5 \
-              --set-env-vars="ENVIRONMENT=${{ needs.setup.outputs.environment }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }}" \
+              --set-env-vars="$ENV_VARS" \
               --labels="environment=${{ needs.setup.outputs.environment }},component=traefik,project=e-skimming-labs"
           fi
+
+          # Generate Cloud Run YAML with environment-specific values
+          # Substitute __HOME_INDEX_URL__ so Traefik entrypoint writes ForwardAuth middlewares (lab routes require login)
+          sed "s/labs-stg/${{ env.LABS_PROJECT_ID }}/g; \
+               s/labs-home-stg/${{ env.HOME_PROJECT_ID }}/g; \
+               s/stg/${ENV}/g; \
+               s|__HOME_INDEX_URL__|${HOME_INDEX_URL}|g; \
+               s|traefik:latest|traefik:v3.0|g" \
+            deploy/traefik/cloudrun-sidecar.yaml > /tmp/traefik-deploy.yaml
+
+          echo "🚀 Deploying main Traefik v3.0 service with provider sidecar..."
+          gcloud run services replace /tmp/traefik-deploy.yaml \
+            --region=${{ env.LABS_GAR_LOCATION }} \
+            --project=${{ env.LABS_PROJECT_ID }}
+
+          # Get the main service URL for dashboard config
+          MAIN_TRAEFIK_URL=$(gcloud run services describe "traefik-${ENV}" \
+            --region=${{ env.LABS_GAR_LOCATION }} \
+            --project=${{ env.LABS_PROJECT_ID }} \
+            --format="value(status.url)")
+
+          echo "✅ Main Traefik service: ${MAIN_TRAEFIK_URL}"
+
+          # Deploy dashboard as separate service
+          echo "🚀 Deploying dashboard service..."
+          sed "s/labs-stg/${{ env.LABS_PROJECT_ID }}/g; \
+               s/labs-home-stg/${{ env.HOME_PROJECT_ID }}/g; \
+               s/stg/${ENV}/g; \
+               s|<PROJECT_NUMBER>|${MAIN_TRAEFIK_URL}|g; \
+               s|traefik-dashboard:latest|traefik-dashboard:v3.0|g" \
+            deploy/traefik/traefik-dashboard-sidecar.yaml > /tmp/dashboard-deploy.yaml
+
+          gcloud run services replace /tmp/dashboard-deploy.yaml \
+            --region=${{ env.LABS_GAR_LOCATION }} \
+            --project=${{ env.LABS_PROJECT_ID }}
+
+          DASHBOARD_URL=$(gcloud run services describe "traefik-dashboard-${ENV}" \
+            --region=${{ env.LABS_GAR_LOCATION }} \
+            --project=${{ env.LABS_PROJECT_ID }} \
+            --format="value(status.url)")
+
+          echo "✅ Dashboard service: ${DASHBOARD_URL}"
+
+      - name: Grant access for staging
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null && needs.setup.outputs.environment == 'stg'
+        run: |
+          ENV="${{ needs.setup.outputs.environment }}"
+
+          echo "Granting access to developer groups for staging Traefik services..."
+          for SERVICE in "traefik-${ENV}" "traefik-dashboard-${ENV}"; do
+            gcloud run services add-iam-policy-binding "$SERVICE" \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --member="group:2025-interns@pcioasis.com" \
+              --role="roles/run.invoker" || true
+
+            gcloud run services add-iam-policy-binding "$SERVICE" \
+              --region=${{ env.LABS_GAR_LOCATION }} \
+              --member="group:core-eng@pcioasis.com" \
+              --role="roles/run.invoker"
+          done
 
   notify-deployment:
     needs: [setup, deploy-labs, deploy-home-components, deploy-labs-components, deploy-index, deploy-traefik]

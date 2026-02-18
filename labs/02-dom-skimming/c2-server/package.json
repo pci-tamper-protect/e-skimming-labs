@@ -1,0 +1,20 @@
+{
+  "name": "lab2-dom-skimming-c2-server",
+  "version": "1.0.0",
+  "description": "C2 server for Lab 2 DOM-based skimming attacks",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": ["security", "education", "dom-skimming", "e-skimming"],
+  "author": "e-skimming-labs",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
