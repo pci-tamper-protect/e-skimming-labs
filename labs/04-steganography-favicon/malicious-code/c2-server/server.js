@@ -71,16 +71,25 @@ function sanitizeField(value, fieldName) {
   return str || undefined
 }
 
-// Sanitize for logging: Prevent log injection (newline forging and contorl chars)
+// Sanitize for logging: Prevent log injection (newline forging and control chars)
 function sanitizeForLog(value, fieldName) {
   if (value === undefined || value === null) return 'N/A'
-  const withoutNewlines = String(value).replace(/[\r\n]/g, ' ')
-  const sanitized = sanitizeField(withoutNewlines, fieldName)
-  if (!sanitized) return 'N/A'
-  return String(sanitized)
-    .replace(/[\r\n]/g, ' ')
-    .replace(/[^a-zA-Z0-9 .,;:_@*#\/\-]/g, '?')
-    .trim() || 'N/A'
+
+  // Convert to string and replace newlines with spaces to avoid log-line forging
+  let str = String(value).replace(/[\r\n]/g, ' ')
+
+  // Remove remaining control characters
+  str = str.replace(/[\x00-\x1f\x7f]/g, '')
+
+  // Optionally enforce a conservative maximum length for log fields
+  const MAX_LOG_LEN = 256
+  str = str.slice(0, MAX_LOG_LEN)
+
+  // Replace characters outside a safe whitelist with '?'
+  str = str.replace(/[^a-zA-Z0-9 .,;:_@*#\/\-]/g, '?')
+
+  str = str.trim()
+  return str || 'N/A'
 }
 
 // Sanitize request body: only keep allowed fields, sanitize values
