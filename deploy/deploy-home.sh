@@ -58,6 +58,7 @@ fi
 HOME_GAR_LOCATION="${LABS_REGION:-us-central1}"
 HOME_REPOSITORY="e-skimming-labs-home"
 LABS_PROJECT_ID="${LABS_PROJECT_ID:-labs-${ENVIRONMENT}}"
+DOTENVX_SECRET_NAME="DOTENVX_KEY_$(echo "$ENVIRONMENT" | tr '[:lower:]' '[:upper:]')"
 
 # Get image tag
 IMAGE_TAG="${IMAGE_TAG:-$(git rev-parse --short HEAD 2>/dev/null || echo 'latest')}"
@@ -134,7 +135,7 @@ gcloud run deploy home-seo-${ENVIRONMENT} \
   --min-instances=0 \
   --max-instances=5 \
   --set-env-vars="PROJECT_ID=${HOME_PROJECT_ID},HOME_PROJECT_ID=${HOME_PROJECT_ID},ENVIRONMENT=${ENVIRONMENT},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${DOMAIN_PREFIX},LABS_PROJECT_ID=${LABS_PROJECT_ID}" \
-  --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
+  --update-secrets=/etc/secrets/dotenvx-key=${DOTENVX_SECRET_NAME}:latest \
   --labels="environment=${ENVIRONMENT},component=seo,project=e-skimming-labs-home,traefik_enable=true,traefik_http_routers_home-seo_rule_id=home-seo,traefik_http_routers_home-seo_priority=500,traefik_http_routers_home-seo_entrypoints=web,traefik_http_routers_home-seo_middlewares=strip-seo-prefix-file,traefik_http_services_home-seo_lb_port=8080"
 
 echo "   ✅ SEO service deployed"
@@ -158,20 +159,28 @@ else
   echo "   ⏭️  Image exists, skipping build"
 fi
 
+# PRD: home-index must be public so Traefik's forwardAuth can call /api/auth/check without an identity token.
+# Terraform (terraform-home/cloud-run.tf) also grants allUsers run.invoker on home-index for prd.
+# STG: Keep private; Traefik SA has run.invoker via Terraform (terraform-home/iap.tf traefik_index_access).
+HOME_INDEX_AUTH_FLAG="--no-allow-unauthenticated"
+if [ "$ENVIRONMENT" = "prd" ]; then
+  HOME_INDEX_AUTH_FLAG="--allow-unauthenticated"
+fi
+
 gcloud run deploy home-index-${ENVIRONMENT} \
   --image="$INDEX_IMAGE" \
   --region=${HOME_GAR_LOCATION} \
   --platform=managed \
   --project=${HOME_PROJECT_ID} \
-  --no-allow-unauthenticated \
+  ${HOME_INDEX_AUTH_FLAG} \
   --service-account=fbase-adm-sdk-runtime@${HOME_PROJECT_ID}.iam.gserviceaccount.com \
   --port=8080 \
   --memory=512Mi \
   --cpu=1 \
   --min-instances=0 \
   --max-instances=5 \
-  --set-env-vars="HOME_PROJECT_ID=${HOME_PROJECT_ID},ENVIRONMENT=${ENVIRONMENT},DOMAIN=${DOMAIN_PREFIX},LABS_DOMAIN=${DOMAIN_PREFIX},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${LABS_PROJECT_ID},ENABLE_AUTH=true,REQUIRE_AUTH=true,FIREBASE_PROJECT_ID=ui-firebase-pcioasis-${ENVIRONMENT}" \
-  --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
+  --set-env-vars="HOME_PROJECT_ID=${HOME_PROJECT_ID},ENVIRONMENT=${ENVIRONMENT},DOMAIN=${DOMAIN_PREFIX},LABS_DOMAIN=${DOMAIN_PREFIX},MAIN_DOMAIN=pcioasis.com,LABS_PROJECT_ID=${LABS_PROJECT_ID},ENABLE_AUTH=true,REQUIRE_AUTH=true,FIREBASE_PROJECT_ID=ui-firebase-pcioasis-${ENVIRONMENT},PUBLIC_BASE_URL=https://${DOMAIN_PREFIX}" \
+  --update-secrets=/etc/secrets/dotenvx-key=${DOTENVX_SECRET_NAME}:latest \
   --labels="environment=${ENVIRONMENT},component=index,project=e-skimming-labs-home,traefik_enable=true,traefik_http_routers_home-index_rule_id=home-index-root,traefik_http_routers_home-index_priority=1,traefik_http_routers_home-index_entrypoints=web,traefik_http_routers_home-index_middlewares=forwarded-headers-file,traefik_http_services_home-index_lb_port=8080,traefik_http_routers_home-index-signin_rule_id=home-index-signin,traefik_http_routers_home-index-signin_priority=100,traefik_http_routers_home-index-signin_entrypoints=web,traefik_http_routers_home-index-signin_middlewares=signin-headers-file,traefik_http_routers_home-index-signin_service=home-index"
 
 echo "   ✅ Index service deployed"

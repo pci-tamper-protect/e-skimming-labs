@@ -218,8 +218,8 @@ build_and_push_if_needed "lab1-c2" \
   "$LABS_PROJECT_ID"
 
 build_and_push_if_needed "lab2-c2" \
-  "labs/02-dom-skimming" \
-  "labs/02-dom-skimming/Dockerfile.c2" \
+  "labs/02-dom-skimming/c2-server" \
+  "labs/02-dom-skimming/c2-server/Dockerfile" \
   "${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/lab2-c2:${IMAGE_TAG}" \
   "$LABS_PROJECT_ID"
 

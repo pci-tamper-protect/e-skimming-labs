@@ -6,6 +6,47 @@
 
 ---
 
+## Access Model (PRD Permissions)
+
+| Service / Path | Cloud Run IAM | Auth |
+|----------------|---------------|------|
+| **labs.pcioasis.com** (Traefik) | **Public** (`allUsers` invoker) | Entry point – routes to backends |
+| **mitre-attack**, **threat-model** | Via Traefik (home-index) | Public – no sign-in |
+| **home-index** (/, /mitre-attack, /threat-model, /sign-in, /sign-up, /api/auth/check) | **Public** (prd) – required so Traefik forwardAuth can call /api/auth/check | Public paths – no sign-in |
+| **lab1** (all lab1 routes) | Private, invoked by Traefik | **No sign-in** |
+| **lab2**, **lab3**, other labs | Private, invoked by Traefik | **Sign-in required** |
+| **home-seo**, **labs-analytics**, etc. | Private, invoked by Traefik | As configured |
+
+**Summary:**
+- **Public:** Traefik (labs.pcioasis.com), mitre-attack, threat-model
+- **Private:** All backend services; accessed only through Traefik
+- **Lab auth:** lab1 no sign-in; all other labs require sign-in
+
+**Fix 403 on labs.pcioasis.com:**
+```bash
+./deploy/traefik/APPLY_PERMISSIONS.sh prd   # Includes Traefik public for prd
+# Or one-time:
+gcloud run services add-iam-policy-binding traefik-prd \
+  --region=us-central1 --project=labs-prd \
+  --member="allUsers" --role="roles/run.invoker"
+```
+
+**Fix 404 on /lab2 or /lab3:**
+1. **Verify versions:** `./deploy/traefik/verify-prd-versions.sh`
+2. **Lab2 labels missing:** Redeploy lab2 to add Traefik router labels:
+   ```bash
+   ln -sf .env.prd .env
+   ./deploy/deploy-all.sh prd
+   ```
+3. **Provider updated (e.g. lab2-main ruleMap):** Rebuild and redeploy Traefik so it pulls the new provider image:
+   ```bash
+   ./deploy/traefik/deploy-sidecar-traefik-3.0.sh prd
+   ```
+   The provider is built from `../traefik-cloudrun-provider` (sibling of e-skimming-labs).
+4. **Lab never deployed:** `./deploy/build-deploy-all.sh prd`
+
+---
+
 ## Quick Start: Align PRD in Order
 
 ```bash
@@ -19,8 +60,8 @@ source deploy/check-credentials.sh && check_credentials
 # If PRD resources already exist, run import scripts before apply:
 #   ./deploy/terraform-home/import-prd.sh
 #   ./deploy/terraform-labs/import-prd.sh
-./deploy/terraform/deploy-labs-tf.sh
-./deploy/terraform/deploy-home-tf.sh
+./deploy/terraform/deploy-labs-tf.sh prd
+./deploy/terraform/deploy-home-tf.sh prd
 
 # 4. Traefik provider SA + IAM
 ./deploy/traefik/iam.sh prd

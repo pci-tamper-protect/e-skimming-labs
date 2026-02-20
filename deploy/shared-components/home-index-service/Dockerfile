@@ -100,6 +100,7 @@ COPY deploy/shared-components/home-index-service/entrypoint.sh ./entrypoint.sh
 # These files contain dotenvx-encrypted values that will be decrypted at runtime
 # using the DOTENVX_KEY mounted from Secret Manager
 COPY .env.stg ./.env.stg
+COPY .env.prd ./.env.prd
 
 # Install dotenvx for decrypting environment variables at runtime
 # Install as root before switching to appuser

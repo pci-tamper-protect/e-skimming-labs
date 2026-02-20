@@ -311,10 +311,9 @@ func main() {
 		if firebaseAPIKey != "" && strings.HasPrefix(strings.TrimSpace(firebaseAPIKey), "{") {
 			firebaseServiceAccount = firebaseAPIKey
 		} else if enableAuth {
-			// If auth is enabled but no service account found, disable auth
-			log.Printf("⚠️  FIREBASE_SERVICE_ACCOUNT_KEY not found and FIREBASE_API_KEY is not a service account JSON")
-			log.Printf("   Disabling authentication (add FIREBASE_SERVICE_ACCOUNT_KEY to enable)")
-			enableAuth = false
+			// No explicit credentials - proceed with ADC (Application Default Credentials)
+			// On Cloud Run the service account assigned to the revision provides credentials automatically
+			log.Printf("ℹ️  No FIREBASE_SERVICE_ACCOUNT_KEY found - will use Application Default Credentials (ADC)")
 		}
 	} else if strings.HasPrefix(strings.TrimSpace(firebaseServiceAccount), "encrypted:") {
 		// Value is still encrypted (dotenvx decryption failed)

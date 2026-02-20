@@ -259,16 +259,33 @@ func (c *DynamicConfig) AddTraefikInternalRouters() {
 }
 
 // AddForwardAuthMiddleware adds a forwardAuth middleware for user JWT validation
-// This middleware forwards auth checks to the home-index service
+// This middleware forwards auth checks to the home-index service via Traefik's own router.
+//
+// Why localhost:8080 instead of the Cloud Run URL directly?
+// home-index is a private Cloud Run service (--no-allow-unauthenticated). Direct ForwardAuth
+// requests to the Cloud Run URL would fail with 403 because ForwardAuth doesn't include the
+// Cloud Run identity token. By routing through localhost:8080 (Traefik itself), the request
+// goes through the home-index router which has the home-index-auth middleware that adds the
+// X-Serverless-Authorization header with the Cloud Run identity token.
+//
+// Note: X-Forwarded-Uri is NOT listed in authRequestHeaders because Traefik ForwardAuth
+// automatically sets it to the original request's URI (/lab2, /lab3, etc.). Adding it to
+// authRequestHeaders would copy an empty value from the browser request, overwriting the
+// correctly auto-set value and breaking the post-login redirect target.
 func (c *DynamicConfig) AddForwardAuthMiddleware(name, homeIndexURL string) {
 	if homeIndexURL == "" {
 		fmt.Printf("[ConfigBuilder] ⚠️  Skipping forwardAuth middleware '%s' (no home-index URL provided)\n", name)
 		return
 	}
 
+	// Route auth check through Traefik itself (localhost) so the home-index-auth middleware
+	// can add the Cloud Run identity token (X-Serverless-Authorization) before the request
+	// reaches the private home-index Cloud Run backend.
+	authCheckURL := "http://localhost:8080/api/auth/check"
+
 	mw := MiddlewareConfig{
 		ForwardAuth: &ForwardAuthConfig{
-			Address:            fmt.Sprintf("%s/api/auth/check", homeIndexURL),
+			Address:            authCheckURL,
 			TrustForwardHeader: true,
 			AuthResponseHeaders: []string{
 				"X-User-Id",
@@ -276,21 +293,20 @@ func (c *DynamicConfig) AddForwardAuthMiddleware(name, homeIndexURL string) {
 				"X-Authorization",
 			},
 			// Authorization: Firebase Bearer token. Cookie: firebase_token fallback.
-		// Service-to-service Cloud Run auth uses X-Serverless-Authorization (lab1-auth middleware).
-		AuthRequestHeaders: []string{
+			// Service-to-service Cloud Run auth uses X-Serverless-Authorization (lab-auth middleware).
+			// X-Forwarded-Uri is intentionally omitted - ForwardAuth auto-sets it to the original
+			// request URI; listing it here would copy empty from the browser request and overwrite.
+			AuthRequestHeaders: []string{
 				"Authorization",
 				"Cookie",
-				"Accept",
 				"X-Forwarded-For",
 				"X-Forwarded-Host",
-				"X-Forwarded-Uri",
-				"X-Forwarded-Proto",
 			},
 		},
 	}
 
-	fmt.Printf("[ConfigBuilder] ✅ Created forwardAuth middleware '%s' with address: %s/api/auth/check\n",
-		name, homeIndexURL)
+	fmt.Printf("[ConfigBuilder] ✅ Created forwardAuth middleware '%s' with address: %s\n",
+		name, authCheckURL)
 
 	c.HTTP.Middlewares[name] = mw
 }

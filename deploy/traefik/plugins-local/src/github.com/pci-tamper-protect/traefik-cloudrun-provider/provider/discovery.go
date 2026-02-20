@@ -1,10 +1,44 @@
 package provider
 
 import (
+	"encoding/json"
 	"fmt"
+	"strings"
 
 	run "google.golang.org/api/run/v1"
 )
+
+// preferredServiceURL returns the best URL for a Cloud Run service.
+// Cloud Run services have two URL formats:
+//   - New format: https://SERVICE-PROJECT_NUMBER.REGION.run.app (preferred)
+//   - Old format: https://SERVICE-HASH-REGION.a.run.app (may have GFE routing issues for GET /)
+//
+// We prefer the new format URL (project-number based) because the old hash-based URL
+// can return 404 for GET / in some cases (IAM policy + GFE routing edge case).
+func preferredServiceURL(svc *run.Service) string {
+	if svc.Metadata == nil || svc.Metadata.Annotations == nil {
+		return svc.Status.Url
+	}
+
+	urlsJSON, ok := svc.Metadata.Annotations["run.googleapis.com/urls"]
+	if !ok || urlsJSON == "" {
+		return svc.Status.Url
+	}
+
+	var urls []string
+	if err := json.Unmarshal([]byte(urlsJSON), &urls); err != nil || len(urls) == 0 {
+		return svc.Status.Url
+	}
+
+	// New format: PROJECT_NUMBER.REGION.run.app (not *.a.run.app)
+	for _, u := range urls {
+		if !strings.HasSuffix(u, ".a.run.app") {
+			return u
+		}
+	}
+
+	return svc.Status.Url
+}
 
 // CloudRunService represents a discovered Cloud Run service with Traefik labels
 type CloudRunService struct {
@@ -62,7 +96,7 @@ func (p *Provider) listServices(runService *run.APIService, projectID, region st
 				if hasTraefikEnable && labels != nil {
 					services = append(services, CloudRunService{
 						Name:      svc.Metadata.Name,
-						URL:       svc.Status.Url,
+						URL:       preferredServiceURL(svc),
 						ProjectID: projectID,
 						Region:    region,
 						Labels:    labels,

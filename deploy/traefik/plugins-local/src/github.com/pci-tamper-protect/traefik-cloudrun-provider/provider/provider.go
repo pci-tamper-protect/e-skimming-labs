@@ -137,6 +137,12 @@ func (p *Provider) Stop() error {
 	return nil
 }
 
+// RunOnce discovers services and generates configuration once, without starting a polling goroutine.
+// Use this in daemon mode where the caller manages the polling interval.
+func (p *Provider) RunOnce(configChan chan<- *DynamicConfig) error {
+	return p.updateConfig(configChan)
+}
+
 // pollLoop polls Cloud Run API at configured intervals
 func (p *Provider) pollLoop(configChan chan<- *DynamicConfig) {
 	ticker := time.NewTicker(p.config.PollInterval)
