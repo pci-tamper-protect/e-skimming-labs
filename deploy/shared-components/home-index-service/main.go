@@ -392,10 +392,9 @@ func main() {
 		serveLabWriteup(w, r, "03-extension-hijacking", homeData, authValidator)
 	})
 
-
 	mux.HandleFunc("/lab-04-writeup", func(w http.ResponseWriter, r *http.Request) {
 		serveLabWriteup(w, r, "04-steganography-favicon", homeData, authValidator)
-    })
+	})
 	// Blog routes
 	mux.HandleFunc("/blog", func(w http.ResponseWriter, r *http.Request) {
 		serveBlogPage(w, r, homeData, authValidator)

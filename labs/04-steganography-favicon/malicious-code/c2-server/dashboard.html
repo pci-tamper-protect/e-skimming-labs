@@ -378,7 +378,7 @@
       if (!confirm('Are you sure you want to delete all stolen data? This cannot be undone.')) return;
 
       try {
-        const res = await fetch('/lab4/c2/api/clear', { method: 'POST' });
+        const res = await fetch('./api/clear', { method: 'POST' });
         const json = await res.json();
 
         if (json.success) {
