@@ -45,10 +45,30 @@
   }
 
   /**
+   * Logout Handler
+   */
+  function initLogout() {
+    const logoutBtn = document.querySelector('.logout-btn')
+    if (!logoutBtn) return
+
+    logoutBtn.addEventListener('click', function () {
+      // Clear auth token from all storage locations
+      sessionStorage.removeItem('firebase_token')
+      document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=None; Secure'
+      document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=Lax'
+      // Redirect to home page - Traefik will enforce auth on next lab visit
+      window.location.href = '/'
+    })
+  }
+
+  /**
    * Initialize Checkout
    */
   function init() {
     console.log('[SecureShop] Initializing checkout functionality...')
+
+    // Setup logout
+    initLogout()
 
     // Setup form handlers
     setupFormHandlers()

@@ -318,10 +318,17 @@ func main() {
 	} else if strings.HasPrefix(strings.TrimSpace(firebaseServiceAccount), "encrypted:") {
 		// Value is still encrypted (dotenvx decryption failed)
 		log.Printf("⚠️  FIREBASE_SERVICE_ACCOUNT_KEY appears to be encrypted (starts with 'encrypted:')")
-		log.Printf("   This usually means dotenvx decryption failed. Disabling authentication.")
-		log.Printf("   To fix: Ensure DOTENV_PRIVATE_KEY_STG is set correctly when running docker-compose")
-		enableAuth = false
-		firebaseServiceAccount = "" // Clear the encrypted value
+		log.Printf("   Dotenvx decryption failed - falling back to Application Default Credentials (ADC)")
+		log.Printf("   On Cloud Run, ADC uses the service account assigned to the revision automatically")
+		firebaseServiceAccount = "" // Clear the encrypted value, use ADC instead
+	}
+
+	// Safety net: if FIREBASE_API_KEY is still encrypted (dotenvx failed), clear it so
+	// the sign-in page doesn't pass an encrypted string to the Firebase Web SDK.
+	if webAPIKey := os.Getenv("FIREBASE_API_KEY"); strings.HasPrefix(strings.TrimSpace(webAPIKey), "encrypted:") {
+		log.Printf("⚠️  FIREBASE_API_KEY appears to be encrypted - dotenvx decryption may have failed")
+		log.Printf("   Clearing encrypted value; sign-in will not work until FIREBASE_API_KEY is decrypted")
+		os.Setenv("FIREBASE_API_KEY", "") //nolint:errcheck
 	}
 
 	// MainAppURL is now empty (relative paths) - services always use relative URLs
@@ -1224,7 +1231,7 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
                     <a href="{{.ThreatModelURL}}" class="nav-tab">Threat Model</a>
                     {{if .AuthEnabled}}
                     <div id="auth-buttons" class="auth-buttons">
-                        <button id="login-btn" class="auth-btn login-btn" style="display: none;">Login</button>
+                        <button id="login-btn" class="auth-btn login-btn">Login</button>
                         <button id="logout-btn" class="auth-btn logout-btn" style="display: none;">Logout</button>
                         <span id="user-email" class="user-email" style="display: none;"></span>
                     </div>

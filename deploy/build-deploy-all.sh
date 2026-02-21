@@ -1,8 +1,13 @@
 #!/bin/bash
 # Build and push all service images, then deploy via deploy-all.sh
-# Usage: ./deploy/build-deploy-all.sh [stg|prd] [image-tag] [--force-rebuild]
+# Usage: ./deploy/build-deploy-all.sh [stg|prd] [image-tag] [--force-rebuild] [--only service1,service2]
 #        If image-tag is not provided, uses current git SHA
 #        --force-rebuild: Rebuild even if content hash matches
+#        --only: Comma-separated list of services to build+deploy (e.g. --only home-index,traefik)
+#                Services: home-seo, home-index, labs-analytics, labs-index,
+#                          lab1-c2, lab2-c2, lab3-extension,
+#                          lab-01-basic-magecart, lab-02-dom-skimming, lab-03-extension-hijacking,
+#                          traefik
 
 set -e
 
@@ -20,19 +25,33 @@ echo ""
 ENVIRONMENT=""
 FORCE_REBUILD=false
 IMAGE_TAG=""
+ONLY_SERVICES=""
+NEXT_IS_ONLY=false
 for arg in "$@"; do
-  if [ "$arg" = "--force-rebuild" ]; then
+  if [ "$NEXT_IS_ONLY" = true ]; then
+    ONLY_SERVICES="$arg"
+    NEXT_IS_ONLY=false
+  elif [ "$arg" = "--force-rebuild" ]; then
     FORCE_REBUILD=true
+  elif [ "$arg" = "--only" ]; then
+    NEXT_IS_ONLY=true
   elif [ "$arg" = "stg" ] || [ "$arg" = "prd" ]; then
     ENVIRONMENT="$arg"
-  elif [ -z "$IMAGE_TAG" ] && [ "$arg" != "--force-rebuild" ]; then
+  elif [ -z "$IMAGE_TAG" ] && [ "$arg" != "--force-rebuild" ] && [ "$arg" != "--only" ]; then
     IMAGE_TAG="$arg"
   fi
 done
 
+# Helper: returns 0 (true) if the service should be built/deployed
+should_run() {
+  local svc="$1"
+  [ -z "$ONLY_SERVICES" ] && return 0
+  echo ",$ONLY_SERVICES," | grep -q ",${svc},"
+}
+
 if [ -z "$ENVIRONMENT" ]; then
   echo "❌ Environment required: stg or prd"
-  echo "Usage: $0 [stg|prd] [image-tag] [--force-rebuild]"
+  echo "Usage: $0 [stg|prd] [image-tag] [--force-rebuild] [--only svc1,svc2]"
   exit 1
 fi
 
@@ -51,6 +70,9 @@ echo "   Home Project: $HOME_PROJECT_ID"
 echo "   Labs Project: $LABS_PROJECT_ID"
 if [ "$FORCE_REBUILD" = true ]; then
   echo "   ⚠️  Force rebuild: enabled"
+fi
+if [ -n "$ONLY_SERVICES" ]; then
+  echo "   🎯 Only: $ONLY_SERVICES"
 fi
 echo ""
 
@@ -180,14 +202,14 @@ build_and_push_if_needed() {
 
 echo "📦 Building Home Project images..."
 
-build_and_push_if_needed "home-seo" \
+should_run "home-seo" && build_and_push_if_needed "home-seo" \
   "deploy/shared-components/seo-service" \
   "deploy/shared-components/seo-service/Dockerfile" \
   "${REGION}-docker.pkg.dev/${HOME_PROJECT_ID}/${HOME_REPOSITORY}/seo:${IMAGE_TAG}" \
   "$HOME_PROJECT_ID" \
   "--build-arg ENVIRONMENT=$ENVIRONMENT"
 
-build_and_push_if_needed "home-index" \
+should_run "home-index" && build_and_push_if_needed "home-index" \
   "." \
   "deploy/shared-components/home-index-service/Dockerfile" \
   "${REGION}-docker.pkg.dev/${HOME_PROJECT_ID}/${HOME_REPOSITORY}/index:${IMAGE_TAG}" \
@@ -197,62 +219,64 @@ build_and_push_if_needed "home-index" \
 echo ""
 echo "📦 Building Labs Project images..."
 
-build_and_push_if_needed "labs-analytics" \
+should_run "labs-analytics" && build_and_push_if_needed "labs-analytics" \
   "deploy/shared-components/analytics-service" \
   "deploy/shared-components/analytics-service/Dockerfile" \
   "${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/analytics:${IMAGE_TAG}" \
   "$LABS_PROJECT_ID" \
   "--build-arg ENVIRONMENT=$ENVIRONMENT"
 
-build_and_push_if_needed "labs-index" \
+should_run "labs-index" && build_and_push_if_needed "labs-index" \
   "." \
   "deploy/Dockerfile.index" \
   "${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/index:${IMAGE_TAG}" \
   "$LABS_PROJECT_ID" \
   "--build-arg ENVIRONMENT=$ENVIRONMENT"
 
-build_and_push_if_needed "lab1-c2" \
+should_run "lab1-c2" && build_and_push_if_needed "lab1-c2" \
   "labs/01-basic-magecart/malicious-code/c2-server" \
   "labs/01-basic-magecart/malicious-code/c2-server/Dockerfile" \
   "${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/lab1-c2:${IMAGE_TAG}" \
   "$LABS_PROJECT_ID"
 
-build_and_push_if_needed "lab2-c2" \
+should_run "lab2-c2" && build_and_push_if_needed "lab2-c2" \
   "labs/02-dom-skimming/c2-server" \
   "labs/02-dom-skimming/c2-server/Dockerfile" \
   "${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/lab2-c2:${IMAGE_TAG}" \
   "$LABS_PROJECT_ID"
 
-build_and_push_if_needed "lab3-extension" \
+should_run "lab3-extension" && build_and_push_if_needed "lab3-extension" \
   "labs/03-extension-hijacking/test-server" \
   "labs/03-extension-hijacking/test-server/Dockerfile" \
   "${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/lab3-extension:${IMAGE_TAG}" \
   "$LABS_PROJECT_ID"
 
-build_and_push_if_needed "lab-01-basic-magecart" \
+should_run "lab-01-basic-magecart" && build_and_push_if_needed "lab-01-basic-magecart" \
   "labs/01-basic-magecart" \
   "labs/01-basic-magecart/Dockerfile" \
   "${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/01-basic-magecart:${IMAGE_TAG}" \
   "$LABS_PROJECT_ID"
 
-build_and_push_if_needed "lab-02-dom-skimming" \
+should_run "lab-02-dom-skimming" && build_and_push_if_needed "lab-02-dom-skimming" \
   "labs/02-dom-skimming" \
   "labs/02-dom-skimming/Dockerfile" \
   "${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/02-dom-skimming:${IMAGE_TAG}" \
   "$LABS_PROJECT_ID"
 
-build_and_push_if_needed "lab-03-extension-hijacking" \
+should_run "lab-03-extension-hijacking" && build_and_push_if_needed "lab-03-extension-hijacking" \
   "labs/03-extension-hijacking" \
   "labs/03-extension-hijacking/Dockerfile" \
   "${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/03-extension-hijacking:${IMAGE_TAG}" \
   "$LABS_PROJECT_ID"
 
 echo ""
-echo "✅ All images built and pushed. Handing off to deploy-all.sh..."
+echo "✅ Images built and pushed. Handing off to deploy-all.sh..."
 echo ""
 
 # ============================================================================
 # DEPLOY
 # ============================================================================
 
-"$SCRIPT_DIR/deploy-all.sh" "$ENVIRONMENT" "$IMAGE_TAG"
+DEPLOY_ARGS="$ENVIRONMENT $IMAGE_TAG"
+[ -n "$ONLY_SERVICES" ] && DEPLOY_ARGS="$DEPLOY_ARGS --only $ONLY_SERVICES"
+"$SCRIPT_DIR/deploy-all.sh" $DEPLOY_ARGS

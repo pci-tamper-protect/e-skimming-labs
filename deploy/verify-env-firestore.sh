@@ -107,49 +107,58 @@ FIREBASE_API_KEY="${FIREBASE_API_KEY:-}"
 FIREBASE_PROJECT_ID="${FIREBASE_PROJECT_ID:-}"
 PROJECT_ID="${PROJECT_ID:-}"
 
-# List all Firebase-related variables found
-echo ""
-echo -e "${BLUE}3. Firebase variables found in .env:${NC}"
-FIREBASE_VARS=$(grep -E "^[A-Z_]*FIREBASE[A-Z_]*=" "$TEMP_DECRYPTED" | cut -d'=' -f1 | sort -u || echo "")
-if [ -n "$FIREBASE_VARS" ]; then
-    for var in $FIREBASE_VARS; do
-        echo -e "${GREEN}   ✅ $var${NC}"
-    done
-else
-    echo -e "${YELLOW}   ⚠️  No FIREBASE_* variables found${NC}"
-fi
+# Helper: check if a value is still encrypted (decryption failed)
+is_encrypted() {
+    case "$1" in
+        encrypted:*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
 
-# Check for FIREBASE_SERVICE_ACCOUNT_KEY (required for Firestore)
+# Check FIREBASE_SERVICE_ACCOUNT_KEY (required for Firestore admin / backend)
+echo ""
+echo -e "   ${BLUE}FIREBASE_SERVICE_ACCOUNT_KEY${NC} (Firestore admin / backend):"
 if [ -z "$FIREBASE_SERVICE_ACCOUNT_KEY" ]; then
-    echo -e "${YELLOW}   ⚠️  FIREBASE_SERVICE_ACCOUNT_KEY not set${NC}"
-    echo "   Firestore connectivity test will be skipped"
+    echo -e "${RED}   ❌ Not set — Firestore connectivity test will be skipped${NC}"
+    ERRORS=$((ERRORS + 1))
+elif is_encrypted "$FIREBASE_SERVICE_ACCOUNT_KEY"; then
+    echo -e "${RED}   ❌ Still encrypted after decryption — check that the correct private key is in $KEYS_FILE${NC}"
     ERRORS=$((ERRORS + 1))
 else
-    echo -e "${GREEN}   ✅ FIREBASE_SERVICE_ACCOUNT_KEY found (${#FIREBASE_SERVICE_ACCOUNT_KEY} chars)${NC}"
+    echo -e "${GREEN}   ✅ Decrypted (${#FIREBASE_SERVICE_ACCOUNT_KEY} chars)${NC}"
 fi
 
-# Check for FIREBASE_API_KEY (for sign-in/sign-up pages)
-if [ -z "$FIREBASE_API_KEY" ] && [ -n "$APP_FIREBASE_API_KEY" ]; then
-    echo -e "${YELLOW}   ⚠️  FIREBASE_API_KEY not set, but APP_FIREBASE_API_KEY found${NC}"
-    echo "   Note: Code expects FIREBASE_API_KEY for sign-in/sign-up pages"
-    echo "   APP_FIREBASE_API_KEY may need to be mapped to FIREBASE_API_KEY in deploy scripts"
+# Check FIREBASE_API_KEY (required for sign-in/sign-up pages, client-side)
+echo ""
+echo -e "   ${BLUE}FIREBASE_API_KEY${NC} (client-side Web SDK / sign-in):"
+if [ -z "$FIREBASE_API_KEY" ] && [ -n "$APP_FIREBASE_API_KEY" ] && ! is_encrypted "$APP_FIREBASE_API_KEY"; then
+    echo -e "${YELLOW}   ⚠️  Not set, but APP_FIREBASE_API_KEY is decrypted${NC}"
+    echo "   Note: Code reads FIREBASE_API_KEY for sign-in/sign-up pages"
+    ERRORS=$((ERRORS + 1))
 elif [ -z "$FIREBASE_API_KEY" ]; then
-    echo -e "${YELLOW}   ⚠️  FIREBASE_API_KEY not set (optional for Firestore, required for sign-in)${NC}"
-elif [ -n "$FIREBASE_API_KEY" ]; then
-    echo -e "${GREEN}   ✅ FIREBASE_API_KEY found${NC}"
+    echo -e "${RED}   ❌ Not set (required for sign-in)${NC}"
+    ERRORS=$((ERRORS + 1))
+elif is_encrypted "$FIREBASE_API_KEY"; then
+    echo -e "${RED}   ❌ Still encrypted after decryption — check that the correct private key is in $KEYS_FILE${NC}"
+    echo "   This will cause Firebase: Error (auth/invalid-api-key) on sign-in"
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "${GREEN}   ✅ Decrypted${NC}"
 fi
 
+# Check FIREBASE_PROJECT_ID (required for Firestore connectivity test)
+echo ""
+echo -e "   ${BLUE}FIREBASE_PROJECT_ID${NC} (Firestore project target):"
 if [ -z "$FIREBASE_PROJECT_ID" ]; then
-    echo -e "${YELLOW}   ⚠️  FIREBASE_PROJECT_ID not set${NC}"
     # Try to infer from PROJECT_ID
-    if [ -n "$PROJECT_ID" ]; then
-        if [[ "$PROJECT_ID" == *"home"* ]]; then
-            FIREBASE_PROJECT_ID="ui-firebase-pcioasis-${ENVIRONMENT}"
-            echo -e "${BLUE}   ℹ️  Inferred FIREBASE_PROJECT_ID: $FIREBASE_PROJECT_ID${NC}"
-        fi
+    if [ -n "$PROJECT_ID" ] && [[ "$PROJECT_ID" == *"home"* ]]; then
+        FIREBASE_PROJECT_ID="ui-firebase-pcioasis-${ENVIRONMENT}"
+        echo -e "${BLUE}   ℹ️  Inferred: $FIREBASE_PROJECT_ID${NC}"
+    else
+        echo -e "${YELLOW}   ⚠️  Not set${NC}"
     fi
 else
-    echo -e "${GREEN}   ✅ FIREBASE_PROJECT_ID: $FIREBASE_PROJECT_ID${NC}"
+    echo -e "${GREEN}   ✅ $FIREBASE_PROJECT_ID${NC}"
 fi
 
 # 4. Validate Firebase service account JSON (for Firestore)
@@ -195,48 +204,38 @@ if [ -n "$FIREBASE_SERVICE_ACCOUNT_KEY" ] && [ -n "$FIREBASE_PROJECT_ID" ]; then
     echo ""
     echo -e "${BLUE}5. Testing Firestore connectivity...${NC}"
     
-    # Write service account to temp file for gcloud
+    # Write service account to temp file; use GOOGLE_APPLICATION_CREDENTIALS so we
+    # don't change the user's active gcloud auth state.
     TEMP_SA_FILE=$(mktemp)
     echo "$FIREBASE_SERVICE_ACCOUNT_KEY" > "$TEMP_SA_FILE"
     trap "rm -f $TEMP_DECRYPTED $TEMP_SA_FILE" EXIT
-    
-    # Test using gcloud with service account
+
+    # Test using gcloud with GOOGLE_APPLICATION_CREDENTIALS (no login step needed)
     if command -v gcloud &> /dev/null; then
-        # Activate service account temporarily
-        if gcloud auth activate-service-account --key-file="$TEMP_SA_FILE" --quiet 2>/dev/null; then
-            # Try to list Firestore databases (tests connectivity and permissions)
-            if gcloud firestore databases list --project="$FIREBASE_PROJECT_ID" --format="value(name)" > /dev/null 2>&1; then
-                echo -e "${GREEN}   ✅ Firestore connectivity test passed${NC}"
-                DB_NAME=$(gcloud firestore databases list --project="$FIREBASE_PROJECT_ID" --format="value(name)" 2>/dev/null | head -1)
-                if [ -n "$DB_NAME" ]; then
-                    echo -e "${GREEN}   ✅ Found Firestore database: $DB_NAME${NC}"
-                fi
-            else
-                # Check if it's a permission error (which means we connected)
-                ERROR_OUTPUT=$(gcloud firestore databases list --project="$FIREBASE_PROJECT_ID" 2>&1)
-                if echo "$ERROR_OUTPUT" | grep -qi "permission\|denied\|forbidden"; then
-                    echo -e "${YELLOW}   ⚠️  Connected but permission denied (check IAM roles)${NC}"
-                    echo "   Service account needs roles/datastore.user on project $FIREBASE_PROJECT_ID"
-                else
-                    echo -e "${RED}   ❌ Firestore connectivity test failed:${NC}"
-                    echo "$ERROR_OUTPUT" | sed 's/^/      /'
-                    ERRORS=$((ERRORS + 1))
-                fi
+        # Try to list Firestore databases (tests connectivity and permissions)
+        if GOOGLE_APPLICATION_CREDENTIALS="$TEMP_SA_FILE" gcloud firestore databases list --project="$FIREBASE_PROJECT_ID" --format="value(name)" > /dev/null 2>&1; then
+            echo -e "${GREEN}   ✅ Firestore connectivity test passed${NC}"
+            DB_NAME=$(GOOGLE_APPLICATION_CREDENTIALS="$TEMP_SA_FILE" gcloud firestore databases list --project="$FIREBASE_PROJECT_ID" --format="value(name)" 2>/dev/null | head -1)
+            if [ -n "$DB_NAME" ]; then
+                echo -e "${GREEN}   ✅ Found Firestore database: $DB_NAME${NC}"
             fi
-            
-            # Restore original auth (if we had one)
-            # Note: This might fail if user wasn't authenticated before - that's OK
-            gcloud auth application-default login --quiet 2>/dev/null || true
         else
-            echo -e "${YELLOW}   ⚠️  Failed to activate service account${NC}"
-            echo "   Service account JSON may be invalid or incomplete"
-            ERRORS=$((ERRORS + 1))
+            # Check if it's a permission error (which means we connected)
+            ERROR_OUTPUT=$(GOOGLE_APPLICATION_CREDENTIALS="$TEMP_SA_FILE" gcloud firestore databases list --project="$FIREBASE_PROJECT_ID" 2>&1)
+            if echo "$ERROR_OUTPUT" | grep -qi "permission\|denied\|forbidden"; then
+                echo -e "${YELLOW}   ⚠️  Connected but permission denied (check IAM roles)${NC}"
+                echo "   Service account needs roles/datastore.user on project $FIREBASE_PROJECT_ID"
+            else
+                echo -e "${RED}   ❌ Firestore connectivity test failed:${NC}"
+                echo "$ERROR_OUTPUT" | sed 's/^/      /'
+                ERRORS=$((ERRORS + 1))
+            fi
         fi
     else
         echo -e "${YELLOW}   ⚠️  gcloud not found - skipping Firestore connectivity test${NC}"
         echo "   Install gcloud CLI to test Firestore connectivity"
     fi
-    
+
     rm -f "$TEMP_SA_FILE"
 else
     echo ""

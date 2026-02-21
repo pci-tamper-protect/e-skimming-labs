@@ -154,7 +154,12 @@
       "Bash(DOTENV_PRIVATE_KEY_PRD=277b6b557ce87e45dc008bbdc1dde46dfb52154d2bb4833286f38a67c230537c dotenvx decrypt -f .env.prd)",
       "Bash(git -C /Users/kestenbroughton/projectos/e-skimming-labs diff HEAD -- deploy/traefik/plugins-local/src/github.com/pci-tamper-protect/traefik-cloudrun-provider/provider/provider.go)",
       "Bash(git -C /Users/kestenbroughton/projectos/e-skimming-labs diff HEAD -- deploy/shared-components/home-index-service/main.go)",
-      "Bash(git -C /Users/kestenbroughton/projectos/e-skimming-labs diff HEAD -- .env.prd)"
+      "Bash(git -C /Users/kestenbroughton/projectos/e-skimming-labs diff HEAD -- .env.prd)",
+      "Bash(then echo \"=== $svc ===\" echo \"$labels\" fi done)",
+      "Bash(git -C /Users/kestenbroughton/projectos/e-skimming-labs show:*)",
+      "Bash(./deploy/build-deploy-all.sh:*)",
+      "Bash(grep FIREBASE_API_KEY:*)",
+      "Bash(head:*)"
     ],
     "deny": [],
     "ask": []
