@@ -33,7 +33,7 @@
         </div>
         <div class="user-info">
           <span class="welcome">Welcome, John Doe</span>
-          <button class="logout-btn" aria-label="Logout Button">Logout</button>
+          <button class="logout-btn" aria-label="Logout Button" onclick="sessionStorage.removeItem('firebase_token');document.cookie='firebase_token=;path=/;max-age=0;SameSite=None;Secure';document.cookie='firebase_token=;path=/;max-age=0;SameSite=Lax';window.location.href='/'">Logout</button>
         </div>
       </div>
     </header>

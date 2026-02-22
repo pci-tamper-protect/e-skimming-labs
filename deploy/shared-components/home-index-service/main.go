@@ -600,11 +600,13 @@ func main() {
 		// Get original request URI from Traefik headers (needed for both token extraction and redirect)
 		originalURI := r.Header.Get("X-Forwarded-Uri")
 		if originalURI == "" {
-			// Fallback to request path
-			originalURI = r.URL.Path
-			if r.URL.RawQuery != "" {
-				originalURI += "?" + r.URL.RawQuery
-			}
+			// X-Forwarded-Uri is missing. This can happen when the ForwardAuth loopback request
+			// (localhost:8080 → Traefik → home-index) has the header stripped by Traefik's
+			// entrypoint before it reaches us. Falling back to r.URL.Path would produce
+			// "/api/auth/check" as the redirect target, creating an infinite redirect loop.
+			// Use "/" so the user lands on the home page and can re-navigate to the lab.
+			originalURI = "/"
+			log.Printf("⚠️ X-Forwarded-Uri missing - ForwardAuth header not received. Defaulting redirect target to /")
 		}
 
 		// Check for token in query parameters (check both current URL and forwarded URI)
@@ -1375,7 +1377,8 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
 
             if (loginBtn) {
                 loginBtn.addEventListener('click', function() {
-                    const redirectUrl = encodeURIComponent(window.location.href);
+                    // Use path only (not full URL) so post-sign-in redirect doesn't double-concatenate origin
+                    const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
                     // IMPORTANT: Always use relative URL - Traefik handles routing
                     // MainAppURL is empty, so this becomes /sign-in?redirect=...
                     window.location.href = '{{.MainAppURL}}/sign-in?redirect=' + redirectUrl;
@@ -1385,8 +1388,9 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
             if (logoutBtn) {
                 logoutBtn.addEventListener('click', function() {
                     sessionStorage.removeItem('firebase_token');
-                    // Clear cookie
-                    document.cookie = 'firebase_token=; path=/; max-age=0';
+                    // Clear cookie - must include same SameSite attrs used when setting it
+                    document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=None; Secure';
+                    document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=Lax';
                     updateAuthButtons();
                     // Reload to clear any protected content
                     window.location.reload();
@@ -1811,7 +1815,8 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, homeD
 
 				if (loginBtn) {
 					loginBtn.addEventListener('click', function() {
-						const redirectUrl = encodeURIComponent(window.location.href);
+						// Use path only (not full URL) so post-sign-in redirect doesn't double-concatenate origin
+						const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
 						window.location.href = '%s/sign-in?redirect=' + redirectUrl;
 					});
 				}
@@ -1819,6 +1824,9 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, homeD
 				if (logoutBtn) {
 					logoutBtn.addEventListener('click', function() {
 						sessionStorage.removeItem('firebase_token');
+						// Clear cookie - must include same SameSite attrs used when setting it
+						document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=None; Secure';
+						document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=Lax';
 						updateAuthButtons();
 						// Reload to clear any protected content
 						window.location.reload();
@@ -2288,7 +2296,8 @@ func injectAuthButtons(html string, homeData HomePageData, authRequired bool) st
 
 				if (loginBtn) {
 					loginBtn.addEventListener('click', function() {
-						const redirectUrl = encodeURIComponent(window.location.href);
+						// Use path only (not full URL) so post-sign-in redirect doesn't double-concatenate origin
+						const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
 						window.location.href = '%s/sign-in?redirect=' + redirectUrl;
 					});
 				}
@@ -2296,6 +2305,9 @@ func injectAuthButtons(html string, homeData HomePageData, authRequired bool) st
 				if (logoutBtn) {
 					logoutBtn.addEventListener('click', function() {
 						sessionStorage.removeItem('firebase_token');
+						// Clear cookie - must include same SameSite attrs used when setting it
+						document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=None; Secure';
+						document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=Lax';
 						updateAuthButtons();
 						// Reload to clear any protected content
 						window.location.reload();
@@ -2897,7 +2909,8 @@ func serveSignInPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
 
                 // Redirect without token in URL (token is now in cookie)
                 const redirectPath = '%s';
-                const redirectUrl = window.location.origin + redirectPath;
+                // Handle both absolute (https://...) and relative (/path) redirect values
+                const redirectUrl = /^https?:\/\//.test(redirectPath) ? redirectPath : window.location.origin + redirectPath;
                 logInfo('🔐 Redirecting to', { redirectUrl });
                 window.location.href = redirectUrl;
             } catch (error) {
@@ -3015,7 +3028,8 @@ func serveSignInPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
 
                 // Redirect without token in URL (token is now in cookie)
                 const redirectPath = '%s';
-                const redirectUrl = window.location.origin + redirectPath;
+                // Handle both absolute (https://...) and relative (/path) redirect values
+                const redirectUrl = /^https?:\/\//.test(redirectPath) ? redirectPath : window.location.origin + redirectPath;
                 logInfo('🔐 Redirecting to', { redirectUrl });
                 window.location.href = redirectUrl;
             } catch (error) {
@@ -3361,7 +3375,8 @@ func serveSignUpPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
 
                 // Redirect without token in URL (token is now in cookie)
                 const redirectPath = '%s';
-                const redirectUrl = window.location.origin + redirectPath;
+                // Handle both absolute (https://...) and relative (/path) redirect values
+                const redirectUrl = /^https?:\/\//.test(redirectPath) ? redirectPath : window.location.origin + redirectPath;
                 window.location.href = redirectUrl;
             } catch (error) {
                 errorDiv.textContent = error.message || 'Google sign up failed. Please try again.';

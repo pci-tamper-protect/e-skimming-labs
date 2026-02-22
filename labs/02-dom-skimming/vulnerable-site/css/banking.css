@@ -243,6 +243,11 @@ body {
   background: rgba(255, 255, 255, 0.2);
 }
 
+.logout-btn:active {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(0.97);
+}
+
 /* Main Content */
 .main-content {
   padding: 2rem 0;

@@ -46,12 +46,13 @@ fi
 # Load environment variables
 source "$SCRIPT_DIR/load-env.sh"
 
-# Configuration based on environment
+# Configuration based on environment - set unconditionally so the explicit
+# prd/stg argument always wins over whatever load-env.sh exported.
 if [ "$ENVIRONMENT" = "stg" ]; then
-  HOME_PROJECT_ID="${HOME_PROJECT_ID:-labs-home-stg}"
+  HOME_PROJECT_ID="labs-home-stg"
   DOMAIN_PREFIX="labs.stg.pcioasis.com"
 else
-  HOME_PROJECT_ID="${HOME_PROJECT_ID:-labs-home-prd}"
+  HOME_PROJECT_ID="labs-home-prd"
   DOMAIN_PREFIX="labs.pcioasis.com"
 fi
 

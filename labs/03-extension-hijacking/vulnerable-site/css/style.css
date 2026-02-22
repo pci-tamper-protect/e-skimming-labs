@@ -80,6 +80,11 @@ body {
   background: rgba(239, 68, 68, 0.2);
 }
 
+.logout-btn:active {
+  background: rgba(239, 68, 68, 0.4);
+  transform: scale(0.97);
+}
+
 /* Lab Navigation Row (Top Row) */
 .nav-buttons-row {
   background-color: var(--background-gray);

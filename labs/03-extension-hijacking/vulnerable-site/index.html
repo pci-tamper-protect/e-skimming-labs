@@ -32,7 +32,7 @@
             <h1>🛒 SecureShop</h1>
             <span class="tagline">Premium E-commerce Platform</span>
           </div>
-          <button class="logout-btn" aria-label="Logout Button">Logout</button>
+          <button class="logout-btn" aria-label="Logout Button" onclick="sessionStorage.removeItem('firebase_token');document.cookie='firebase_token=;path=/;max-age=0;SameSite=None;Secure';document.cookie='firebase_token=;path=/;max-age=0;SameSite=Lax';window.location.href='/'">Logout</button>
         </div>
       </header>
 
