@@ -49,7 +49,11 @@ get_lab_labels() {
       # lab1: no sign-in (PRD)
       echo "traefik_enable=true,traefik_http_routers_lab1-websocket_rule_id=lab1-websocket,traefik_http_routers_lab1-websocket_priority=400,traefik_http_routers_lab1-websocket_entrypoints=web,traefik_http_routers_lab1-websocket_middlewares=strip-lab1-websocket-prefix-file,traefik_http_services_lab1-websocket-variant_lb_port=8080"
       ;;
-    *)
+    lab4-vulnerable-site)
+      echo "traefik_enable=true,traefik_http_routers_lab4-static_rule_id=lab4-static,traefik_http_routers_lab4-static_priority=250,traefik_http_routers_lab4-static_entrypoints=web,traefik_http_routers_lab4-static_middlewares=strip-lab4-prefix-file,traefik_http_routers_lab4-static_service=lab4-vulnerable-site,traefik_http_routers_lab4-main_rule_id=lab4-main,traefik_http_routers_lab4-main_priority=200,traefik_http_routers_lab4-main_entrypoints=web,traefik_http_routers_lab4-main_middlewares=lab4-auth-check-file__strip-lab4-prefix-file,traefik_http_routers_lab4-main_service=lab4-vulnerable-site,traefik_http_services_lab4-vulnerable-site_lb_port=8080"
+      ;;
+    lab4-c2-server)
+      echo "traefik_enable=true,traefik_http_routers_lab4-c2_rule_id=lab4-c2,traefik_http_routers_lab4-c2_priority=300,traefik_http_routers_lab4-c2_entrypoints=web,traefik_http_routers_lab4-c2_middlewares=lab4-auth-check-file__strip-lab4-c2-prefix-file,traefik_http_routers_lab4-c2_service=lab4-c2-server,traefik_http_routers_lab4-c2-collect_rule_id=lab4-c2-collect,traefik_http_routers_lab4-c2-collect_priority=300,traefik_http_routers_lab4-c2-collect_entrypoints=web,traefik_http_routers_lab4-c2-collect_middlewares=strip-lab4-c2-prefix-file,traefik_http_routers_lab4-c2-collect_service=lab4-c2-server,traefik_http_services_lab4-c2-server_lb_port=8080"
       echo "traefik_enable=true"
       echo "⚠️  Unknown service: $service" >&2
       return 1

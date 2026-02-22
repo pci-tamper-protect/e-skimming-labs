@@ -53,3 +53,15 @@ http:
           - "Authorization"
           - "Cookie"
         trustForwardHeader: true
+
+    # Lab 4 auth - ForwardAuth to home-index
+    lab4-auth-check:
+      forwardAuth:
+        address: "http://home-index:8080/api/auth/check"
+        authResponseHeaders:
+          - "X-User-Id"
+          - "X-User-Email"
+        authRequestHeaders:
+          - "Authorization"
+          - "Cookie"
+        trustForwardHeader: true

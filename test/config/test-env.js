@@ -103,6 +103,11 @@ const environments = {
       c2: `${LOCAL_BASE_URL}/lab3/extension`,
       writeup: `${LOCAL_BASE_URL}/lab-03-writeup`,
     },
+    lab4: {
+      vulnerable: `${LOCAL_BASE_URL}/lab4`,
+      c2: `${LOCAL_BASE_URL}/lab4/c2`,
+      writeup: `${LOCAL_BASE_URL}/lab-04-writeup`,
+    },
   },
   stg: {
     // Use proxy URL if available (for CI/CD), otherwise use direct domain
@@ -209,6 +214,35 @@ const environments = {
         return 'https://labs.stg.pcioasis.com/lab-03-writeup'
       })(),
     },
+    lab4: {
+      vulnerable: (() => {
+        if (process.env.PROXY_URL && process.env.USE_PROXY === 'true') {
+          return `${process.env.PROXY_URL}/lab4`
+        }
+        if (process.env.USE_PROXY === 'true') {
+          return `http://${proxyConfig.host}:${proxyConfig.port}/lab4`
+        }
+        return 'https://lab-04-steganography-stg-mmwwcfi5za-uc.a.run.app'
+      })(),
+      c2: (() => {
+        if (process.env.PROXY_URL && process.env.USE_PROXY === 'true') {
+          return `${process.env.PROXY_URL}/lab4/c2`
+        }
+        if (process.env.USE_PROXY === 'true') {
+          return `http://${proxyConfig.host}:${proxyConfig.port}/lab4/c2`
+        }
+        return 'https://lab-04-steganography-c2-stg-mmwwcfi5za-uc.a.run.app'
+      })(),
+      writeup: (() => {
+        if (process.env.PROXY_URL && process.env.USE_PROXY === 'true') {
+          return `${process.env.PROXY_URL}/lab-04-writeup`
+        }
+        if (process.env.USE_PROXY === 'true') {
+          return `http://${proxyConfig.host}:${proxyConfig.port}/lab-04-writeup`
+        }
+        return 'https://labs.stg.pcioasis.com/lab-04-writeup'
+      })(),
+    },
   },
   prd: {
     homeIndex: 'https://labs.pcioasis.com',
@@ -231,6 +265,12 @@ const environments = {
       vulnerable: 'https://lab-03-extension-hijacking-prd-mmwwcfi5za-uc.a.run.app',
       c2: 'https://lab-03-extension-hijacking-c2-prd-mmwwcfi5za-uc.a.run.app',
       writeup: 'https://labs.pcioasis.com/lab-03-writeup',
+    },
+    lab4: {
+      // Lab 4 uses separate deployments for vulnerable site and C2 server
+      vulnerable: 'https://lab-04-steganography-prd-mmwwcfi5za-uc.a.run.app',
+      c2: 'https://lab-04-steganography-c2-prd-mmwwcfi5za-uc.a.run.app',
+      writeup: 'https://labs.pcioasis.com/lab-04-writeup',
     },
   },
 }

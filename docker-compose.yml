@@ -442,6 +442,72 @@ services:
       - "traefik.http.routers.lab1-websocket.middlewares=lab1-auth-check@file,strip-lab1-websocket-prefix@file"
       - "traefik.http.services.lab1-websocket-variant.loadbalancer.server.port=80"
 
+  # =============================================================================
+  # LAB 4: STEGANOGRAPHY / FAVICON TROJAN
+  # =============================================================================
+
+  # Lab 4 - Vulnerable Shop
+  lab4-vulnerable-site:
+    build: ./labs/04-steganography-favicon/vulnerable-site
+    container_name: lab4-shop
+    networks:
+      - labs-network
+    depends_on:
+      - traefik
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:8080/']
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    labels:
+      - "lab=lab4-steganography"
+      - "component=vulnerable-site"
+      - "traefik.enable=true"
+      # Static files
+      - "traefik.http.routers.lab4-static.rule=PathPrefix(`/lab4/css/`) || PathPrefix(`/lab4/js/`) || PathPrefix(`/lab4/images/`) || PathPrefix(`/lab4/img/`) || PathPrefix(`/lab4/static/`) || PathPrefix(`/lab4/assets/`)"
+      - "traefik.http.routers.lab4-static.priority=250"
+      - "traefik.http.routers.lab4-static.entrypoints=web"
+      - "traefik.http.routers.lab4-static.middlewares=strip-lab4-prefix@file"
+      - "traefik.http.routers.lab4-static.service=lab4-vulnerable-site"
+      # Main router
+      - "traefik.http.routers.lab4-main.rule=PathPrefix(`/lab4`)"
+      - "traefik.http.routers.lab4-main.priority=200"
+      - "traefik.http.routers.lab4-main.entrypoints=web"
+      - "traefik.http.routers.lab4-main.middlewares=lab4-auth-check@file,strip-lab4-prefix@file"
+      - "traefik.http.routers.lab4-main.service=lab4-vulnerable-site"
+      - "traefik.http.services.lab4-vulnerable-site.loadbalancer.server.port=8080"
+      
+  # Lab 4 - C2 Server
+  lab4-c2-server:
+    build: ./labs/04-steganography-favicon/malicious-code/c2-server
+    container_name: lab4-c2
+    networks:
+      - labs-network
+    volumes:
+      - ./labs/04-steganography-favicon/c2-data:/app/stolen-data
+    environment:
+      - NODE_ENV=development
+      - PORT=8080
+    depends_on:
+      - traefik
+    labels:
+      - "lab=lab4-steganography"
+      - "component=c2-server"
+      - "traefik.enable=true"
+      - "traefik.http.routers.lab4-c2.rule=PathPrefix(`/lab4/c2`)"
+      - "traefik.http.routers.lab4-c2.priority=300"
+      - "traefik.http.routers.lab4-c2.entrypoints=web"
+      - "traefik.http.routers.lab4-c2.middlewares=lab4-auth-check@file,strip-lab4-c2-prefix@file"
+      - "traefik.http.routers.lab4-c2.service=lab4-c2-server"
+      - "traefik.http.services.lab4-c2-server.loadbalancer.server.port=8080"
+      # Collect endpoint - no auth required (skimmer needs to POST data)
+      - "traefik.http.routers.lab4-c2-collect.rule=Path(`/lab4/c2/collect`)"
+      - "traefik.http.routers.lab4-c2-collect.priority=350"
+      - "traefik.http.routers.lab4-c2-collect.entrypoints=web"
+      - "traefik.http.routers.lab4-c2-collect.middlewares=strip-lab4-c2-prefix@file"
+      - "traefik.http.routers.lab4-c2-collect.service=lab4-c2-server"
+
 # =============================================================================
 # NETWORKS
 # =============================================================================

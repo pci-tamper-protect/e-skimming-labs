@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lab 4 C2 — Steganography Dashboard</title>
+  <style>
+    :root {
+      --bg: #0f0f1a;
+      --card-bg: #1a1a2e;
+      --accent: #e94560;
+      --accent2: #0f3460;
+      --text: #eaeaea;
+      --text-dim: #8888aa;
+      --green: #00e676;
+      --border: #2a2a4a;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .header {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      padding: 1.5rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-size: 1.4rem;
+    }
+
+    .header .badge {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 0.4rem 1rem;
+      border-radius: 2rem;
+      font-size: 0.85rem;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+    }
+
+    .stats-bar {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      flex: 1;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      text-align: center;
+    }
+
+    .stat-card .number {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .stat-card .label {
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      margin-top: 0.25rem;
+    }
+
+    .how-it-works {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .how-it-works h3 {
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+    }
+
+    .how-it-works .steps {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .step {
+      flex: 1;
+      min-width: 150px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+      text-align: center;
+      font-size: 0.85rem;
+    }
+
+    .step .num {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      line-height: 24px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+      font-size: 0.75rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .records-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .records-header h2 {
+      font-size: 1.2rem;
+    }
+
+    .refresh-btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 0.5rem 1.25rem;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      font-weight: 600;
+      transition: opacity 0.2s;
+    }
+
+    .refresh-btn:hover {
+      opacity: 0.85;
+    }
+
+    .card-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .stolen-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      overflow: hidden;
+    }
+
+    .card-visual {
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      padding: 1.25rem 1.5rem;
+      font-family: 'Courier New', monospace;
+      position: relative;
+    }
+
+    .card-visual .card-num {
+      font-size: 1.3rem;
+      letter-spacing: 0.15em;
+      margin-bottom: 0.75rem;
+      color: #fff;
+    }
+
+    .card-visual .card-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .card-visual .chip {
+      position: absolute;
+      top: 1rem;
+      right: 1.5rem;
+      width: 32px;
+      height: 24px;
+      background: linear-gradient(135deg, #ffd700, #ffaa00);
+      border-radius: 4px;
+    }
+
+    .card-details-row {
+      padding: 1rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      border-top: 1px solid var(--border);
+    }
+
+    .card-details-row .source-tag {
+      background: rgba(233, 69, 96, 0.15);
+      color: var(--accent);
+      padding: 0.2rem 0.6rem;
+      border-radius: 1rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-dim);
+    }
+
+    @media (max-width: 600px) {
+      .stats-bar {
+        flex-direction: column;
+      }
+
+      .how-it-works .steps {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">
+    <div style="display:flex; align-items:center; gap:15px;">
+      <h1>Lab 4 — Steganography C2</h1>
+      <div class="badge">Attacker Dashboard</div>
+    </div>
+    <div style="display:flex; gap:10px;">
+      <a href="/"
+        style="color:white; text-decoration:none; background:rgba(255,255,255,0.1); padding:6px 12px; border-radius:4px; font-size:0.9rem; transition:background 0.2s;"
+        onmouseover="this.style.background='rgba(255,255,255,0.2)'"
+        onmouseout="this.style.background='rgba(255,255,255,0.1)'">🏠 Home</a>
+      <a href="/lab4/"
+        style="color:white; text-decoration:none; background:rgba(255,255,255,0.1); padding:6px 12px; border-radius:4px; font-size:0.9rem; transition:background 0.2s;"
+        onmouseover="this.style.background='rgba(255,255,255,0.2)'"
+        onmouseout="this.style.background='rgba(255,255,255,0.1)'">🧪 Lab</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="number" id="total-count">--</div>
+        <div class="label">Cards Stolen</div>
+      </div>
+      <div class="stat-card">
+        <div class="number" id="last-time">--</div>
+        <div class="label">Latest Capture</div>
+      </div>
+      <div class="stat-card">
+        <div class="number" style="color: var(--green);">ACTIVE</div>
+        <div class="label">C2 Status</div>
+      </div>
+    </div>
+
+    <div class="how-it-works">
+      <h3>Attack Flow</h3>
+      <div class="steps">
+        <div class="step">
+          <div class="num">1</div><br>Payload hidden<br>in favicon.ico
+        </div>
+        <div class="step">
+          <div class="num">2</div><br>Loader extracts<br>via Canvas API
+        </div>
+        <div class="step">
+          <div class="num">3</div><br>Skimmer hooks<br>checkout form
+        </div>
+        <div class="step">
+          <div class="num">4</div><br>Data sent<br>to this C2
+        </div>
+      </div>
+    </div>
+
+    <div class="records-header">
+      <h2>Stolen Cards</h2>
+      <div style="display:flex; gap:10px;">
+        <button class="refresh-btn" onclick="clearData()"
+          style="background:transparent; border:1px solid var(--accent); color:var(--accent);">Clear Data</button>
+        <button class="refresh-btn" onclick="loadData()">Refresh</button>
+      </div>
+    </div>
+
+    <div class="card-list" id="card-list">
+      <div class="empty-state">
+        <p>Waiting for victims to submit payment data...</p>
+        <p style="margin-top:0.5rem; font-size:0.85rem;">Go to the checkout page and submit a card to see data here.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function loadData() {
+      try {
+        const res = await fetch('/lab4/c2/api/stolen');
+        const json = await res.json();
+
+        document.getElementById('total-count').textContent = json.count;
+
+        if (json.records && json.records.length > 0) {
+          const latest = json.records[0];
+          const ago = timeAgo(new Date(latest.timestamp));
+          document.getElementById('last-time').textContent = ago;
+
+          const list = document.getElementById('card-list');
+          list.innerHTML = '';
+
+          json.records.forEach(rec => {
+            const d = rec.data || {};
+            const cardNum = d.card_number || '---- ---- ---- ----';
+            const name = d.card_name || 'Unknown';
+            const expiry = d.expiry || '??/??';
+            const cvv = d.cvv || '???';
+            const source = d.source || 'unknown';
+            const ts = new Date(rec.timestamp).toLocaleString();
+
+            const cardMarkup = `
+              <div class="card-visual">
+                <div class="chip"></div>
+                <div class="card-num"></div>
+                <div class="card-meta">
+                  <span class="card-name"></span>
+                  <span class="card-expiry"></span>
+                </div>
+              </div>
+              <div class="card-details-row">
+                <span class="card-cvv-ts"></span>
+                <span class="source-tag"></span>
+              </div>
+            `;
+
+            const cardDiv = document.createElement('div');
+            cardDiv.className = 'stolen-card';
+            cardDiv.innerHTML = cardMarkup;
+
+            // Securely set text content to prevent XSS
+            cardDiv.querySelector('.card-num').textContent = formatCard(cardNum);
+            cardDiv.querySelector('.card-name').textContent = name.toUpperCase();
+            cardDiv.querySelector('.card-expiry').textContent = `EXP ${expiry}`;
+            cardDiv.querySelector('.card-cvv-ts').textContent = `CVV: ${cvv} • ${ts}`;
+            cardDiv.querySelector('.source-tag').textContent = source;
+
+            list.appendChild(cardDiv);
+          });
+        } else {
+          document.getElementById('last-time').textContent = '--';
+        }
+      } catch (e) {
+        console.error('Failed to fetch data:', e);
+      }
+    }
+
+    function formatCard(num) {
+      const clean = num.replace(/\s/g, '');
+      return clean.replace(/(.{4})/g, '$1 ').trim();
+    }
+
+    function timeAgo(date) {
+      const seconds = Math.floor((new Date() - date) / 1000);
+      if (seconds < 60) return seconds + 's ago';
+      if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+      if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+      return Math.floor(seconds / 86400) + 'd ago';
+    }
+
+    async function clearData() {
+      if (!confirm('Are you sure you want to delete all stolen data? This cannot be undone.')) return;
+
+      try {
+        const res = await fetch('./api/clear', { method: 'POST' });
+        const json = await res.json();
+
+        if (json.success) {
+          loadData(); // Refresh list
+        } else {
+          alert('Error: ' + (json.error || 'Failed to clear'));
+        }
+      } catch (e) {
+        console.error('Clear failed:', e);
+        alert('Failed to connect to server');
+      }
+    }
+
+    loadData();
+    setInterval(loadData, 5000);
+  </script>
+</body>
+
+</html>

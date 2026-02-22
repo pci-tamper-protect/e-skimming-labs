@@ -50,6 +50,9 @@ projects:
       - name: lab-03-extension-hijacking-prd
         description: "Lab 3: Browser Extension Hijacking"
         url: https://lab-03-extension-hijacking-prd-mmwwcfi5za-uc.a.run.app
+      - name: lab-04-steganography-prd
+        description: "Lab 4: Steganography / Favicon Trojan"
+        url: https://lab-04-steganography-prd-mmwwcfi5za-uc.a.run.app
 
 # Domain Configuration
 domains:

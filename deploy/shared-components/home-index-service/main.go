@@ -249,7 +249,7 @@ func main() {
 			Name:        "Basic Magecart Attack",
 			Description: "Learn the fundamentals of payment card skimming attacks through JavaScript injection. Understand how attackers compromise e-commerce sites, intercept form submissions, and exfiltrate credit card data. Practice detection using browser DevTools and implement basic defensive measures.",
 			Difficulty:  "Beginner",
-			URL:         "/lab1", // Always relative - Traefik routes to lab1 service
+			URL:         "/lab1/", // Always relative - Traefik routes to lab1 service
 			Status:      "Available",
 		},
 		{
@@ -257,7 +257,7 @@ func main() {
 			Name:        "DOM-Based Skimming",
 			Description: "Master advanced DOM manipulation techniques for stealthy payment data capture. Learn real-time field monitoring, dynamic form injection, Shadow DOM abuse, and DOM tree manipulation. Understand how attackers bypass traditional detection methods.",
 			Difficulty:  "Intermediate",
-			URL:         "/lab2", // Always relative - Traefik routes to lab2 service
+			URL:         "/lab2/", // Always relative - Traefik routes to lab2 service
 			Status:      "Available",
 		},
 		{
@@ -265,7 +265,15 @@ func main() {
 			Name:        "Browser Extension Hijacking",
 			Description: "Explore sophisticated browser extension-based attacks that exploit privileged APIs and persistent access. Learn about content script injection, background script persistence, cross-origin communication, and supply chain attacks through malicious extensions.",
 			Difficulty:  "Advanced",
-			URL:         "/lab3", // Always relative - Traefik routes to lab3 service
+			URL:         "/lab3/", // Always relative - Traefik routes to lab3 service
+			Status:      "Available",
+		},
+		{
+			ID:          "lab4-steganography",
+			Name:        "Steganography / Favicon Trojan",
+			Description: "Learn how attackers hide malicious payloads inside innocent-looking images like favicons. Understand steganography techniques, how browsers process image data, and how to detect hidden code in media files.",
+			Difficulty:  "Advanced",
+			URL:         "/lab4/", // Always relative - Traefik routes to lab4 service
 			Status:      "Available",
 		},
 	}
@@ -295,6 +303,8 @@ func main() {
 			homeData.Labs[i].WriteupURL = "/lab-02-writeup"
 		case "lab3-extension-hijacking":
 			homeData.Labs[i].WriteupURL = "/lab-03-writeup"
+		case "lab4-steganography":
+			homeData.Labs[i].WriteupURL = "/lab-04-writeup"
 		}
 	}
 
@@ -388,6 +398,9 @@ func main() {
 		serveLabWriteup(w, r, "03-extension-hijacking", homeData, authValidator)
 	})
 
+	mux.HandleFunc("/lab-04-writeup", func(w http.ResponseWriter, r *http.Request) {
+		serveLabWriteup(w, r, "04-steganography-favicon", homeData, authValidator)
+	})
 	// Blog routes
 	mux.HandleFunc("/blog", func(w http.ResponseWriter, r *http.Request) {
 		serveBlogPage(w, r, homeData, authValidator)
@@ -395,7 +408,7 @@ func main() {
 
 	mux.HandleFunc("/blog/understanding-magecart", func(w http.ResponseWriter, r *http.Request) {
 		serveBlogPost(w, r, "understanding-magecart", homeData, authValidator)
-	})
+    })
 
 	mux.HandleFunc("/api/labs", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -1031,6 +1044,8 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
         .lab-card::before {
@@ -1060,6 +1075,7 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
             color: var(--text-secondary);
             margin-bottom: 20px;
             line-height: 1.6;
+            flex: 1;
         }
 
         .lab-meta {
@@ -1099,7 +1115,7 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
         }
 
         .lab-button {
-            display: inline-block;
+            display: block;
             padding: 12px 24px;
             background: var(--gradient-1);
             color: var(--text-primary);
@@ -1109,6 +1125,7 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
             transition: all 0.3s ease;
             width: 100%;
             text-align: center;
+            margin-top: auto;
         }
 
         .lab-button:hover {
@@ -1711,11 +1728,13 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, homeD
 	var labBackURL string
 	switch labID {
 	case "01-basic-magecart":
-		labBackURL = "/lab1"
+		labBackURL = "/lab1/"
 	case "02-dom-skimming":
-		labBackURL = "/lab2"
+		labBackURL = "/lab2/"
 	case "03-extension-hijacking":
-		labBackURL = "/lab3"
+		labBackURL = "/lab3/"
+	case "04-steganography-favicon":
+		labBackURL = "/lab4/"
 	default:
 		labBackURL = "/" // Fallback to home
 	}
