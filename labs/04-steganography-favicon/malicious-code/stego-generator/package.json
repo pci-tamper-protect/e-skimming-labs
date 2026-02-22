@@ -1,0 +1,14 @@
+{
+    "name": "stego-generator",
+    "version": "1.0.0",
+    "description": "Embeds JS payload into favicon.ico",
+    "main": "generator.js",
+    "scripts": {
+        "start": "node generator.js"
+    },
+    "dependencies": {
+        "decode-ico": "^0.4.1",
+        "png-to-ico": "^2.1.8",
+        "pngjs": "^6.0.0"
+    }
+}

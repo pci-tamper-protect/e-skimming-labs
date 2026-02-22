@@ -109,7 +109,7 @@ func extractRouterConfigs(labels map[string]string, serviceName string) map[stri
 		routerName := parts[3]
 		property := parts[4]
 
-		if routers[routerName].Rule == "" {
+		if _, exists := routers[routerName]; !exists {
 			routers[routerName] = RouterConfig{
 				Priority:    getDefaultPriority(routerName), // Use smart default based on router name
 				EntryPoints: []string{"web"}, // Always set entryPoints (plural) - required by Traefik

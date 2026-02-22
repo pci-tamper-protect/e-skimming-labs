@@ -1442,7 +1442,7 @@ jobs:
               echo "⚠️ Could not get home-index URL; run ./deploy/traefik/APPLY_PERMISSIONS.sh stg to grant Labs SA run.viewer on Home project"
             fi
           fi
-          ENV_VARS="ENVIRONMENT=${{ needs.setup.outputs.environment }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }}"
+          ENV_VARS="ENVIRONMENT=${{ needs.setup.outputs.environment }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},USER_AUTH_ENABLED=true"
           if [[ -n "$HOME_INDEX_URL" ]]; then
             ENV_VARS="$ENV_VARS,HOME_INDEX_URL=$HOME_INDEX_URL"
           fi

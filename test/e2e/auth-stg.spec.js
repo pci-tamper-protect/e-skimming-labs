@@ -5,8 +5,8 @@
  * Uses the same Firebase project as e-skimming-app staging: ui-firebase-pcioasis-stg
  */
 
-import { test, expect } from '@playwright/test'
-import { currentEnv, TEST_ENV } from '../config/test-env'
+const { test, expect } = require('@playwright/test')
+const { currentEnv, TEST_ENV } = require('../config/test-env')
 
 // Only run these tests in staging environment
 test.describe('Authentication Integration - Staging', () => {

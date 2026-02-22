@@ -190,6 +190,18 @@ if [ -n "${HOME_INDEX_URL}" ]; then
     --quiet
 fi
 
+# PRD: Make Traefik public so labs.pcioasis.com is accessible (backend services stay private, accessed via Traefik)
+if [ "${ENVIRONMENT}" = "prd" ]; then
+  echo "🌐 Making Traefik public (labs.pcioasis.com)..."
+  gcloud run services add-iam-policy-binding "${SERVICE_NAME}" \
+    --region="${REGION}" \
+    --project="${PROJECT_ID}" \
+    --member="allUsers" \
+    --role="roles/run.invoker" \
+    --quiet
+  echo "   ✅ Traefik is now publicly accessible"
+fi
+
 # Get the actual service URL after deployment (needed for dashboard service)
 echo "🔍 Getting main Traefik service URL..."
 MAIN_TRAEFIK_URL=$(gcloud run services describe "${SERVICE_NAME}" \
@@ -243,5 +255,3 @@ echo "   2. If this is production, set up domain mapping:"
 echo "      gcloud run domain-mappings create --service=${SERVICE_NAME} --domain=${DOMAIN} --region=${REGION} --project=${PROJECT_ID}"
 echo "   3. Test main service: curl ${MAIN_TRAEFIK_URL}/ping"
 echo "   4. Test dashboard: curl ${DASHBOARD_URL}/dashboard/"
-echo ""
-echo "⚠️  Note: To rollback to Traefik v2.10, run deploy-sidecar.sh instead"

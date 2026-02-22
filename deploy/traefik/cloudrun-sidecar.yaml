@@ -17,6 +17,7 @@ spec:
     metadata:
       annotations:
         run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/cpu-throttling: "false"
         autoscaling.knative.dev/minScale: "1"
         autoscaling.knative.dev/maxScale: "3"
     spec:
@@ -102,6 +103,9 @@ spec:
         # When enabled, generates forwardAuth middlewares that call home-index /api/auth/check
         - name: USER_AUTH_ENABLED
           value: "true"
+        # Fallback when home-index not discovered from Cloud Run API (e.g. cross-project permissions)
+        - name: HOME_INDEX_URL
+          value: "__HOME_INDEX_URL__"
         resources:
           limits:
             cpu: "0.5"  # With concurrency=1, fractional CPUs are allowed

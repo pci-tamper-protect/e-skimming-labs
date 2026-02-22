@@ -1,0 +1,52 @@
+# Test files
+test/
+**/test/
+**/*.spec.js
+**/*.test.js
+**/test-results/
+**/playwright-report/
+
+# Documentation
+*.md
+README.md
+**/README.md
+docs/
+**/docs/
+
+# Git
+.git/
+.gitignore
+
+# Node modules (installed in container)
+node_modules/
+**/node_modules/
+
+# Logs
+*.log
+**/*.log
+logs/
+**/logs/
+
+# IDE
+.idea/
+.vscode/
+.DS_Store
+
+# Build artifacts
+build/
+dist/
+*.tmp
+
+# Stego generator (build tool, not needed at runtime)
+malicious-code/stego-generator/
+
+# Runtime data
+stolen-data/
+**/stolen-data/
+c2-data/
+**/c2-data/
+
+# Docker
+Dockerfile*
+.dockerignore
+docker-compose.yml

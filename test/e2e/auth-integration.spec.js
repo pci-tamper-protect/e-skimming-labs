@@ -4,7 +4,7 @@
  * Tests SSO flow between www.pcioasis.com and labs.pcioasis.com
  */
 
-import { test, expect } from '@playwright/test'
+const { test, expect } = require('@playwright/test')
 
 const MAIN_APP_URL = process.env.MAIN_APP_URL || 'https://www.pcioasis.com'
 const LABS_URL = process.env.LABS_URL || 'https://labs.pcioasis.com'

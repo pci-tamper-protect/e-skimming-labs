@@ -40,7 +40,8 @@ resource "google_project_service" "required_apis" {
     "logging.googleapis.com",
     "cloudresourcemanager.googleapis.com",
     "iam.googleapis.com",
-    "servicenetworking.googleapis.com"
+    "servicenetworking.googleapis.com",
+    "secretmanager.googleapis.com"  # For DOTENVX_KEY_* access by fbase-adm-sdk-runtime
   ])
 
   service            = each.value

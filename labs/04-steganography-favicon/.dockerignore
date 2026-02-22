@@ -1,0 +1,46 @@
+# Test files
+test/
+**/test/
+**/*.spec.js
+**/*.test.js
+
+# Documentation
+*.md
+README.md
+docs/
+
+# Git
+.git/
+.gitignore
+
+# Node modules (installed in container)
+node_modules/
+**/node_modules/
+
+# Logs
+*.log
+logs/
+
+# IDE
+.idea/
+.vscode/
+.DS_Store
+
+# Build artifacts
+build/
+dist/
+*.tmp
+
+# Stego generator (build tool, not needed at runtime)
+**/stego-generator/
+
+# Runtime data (not needed in production image)
+c2-data/
+**/c2-data/
+**/stolen-data/
+
+# Local development files (not needed in production)
+docker-compose.yml
+vulnerable-site/Dockerfile
+vulnerable-site/.dockerignore
+malicious-code/c2-server/Dockerfile

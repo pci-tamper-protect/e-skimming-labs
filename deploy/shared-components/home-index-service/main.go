@@ -249,7 +249,7 @@ func main() {
 			Name:        "Basic Magecart Attack",
 			Description: "Learn the fundamentals of payment card skimming attacks through JavaScript injection. Understand how attackers compromise e-commerce sites, intercept form submissions, and exfiltrate credit card data. Practice detection using browser DevTools and implement basic defensive measures.",
 			Difficulty:  "Beginner",
-			URL:         "/lab1", // Always relative - Traefik routes to lab1 service
+			URL:         "/lab1/", // Always relative - Traefik routes to lab1 service
 			Status:      "Available",
 		},
 		{
@@ -257,7 +257,7 @@ func main() {
 			Name:        "DOM-Based Skimming",
 			Description: "Master advanced DOM manipulation techniques for stealthy payment data capture. Learn real-time field monitoring, dynamic form injection, Shadow DOM abuse, and DOM tree manipulation. Understand how attackers bypass traditional detection methods.",
 			Difficulty:  "Intermediate",
-			URL:         "/lab2", // Always relative - Traefik routes to lab2 service
+			URL:         "/lab2/", // Always relative - Traefik routes to lab2 service
 			Status:      "Available",
 		},
 		{
@@ -265,7 +265,15 @@ func main() {
 			Name:        "Browser Extension Hijacking",
 			Description: "Explore sophisticated browser extension-based attacks that exploit privileged APIs and persistent access. Learn about content script injection, background script persistence, cross-origin communication, and supply chain attacks through malicious extensions.",
 			Difficulty:  "Advanced",
-			URL:         "/lab3", // Always relative - Traefik routes to lab3 service
+			URL:         "/lab3/", // Always relative - Traefik routes to lab3 service
+			Status:      "Available",
+		},
+		{
+			ID:          "lab4-steganography",
+			Name:        "Steganography / Favicon Trojan",
+			Description: "Learn how attackers hide malicious payloads inside innocent-looking images like favicons. Understand steganography techniques, how browsers process image data, and how to detect hidden code in media files.",
+			Difficulty:  "Advanced",
+			URL:         "/lab4/", // Always relative - Traefik routes to lab4 service
 			Status:      "Available",
 		},
 	}
@@ -295,6 +303,8 @@ func main() {
 			homeData.Labs[i].WriteupURL = "/lab-02-writeup"
 		case "lab3-extension-hijacking":
 			homeData.Labs[i].WriteupURL = "/lab-03-writeup"
+		case "lab4-steganography":
+			homeData.Labs[i].WriteupURL = "/lab-04-writeup"
 		}
 	}
 
@@ -311,18 +321,24 @@ func main() {
 		if firebaseAPIKey != "" && strings.HasPrefix(strings.TrimSpace(firebaseAPIKey), "{") {
 			firebaseServiceAccount = firebaseAPIKey
 		} else if enableAuth {
-			// If auth is enabled but no service account found, disable auth
-			log.Printf("⚠️  FIREBASE_SERVICE_ACCOUNT_KEY not found and FIREBASE_API_KEY is not a service account JSON")
-			log.Printf("   Disabling authentication (add FIREBASE_SERVICE_ACCOUNT_KEY to enable)")
-			enableAuth = false
+			// No explicit credentials - proceed with ADC (Application Default Credentials)
+			// On Cloud Run the service account assigned to the revision provides credentials automatically
+			log.Printf("ℹ️  No FIREBASE_SERVICE_ACCOUNT_KEY found - will use Application Default Credentials (ADC)")
 		}
 	} else if strings.HasPrefix(strings.TrimSpace(firebaseServiceAccount), "encrypted:") {
 		// Value is still encrypted (dotenvx decryption failed)
 		log.Printf("⚠️  FIREBASE_SERVICE_ACCOUNT_KEY appears to be encrypted (starts with 'encrypted:')")
-		log.Printf("   This usually means dotenvx decryption failed. Disabling authentication.")
-		log.Printf("   To fix: Ensure DOTENV_PRIVATE_KEY_STG is set correctly when running docker-compose")
-		enableAuth = false
-		firebaseServiceAccount = "" // Clear the encrypted value
+		log.Printf("   Dotenvx decryption failed - falling back to Application Default Credentials (ADC)")
+		log.Printf("   On Cloud Run, ADC uses the service account assigned to the revision automatically")
+		firebaseServiceAccount = "" // Clear the encrypted value, use ADC instead
+	}
+
+	// Safety net: if FIREBASE_API_KEY is still encrypted (dotenvx failed), clear it so
+	// the sign-in page doesn't pass an encrypted string to the Firebase Web SDK.
+	if webAPIKey := os.Getenv("FIREBASE_API_KEY"); strings.HasPrefix(strings.TrimSpace(webAPIKey), "encrypted:") {
+		log.Printf("⚠️  FIREBASE_API_KEY appears to be encrypted - dotenvx decryption may have failed")
+		log.Printf("   Clearing encrypted value; sign-in will not work until FIREBASE_API_KEY is decrypted")
+		os.Setenv("FIREBASE_API_KEY", "") //nolint:errcheck
 	}
 
 	// MainAppURL is now empty (relative paths) - services always use relative URLs
@@ -382,6 +398,9 @@ func main() {
 		serveLabWriteup(w, r, "03-extension-hijacking", homeData, authValidator)
 	})
 
+	mux.HandleFunc("/lab-04-writeup", func(w http.ResponseWriter, r *http.Request) {
+		serveLabWriteup(w, r, "04-steganography-favicon", homeData, authValidator)
+	})
 	// Blog routes
 	mux.HandleFunc("/blog", func(w http.ResponseWriter, r *http.Request) {
 		serveBlogPage(w, r, homeData, authValidator)
@@ -389,7 +408,7 @@ func main() {
 
 	mux.HandleFunc("/blog/understanding-magecart", func(w http.ResponseWriter, r *http.Request) {
 		serveBlogPost(w, r, "understanding-magecart", homeData, authValidator)
-	})
+    })
 
 	mux.HandleFunc("/api/labs", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -594,11 +613,13 @@ func main() {
 		// Get original request URI from Traefik headers (needed for both token extraction and redirect)
 		originalURI := r.Header.Get("X-Forwarded-Uri")
 		if originalURI == "" {
-			// Fallback to request path
-			originalURI = r.URL.Path
-			if r.URL.RawQuery != "" {
-				originalURI += "?" + r.URL.RawQuery
-			}
+			// X-Forwarded-Uri is missing. This can happen when the ForwardAuth loopback request
+			// (localhost:8080 → Traefik → home-index) has the header stripped by Traefik's
+			// entrypoint before it reaches us. Falling back to r.URL.Path would produce
+			// "/api/auth/check" as the redirect target, creating an infinite redirect loop.
+			// Use "/" so the user lands on the home page and can re-navigate to the lab.
+			originalURI = "/"
+			log.Printf("⚠️ X-Forwarded-Uri missing - ForwardAuth header not received. Defaulting redirect target to /")
 		}
 
 		// Check for token in query parameters (check both current URL and forwarded URI)
@@ -1023,6 +1044,8 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
         .lab-card::before {
@@ -1052,6 +1075,7 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
             color: var(--text-secondary);
             margin-bottom: 20px;
             line-height: 1.6;
+            flex: 1;
         }
 
         .lab-meta {
@@ -1091,7 +1115,7 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
         }
 
         .lab-button {
-            display: inline-block;
+            display: block;
             padding: 12px 24px;
             background: var(--gradient-1);
             color: var(--text-primary);
@@ -1101,6 +1125,7 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
             transition: all 0.3s ease;
             width: 100%;
             text-align: center;
+            margin-top: auto;
         }
 
         .lab-button:hover {
@@ -1225,7 +1250,7 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
                     <a href="{{.ThreatModelURL}}" class="nav-tab">Threat Model</a>
                     {{if .AuthEnabled}}
                     <div id="auth-buttons" class="auth-buttons">
-                        <button id="login-btn" class="auth-btn login-btn" style="display: none;">Login</button>
+                        <button id="login-btn" class="auth-btn login-btn">Login</button>
                         <button id="logout-btn" class="auth-btn logout-btn" style="display: none;">Logout</button>
                         <span id="user-email" class="user-email" style="display: none;"></span>
                     </div>
@@ -1369,7 +1394,8 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
 
             if (loginBtn) {
                 loginBtn.addEventListener('click', function() {
-                    const redirectUrl = encodeURIComponent(window.location.href);
+                    // Use path only (not full URL) so post-sign-in redirect doesn't double-concatenate origin
+                    const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
                     // IMPORTANT: Always use relative URL - Traefik handles routing
                     // MainAppURL is empty, so this becomes /sign-in?redirect=...
                     window.location.href = '{{.MainAppURL}}/sign-in?redirect=' + redirectUrl;
@@ -1379,8 +1405,9 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
             if (logoutBtn) {
                 logoutBtn.addEventListener('click', function() {
                     sessionStorage.removeItem('firebase_token');
-                    // Clear cookie
-                    document.cookie = 'firebase_token=; path=/; max-age=0';
+                    // Clear cookie - must include same SameSite attrs used when setting it
+                    document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=None; Secure';
+                    document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=Lax';
                     updateAuthButtons();
                     // Reload to clear any protected content
                     window.location.reload();
@@ -1701,11 +1728,13 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, homeD
 	var labBackURL string
 	switch labID {
 	case "01-basic-magecart":
-		labBackURL = "/lab1"
+		labBackURL = "/lab1/"
 	case "02-dom-skimming":
-		labBackURL = "/lab2"
+		labBackURL = "/lab2/"
 	case "03-extension-hijacking":
-		labBackURL = "/lab3"
+		labBackURL = "/lab3/"
+	case "04-steganography-favicon":
+		labBackURL = "/lab4/"
 	default:
 		labBackURL = "/" // Fallback to home
 	}
@@ -1805,7 +1834,8 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, homeD
 
 				if (loginBtn) {
 					loginBtn.addEventListener('click', function() {
-						const redirectUrl = encodeURIComponent(window.location.href);
+						// Use path only (not full URL) so post-sign-in redirect doesn't double-concatenate origin
+						const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
 						window.location.href = '%s/sign-in?redirect=' + redirectUrl;
 					});
 				}
@@ -1813,6 +1843,9 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, homeD
 				if (logoutBtn) {
 					logoutBtn.addEventListener('click', function() {
 						sessionStorage.removeItem('firebase_token');
+						// Clear cookie - must include same SameSite attrs used when setting it
+						document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=None; Secure';
+						document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=Lax';
 						updateAuthButtons();
 						// Reload to clear any protected content
 						window.location.reload();
@@ -2282,7 +2315,8 @@ func injectAuthButtons(html string, homeData HomePageData, authRequired bool) st
 
 				if (loginBtn) {
 					loginBtn.addEventListener('click', function() {
-						const redirectUrl = encodeURIComponent(window.location.href);
+						// Use path only (not full URL) so post-sign-in redirect doesn't double-concatenate origin
+						const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
 						window.location.href = '%s/sign-in?redirect=' + redirectUrl;
 					});
 				}
@@ -2290,6 +2324,9 @@ func injectAuthButtons(html string, homeData HomePageData, authRequired bool) st
 				if (logoutBtn) {
 					logoutBtn.addEventListener('click', function() {
 						sessionStorage.removeItem('firebase_token');
+						// Clear cookie - must include same SameSite attrs used when setting it
+						document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=None; Secure';
+						document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=Lax';
 						updateAuthButtons();
 						// Reload to clear any protected content
 						window.location.reload();
@@ -2891,7 +2928,8 @@ func serveSignInPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
 
                 // Redirect without token in URL (token is now in cookie)
                 const redirectPath = '%s';
-                const redirectUrl = window.location.origin + redirectPath;
+                // Handle both absolute (https://...) and relative (/path) redirect values
+                const redirectUrl = /^https?:\/\//.test(redirectPath) ? redirectPath : window.location.origin + redirectPath;
                 logInfo('🔐 Redirecting to', { redirectUrl });
                 window.location.href = redirectUrl;
             } catch (error) {
@@ -3009,7 +3047,8 @@ func serveSignInPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
 
                 // Redirect without token in URL (token is now in cookie)
                 const redirectPath = '%s';
-                const redirectUrl = window.location.origin + redirectPath;
+                // Handle both absolute (https://...) and relative (/path) redirect values
+                const redirectUrl = /^https?:\/\//.test(redirectPath) ? redirectPath : window.location.origin + redirectPath;
                 logInfo('🔐 Redirecting to', { redirectUrl });
                 window.location.href = redirectUrl;
             } catch (error) {
@@ -3355,7 +3394,8 @@ func serveSignUpPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
 
                 // Redirect without token in URL (token is now in cookie)
                 const redirectPath = '%s';
-                const redirectUrl = window.location.origin + redirectPath;
+                // Handle both absolute (https://...) and relative (/path) redirect values
+                const redirectUrl = /^https?:\/\//.test(redirectPath) ? redirectPath : window.location.origin + redirectPath;
                 window.location.href = redirectUrl;
             } catch (error) {
                 errorDiv.textContent = error.message || 'Google sign up failed. Please try again.';

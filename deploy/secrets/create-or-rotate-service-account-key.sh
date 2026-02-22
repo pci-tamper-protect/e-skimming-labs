@@ -42,6 +42,7 @@ GENERAL_SCRIPT="${OPS_SECRETS_DIR}/create-service-account-key-and-update-env.sh"
 QUIET=false
 SERVICE_ACCOUNT_EMAIL=""
 ENVIRONMENT=""
+GITHUB_SECRET_NAME=""
 
 for arg in "$@"; do
     if [ "$arg" = "--quiet" ]; then
@@ -50,6 +51,8 @@ for arg in "$@"; do
         SERVICE_ACCOUNT_EMAIL="$arg"
     elif [[ "$arg" =~ ^(stg|prd)$ ]] && [ -z "$ENVIRONMENT" ]; then
         ENVIRONMENT="$arg"
+    elif [[ "$arg" == *"@"* ]] && [ -z "$GITHUB_SECRET_NAME" ]; then
+        GITHUB_SECRET_NAME="$arg"
     fi
 done
 
@@ -195,8 +198,9 @@ if ! gcloud iam service-accounts describe "$SERVICE_ACCOUNT_EMAIL" --project="$P
 fi
 
 # Call the general-purpose script
+
 exec "$GENERAL_SCRIPT" \
     "$SERVICE_ACCOUNT_EMAIL" \
     "$PROJECT_ID" \
-    "$ENV_FILE" \
-    "$ENVIRONMENT"
+    "$ENVIRONMENT" \
+    "$GITHUB_SECRET_NAME"

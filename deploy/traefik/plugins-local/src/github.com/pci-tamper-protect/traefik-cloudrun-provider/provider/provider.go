@@ -137,6 +137,12 @@ func (p *Provider) Stop() error {
 	return nil
 }
 
+// RunOnce discovers services and generates configuration once, without starting a polling goroutine.
+// Use this in daemon mode where the caller manages the polling interval.
+func (p *Provider) RunOnce(configChan chan<- *DynamicConfig) error {
+	return p.updateConfig(configChan)
+}
+
 // pollLoop polls Cloud Run API at configured intervals
 func (p *Provider) pollLoop(configChan chan<- *DynamicConfig) {
 	ticker := time.NewTicker(p.config.PollInterval)
@@ -248,6 +254,17 @@ func (p *Provider) updateConfig(configChan chan<- *DynamicConfig) error {
 				logging.String("project", projectID),
 				logging.Int("enabledCount", traefikEnabledCount),
 				logging.Int("totalServices", len(services)),
+			)
+		}
+	}
+
+	// Fallback: use HOME_INDEX_URL env when discovery didn't find home-index
+	// (e.g. home-index in labs-home-* project, provider SA lacks run.viewer, or service not yet deployed)
+	if homeIndexURL == "" {
+		homeIndexURL = strings.TrimSpace(os.Getenv("HOME_INDEX_URL"))
+		if homeIndexURL != "" {
+			p.logger.Info("Using HOME_INDEX_URL from env (discovery did not find home-index)",
+				logging.String("homeIndexURL", homeIndexURL),
 			)
 		}
 	}

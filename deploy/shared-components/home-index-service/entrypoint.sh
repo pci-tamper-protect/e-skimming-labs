@@ -24,19 +24,32 @@ fi
 
 # Check if dotenvx key is mounted
 if [ -f "/etc/secrets/dotenvx-key" ]; then
-    # Extract the private key for the current environment from the keys file
-    # Use standard format: DOTENV_PRIVATE_KEY_STG or DOTENV_PRIVATE_KEY_PRD
-    if [ "$ENV" = "prd" ]; then
-        DOTENV_PRIVATE_KEY=$(grep -E "^DOTENV_PRIVATE_KEY_PRD=" /etc/secrets/dotenvx-key | cut -d'=' -f2- | tr -d '"' | tr -d "'")
-    else
-        DOTENV_PRIVATE_KEY=$(grep -E "^DOTENV_PRIVATE_KEY_STG=" /etc/secrets/dotenvx-key | cut -d'=' -f2- | tr -d '"' | tr -d "'")
+    # Extract the private key for the current environment from the keys file.
+    # dotenvx matches key names: .env.prd uses DOTENV_PUBLIC_KEY_PRD, so needs DOTENV_PRIVATE_KEY_PRD.
+    # Supports two secret formats:
+    #   1. Standard: DOTENV_PRIVATE_KEY_PRD=<hex>  (preferred, extract value after =)
+    #   2. Bare key: just the raw <hex> key on its own line  (Secret Manager bare-key variant)
+    ENV_UPPER=$(echo "$ENV" | tr '[:lower:]' '[:upper:]')
+    KEY_VAR="DOTENV_PRIVATE_KEY_${ENV_UPPER}"  # e.g. DOTENV_PRIVATE_KEY_PRD or DOTENV_PRIVATE_KEY_STG
+
+    KEY_VALUE=$(grep -E "^${KEY_VAR}=" /etc/secrets/dotenvx-key | cut -d'=' -f2- | tr -d '"' | tr -d "'")
+    if [ -z "$KEY_VALUE" ]; then
+        # No NAME=VALUE line found - try treating the whole file as a bare key
+        RAW=$(tr -d '[:space:]' < /etc/secrets/dotenvx-key)
+        case "$RAW" in
+            *=*) ;; # Has KEY=VALUE pairs but not our key - leave empty
+            *)   KEY_VALUE="$RAW"
+                 echo "🔑 ${KEY_VAR} extracted from bare-key secret format" ;;
+        esac
     fi
 
-    if [ -n "$DOTENV_PRIVATE_KEY" ]; then
-        export DOTENV_PRIVATE_KEY
-        echo "🔑 DOTENV_PRIVATE_KEY loaded from /etc/secrets/dotenvx-key (${#DOTENV_PRIVATE_KEY} chars)"
+    if [ -n "$KEY_VALUE" ]; then
+        # Export with the env-specific name (e.g. DOTENV_PRIVATE_KEY_PRD) so dotenvx
+        # can match it to DOTENV_PUBLIC_KEY_PRD inside .env.prd.
+        export "${KEY_VAR}=${KEY_VALUE}"
+        echo "🔑 ${KEY_VAR} loaded from /etc/secrets/dotenvx-key (${#KEY_VALUE} chars)"
     else
-        echo "⚠️  Warning: Could not extract DOTENV_PRIVATE_KEY from /etc/secrets/dotenvx-key"
+        echo "⚠️  Warning: Could not extract ${KEY_VAR} from /etc/secrets/dotenvx-key"
     fi
 else
     echo "⚠️  Warning: /etc/secrets/dotenvx-key not found, dotenvx may not work"

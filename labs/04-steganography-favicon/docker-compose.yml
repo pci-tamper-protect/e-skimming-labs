@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+
+  # ─── Vulnerable Shop (Steganography Target) ───────────────────────
+  lab4-vulnerable-site:
+    build:
+      context: ./vulnerable-site
+      dockerfile: Dockerfile
+    container_name: lab4-shop
+    ports:
+      - "8084:8080"
+    depends_on:              
+      - lab4-c2-server
+    networks:
+      - lab4-network
+
+  # ─── Lab 4 C2 Server (Steganography-specific) ─────────────────────
+  lab4-c2-server:
+    build:
+      context: ./malicious-code/c2-server   # ✅ CORRECT — Lab 4's own C2
+      dockerfile: Dockerfile
+    container_name: lab4-c2
+    ports:
+      - "3004:3000"          # ✅ CORRECT — container listens on 3000 (ENV PORT=3000 in Dockerfile)
+    volumes:
+      - ./c2-data:/app/stolen-data
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+    networks:
+      - lab4-network
+
+networks:
+  lab4-network:
+    driver: bridge
