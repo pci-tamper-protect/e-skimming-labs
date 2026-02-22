@@ -311,18 +311,24 @@ func main() {
 		if firebaseAPIKey != "" && strings.HasPrefix(strings.TrimSpace(firebaseAPIKey), "{") {
 			firebaseServiceAccount = firebaseAPIKey
 		} else if enableAuth {
-			// If auth is enabled but no service account found, disable auth
-			log.Printf("⚠️  FIREBASE_SERVICE_ACCOUNT_KEY not found and FIREBASE_API_KEY is not a service account JSON")
-			log.Printf("   Disabling authentication (add FIREBASE_SERVICE_ACCOUNT_KEY to enable)")
-			enableAuth = false
+			// No explicit credentials - proceed with ADC (Application Default Credentials)
+			// On Cloud Run the service account assigned to the revision provides credentials automatically
+			log.Printf("ℹ️  No FIREBASE_SERVICE_ACCOUNT_KEY found - will use Application Default Credentials (ADC)")
 		}
 	} else if strings.HasPrefix(strings.TrimSpace(firebaseServiceAccount), "encrypted:") {
 		// Value is still encrypted (dotenvx decryption failed)
 		log.Printf("⚠️  FIREBASE_SERVICE_ACCOUNT_KEY appears to be encrypted (starts with 'encrypted:')")
-		log.Printf("   This usually means dotenvx decryption failed. Disabling authentication.")
-		log.Printf("   To fix: Ensure DOTENV_PRIVATE_KEY_STG is set correctly when running docker-compose")
-		enableAuth = false
-		firebaseServiceAccount = "" // Clear the encrypted value
+		log.Printf("   Dotenvx decryption failed - falling back to Application Default Credentials (ADC)")
+		log.Printf("   On Cloud Run, ADC uses the service account assigned to the revision automatically")
+		firebaseServiceAccount = "" // Clear the encrypted value, use ADC instead
+	}
+
+	// Safety net: if FIREBASE_API_KEY is still encrypted (dotenvx failed), clear it so
+	// the sign-in page doesn't pass an encrypted string to the Firebase Web SDK.
+	if webAPIKey := os.Getenv("FIREBASE_API_KEY"); strings.HasPrefix(strings.TrimSpace(webAPIKey), "encrypted:") {
+		log.Printf("⚠️  FIREBASE_API_KEY appears to be encrypted - dotenvx decryption may have failed")
+		log.Printf("   Clearing encrypted value; sign-in will not work until FIREBASE_API_KEY is decrypted")
+		os.Setenv("FIREBASE_API_KEY", "") //nolint:errcheck
 	}
 
 	// MainAppURL is now empty (relative paths) - services always use relative URLs
@@ -594,11 +600,13 @@ func main() {
 		// Get original request URI from Traefik headers (needed for both token extraction and redirect)
 		originalURI := r.Header.Get("X-Forwarded-Uri")
 		if originalURI == "" {
-			// Fallback to request path
-			originalURI = r.URL.Path
-			if r.URL.RawQuery != "" {
-				originalURI += "?" + r.URL.RawQuery
-			}
+			// X-Forwarded-Uri is missing. This can happen when the ForwardAuth loopback request
+			// (localhost:8080 → Traefik → home-index) has the header stripped by Traefik's
+			// entrypoint before it reaches us. Falling back to r.URL.Path would produce
+			// "/api/auth/check" as the redirect target, creating an infinite redirect loop.
+			// Use "/" so the user lands on the home page and can re-navigate to the lab.
+			originalURI = "/"
+			log.Printf("⚠️ X-Forwarded-Uri missing - ForwardAuth header not received. Defaulting redirect target to /")
 		}
 
 		// Check for token in query parameters (check both current URL and forwarded URI)
@@ -1225,7 +1233,7 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
                     <a href="{{.ThreatModelURL}}" class="nav-tab">Threat Model</a>
                     {{if .AuthEnabled}}
                     <div id="auth-buttons" class="auth-buttons">
-                        <button id="login-btn" class="auth-btn login-btn" style="display: none;">Login</button>
+                        <button id="login-btn" class="auth-btn login-btn">Login</button>
                         <button id="logout-btn" class="auth-btn logout-btn" style="display: none;">Logout</button>
                         <span id="user-email" class="user-email" style="display: none;"></span>
                     </div>
@@ -1369,7 +1377,8 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
 
             if (loginBtn) {
                 loginBtn.addEventListener('click', function() {
-                    const redirectUrl = encodeURIComponent(window.location.href);
+                    // Use path only (not full URL) so post-sign-in redirect doesn't double-concatenate origin
+                    const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
                     // IMPORTANT: Always use relative URL - Traefik handles routing
                     // MainAppURL is empty, so this becomes /sign-in?redirect=...
                     window.location.href = '{{.MainAppURL}}/sign-in?redirect=' + redirectUrl;
@@ -1379,8 +1388,9 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
             if (logoutBtn) {
                 logoutBtn.addEventListener('click', function() {
                     sessionStorage.removeItem('firebase_token');
-                    // Clear cookie
-                    document.cookie = 'firebase_token=; path=/; max-age=0';
+                    // Clear cookie - must include same SameSite attrs used when setting it
+                    document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=None; Secure';
+                    document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=Lax';
                     updateAuthButtons();
                     // Reload to clear any protected content
                     window.location.reload();
@@ -1805,7 +1815,8 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, homeD
 
 				if (loginBtn) {
 					loginBtn.addEventListener('click', function() {
-						const redirectUrl = encodeURIComponent(window.location.href);
+						// Use path only (not full URL) so post-sign-in redirect doesn't double-concatenate origin
+						const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
 						window.location.href = '%s/sign-in?redirect=' + redirectUrl;
 					});
 				}
@@ -1813,6 +1824,9 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, homeD
 				if (logoutBtn) {
 					logoutBtn.addEventListener('click', function() {
 						sessionStorage.removeItem('firebase_token');
+						// Clear cookie - must include same SameSite attrs used when setting it
+						document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=None; Secure';
+						document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=Lax';
 						updateAuthButtons();
 						// Reload to clear any protected content
 						window.location.reload();
@@ -2282,7 +2296,8 @@ func injectAuthButtons(html string, homeData HomePageData, authRequired bool) st
 
 				if (loginBtn) {
 					loginBtn.addEventListener('click', function() {
-						const redirectUrl = encodeURIComponent(window.location.href);
+						// Use path only (not full URL) so post-sign-in redirect doesn't double-concatenate origin
+						const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
 						window.location.href = '%s/sign-in?redirect=' + redirectUrl;
 					});
 				}
@@ -2290,6 +2305,9 @@ func injectAuthButtons(html string, homeData HomePageData, authRequired bool) st
 				if (logoutBtn) {
 					logoutBtn.addEventListener('click', function() {
 						sessionStorage.removeItem('firebase_token');
+						// Clear cookie - must include same SameSite attrs used when setting it
+						document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=None; Secure';
+						document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=Lax';
 						updateAuthButtons();
 						// Reload to clear any protected content
 						window.location.reload();
@@ -2891,7 +2909,8 @@ func serveSignInPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
 
                 // Redirect without token in URL (token is now in cookie)
                 const redirectPath = '%s';
-                const redirectUrl = window.location.origin + redirectPath;
+                // Handle both absolute (https://...) and relative (/path) redirect values
+                const redirectUrl = /^https?:\/\//.test(redirectPath) ? redirectPath : window.location.origin + redirectPath;
                 logInfo('🔐 Redirecting to', { redirectUrl });
                 window.location.href = redirectUrl;
             } catch (error) {
@@ -3009,7 +3028,8 @@ func serveSignInPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
 
                 // Redirect without token in URL (token is now in cookie)
                 const redirectPath = '%s';
-                const redirectUrl = window.location.origin + redirectPath;
+                // Handle both absolute (https://...) and relative (/path) redirect values
+                const redirectUrl = /^https?:\/\//.test(redirectPath) ? redirectPath : window.location.origin + redirectPath;
                 logInfo('🔐 Redirecting to', { redirectUrl });
                 window.location.href = redirectUrl;
             } catch (error) {
@@ -3355,7 +3375,8 @@ func serveSignUpPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
 
                 // Redirect without token in URL (token is now in cookie)
                 const redirectPath = '%s';
-                const redirectUrl = window.location.origin + redirectPath;
+                // Handle both absolute (https://...) and relative (/path) redirect values
+                const redirectUrl = /^https?:\/\//.test(redirectPath) ? redirectPath : window.location.origin + redirectPath;
                 window.location.href = redirectUrl;
             } catch (error) {
                 errorDiv.textContent = error.message || 'Google sign up failed. Please try again.';

@@ -70,12 +70,13 @@ func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 			}
 
 			if !isProtectedPath {
-				// Skip auth for public pages: home, mitre-attack, threat-model
+				// Skip auth for public pages: home, mitre-attack, threat-model, blog
 				// Also skip health check, static assets, and auth API endpoints
 				publicPaths := []string{
 					"/",
 					"/mitre-attack",
 					"/threat-model",
+					"/blog",
 					"/health",
 					"/status",     // Startup status page (public)
 					"/sign-in",    // Sign-in page (public)

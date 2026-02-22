@@ -18,10 +18,12 @@ get_lab_labels() {
       echo "traefik_enable=true,traefik_http_routers_labs-analytics_rule_id=labs-analytics,traefik_http_routers_labs-analytics_priority=500,traefik_http_routers_labs-analytics_entrypoints=web,traefik_http_routers_labs-analytics_middlewares=strip-analytics-prefix-file,traefik_http_services_labs-analytics_lb_port=8080"
       ;;
     lab1-vulnerable-site)
-      echo "traefik_enable=true,traefik_http_routers_lab1-static_rule_id=lab1-static,traefik_http_routers_lab1-static_priority=250,traefik_http_routers_lab1-static_entrypoints=web,traefik_http_routers_lab1-static_middlewares=strip-lab1-prefix-file,traefik_http_routers_lab1-static_service=lab1-vulnerable-site,traefik_http_routers_lab1-main_rule_id=lab1-main,traefik_http_routers_lab1-main_priority=200,traefik_http_routers_lab1-main_entrypoints=web,traefik_http_routers_lab1-main_middlewares=lab1-auth-check-file__strip-lab1-prefix-file,traefik_http_routers_lab1-main_service=lab1-vulnerable-site,traefik_http_services_lab1-vulnerable-site_lb_port=8080"
+      # lab1: no sign-in (PRD)
+      echo "traefik_enable=true,traefik_http_routers_lab1-static_rule_id=lab1-static,traefik_http_routers_lab1-static_priority=250,traefik_http_routers_lab1-static_entrypoints=web,traefik_http_routers_lab1-static_middlewares=strip-lab1-prefix-file,traefik_http_routers_lab1-static_service=lab1-vulnerable-site,traefik_http_routers_lab1-main_rule_id=lab1-main,traefik_http_routers_lab1-main_priority=200,traefik_http_routers_lab1-main_entrypoints=web,traefik_http_routers_lab1-main_middlewares=strip-lab1-prefix-file,traefik_http_routers_lab1-main_service=lab1-vulnerable-site,traefik_http_services_lab1-vulnerable-site_lb_port=8080"
       ;;
     lab1-c2-server)
-      echo "traefik_enable=true,traefik_http_routers_lab1-c2_rule_id=lab1-c2,traefik_http_routers_lab1-c2_priority=300,traefik_http_routers_lab1-c2_entrypoints=web,traefik_http_routers_lab1-c2_middlewares=lab1-auth-check-file__strip-lab1-c2-prefix-file,traefik_http_services_lab1-c2-server_lb_port=8080"
+      # lab1: no sign-in (PRD)
+      echo "traefik_enable=true,traefik_http_routers_lab1-c2_rule_id=lab1-c2,traefik_http_routers_lab1-c2_priority=300,traefik_http_routers_lab1-c2_entrypoints=web,traefik_http_routers_lab1-c2_middlewares=strip-lab1-c2-prefix-file,traefik_http_services_lab1-c2-server_lb_port=8080"
       ;;
     lab2-vulnerable-site)
       echo "traefik_enable=true,traefik_http_routers_lab2-static_rule_id=lab2-static,traefik_http_routers_lab2-static_priority=250,traefik_http_routers_lab2-static_entrypoints=web,traefik_http_routers_lab2-static_middlewares=strip-lab2-prefix-file,traefik_http_routers_lab2-static_service=lab2-vulnerable-site,traefik_http_routers_lab2-main_rule_id=lab2-main,traefik_http_routers_lab2-main_priority=200,traefik_http_routers_lab2-main_entrypoints=web,traefik_http_routers_lab2-main_middlewares=lab2-auth-check-file__strip-lab2-prefix-file,traefik_http_routers_lab2-main_service=lab2-vulnerable-site,traefik_http_services_lab2-vulnerable-site_lb_port=8080"
@@ -36,13 +38,16 @@ get_lab_labels() {
       echo "traefik_enable=true,traefik_http_routers_lab3-extension_rule_id=lab3-extension,traefik_http_routers_lab3-extension_priority=300,traefik_http_routers_lab3-extension_entrypoints=web,traefik_http_routers_lab3-extension_middlewares=lab3-auth-check-file__strip-lab3-extension-prefix-file,traefik_http_services_lab3-extension-server_lb_port=8080"
       ;;
     lab1-event-listener-variant)
-      echo "traefik_enable=true,traefik_http_routers_lab1-event-listener_rule_id=lab1-event-listener,traefik_http_routers_lab1-event-listener_priority=400,traefik_http_routers_lab1-event-listener_entrypoints=web,traefik_http_routers_lab1-event-listener_middlewares=lab1-auth-check-file__strip-lab1-event-listener-prefix-file,traefik_http_services_lab1-event-listener-variant_lb_port=8080"
+      # lab1: no sign-in (PRD)
+      echo "traefik_enable=true,traefik_http_routers_lab1-event-listener_rule_id=lab1-event-listener,traefik_http_routers_lab1-event-listener_priority=400,traefik_http_routers_lab1-event-listener_entrypoints=web,traefik_http_routers_lab1-event-listener_middlewares=strip-lab1-event-listener-prefix-file,traefik_http_services_lab1-event-listener-variant_lb_port=8080"
       ;;
     lab1-obfuscated-variant)
-      echo "traefik_enable=true,traefik_http_routers_lab1-obfuscated_rule_id=lab1-obfuscated,traefik_http_routers_lab1-obfuscated_priority=400,traefik_http_routers_lab1-obfuscated_entrypoints=web,traefik_http_routers_lab1-obfuscated_middlewares=lab1-auth-check-file__strip-lab1-obfuscated-prefix-file,traefik_http_services_lab1-obfuscated-variant_lb_port=8080"
+      # lab1: no sign-in (PRD)
+      echo "traefik_enable=true,traefik_http_routers_lab1-obfuscated_rule_id=lab1-obfuscated,traefik_http_routers_lab1-obfuscated_priority=400,traefik_http_routers_lab1-obfuscated_entrypoints=web,traefik_http_routers_lab1-obfuscated_middlewares=strip-lab1-obfuscated-prefix-file,traefik_http_services_lab1-obfuscated-variant_lb_port=8080"
       ;;
     lab1-websocket-variant)
-      echo "traefik_enable=true,traefik_http_routers_lab1-websocket_rule_id=lab1-websocket,traefik_http_routers_lab1-websocket_priority=400,traefik_http_routers_lab1-websocket_entrypoints=web,traefik_http_routers_lab1-websocket_middlewares=lab1-auth-check-file__strip-lab1-websocket-prefix-file,traefik_http_services_lab1-websocket-variant_lb_port=8080"
+      # lab1: no sign-in (PRD)
+      echo "traefik_enable=true,traefik_http_routers_lab1-websocket_rule_id=lab1-websocket,traefik_http_routers_lab1-websocket_priority=400,traefik_http_routers_lab1-websocket_entrypoints=web,traefik_http_routers_lab1-websocket_middlewares=strip-lab1-websocket-prefix-file,traefik_http_services_lab1-websocket-variant_lb_port=8080"
       ;;
     *)
       echo "traefik_enable=true"
