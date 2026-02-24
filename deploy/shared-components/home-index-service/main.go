@@ -1809,7 +1809,7 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, homeD
 							}
 						} else {
 							// User is not logged in
-							loginBtn.style.display = 'block';
+							loginBtn.style.display = 'inline-block';
 							logoutBtn.style.display = 'none';
 							if (userEmail) {
 								userEmail.style.display = 'none';
@@ -1818,7 +1818,7 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, homeD
 					})
 					.catch(() => {
 						// Not authenticated
-						loginBtn.style.display = 'block';
+						loginBtn.style.display = 'inline-block';
 						logoutBtn.style.display = 'none';
 						if (userEmail) {
 							userEmail.style.display = 'none';
