@@ -1248,6 +1248,7 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
                     <a href="/" class="nav-tab active">Home</a>
                     <a href="{{.MITREURL}}" class="nav-tab">MITRE ATT&CK</a>
                     <a href="{{.ThreatModelURL}}" class="nav-tab">Threat Model</a>
+                    <a href="/blog" class="nav-tab">Blog</a>
                     {{if .AuthEnabled}}
                     <div id="auth-buttons" class="auth-buttons">
                         <button id="login-btn" class="auth-btn login-btn">Login</button>
@@ -1368,7 +1369,7 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
                         }
                     } else {
                         // User is not logged in
-                        loginBtn.style.display = 'block';
+                        loginBtn.style.display = 'inline-block';
                         logoutBtn.style.display = 'none';
                         if (userEmail) {
                             userEmail.style.display = 'none';
@@ -1377,7 +1378,7 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
                 })
                 .catch(() => {
                     // Not authenticated
-                    loginBtn.style.display = 'block';
+                    loginBtn.style.display = 'inline-block';
                     logoutBtn.style.display = 'none';
                     if (userEmail) {
                         userEmail.style.display = 'none';
@@ -2289,7 +2290,7 @@ func injectAuthButtons(html string, homeData HomePageData, authRequired bool) st
 							}
 						} else {
 							// User is not logged in
-							loginBtn.style.display = 'block';
+							loginBtn.style.display = 'inline-block';
 							logoutBtn.style.display = 'none';
 							if (userEmail) {
 								userEmail.style.display = 'none';
@@ -2298,7 +2299,7 @@ func injectAuthButtons(html string, homeData HomePageData, authRequired bool) st
 					})
 					.catch(() => {
 						// Not authenticated
-						loginBtn.style.display = 'block';
+						loginBtn.style.display = 'inline-block';
 						logoutBtn.style.display = 'none';
 						if (userEmail) {
 							userEmail.style.display = 'none';
