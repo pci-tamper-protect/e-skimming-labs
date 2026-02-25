@@ -98,9 +98,15 @@ function saveAttackData(attackType, data){
   let existing = []
 
   if (fs.existsSync(STOLEN_FILE)){
-    existing = JSON.parse(fs.readFileSync(STOLEN_FILE, 'utf8'))
+    try {
+      existing = JSON.parse(fs.readFileSync(STOLEN_FILE, 'utf8'))
+      if (!Array.isArray(existing)) existing = []
+    } catch (e) {
+      logToConsole('warn', 'stolen.json corrupt or invalid, resetting to empty array')
+      existing = []
+    }
   }
-  
+
   existing.push(enrichedData)
 
   fs.writeFileSync(STOLEN_FILE, JSON.stringify(existing, null, 2))
@@ -306,7 +312,7 @@ app.post('/collect', (req, res) => {
     const savedPath = saveAttackData(analysis.attackType, attackData)
 
     // Save analysis
-    const analysisPath = path.join(ANALYSIS_DIR, `analysis_${path.basename(savedPath)}`)
+    const analysisPath = path.join(ANALYSIS_DIR, `analysis_${Date.now()}.json`)
     fs.writeFileSync(analysisPath, JSON.stringify(analysis, null, 2))
 
     // Log high-severity attacks

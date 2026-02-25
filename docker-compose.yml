@@ -18,7 +18,7 @@ services:
       - '8443:443'     # HTTPS entry point (for production-like testing)
       - '8081:8080'    # Traefik dashboard (http://localhost:8081/dashboard/)
     volumes:  # Docker socket for service discovery
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./deploy/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       - ./deploy/traefik/dynamic:/etc/traefik/dynamic:ro
     networks:
@@ -280,7 +280,7 @@ services:
     depends_on:
       - traefik
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     labels:
       - "lab=lab2-dom-skimming"
       - "component=c2-server"

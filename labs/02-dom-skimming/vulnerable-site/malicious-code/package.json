@@ -2,7 +2,7 @@
   "name": "malicious-code",
   "version": "1.0.0",
   "description": "",
-  "main": "c2-server.js",
+  "main": "form-overlay.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

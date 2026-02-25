@@ -159,7 +159,9 @@
       "Bash(git -C /Users/kestenbroughton/projectos/e-skimming-labs show:*)",
       "Bash(./deploy/build-deploy-all.sh:*)",
       "Bash(grep FIREBASE_API_KEY:*)",
-      "Bash(head:*)"
+      "Bash(head:*)",
+      "Bash(docker compose:*)",
+      "mcp__github_prs_issues__get_pr_content"
     ],
     "deny": [],
     "ask": []

