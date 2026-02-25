@@ -322,7 +322,9 @@
             const timestamp = record.serverTimestamp || record.timestamp
 
             // Group by timestamp (within 5 seconds) and metadata URL
-            const sessionKey = `${record.metadata?.url || ''}_${Math.floor(timestamp / 5000)}`
+            const sessionKey = record.metadata?.startTime
+              ? String(record.metadata.startTime)
+              : `${record.metadata?.url || ''}_${Math.floor(timestamp / 5000)}`
 
             if (!groupedRecords.has(sessionKey)) {
               groupedRecords.set(sessionKey, {
@@ -373,7 +375,6 @@
           const statsResponse = await fetch(`${API_BASE}/stats`)
           const stats = await statsResponse.json()
 
-          document.getElementById('totalAttacks').textContent = stats.totalRequests || 0
           document.getElementById('uniqueVictims').textContent = stats.uniqueVictims || 0
 
           if (stats.uptimeHours) {
@@ -385,6 +386,14 @@
           // Load all stolen data (like Lab 1)
           const stolenResponse = await fetch(`${API_BASE}/api/stolen`)
           const allData = await stolenResponse.json()
+
+          // Count unique attack sessions — exclude periodic polling, which fires every 5s and inflates the count
+          const uniqueSessions = new Set(
+            allData
+              .filter(r => r.type !== 'periodic')
+              .map(r => String(r.metadata?.startTime || r.captureId || r.timestamp))
+          )
+          document.getElementById('totalAttacks').textContent = uniqueSessions.size
 
           const recentContainer = document.getElementById('recentData')
 

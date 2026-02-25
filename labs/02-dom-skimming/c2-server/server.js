@@ -109,20 +109,6 @@ function saveAttackData(attackType, data){
 
   return STOLEN_FILE
 }
-  let existing = []
-
-  if (fs.existsSync(STOLEN_FILE)){
-    existing = JSON.parse(fs.readFileSync(STOLEN_FILE, 'utf8'))
-  }
-  
-  existing.push(enrichedData)
-
-  fs.writeFileSync(STOLEN_FILE, JSON.stringify(existing, null, 2))
-
-  logToConsole('info', 'Attack data appended to stolen.json')
-
-  return STOLEN_FILE
-  }
 
 
 function analyzeAttackData(data) {
