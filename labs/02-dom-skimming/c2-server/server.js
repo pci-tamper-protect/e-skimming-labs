@@ -30,6 +30,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 // Data storage
 const DATA_DIR = path.join(__dirname, 'stolen-data')
 const ANALYSIS_DIR = path.join(__dirname, 'analysis')
+const STOLEN_FILE = path.join(DATA_DIR, 'stolen.json')
 
 // Ensure data directories exist
 ;[DATA_DIR, ANALYSIS_DIR].forEach(dir => {
@@ -86,24 +87,35 @@ function generateSessionId() {
   return 'session_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11)
 }
 
-function saveAttackData(attackType, data) {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-  const safeAttackType = sanitizeForFilename(attackType)
-  const filename = `${safeAttackType}_${timestamp}.json`
-  const filepath = path.join(DATA_DIR, filename)
-
+function saveAttackData(attackType, data){
   const enrichedData = {
     ...data,
     serverTimestamp: Date.now(),
     serverTime: new Date().toISOString(),
-    attackType: attackType
+    attackType
   }
 
-  fs.writeFileSync(filepath, JSON.stringify(enrichedData, null, 2))
-  logToConsole('info', `Attack data saved: ${filename}`)
+  let existing = []
 
-  return filepath
+  if (fs.existsSync(STOLEN_FILE)){
+    try {
+      existing = JSON.parse(fs.readFileSync(STOLEN_FILE, 'utf8'))
+      if (!Array.isArray(existing)) existing = []
+    } catch (e) {
+      logToConsole('warn', 'stolen.json corrupt or invalid, resetting to empty array')
+      existing = []
+    }
+  }
+
+  existing.push(enrichedData)
+
+  fs.writeFileSync(STOLEN_FILE, JSON.stringify(existing, null, 2))
+
+  logToConsole('info', 'Attack data appended to stolen.json')
+
+  return STOLEN_FILE
 }
+
 
 function analyzeAttackData(data) {
   const analysis = {
@@ -300,7 +312,7 @@ app.post('/collect', (req, res) => {
     const savedPath = saveAttackData(analysis.attackType, attackData)
 
     // Save analysis
-    const analysisPath = path.join(ANALYSIS_DIR, `analysis_${path.basename(savedPath)}`)
+    const analysisPath = path.join(ANALYSIS_DIR, `analysis_${Date.now()}.json`)
     fs.writeFileSync(analysisPath, JSON.stringify(analysis, null, 2))
 
     // Log high-severity attacks
@@ -347,24 +359,15 @@ app.get('/stats', (req, res) => {
 // Get all stolen data (similar to Lab 1's /api/stolen)
 app.get('/api/stolen', (req, res) => {
   try {
-    const files = fs
-      .readdirSync(DATA_DIR)
-      .filter(file => file.endsWith('.json'))
-      .sort((a, b) => {
-        const statA = fs.statSync(path.join(DATA_DIR, a))
-        const statB = fs.statSync(path.join(DATA_DIR, b))
-        return statB.mtime - statA.mtime
-      })
+    if(!fs.existsSync(STOLEN_FILE)){
+      return res.json([])
+    }
 
-    const stolenRecords = files.map(file => {
-      const filepath = path.join(DATA_DIR, file)
-      return JSON.parse(fs.readFileSync(filepath, 'utf8'))
-    })
-
-    res.json(stolenRecords)
-  } catch (error) {
+    const data = JSON.parse(fs.readFileSync(STOLEN_FILE, 'utf8'))
+    res.json(data)
+  } catch (error){
     logToConsole('error', 'Error fetching stolen data', { error: error.message })
-    res.status(500).json({ error: 'Error fetching data' })
+    res.status(500).json({ error: 'Error fetching data'})
   }
 })
 
