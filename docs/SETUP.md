@@ -219,6 +219,104 @@ For the old port-based setup, use: `docker-compose -f docker-compose.no-traefik.
 ---
 
 ## 🔧 Troubleshooting
+### Traefik Docker Provider Issues on macOS (Apple Silicon)
+
+#### Symptoms
+
+When running the labs on macOS using Docker Desktop (especially on Apple Silicon), Traefik may repeatedly log errors such as:
+
+Failed to retrieve information of the docker client and server host
+
+Common effects include:
+
+- Traefik dashboard showing no services or unhealthy routers
+- 404 errors when accessing lab routes
+- Containers starting successfully but not being discovered by Traefik
+
+---
+
+#### Cause
+
+On macOS, Docker Desktop exposes the Docker socket as a symlink:
+
+```bash
+/var/run/docker.sock -> /Users/<username>/.docker/run/docker.sock
+Additionally, Docker Desktop restricts filesystem mounts unless explicitly allowed via:
+Docker Desktop → Settings → Resources → File Sharing
+```
+
+If these paths are not shared, Traefik cannot communicate with the Docker API even if containers are running.
+Resolution
+
+# 1. Enable Required File Sharing Paths
+
+```bash
+In Docker Desktop, add:
+/var
+/var/run
+/var/run/docker.sock
+/Users/<your-username>/.docker/run
+Apply changes and restart Docker Desktop.
+```
+
+# 2. Ensure Docker Socket Is Mounted in docker-compose.yml
+The Traefik service should mount the Docker socket:
+```
+traefik:
+  image: traefik:v2.11   # alter version if necessary
+  volumes:
+    - /var/run/docker.sock:/var/run/docker.sock:ro
+    - ./deploy/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+    - ./deploy/traefik/dynamic:/etc/traefik/dynamic:ro
+```
+
+
+⚠️ Note: The image: traefik:v2.11 may need to be changed to a different version (e.g., v2.10, v2.12, or v2.9) if compatibility issues persist with your Docker Desktop version. After changing the image, rebuild with:
+```
+docker compose down
+docker compose pull
+docker compose up --build
+```
+On some macOS setups, mounting the symlink target directly may also be required:
+```
+- /Users/<your-username>/.docker/run/docker.sock:/var/run/docker.sock
+```
+
+# 3. Verify Socket Access Inside the Traefik Container
+Run:
+```
+docker exec -it e-skimming-labs-traefik ls -la /var/run/docker.sock
+Expected output:
+srw-rw---- 1 root root /var/run/docker.sock
+```
+This confirms Traefik can communicate with the Docker daemon.
+
+# 4. Confirm Docker Provider Configuration
+Your static Traefik configuration should include the Docker provider:
+```
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: e-skimming-labs-network
+    watch: true
+```
+
+Traefik will only route containers labeled with traefik.enable=true and that pass their health checks.
+Result
+
+After fixing file sharing permissions, mounting the correct Docker socket, and verifying the provider configuration:
+Traefik connects successfully to Docker
+
+Services dynamically register via labels
+All routers appear healthy in the Traefik dashboard
+Lab routes function correctly without 404 errors
+Notes
+
+This issue is specific to macOS Docker Desktop due to socket symlinking and filesystem security
+Linux environments typically do not encounter this problem
+Disabling the Docker provider is not required once socket access is configured correctly
+Always try different Traefik image versions if socket errors or API compatibility issues persist
 
 ### Port Already in Use
 
