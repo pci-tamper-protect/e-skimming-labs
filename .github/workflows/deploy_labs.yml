@@ -1428,19 +1428,16 @@ jobs:
         run: |
           ENV="${{ needs.setup.outputs.environment }}"
 
-          # For stg: fetch HOME_INDEX_URL so entrypoint writes ForwardAuth middlewares (lab routes require login)
-          # Labs deploy SA needs roles/run.viewer on labs-home-* (run: ./deploy/traefik/APPLY_PERMISSIONS.sh stg)
-          HOME_INDEX_URL=""
-          if [[ "$ENV" == "stg" ]]; then
-            HOME_INDEX_URL=$(gcloud run services describe home-index-${{ needs.setup.outputs.environment }} \
-              --region=${{ env.LABS_GAR_LOCATION }} \
-              --project=${{ env.HOME_PROJECT_ID }} \
-              --format='value(status.url)' 2>/dev/null || echo "")
-            if [[ -n "$HOME_INDEX_URL" ]]; then
-              echo "✅ HOME_INDEX_URL set for lab auth: $HOME_INDEX_URL"
-            else
-              echo "⚠️ Could not get home-index URL; run ./deploy/traefik/APPLY_PERMISSIONS.sh stg to grant Labs SA run.viewer on Home project"
-            fi
+          # Fetch HOME_INDEX_URL so entrypoint writes ForwardAuth middlewares (lab routes require login)
+          # Labs deploy SA needs roles/run.viewer on labs-home-* (run: ./deploy/traefik/APPLY_PERMISSIONS.sh <env>)
+          HOME_INDEX_URL=$(gcloud run services describe home-index-${{ needs.setup.outputs.environment }} \
+            --region=${{ env.LABS_GAR_LOCATION }} \
+            --project=${{ env.HOME_PROJECT_ID }} \
+            --format='value(status.url)' 2>/dev/null || echo "")
+          if [[ -n "$HOME_INDEX_URL" ]]; then
+            echo "✅ HOME_INDEX_URL set for lab auth: $HOME_INDEX_URL"
+          else
+            echo "⚠️ Could not get home-index URL; run ./deploy/traefik/APPLY_PERMISSIONS.sh $ENV to grant Labs SA run.viewer on Home project"
           fi
           ENV_VARS="ENVIRONMENT=${{ needs.setup.outputs.environment }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},USER_AUTH_ENABLED=true"
           if [[ -n "$HOME_INDEX_URL" ]]; then

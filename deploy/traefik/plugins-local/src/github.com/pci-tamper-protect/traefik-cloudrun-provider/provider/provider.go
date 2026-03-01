@@ -19,10 +19,6 @@ type Config struct {
 	Region       string        // GCP region (e.g., "us-central1")
 	PollInterval time.Duration // How often to poll Cloud Run API
 
-	// RuleMap maps rule IDs to Traefik rule expressions.
-	// Populated from plugin config (traefik.cloudrun.yml).
-	RuleMap map[string]string
-
 	// Optional: Eventarc configuration (future)
 	EventarcEnabled bool
 	EventarcTopic   string
@@ -42,6 +38,27 @@ type Provider struct {
 
 // New creates a new Cloud Run provider
 func New(config *Config) (*Provider, error) {
+	p, err := newProvider(config)
+	if err != nil {
+		return nil, err
+	}
+
+	// Initialize Cloud Run client — requires GCP credentials.
+	ctx := context.Background()
+	runService, err := run.NewService(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Cloud Run service: %w", err)
+	}
+	p.logger.Debug("Cloud Run API client initialized")
+	p.runService = runService
+
+	return p, nil
+}
+
+// newProvider builds a Provider without initializing the Cloud Run API client.
+// Used by New (which adds the real client) and by tests that don't exercise
+// service discovery and therefore don't need GCP credentials.
+func newProvider(config *Config) (*Provider, error) {
 	if config == nil {
 		return nil, fmt.Errorf("config cannot be nil")
 	}
@@ -55,11 +72,6 @@ func New(config *Config) (*Provider, error) {
 	}
 	if config.PollInterval == 0 {
 		config.PollInterval = 30 * time.Second
-	}
-
-	// Initialize ruleMap from config if provided
-	if len(config.RuleMap) > 0 {
-		SetRuleMap(config.RuleMap)
 	}
 
 	// Setup logger
@@ -89,15 +101,6 @@ func New(config *Config) (*Provider, error) {
 		logging.Duration("pollInterval", config.PollInterval),
 	)
 
-	// Initialize Cloud Run client
-	ctx := context.Background()
-	runService, err := run.NewService(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Cloud Run service: %w", err)
-	}
-
-	logger.Debug("Cloud Run API client initialized")
-
 	tokenManager := gcp.NewTokenManager()
 	if tokenManager.IsDevMode() {
 		logger.Warn("Running in development mode - will use ADC for tokens if metadata server unavailable")
@@ -105,7 +108,6 @@ func New(config *Config) (*Provider, error) {
 
 	return &Provider{
 		config:       config,
-		runService:   runService,
 		tokenManager: tokenManager,
 		logger:       logger,
 		stopChan:     make(chan struct{}),
@@ -166,6 +168,8 @@ func (p *Provider) pollLoop(configChan chan<- *DynamicConfig) {
 }
 
 // updateConfig discovers services and generates Traefik configuration
+//
+//nolint:gocyclo
 func (p *Provider) updateConfig(configChan chan<- *DynamicConfig) error {
 	startTime := time.Now()
 	p.logger.Info("Starting service discovery...",
@@ -174,7 +178,7 @@ func (p *Provider) updateConfig(configChan chan<- *DynamicConfig) error {
 	config := NewDynamicConfig()
 
 	totalServices := 0
-	
+
 	// Track home-index URL for user auth middleware generation
 	var homeIndexURL string
 
@@ -206,7 +210,7 @@ func (p *Provider) updateConfig(configChan chan<- *DynamicConfig) error {
 		traefikEnabledCount := 0
 		for _, service := range services {
 			// Check if service has traefik_enable=true label
-			if enabled, ok := service.Labels["traefik_enable"]; ok && enabled == "true" {
+			if enabled, ok := service.Labels["traefik_enable"]; ok && enabled == labelValueTrue {
 				traefikEnabledCount++
 				p.logger.Info("Processing Traefik-enabled service",
 					logging.GetCodeField(logging.CodeServiceProcessingStarted),
@@ -226,7 +230,7 @@ func (p *Provider) updateConfig(configChan chan<- *DynamicConfig) error {
 					logging.GetCodeField(logging.CodeServiceProcessingSuccess),
 					logging.String("service", service.Name),
 				)
-				
+
 				// Track home-index URL for user auth middleware
 				if strings.Contains(service.Name, "home-index") && service.URL != "" {
 					homeIndexURL = service.URL
@@ -241,7 +245,7 @@ func (p *Provider) updateConfig(configChan chan<- *DynamicConfig) error {
 				)
 			}
 		}
-		
+
 		if traefikEnabledCount == 0 {
 			p.logger.Warn("No Traefik-enabled services found in project",
 				logging.GetCodeField(logging.CodeServiceDiscoveryNoServices),
@@ -269,6 +273,49 @@ func (p *Provider) updateConfig(configChan chan<- *DynamicConfig) error {
 		}
 	}
 
+	// When using HOME_INDEX_URL fallback, add home-index service and routers if not already discovered
+	// Without this, routes.yml would have no route for "/" and labs.pcioasis.com would return 404
+	if homeIndexURL != "" {
+		if _, hasService := config.HTTP.Services["home-index"]; !hasService {
+			p.logger.Info("Adding home-index service and routers from HOME_INDEX_URL (not discovered from Cloud Run)")
+			serviceToken, err := p.tokenManager.GetToken(homeIndexURL)
+			if err != nil {
+				p.logger.Warn("Failed to get token for HOME_INDEX_URL fallback",
+					logging.String("homeIndexURL", homeIndexURL),
+					logging.Error(err),
+				)
+			}
+			if serviceToken != "" {
+				config.AddAuthMiddleware("home-index-auth", serviceToken)
+			}
+			routerMiddlewares := []string{"forwarded-headers@file"}
+			if serviceToken != "" {
+				routerMiddlewares = append([]string{"home-index-auth"}, routerMiddlewares...)
+			}
+			routerMiddlewares = append(routerMiddlewares, "retry-cold-start@file")
+			config.AddService("home-index", ServiceConfig{
+				LoadBalancer: LoadBalancerConfig{
+					Servers:        []ServerConfig{{URL: homeIndexURL}},
+					PassHostHeader: false,
+				},
+			})
+			config.AddRouter("home-index", RouterConfig{
+				Rule:        "PathPrefix(`/`)",
+				Service:     "home-index",
+				Priority:    1,
+				EntryPoints: []string{"web"},
+				Middlewares: routerMiddlewares,
+			})
+			config.AddRouter("home-index-signin", RouterConfig{
+				Rule:        "Path(`/sign-in`) || Path(`/sign-up`)",
+				Service:     "home-index",
+				Priority:    100,
+				EntryPoints: []string{"web"},
+				Middlewares: []string{"signin-headers@file", "forwarded-headers@file", "retry-cold-start@file"},
+			})
+		}
+	}
+
 	// Note: Common middlewares like forwarded-headers are defined in routes.yml
 	// and loaded via the file provider, since dynamic.Headers doesn't support
 	// forwarded headers configuration. The file provider is still enabled for
@@ -276,7 +323,7 @@ func (p *Provider) updateConfig(configChan chan<- *DynamicConfig) error {
 
 	// Generate user auth middlewares if USER_AUTH_ENABLED is true
 	// These forwardAuth middlewares call home-index /api/auth/check for JWT validation
-	userAuthEnabled := os.Getenv("USER_AUTH_ENABLED") == "true"
+	userAuthEnabled := os.Getenv("USER_AUTH_ENABLED") == labelValueTrue
 	if userAuthEnabled && homeIndexURL != "" {
 		p.logger.Info("USER_AUTH_ENABLED=true, generating forwardAuth middlewares",
 			logging.String("homeIndexURL", homeIndexURL),
@@ -317,6 +364,8 @@ func (p *Provider) updateConfig(configChan chan<- *DynamicConfig) error {
 }
 
 // processService processes a single Cloud Run service and adds it to the configuration
+//
+//nolint:gocyclo
 func (p *Provider) processService(service CloudRunService, config *DynamicConfig) error {
 	p.logger.Info("Processing service",
 		logging.GetCodeField(logging.CodeServiceProcessingStarted),
@@ -349,7 +398,7 @@ func (p *Provider) processService(service CloudRunService, config *DynamicConfig
 			break
 		}
 	}
-	
+
 	// Set service name on routers that don't have it explicitly set
 	// This ensures all routers point to the correct service
 	// Note: Cannot directly assign to struct field in map - must get, modify, and put back
@@ -367,7 +416,7 @@ func (p *Provider) processService(service CloudRunService, config *DynamicConfig
 		logging.String("service", service.Name),
 		logging.String("url", service.URL),
 	)
-	
+
 	serviceToken, err := p.tokenManager.GetToken(service.URL)
 	if err != nil {
 		p.logger.Error("Failed to fetch identity token for service",
@@ -431,9 +480,9 @@ func (p *Provider) processService(service CloudRunService, config *DynamicConfig
 	// - When false (default): Skip auth-check middlewares (no user auth required)
 	// - When true: Include auth-check middlewares (user must be authenticated)
 	// Note: SKIP_AUTH_CHECK is deprecated, use USER_AUTH_ENABLED=false instead
-	userAuthEnabled := os.Getenv("USER_AUTH_ENABLED") == "true"
+	userAuthEnabled := os.Getenv("USER_AUTH_ENABLED") == labelValueTrue
 	skipAuthCheck := os.Getenv("SKIP_AUTH_CHECK") == "true" || !userAuthEnabled
-	
+
 	for routerName, routerConfig := range routerConfigs {
 		// Filter out auth-check middlewares if user auth is disabled
 		// These middlewares use forwardAuth which requires home-index service
@@ -454,7 +503,7 @@ func (p *Provider) processService(service CloudRunService, config *DynamicConfig
 		// Auto-inject strip-prefix middleware for lab routes if not already present
 		// This ensures /lab1 requests get their prefix stripped before reaching the backend
 		// Lab services expect requests at / (root), not /lab1
-		stripPrefixMiddleware := getStripPrefixMiddleware(routerName)
+		stripPrefixMiddleware := getStripPrefixMiddleware(routerName, routerConfig.Rule)
 		if stripPrefixMiddleware != "" {
 			hasStripPrefix := false
 			for _, mw := range routerConfig.Middlewares {
@@ -471,7 +520,7 @@ func (p *Provider) processService(service CloudRunService, config *DynamicConfig
 					logging.String("middleware", stripPrefixMiddleware))
 			}
 		}
-		
+
 		// Add service auth middleware if it was created and not already present
 		// Note: Middleware order doesn't matter for header conflicts since we use
 		// X-Serverless-Authorization (doesn't conflict with user's Authorization header)
@@ -508,7 +557,7 @@ func (p *Provider) processService(service CloudRunService, config *DynamicConfig
 		if middlewareList == "" {
 			middlewareList = "none"
 		}
-		
+
 		// Check if service auth middleware is present for better debugging
 		hasAuthMw := false
 		for _, mw := range routerConfig.Middlewares {
@@ -517,7 +566,7 @@ func (p *Provider) processService(service CloudRunService, config *DynamicConfig
 				break
 			}
 		}
-		
+
 		p.logger.Info("Router configured",
 			logging.GetCodeField(logging.CodeRouterConfigured),
 			logging.String("router", routerName),
@@ -557,9 +606,9 @@ func (p *Provider) processService(service CloudRunService, config *DynamicConfig
 // This function automatically injects strip-prefix middlewares for lab routes
 // because lab services expect requests at / (root), not /labN.
 // The middlewares must be pre-defined in the static routes.yml file.
-func getStripPrefixMiddleware(routerName string) string {
+func getStripPrefixMiddleware(routerName, _ string) string {
 	// Map of router name patterns to their strip-prefix middleware
-	// These middlewares are defined in deploy/traefik/dynamic/routes.yml
+	// These middlewares are defined in e-skimming-labs/deploy/traefik/dynamic/routes.yml
 	stripPrefixMap := map[string]string{
 		// Lab 1 routes
 		"lab1":        "strip-lab1-prefix@file",
@@ -571,10 +620,15 @@ func getStripPrefixMiddleware(routerName string) string {
 		"lab2-static": "strip-lab2-prefix@file",
 		"lab2-c2":     "strip-lab2-c2-prefix@file",
 		// Lab 3 routes
-		"lab3":        "strip-lab3-prefix@file",
-		"lab3-main":   "strip-lab3-prefix@file",
-		"lab3-static": "strip-lab3-prefix@file",
+		"lab3":           "strip-lab3-prefix@file",
+		"lab3-main":      "strip-lab3-prefix@file",
+		"lab3-static":    "strip-lab3-prefix@file",
 		"lab3-extension": "strip-lab3-extension-prefix@file",
+		// Lab 4 routes
+		"lab4":        "strip-lab4-prefix@file",
+		"lab4-main":   "strip-lab4-prefix@file",
+		"lab4-static": "strip-lab4-prefix@file",
+		"lab4-c2":     "strip-lab4-c2-prefix@file",
 		// API routes
 		"home-seo":       "strip-seo-prefix@file",
 		"labs-analytics": "strip-analytics-prefix@file",

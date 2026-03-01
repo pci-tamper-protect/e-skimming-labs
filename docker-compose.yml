@@ -181,19 +181,25 @@ services:
       - "lab=lab1-basic-magecart"
       - "component=vulnerable-site"
       - "traefik.enable=true"
+      # Health check router (no auth) - warms container on home-page prefetch
+      - "traefik.http.routers.lab1-health.rule=Path(`/lab1/health`)"
+      - "traefik.http.routers.lab1-health.priority=400"
+      - "traefik.http.routers.lab1-health.entrypoints=web"
+      - "traefik.http.routers.lab1-health.middlewares=strip-lab1-prefix@file"
+      - "traefik.http.routers.lab1-health.service=lab1-vulnerable-site"
       # Static files router (no auth, higher priority) - matches common static paths
       - "traefik.http.routers.lab1-static.rule=PathPrefix(`/lab1/css/`) || PathPrefix(`/lab1/js/`) || PathPrefix(`/lab1/images/`) || PathPrefix(`/lab1/img/`) || PathPrefix(`/lab1/static/`) || PathPrefix(`/lab1/assets/`)"
       - "traefik.http.routers.lab1-static.priority=250"
       - "traefik.http.routers.lab1-static.entrypoints=web"
       - "traefik.http.routers.lab1-static.middlewares=strip-lab1-prefix@file"
-      - "traefik.http.routers.lab1-static.service=lab1"
+      - "traefik.http.routers.lab1-static.service=lab1-vulnerable-site"
       # Main router (with auth, lower priority)
       - "traefik.http.routers.lab1.rule=PathPrefix(`/lab1`)"
       - "traefik.http.routers.lab1.priority=200"
       - "traefik.http.routers.lab1.entrypoints=web"
       - "traefik.http.routers.lab1.middlewares=lab1-auth-check@file,strip-lab1-prefix@file"
-      - "traefik.http.routers.lab1.service=lab1"
-      - "traefik.http.services.lab1.loadbalancer.server.port=80"
+      - "traefik.http.routers.lab1.service=lab1-vulnerable-site"
+      - "traefik.http.services.lab1-vulnerable-site.loadbalancer.server.port=80"
 
   # Lab 1 - C2 Server (Data Collection)
   lab1-c2-server:
@@ -246,6 +252,12 @@ services:
       - "lab=lab2-dom-skimming"
       - "component=vulnerable-site"
       - "traefik.enable=true"
+      # Health check router (no auth) - warms container on home-page prefetch
+      - "traefik.http.routers.lab2-health.rule=Path(`/lab2/health`)"
+      - "traefik.http.routers.lab2-health.priority=400"
+      - "traefik.http.routers.lab2-health.entrypoints=web"
+      - "traefik.http.routers.lab2-health.middlewares=strip-lab2-prefix@file"
+      - "traefik.http.routers.lab2-health.service=lab2-vulnerable-site"
       # Static files router (no auth, higher priority) - matches common static paths
       - "traefik.http.routers.lab2-static.rule=PathPrefix(`/lab2/css/`) || PathPrefix(`/lab2/js/`) || PathPrefix(`/lab2/images/`) || PathPrefix(`/lab2/img/`) || PathPrefix(`/lab2/static/`) || PathPrefix(`/lab2/assets/`)"
       - "traefik.http.routers.lab2-static.priority=250"
@@ -322,6 +334,12 @@ services:
       - "lab=lab3-extension-hijacking"
       - "component=vulnerable-site"
       - "traefik.enable=true"
+      # Health check router (no auth) - warms container on home-page prefetch
+      - "traefik.http.routers.lab3-health.rule=Path(`/lab3/health`)"
+      - "traefik.http.routers.lab3-health.priority=400"
+      - "traefik.http.routers.lab3-health.entrypoints=web"
+      - "traefik.http.routers.lab3-health.middlewares=strip-lab3-prefix@file"
+      - "traefik.http.routers.lab3-health.service=lab3-vulnerable-site"
       # Static files router (no auth, higher priority) - matches common static paths
       - "traefik.http.routers.lab3-static.rule=PathPrefix(`/lab3/css/`) || PathPrefix(`/lab3/js/`) || PathPrefix(`/lab3/images/`) || PathPrefix(`/lab3/img/`) || PathPrefix(`/lab3/static/`) || PathPrefix(`/lab3/assets/`)"
       - "traefik.http.routers.lab3-static.priority=250"
@@ -473,6 +491,12 @@ services:
       - "component=vulnerable-site"
       - "traefik.enable=true"
       # Static files
+      # Health check router (no auth) - warms container on home-page prefetch
+      - "traefik.http.routers.lab4-health.rule=Path(`/lab4/health`)"
+      - "traefik.http.routers.lab4-health.priority=400"
+      - "traefik.http.routers.lab4-health.entrypoints=web"
+      - "traefik.http.routers.lab4-health.middlewares=strip-lab4-prefix@file"
+      - "traefik.http.routers.lab4-health.service=lab4-vulnerable-site"
       - "traefik.http.routers.lab4-static.rule=PathPrefix(`/lab4/css/`) || PathPrefix(`/lab4/js/`) || PathPrefix(`/lab4/images/`) || PathPrefix(`/lab4/img/`) || PathPrefix(`/lab4/static/`) || PathPrefix(`/lab4/assets/`)"
       - "traefik.http.routers.lab4-static.priority=250"
       - "traefik.http.routers.lab4-static.entrypoints=web"

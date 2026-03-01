@@ -818,6 +818,12 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
     <meta name="keywords" content="e-skimming, cybersecurity, training, labs, payment security">
     <link rel="canonical" href="{{.Scheme}}://{{.Domain}}/">
 
+    <!-- Prefetch lab health endpoints to pre-warm backends (no auth required) -->
+    <link rel="prefetch" href="/lab1/health">
+    <link rel="prefetch" href="/lab2/health">
+    <link rel="prefetch" href="/lab3/health">
+    <link rel="prefetch" href="/lab4/health">
+
     <!-- Open Graph -->
     <meta property="og:title" content="E-Skimming Labs - Interactive Training Platform">
     <meta property="og:description" content="Interactive e-skimming attack labs for cybersecurity training and awareness">

@@ -161,7 +161,9 @@
       "Bash(grep FIREBASE_API_KEY:*)",
       "Bash(head:*)",
       "Bash(docker compose:*)",
-      "mcp__github_prs_issues__get_pr_content"
+      "mcp__github_prs_issues__get_pr_content",
+      "Bash(gh run:*)",
+      "Bash(do:*)"
     ],
     "deny": [],
     "ask": []
