@@ -1068,17 +1068,25 @@ jobs:
           # Source generated Cloud Run labels (from docker-compose.yml)
           source deploy/traefik/lab-labels.sh
 
-          # Map GHA matrix name → compose service name
+          # Map GHA matrix name → compose service names.
+          # Each lab is a single container (nginx + C2 server), so we combine
+          # labels from both the vulnerable-site and C2 server compose services.
           case "${{ matrix.lab }}" in
-            01-basic-magecart) COMPOSE_SVC="lab1-vulnerable-site" ;;
-            02-dom-skimming) COMPOSE_SVC="lab2-vulnerable-site" ;;
-            03-extension-hijacking) COMPOSE_SVC="lab3-vulnerable-site" ;;
-            04-steganography-favicon) COMPOSE_SVC="lab4-vulnerable-site" ;;
-            *) COMPOSE_SVC="" ;;
+            01-basic-magecart)  COMPOSE_SVC="lab1-vulnerable-site" ; COMPOSE_SVC2="lab1-c2-server" ;;
+            02-dom-skimming)    COMPOSE_SVC="lab2-vulnerable-site" ; COMPOSE_SVC2="lab2-c2-server" ;;
+            03-extension-hijacking) COMPOSE_SVC="lab3-vulnerable-site" ; COMPOSE_SVC2="lab3-extension-server" ;;
+            04-steganography-favicon) COMPOSE_SVC="lab4-vulnerable-site" ; COMPOSE_SVC2="lab4-c2-server" ;;
+            *) COMPOSE_SVC="" ; COMPOSE_SVC2="" ;;
           esac
 
           if [[ -n "$COMPOSE_SVC" ]]; then
             TRAEFIK_LABELS=$(get_lab_labels "$COMPOSE_SVC" 2>/dev/null || echo "traefik_enable=true")
+            # Append C2 server labels (strip duplicate traefik_enable=true)
+            if [[ -n "$COMPOSE_SVC2" ]]; then
+              LABELS2=$(get_lab_labels "$COMPOSE_SVC2" 2>/dev/null || echo "")
+              LABELS2_ONLY="${LABELS2#traefik_enable=true,}"
+              [[ -n "$LABELS2_ONLY" ]] && TRAEFIK_LABELS="${TRAEFIK_LABELS},${LABELS2_ONLY}"
+            fi
           else
             TRAEFIK_LABELS="traefik_enable=true"
           fi

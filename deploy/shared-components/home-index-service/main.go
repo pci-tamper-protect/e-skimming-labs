@@ -356,7 +356,10 @@ func main() {
 
 	authValidator, err := auth.NewTokenValidator(authConfig)
 	if err != nil {
-		log.Fatalf("Failed to initialize auth validator: %v", err)
+		log.Printf("⚠️  WARNING: Failed to initialize auth validator: %v", err)
+		log.Printf("   Auth will be disabled. Set ENABLE_AUTH=false to suppress this warning.")
+		disabledConfig := auth.Config{Enabled: false}
+		authValidator, _ = auth.NewTokenValidator(disabledConfig)
 	}
 
 	// Add auth info to home page data
@@ -3511,7 +3514,7 @@ func checkServiceHealth(environment string) ([]ServiceStatus, bool, bool) {
 					// Don't block on Analytics service
 				}
 
-				if serviceMap["lab1@docker"] == "up" {
+				if serviceMap["lab1-vulnerable-site@docker"] == "up" {
 					services[4].Status = "up"
 				} else {
 					services[4].Status = "down"

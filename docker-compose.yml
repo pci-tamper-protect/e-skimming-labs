@@ -157,22 +157,16 @@ services:
   # LAB 1: BASIC MAGECART ATTACK
   # =============================================================================
 
-  # Lab 1 - Vulnerable E-commerce Site
+  # Lab 1 - nginx only (C2 collection moved to shared-c2 service)
   lab1-vulnerable-site:
-    build: ./labs/01-basic-magecart/vulnerable-site
+    build: ./labs/01-basic-magecart
     container_name: lab1-techgear-store
     networks:
       - labs-network
-    environment:
-      - NGINX_HOST=localhost
-      - NGINX_PORT=80
-      - SKIMMER_VARIANT=base
-    volumes:
-      - ./labs/01-basic-magecart/vulnerable-site:/usr/share/nginx/html:ro
     depends_on:
       - traefik
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:80/']
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:8080/health']
       interval: 10s
       timeout: 3s
       retries: 3
@@ -199,47 +193,15 @@ services:
       - "traefik.http.routers.lab1.entrypoints=web"
       - "traefik.http.routers.lab1.middlewares=lab1-auth-check@file,strip-lab1-prefix@file"
       - "traefik.http.routers.lab1.service=lab1-vulnerable-site"
-      - "traefik.http.services.lab1-vulnerable-site.loadbalancer.server.port=80"
-
-  # Lab 1 - C2 Server (Data Collection)
-  lab1-c2-server:
-    build: ./labs/01-basic-magecart/malicious-code/c2-server
-    container_name: lab1-attacker-c2
-    networks:
-      - labs-network
-    volumes:
-      - ./labs/01-basic-magecart/malicious-code/c2-server/stolen-data:/app/stolen-data
-    environment:
-      - NODE_ENV=development
-      - PORT=3000
-    depends_on:
-      - traefik
-    labels:
-      - "lab=lab1-basic-magecart"
-      - "component=c2-server"
-      - "traefik.enable=true"
-      # Collect endpoint - no auth required (skimmer needs to POST data)
-      # Use exact Path match to prevent bypassing auth via /lab1/c2/collect-admin etc.
-      - "traefik.http.routers.lab1-c2-collect.rule=Path(`/lab1/c2/collect`)"
-      - "traefik.http.routers.lab1-c2-collect.priority=350"
-      - "traefik.http.routers.lab1-c2-collect.entrypoints=web"
-      - "traefik.http.routers.lab1-c2-collect.middlewares=strip-lab1-c2-prefix@file"
-      - "traefik.http.routers.lab1-c2-collect.service=lab1-c2-server"
-      # Dashboard and other C2 routes - with auth
-      - "traefik.http.routers.lab1-c2.rule=PathPrefix(`/lab1/c2`)"
-      - "traefik.http.routers.lab1-c2.priority=300"
-      - "traefik.http.routers.lab1-c2.entrypoints=web"
-      - "traefik.http.routers.lab1-c2.middlewares=lab1-auth-check@file,strip-lab1-c2-prefix@file"
-      - "traefik.http.routers.lab1-c2.service=lab1-c2-server"
-      - "traefik.http.services.lab1-c2-server.loadbalancer.server.port=3000"
+      - "traefik.http.services.lab1-vulnerable-site.loadbalancer.server.port=8080"
 
   # =============================================================================
   # LAB 2: DOM-BASED SKIMMING
   # =============================================================================
 
-  # Lab 2 - Vulnerable Banking Site
+  # Lab 2 - nginx only (C2 collection moved to shared-c2 service)
   lab2-vulnerable-site:
-    build: ./labs/02-dom-skimming/vulnerable-site
+    build: ./labs/02-dom-skimming
     container_name: lab2-securebank
     environment:
       - LAB2_VARIANT=${LAB2_VARIANT:-}
@@ -248,6 +210,12 @@ services:
       - labs-network
     depends_on:
       - traefik
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:8080/health']
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
     labels:
       - "lab=lab2-dom-skimming"
       - "component=vulnerable-site"
@@ -264,7 +232,7 @@ services:
       - "traefik.http.routers.lab2-static.entrypoints=web"
       - "traefik.http.routers.lab2-static.middlewares=strip-lab2-prefix@file"
       - "traefik.http.routers.lab2-static.service=lab2-vulnerable-site"
-      # Malicious JS (added)
+      # Malicious JS (no auth)
       - "traefik.http.routers.lab2-malicious.rule=PathPrefix(`/lab2/malicious-code/`)"
       - "traefik.http.routers.lab2-malicious.priority=260"
       - "traefik.http.routers.lab2-malicious.entrypoints=web"
@@ -276,56 +244,22 @@ services:
       - "traefik.http.routers.lab2-main.entrypoints=web"
       - "traefik.http.routers.lab2-main.middlewares=lab2-auth-check@file,strip-lab2-prefix@file"
       - "traefik.http.routers.lab2-main.service=lab2-vulnerable-site"
-      - "traefik.http.services.lab2-vulnerable-site.loadbalancer.server.port=80"
-
-  # Lab 2 - C2 Server (DOM Skimming Data Collection)
-  lab2-c2-server:
-    build: ./labs/02-dom-skimming/c2-server
-    container_name: lab2-dom-c2-server
-    networks:
-      - labs-network
-    volumes:
-      - ./labs/02-dom-skimming/c2-server/stolen-data:/app/stolen-data
-    environment:
-      - NODE_ENV=development
-      - PORT=3000
-    depends_on:
-      - traefik
-    ports:
-      - "127.0.0.1:3000:3000"
-    labels:
-      - "lab=lab2-dom-skimming"
-      - "component=c2-server"
-      - "traefik.enable=true"
-      # Collect endpoint - no auth required (skimmer needs to POST data)
-      # Use exact Path match to prevent bypassing auth via /lab2/c2/collect-admin etc.
-      - "traefik.http.routers.lab2-c2-collect.rule=Path(`/lab2/c2/collect`)"
-      - "traefik.http.routers.lab2-c2-collect.priority=350"
-      - "traefik.http.routers.lab2-c2-collect.entrypoints=web"
-      - "traefik.http.routers.lab2-c2-collect.middlewares=strip-lab2-c2-prefix@file"
-      - "traefik.http.routers.lab2-c2-collect.service=lab2-c2-server"
-      # Dashboard and other C2 routes - with auth
-      - "traefik.http.routers.lab2-c2.rule=PathPrefix(`/lab2/c2`)"
-      - "traefik.http.routers.lab2-c2.priority=300"
-      - "traefik.http.routers.lab2-c2.entrypoints=web"
-      - "traefik.http.routers.lab2-c2.middlewares=lab2-auth-check@file,strip-lab2-c2-prefix@file"
-      - "traefik.http.routers.lab2-c2.service=lab2-c2-server"
-      - "traefik.http.services.lab2-c2-server.loadbalancer.server.port=3000"
+      - "traefik.http.services.lab2-vulnerable-site.loadbalancer.server.port=8080"
 
   # =============================================================================
   # LAB 3: BROWSER EXTENSION HIJACKING
   # =============================================================================
 
-  # Lab 3 - Vulnerable Site
+  # Lab 3 - nginx only (extension C2 collection moved to shared-c2 service)
   lab3-vulnerable-site:
-    build: ./labs/03-extension-hijacking/vulnerable-site
+    build: ./labs/03-extension-hijacking
     container_name: lab3-vulnerable-site
     networks:
       - labs-network
     depends_on:
       - traefik
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:80/']
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:8080/health']
       interval: 10s
       timeout: 3s
       retries: 3
@@ -352,30 +286,72 @@ services:
       - "traefik.http.routers.lab3-main.entrypoints=web"
       - "traefik.http.routers.lab3-main.middlewares=lab3-auth-check@file,strip-lab3-prefix@file"
       - "traefik.http.routers.lab3-main.service=lab3-vulnerable-site"
-      - "traefik.http.services.lab3-vulnerable-site.loadbalancer.server.port=80"
+      - "traefik.http.services.lab3-vulnerable-site.loadbalancer.server.port=8080"
 
-  # Lab 3 - Extension Data Server
-  lab3-extension-server:
-    build:
-      context: ./labs/03-extension-hijacking/test-server
-      dockerfile: Dockerfile
-    container_name: lab3-extension-server
+  # =============================================================================
+  # SHARED C2 SERVER (Labs 1-3)
+  # =============================================================================
+
+  # Single C2 collection service for labs 1, 2, and 3.
+  # Traefik sends the full path — no strip middleware — so shared-c2 can route by prefix.
+  # Lab 4 keeps its own combined container (nginx+C2) as an intentional educational feature.
+  shared-c2:
+    build: deploy/shared-components/shared-c2-server
+    container_name: e-skimming-labs-shared-c2
     networks:
       - labs-network
-    environment:
-      - NODE_ENV=development
-      - PORT=3000
+    volumes:
+      - ./labs/01-basic-magecart/malicious-code/c2-server/stolen-data:/app/data/lab1
+      - ./labs/02-dom-skimming/c2-server/stolen-data:/app/data/lab2
+      - ./labs/03-extension-hijacking/test-server/stolen-data:/app/data/lab3
     depends_on:
       - traefik
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:3000/health']
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
     labels:
-      - "lab=lab3-extension-hijacking"
-      - "component=extension-server"
       - "traefik.enable=true"
+      # ── Lab 1 C2 routes ──────────────────────────────────────────────────────
+      # Collect (no auth — skimmer posts from victim browser)
+      - "traefik.http.routers.lab1-c2-collect.rule=Path(`/lab1/c2/collect`)"
+      - "traefik.http.routers.lab1-c2-collect.priority=350"
+      - "traefik.http.routers.lab1-c2-collect.entrypoints=web"
+      - "traefik.http.routers.lab1-c2-collect.service=shared-c2"
+      # Dashboard & API (auth required)
+      - "traefik.http.routers.lab1-c2.rule=PathPrefix(`/lab1/c2`)"
+      - "traefik.http.routers.lab1-c2.priority=300"
+      - "traefik.http.routers.lab1-c2.entrypoints=web"
+      - "traefik.http.routers.lab1-c2.middlewares=lab1-auth-check@file"
+      - "traefik.http.routers.lab1-c2.service=shared-c2"
+      # ── Lab 2 C2 routes ──────────────────────────────────────────────────────
+      # Collect (no auth)
+      - "traefik.http.routers.lab2-c2-collect.rule=Path(`/lab2/c2/collect`)"
+      - "traefik.http.routers.lab2-c2-collect.priority=350"
+      - "traefik.http.routers.lab2-c2-collect.entrypoints=web"
+      - "traefik.http.routers.lab2-c2-collect.service=shared-c2"
+      # Dashboard & API (auth required)
+      - "traefik.http.routers.lab2-c2.rule=PathPrefix(`/lab2/c2`)"
+      - "traefik.http.routers.lab2-c2.priority=300"
+      - "traefik.http.routers.lab2-c2.entrypoints=web"
+      - "traefik.http.routers.lab2-c2.middlewares=lab2-auth-check@file"
+      - "traefik.http.routers.lab2-c2.service=shared-c2"
+      # ── Lab 3 Extension routes ───────────────────────────────────────────────
+      # Collect (no auth — extension posts from victim browser)
+      - "traefik.http.routers.lab3-c2-collect.rule=Path(`/lab3/extension/stolen-data`)"
+      - "traefik.http.routers.lab3-c2-collect.priority=350"
+      - "traefik.http.routers.lab3-c2-collect.entrypoints=web"
+      - "traefik.http.routers.lab3-c2-collect.service=shared-c2"
+      # Dashboard & API (auth required)
       - "traefik.http.routers.lab3-extension.rule=PathPrefix(`/lab3/extension`)"
       - "traefik.http.routers.lab3-extension.priority=300"
       - "traefik.http.routers.lab3-extension.entrypoints=web"
-      - "traefik.http.routers.lab3-extension.middlewares=lab3-auth-check@file,strip-lab3-extension-prefix@file"
-      - "traefik.http.services.lab3-extension-server.loadbalancer.server.port=3000"
+      - "traefik.http.routers.lab3-extension.middlewares=lab3-auth-check@file"
+      - "traefik.http.routers.lab3-extension.service=shared-c2"
+      # ── Backend ──────────────────────────────────────────────────────────────
+      - "traefik.http.services.shared-c2.loadbalancer.server.port=3000"
 
   # =============================================================================
   # LAB VARIANTS (Optional - Advanced Scenarios)
@@ -472,73 +448,59 @@ services:
   # LAB 4: STEGANOGRAPHY / FAVICON TROJAN
   # =============================================================================
 
-  # Lab 4 - Vulnerable Shop
+  # Lab 4 - Combined container (nginx + C2 server), matches STG topology
+  # init.sh adds "127.0.0.1 lab4-c2-server" to /etc/hosts so nginx can proxy to the C2 server
   lab4-vulnerable-site:
-    build: ./labs/04-steganography-favicon/vulnerable-site
+    build: ./labs/04-steganography-favicon
     container_name: lab4-shop
     networks:
       - labs-network
+    volumes:
+      - ./labs/04-steganography-favicon/c2-data:/app/c2-server/stolen-data
     depends_on:
       - traefik
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:8080/']
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:8080/health']
       interval: 10s
       timeout: 3s
       retries: 3
       start_period: 5s
     labels:
       - "lab=lab4-steganography"
-      - "component=vulnerable-site"
+      - "component=combined"
       - "traefik.enable=true"
-      # Static files
       # Health check router (no auth) - warms container on home-page prefetch
       - "traefik.http.routers.lab4-health.rule=Path(`/lab4/health`)"
       - "traefik.http.routers.lab4-health.priority=400"
       - "traefik.http.routers.lab4-health.entrypoints=web"
       - "traefik.http.routers.lab4-health.middlewares=strip-lab4-prefix@file"
       - "traefik.http.routers.lab4-health.service=lab4-vulnerable-site"
+      # Static files router (no auth, higher priority)
       - "traefik.http.routers.lab4-static.rule=PathPrefix(`/lab4/css/`) || PathPrefix(`/lab4/js/`) || PathPrefix(`/lab4/images/`) || PathPrefix(`/lab4/img/`) || PathPrefix(`/lab4/static/`) || PathPrefix(`/lab4/assets/`)"
       - "traefik.http.routers.lab4-static.priority=250"
       - "traefik.http.routers.lab4-static.entrypoints=web"
       - "traefik.http.routers.lab4-static.middlewares=strip-lab4-prefix@file"
       - "traefik.http.routers.lab4-static.service=lab4-vulnerable-site"
-      # Main router
+      # Main router (with auth)
       - "traefik.http.routers.lab4-main.rule=PathPrefix(`/lab4`)"
       - "traefik.http.routers.lab4-main.priority=200"
       - "traefik.http.routers.lab4-main.entrypoints=web"
       - "traefik.http.routers.lab4-main.middlewares=lab4-auth-check@file,strip-lab4-prefix@file"
       - "traefik.http.routers.lab4-main.service=lab4-vulnerable-site"
-      - "traefik.http.services.lab4-vulnerable-site.loadbalancer.server.port=8080"
-      
-  # Lab 4 - C2 Server
-  lab4-c2-server:
-    build: ./labs/04-steganography-favicon/malicious-code/c2-server
-    container_name: lab4-c2
-    networks:
-      - labs-network
-    volumes:
-      - ./labs/04-steganography-favicon/c2-data:/app/stolen-data
-    environment:
-      - NODE_ENV=development
-      - PORT=8080
-    depends_on:
-      - traefik
-    labels:
-      - "lab=lab4-steganography"
-      - "component=c2-server"
-      - "traefik.enable=true"
+      # C2 dashboard - with auth
       - "traefik.http.routers.lab4-c2.rule=PathPrefix(`/lab4/c2`)"
       - "traefik.http.routers.lab4-c2.priority=300"
       - "traefik.http.routers.lab4-c2.entrypoints=web"
-      - "traefik.http.routers.lab4-c2.middlewares=lab4-auth-check@file,strip-lab4-c2-prefix@file"
-      - "traefik.http.routers.lab4-c2.service=lab4-c2-server"
-      - "traefik.http.services.lab4-c2-server.loadbalancer.server.port=8080"
+      - "traefik.http.routers.lab4-c2.middlewares=lab4-auth-check@file,strip-lab4-prefix@file"
+      - "traefik.http.routers.lab4-c2.service=lab4-vulnerable-site"
       # Collect endpoint - no auth required (skimmer needs to POST data)
       - "traefik.http.routers.lab4-c2-collect.rule=Path(`/lab4/c2/collect`)"
       - "traefik.http.routers.lab4-c2-collect.priority=350"
       - "traefik.http.routers.lab4-c2-collect.entrypoints=web"
-      - "traefik.http.routers.lab4-c2-collect.middlewares=strip-lab4-c2-prefix@file"
-      - "traefik.http.routers.lab4-c2-collect.service=lab4-c2-server"
+      - "traefik.http.routers.lab4-c2-collect.middlewares=strip-lab4-prefix@file"
+      - "traefik.http.routers.lab4-c2-collect.service=lab4-vulnerable-site"
+      # Single backend: nginx on 8080 proxies C2 paths to internal port 3000 (via hosts hack)
+      - "traefik.http.services.lab4-vulnerable-site.loadbalancer.server.port=8080"
 
 # =============================================================================
 # NETWORKS
@@ -548,13 +510,3 @@ networks:
     driver: bridge
     name: e-skimming-labs-network
 
-# =============================================================================
-# VOLUMES
-# =============================================================================
-volumes:
-  lab1-stolen-data:
-    driver: local
-  lab2-stolen-data:
-    driver: local
-  lab3-stolen-data:
-    driver: local
