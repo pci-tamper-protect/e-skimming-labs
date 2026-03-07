@@ -1068,17 +1068,25 @@ jobs:
           # Source generated Cloud Run labels (from docker-compose.yml)
           source deploy/traefik/lab-labels.sh
 
-          # Map GHA matrix name → compose service name
+          # Map GHA matrix name → compose service names.
+          # Each lab is a single container (nginx + C2 server), so we combine
+          # labels from both the vulnerable-site and C2 server compose services.
           case "${{ matrix.lab }}" in
-            01-basic-magecart) COMPOSE_SVC="lab1-vulnerable-site" ;;
-            02-dom-skimming) COMPOSE_SVC="lab2-vulnerable-site" ;;
-            03-extension-hijacking) COMPOSE_SVC="lab3-vulnerable-site" ;;
-            04-steganography-favicon) COMPOSE_SVC="lab4-vulnerable-site" ;;
-            *) COMPOSE_SVC="" ;;
+            01-basic-magecart)  COMPOSE_SVC="lab1-vulnerable-site" ; COMPOSE_SVC2="lab1-c2-server" ;;
+            02-dom-skimming)    COMPOSE_SVC="lab2-vulnerable-site" ; COMPOSE_SVC2="lab2-c2-server" ;;
+            03-extension-hijacking) COMPOSE_SVC="lab3-vulnerable-site" ; COMPOSE_SVC2="lab3-extension-server" ;;
+            04-steganography-favicon) COMPOSE_SVC="lab4-vulnerable-site" ; COMPOSE_SVC2="lab4-c2-server" ;;
+            *) COMPOSE_SVC="" ; COMPOSE_SVC2="" ;;
           esac
 
           if [[ -n "$COMPOSE_SVC" ]]; then
             TRAEFIK_LABELS=$(get_lab_labels "$COMPOSE_SVC" 2>/dev/null || echo "traefik_enable=true")
+            # Append C2 server labels (strip duplicate traefik_enable=true)
+            if [[ -n "$COMPOSE_SVC2" ]]; then
+              LABELS2=$(get_lab_labels "$COMPOSE_SVC2" 2>/dev/null || echo "")
+              LABELS2_ONLY="${LABELS2#traefik_enable=true,}"
+              [[ -n "$LABELS2_ONLY" ]] && TRAEFIK_LABELS="${TRAEFIK_LABELS},${LABELS2_ONLY}"
+            fi
           else
             TRAEFIK_LABELS="traefik_enable=true"
           fi
@@ -1428,19 +1436,16 @@ jobs:
         run: |
           ENV="${{ needs.setup.outputs.environment }}"
 
-          # For stg: fetch HOME_INDEX_URL so entrypoint writes ForwardAuth middlewares (lab routes require login)
-          # Labs deploy SA needs roles/run.viewer on labs-home-* (run: ./deploy/traefik/APPLY_PERMISSIONS.sh stg)
-          HOME_INDEX_URL=""
-          if [[ "$ENV" == "stg" ]]; then
-            HOME_INDEX_URL=$(gcloud run services describe home-index-${{ needs.setup.outputs.environment }} \
-              --region=${{ env.LABS_GAR_LOCATION }} \
-              --project=${{ env.HOME_PROJECT_ID }} \
-              --format='value(status.url)' 2>/dev/null || echo "")
-            if [[ -n "$HOME_INDEX_URL" ]]; then
-              echo "✅ HOME_INDEX_URL set for lab auth: $HOME_INDEX_URL"
-            else
-              echo "⚠️ Could not get home-index URL; run ./deploy/traefik/APPLY_PERMISSIONS.sh stg to grant Labs SA run.viewer on Home project"
-            fi
+          # Fetch HOME_INDEX_URL so entrypoint writes ForwardAuth middlewares (lab routes require login)
+          # Labs deploy SA needs roles/run.viewer on labs-home-* (run: ./deploy/traefik/APPLY_PERMISSIONS.sh <env>)
+          HOME_INDEX_URL=$(gcloud run services describe home-index-${{ needs.setup.outputs.environment }} \
+            --region=${{ env.LABS_GAR_LOCATION }} \
+            --project=${{ env.HOME_PROJECT_ID }} \
+            --format='value(status.url)' 2>/dev/null || echo "")
+          if [[ -n "$HOME_INDEX_URL" ]]; then
+            echo "✅ HOME_INDEX_URL set for lab auth: $HOME_INDEX_URL"
+          else
+            echo "⚠️ Could not get home-index URL; run ./deploy/traefik/APPLY_PERMISSIONS.sh $ENV to grant Labs SA run.viewer on Home project"
           fi
           ENV_VARS="ENVIRONMENT=${{ needs.setup.outputs.environment }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},USER_AUTH_ENABLED=true"
           if [[ -n "$HOME_INDEX_URL" ]]; then

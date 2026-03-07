@@ -356,7 +356,10 @@ func main() {
 
 	authValidator, err := auth.NewTokenValidator(authConfig)
 	if err != nil {
-		log.Fatalf("Failed to initialize auth validator: %v", err)
+		log.Printf("⚠️  WARNING: Failed to initialize auth validator: %v", err)
+		log.Printf("   Auth will be disabled. Set ENABLE_AUTH=false to suppress this warning.")
+		disabledConfig := auth.Config{Enabled: false}
+		authValidator, _ = auth.NewTokenValidator(disabledConfig)
 	}
 
 	// Add auth info to home page data
@@ -817,6 +820,12 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
     <meta name="robots" content="index, follow">
     <meta name="keywords" content="e-skimming, cybersecurity, training, labs, payment security">
     <link rel="canonical" href="{{.Scheme}}://{{.Domain}}/">
+
+    <!-- Prefetch lab health endpoints to pre-warm backends (no auth required) -->
+    <link rel="prefetch" href="/lab1/health">
+    <link rel="prefetch" href="/lab2/health">
+    <link rel="prefetch" href="/lab3/health">
+    <link rel="prefetch" href="/lab4/health">
 
     <!-- Open Graph -->
     <meta property="og:title" content="E-Skimming Labs - Interactive Training Platform">
@@ -3505,7 +3514,7 @@ func checkServiceHealth(environment string) ([]ServiceStatus, bool, bool) {
 					// Don't block on Analytics service
 				}
 
-				if serviceMap["lab1@docker"] == "up" {
+				if serviceMap["lab1-vulnerable-site@docker"] == "up" {
 					services[4].Status = "up"
 				} else {
 					services[4].Status = "down"
