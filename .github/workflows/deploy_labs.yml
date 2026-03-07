@@ -406,7 +406,7 @@ jobs:
 
       - name: Build SEO Service
         if: needs.setup.outputs.deploy_seo == 'true' && steps.check-seo-image.outputs.exists != 'true'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: deploy/shared-components/seo-service
           file: deploy/shared-components/seo-service/Dockerfile
@@ -452,7 +452,7 @@ jobs:
 
       - name: Build Index Service
         if: needs.setup.outputs.deploy_home_index == 'true' && steps.check-index-image.outputs.exists != 'true'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: deploy/shared-components/home-index-service/Dockerfile
@@ -797,7 +797,7 @@ jobs:
 
       - name: Build Analytics Service
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null && steps.check-analytics-image.outputs.exists != 'true'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: deploy/shared-components/analytics-service
           file: deploy/shared-components/analytics-service/Dockerfile
@@ -1014,7 +1014,7 @@ jobs:
 
       - name: Build lab container image
         if: steps.check-lab-image.outputs.exists != 'true'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: labs/${{ matrix.lab }}
           file: labs/${{ matrix.lab }}/Dockerfile
@@ -1228,7 +1228,7 @@ jobs:
 
       - name: Build index page container
         if: steps.check-labs-index-image.outputs.exists != 'true'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: deploy/Dockerfile.index
