@@ -97,14 +97,14 @@ build_and_push() {
   local build_args="${5:-}"
 
   echo "📦 Building $service_name..."
-  
+
   if [ "$FORCE_REBUILD" = true ] || ! docker image inspect "$image" &>/dev/null; then
     docker build \
       -f "$build_dir/$dockerfile" \
       -t "$image" \
       $build_args \
       "$build_dir"
-    
+
     echo "📤 Pushing $image..."
     docker push "$image"
   else
