@@ -474,7 +474,7 @@
         }
 
         var script = document.createElement('script')
-        script.src = 'malicious-code/' + variant + '.js'
+        script.src = 'malicious-code/' + variant + '.js?v=' + Date.now()
         script.async = false
         document.body.appendChild(script)
       })()

