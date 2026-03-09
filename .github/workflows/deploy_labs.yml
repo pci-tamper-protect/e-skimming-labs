@@ -11,6 +11,7 @@ on:
       - 'deploy/Dockerfile.index'
       # Labs components
       - 'deploy/shared-components/analytics-service/**'
+      - 'deploy/shared-components/shared-c2-server/**'
       - 'labs/**'
       # Common files that affect all
       - '.github/workflows/deploy_labs.yml'
@@ -25,6 +26,7 @@ on:
       - 'deploy/Dockerfile.index'
       # Labs components
       - 'deploy/shared-components/analytics-service/**'
+      - 'deploy/shared-components/shared-c2-server/**'
       - 'labs/**'
       # Common files that affect all
       - '.github/workflows/deploy_labs.yml'
@@ -64,6 +66,7 @@ jobs:
       deploy_seo: ${{ steps.detect-changes.outputs.deploy_seo }}
       deploy_home_index: ${{ steps.detect-changes.outputs.deploy_home_index }}
       deploy_analytics: ${{ steps.detect-changes.outputs.deploy_analytics }}
+      deploy_shared_c2: ${{ steps.detect-changes.outputs.deploy_shared_c2 }}
       deploy_labs_index: ${{ steps.detect-changes.outputs.deploy_labs_index }}
       deploy_traefik: ${{ steps.detect-changes.outputs.deploy_traefik }}
       changed_labs: ${{ steps.detect-changes.outputs.changed_labs }}
@@ -82,6 +85,7 @@ jobs:
           DEPLOY_SEO="false"
           DEPLOY_HOME_INDEX="false"
           DEPLOY_ANALYTICS="false"
+          DEPLOY_SHARED_C2="false"
           DEPLOY_LABS_INDEX="false"
           DEPLOY_TRAEFIK="false"
           CHANGED_LABS="[]"
@@ -112,6 +116,7 @@ jobs:
             DEPLOY_SEO="true"
             DEPLOY_HOME_INDEX="true"
             DEPLOY_ANALYTICS="true"
+            DEPLOY_SHARED_C2="true"
             DEPLOY_LABS_INDEX="true"
             DEPLOY_TRAEFIK="true"
             CHANGED_LABS="all"
@@ -124,6 +129,7 @@ jobs:
           elif echo "$COMMIT_MSG" | grep -qiE "\[force-labs\]|\bforce-labs\b"; then
             DEPLOY_LABS="true"
             DEPLOY_ANALYTICS="true"
+            DEPLOY_SHARED_C2="true"
             DEPLOY_LABS_INDEX="true"
             CHANGED_LABS="all"
             echo "✅ Force deploy detected in commit message: [force-labs]"
@@ -134,6 +140,7 @@ jobs:
             DEPLOY_SEO="true"
             DEPLOY_HOME_INDEX="true"
             DEPLOY_ANALYTICS="true"
+            DEPLOY_SHARED_C2="true"
             DEPLOY_LABS_INDEX="true"
             DEPLOY_TRAEFIK="true"
             CHANGED_LABS="all"
@@ -161,6 +168,13 @@ jobs:
               DEPLOY_ANALYTICS="true"
               DEPLOY_LABS="true"
               echo "  ✅ Analytics service changed"
+            fi
+
+            # Shared C2 server
+            if echo "$CHANGED_FILES" | grep -q "^deploy/shared-components/shared-c2-server/"; then
+              DEPLOY_SHARED_C2="true"
+              DEPLOY_LABS="true"
+              echo "  ✅ Shared C2 server changed"
             fi
 
             # Labs index (deploy/Dockerfile.index affects labs index)
@@ -198,6 +212,7 @@ jobs:
               DEPLOY_SEO="true"
               DEPLOY_HOME_INDEX="true"
               DEPLOY_ANALYTICS="true"
+              DEPLOY_SHARED_C2="true"
               DEPLOY_LABS_INDEX="true"
               DEPLOY_TRAEFIK="true"
               CHANGED_LABS="all"
@@ -211,6 +226,7 @@ jobs:
           echo "deploy_seo=$DEPLOY_SEO" >> $GITHUB_OUTPUT
           echo "deploy_home_index=$DEPLOY_HOME_INDEX" >> $GITHUB_OUTPUT
           echo "deploy_analytics=$DEPLOY_ANALYTICS" >> $GITHUB_OUTPUT
+          echo "deploy_shared_c2=$DEPLOY_SHARED_C2" >> $GITHUB_OUTPUT
           echo "deploy_labs_index=$DEPLOY_LABS_INDEX" >> $GITHUB_OUTPUT
           echo "deploy_traefik=$DEPLOY_TRAEFIK" >> $GITHUB_OUTPUT
           echo "changed_labs=$CHANGED_LABS" >> $GITHUB_OUTPUT
@@ -222,6 +238,7 @@ jobs:
           echo "    - Home index: $DEPLOY_HOME_INDEX"
           echo "  Labs components: $DEPLOY_LABS"
           echo "    - Analytics: $DEPLOY_ANALYTICS"
+          echo "    - Shared C2: $DEPLOY_SHARED_C2"
           echo "    - Labs index: $DEPLOY_LABS_INDEX"
           echo "    - Changed labs: $CHANGED_LABS"
           echo "  Traefik: $DEPLOY_TRAEFIK"
@@ -921,6 +938,97 @@ jobs:
           fi
 
   # ============================================================================
+  # SHARED C2 - Shared C2 server for labs 1, 2, 3
+  # ============================================================================
+  deploy-shared-c2:
+    needs: setup
+    runs-on: ubuntu-latest
+    if: (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') && needs.setup.outputs.deploy_shared_c2 == 'true'
+    environment: ${{ needs.setup.outputs.environment }}
+    env:
+      HOME_PROJECT_ID: ${{ needs.setup.outputs.home_project_id }}
+      LABS_PROJECT_ID: ${{ needs.setup.outputs.labs_project_id }}
+      LABS_GCP_SA_KEY: ${{ needs.setup.outputs.environment == 'stg' && secrets.GCP_LABS_SA_KEY_STG || (needs.setup.outputs.environment == 'prd' && secrets.GCP_LABS_SA_KEY_PRD) || secrets.GCP_LABS_SA_KEY }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Authenticate to Google Cloud (Labs Project)
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ env.LABS_GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Configure Docker to use gcloud as credential helper
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        run: |
+          gcloud auth configure-docker ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev
+          gcloud auth configure-docker us-central1-docker.pkg.dev
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Check if shared-c2 image exists
+        id: check-shared-c2-image
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        run: |
+          IMAGE="${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/shared-c2:${{ github.sha }}"
+          if gcloud artifacts docker images describe "$IMAGE" --project="${{ env.LABS_PROJECT_ID }}" --location="${{ env.LABS_GAR_LOCATION }}" &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Image already exists: $IMAGE"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  Image not found, will build: $IMAGE"
+          fi
+
+      - name: Build shared-c2 image
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null && steps.check-shared-c2-image.outputs.exists != 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: deploy/shared-components/shared-c2-server
+          file: deploy/shared-components/shared-c2-server/Dockerfile
+          push: false
+          tags: |
+            ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/shared-c2:${{ github.sha }}
+            ${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/shared-c2:latest
+          cache-from: type=gha,scope=shared-c2
+          cache-to: type=gha,mode=max,scope=shared-c2
+          load: true
+
+      - name: Push shared-c2 image to Artifact Registry
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null && steps.check-shared-c2-image.outputs.exists != 'true'
+        run: |
+          IMAGE_BASE="${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/shared-c2"
+          docker push "${IMAGE_BASE}:${{ github.sha }}" || { echo "❌ Failed to push shared-c2 image"; exit 1; }
+          docker push "${IMAGE_BASE}:latest" || { echo "❌ Failed to push shared-c2 latest"; exit 1; }
+
+      - name: Deploy shared-c2 to Cloud Run
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        run: |
+          source deploy/traefik/lab-labels.sh
+          TRAEFIK_LABELS=$(get_lab_labels "shared-c2")
+
+          # shared-c2 must be public: browser scripts POST card data without IAM tokens
+          gcloud run deploy shared-c2-${{ needs.setup.outputs.environment }} \
+            --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/shared-c2:${{ github.sha }} \
+            --region=${{ env.LABS_GAR_LOCATION }} \
+            --platform=managed \
+            --allow-unauthenticated \
+            --service-account=labs-runtime-sa@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
+            --port=3000 \
+            --memory=512Mi \
+            --cpu=1 \
+            --min-instances=0 \
+            --max-instances=5 \
+            --set-env-vars="ENVIRONMENT=${{ needs.setup.outputs.environment }}" \
+            --labels="environment=${{ needs.setup.outputs.environment }},component=shared-c2,project=e-skimming-labs,${TRAEFIK_LABELS}"
+
+  # ============================================================================
   # LABS - Individual lab services (matrix parallelization, only changed labs)
   # ============================================================================
   deploy-labs:
@@ -1072,9 +1180,12 @@ jobs:
           # Each lab is a single container (nginx + C2 server), so we combine
           # labels from both the vulnerable-site and C2 server compose services.
           case "${{ matrix.lab }}" in
-            01-basic-magecart)  COMPOSE_SVC="lab1-vulnerable-site" ; COMPOSE_SVC2="lab1-c2-server" ;;
-            02-dom-skimming)    COMPOSE_SVC="lab2-vulnerable-site" ; COMPOSE_SVC2="lab2-c2-server" ;;
-            03-extension-hijacking) COMPOSE_SVC="lab3-vulnerable-site" ; COMPOSE_SVC2="lab3-extension-server" ;;
+            # Labs 1-3: C2 is handled by shared-c2 service (separate deployment).
+            # No c2-server labels on the lab service itself.
+            01-basic-magecart)      COMPOSE_SVC="lab1-vulnerable-site" ; COMPOSE_SVC2="" ;;
+            02-dom-skimming)        COMPOSE_SVC="lab2-vulnerable-site" ; COMPOSE_SVC2="" ;;
+            03-extension-hijacking) COMPOSE_SVC="lab3-vulnerable-site" ; COMPOSE_SVC2="" ;;
+            # Lab 4: still has its own embedded C2 server
             04-steganography-favicon) COMPOSE_SVC="lab4-vulnerable-site" ; COMPOSE_SVC2="lab4-c2-server" ;;
             *) COMPOSE_SVC="" ; COMPOSE_SVC2="" ;;
           esac

@@ -93,6 +93,12 @@ get_lab_labels() {
     lab4-c2-server)
       labels="traefik_enable=true,traefik_http_routers_lab4-c2_rule_id=lab4-c2,traefik_http_routers_lab4-c2_priority=300,traefik_http_routers_lab4-c2_entrypoints=web,traefik_http_routers_lab4-c2_middlewares=lab4-auth-check-file__strip-lab4-c2-prefix-file,traefik_http_routers_lab4-c2_service=lab4-c2-server,traefik_http_services_lab4-c2-server_lb_port=8080,traefik_http_routers_lab4-c2-collect_rule_id=lab4-c2-collect,traefik_http_routers_lab4-c2-collect_priority=350,traefik_http_routers_lab4-c2-collect_entrypoints=web,traefik_http_routers_lab4-c2-collect_middlewares=strip-lab4-c2-prefix-file,traefik_http_routers_lab4-c2-collect_service=lab4-c2-server"
       ;;
+    # Manually maintained: shared-c2 is a shared component, not generated from docker-compose labels.
+    # Uses strip-passthrough-prefix-file (a no-op) so the Cloud Run provider does NOT
+    # auto-inject a real strip-prefix middleware — shared-c2/server.js expects full paths.
+    shared-c2)
+      labels="traefik_enable=true,traefik_http_routers_lab1-c2-collect_rule_id=lab1-c2-collect,traefik_http_routers_lab1-c2-collect_priority=350,traefik_http_routers_lab1-c2-collect_entrypoints=web,traefik_http_routers_lab1-c2-collect_service=shared-c2,traefik_http_routers_lab1-c2_rule_id=lab1-c2,traefik_http_routers_lab1-c2_priority=300,traefik_http_routers_lab1-c2_entrypoints=web,traefik_http_routers_lab1-c2_middlewares=lab1-auth-check-file__strip-passthrough-prefix-file,traefik_http_routers_lab1-c2_service=shared-c2,traefik_http_routers_lab2-c2-collect_rule_id=lab2-c2-collect,traefik_http_routers_lab2-c2-collect_priority=350,traefik_http_routers_lab2-c2-collect_entrypoints=web,traefik_http_routers_lab2-c2-collect_service=shared-c2,traefik_http_routers_lab2-c2_rule_id=lab2-c2,traefik_http_routers_lab2-c2_priority=300,traefik_http_routers_lab2-c2_entrypoints=web,traefik_http_routers_lab2-c2_middlewares=lab2-auth-check-file__strip-passthrough-prefix-file,traefik_http_routers_lab2-c2_service=shared-c2,traefik_http_routers_lab3-extension_rule_id=lab3-extension,traefik_http_routers_lab3-extension_priority=300,traefik_http_routers_lab3-extension_entrypoints=web,traefik_http_routers_lab3-extension_middlewares=lab3-auth-check-file__strip-passthrough-prefix-file,traefik_http_routers_lab3-extension_service=shared-c2,traefik_http_services_shared-c2_lb_port=3000"
+      ;;
     *)
       echo "⚠️  Unknown service: $service" >&2
       return 1
