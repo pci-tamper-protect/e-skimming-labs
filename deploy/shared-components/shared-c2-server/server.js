@@ -21,6 +21,9 @@ const path = require('path')
 const app = express()
 const PORT = process.env.PORT || 3000
 
+// Trust the GFE/Cloud Run proxy so req.ip reflects X-Forwarded-For
+app.set('trust proxy', true)
+
 // Per-lab data directories (volume-mounted to lab-specific stolen-data folders)
 const DATA_DIRS = {
   lab1: process.env.LAB1_DATA_DIR || '/app/data/lab1',
