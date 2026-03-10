@@ -72,8 +72,8 @@ if [ "${ENVIRONMENT}" = "prd" ]; then
   echo "   ✅ Home-index is now publicly accessible (forwardAuth will work)"
   echo ""
 
-  echo "5️⃣  Lab services: grant Traefik invoker (fixes 403 on /lab2, /lab3)"
-  for svc in lab-01-basic-magecart lab-02-dom-skimming lab-03-extension-hijacking lab1-c2 lab2-c2 lab3-extension; do
+  echo "5️⃣  Lab services: grant Traefik invoker (fixes 403 on /lab2, /lab3, /lab4)"
+  for svc in lab-01-basic-magecart lab-02-dom-skimming lab-03-extension-hijacking lab-04-steganography-favicon lab1-c2 lab2-c2 lab3-extension lab4-c2; do
     if gcloud run services describe "${svc}-${ENVIRONMENT}" --region=us-central1 --project="${PROJECT_ID}" &>/dev/null; then
       gcloud run services add-iam-policy-binding "${svc}-${ENVIRONMENT}" \
         --region=us-central1 --project="${PROJECT_ID}" \

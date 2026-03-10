@@ -14,6 +14,10 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# Lab Traefik labels are generated from docker-compose.yml (single source of truth).
+# Re-run deploy/traefik/generate-lab-labels.sh to regenerate after docker-compose changes.
+source "$SCRIPT_DIR/traefik/lab-labels.sh"
+
 source "$SCRIPT_DIR/check-credentials.sh"
 if ! check_credentials; then
   echo ""
@@ -211,7 +215,7 @@ fi
 
 if should_run "lab1-c2"; then
   echo "5️⃣  Deploying lab1-c2-${ENVIRONMENT}..."
-  LAB1_C2_TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab1-c2_rule_id=lab1-c2,traefik_http_routers_lab1-c2_priority=300,traefik_http_routers_lab1-c2_entrypoints=web,traefik_http_routers_lab1-c2_middlewares=strip-lab1-c2-prefix-file,traefik_http_routers_lab1-c2_service=lab1-c2-server,traefik_http_services_lab1-c2-server_lb_port=8080"
+  LAB1_C2_TRAEFIK_LABELS=$(get_lab_labels "lab1-c2-server")
   gcloud run deploy lab1-c2-${ENVIRONMENT} \
     --image=${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/lab1-c2:${IMAGE_TAG} \
     --region=${REGION} \
@@ -233,7 +237,7 @@ fi
 
 if should_run "lab2-c2"; then
   echo "6️⃣  Deploying lab2-c2-${ENVIRONMENT}..."
-  LAB2_C2_TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab2-c2_rule_id=lab2-c2,traefik_http_routers_lab2-c2_priority=300,traefik_http_routers_lab2-c2_entrypoints=web,traefik_http_routers_lab2-c2_middlewares=strip-lab2-c2-prefix-file,traefik_http_routers_lab2-c2_service=lab2-c2-server,traefik_http_services_lab2-c2-server_lb_port=8080"
+  LAB2_C2_TRAEFIK_LABELS=$(get_lab_labels "lab2-c2-server")
   gcloud run deploy lab2-c2-${ENVIRONMENT} \
     --image=${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/lab2-c2:${IMAGE_TAG} \
     --region=${REGION} \
@@ -255,7 +259,7 @@ fi
 
 if should_run "lab3-extension"; then
   echo "7️⃣  Deploying lab3-extension-${ENVIRONMENT}..."
-  LAB3_EXT_TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab3-extension_rule_id=lab3-extension,traefik_http_routers_lab3-extension_priority=300,traefik_http_routers_lab3-extension_entrypoints=web,traefik_http_routers_lab3-extension_middlewares=strip-lab3-extension-prefix-file,traefik_http_routers_lab3-extension_service=lab3-extension-server,traefik_http_services_lab3-extension-server_lb_port=8080"
+  LAB3_EXT_TRAEFIK_LABELS=$(get_lab_labels "lab3-extension-server")
   gcloud run deploy lab3-extension-${ENVIRONMENT} \
     --image=${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/lab3-extension:${IMAGE_TAG} \
     --region=${REGION} \
@@ -277,8 +281,7 @@ fi
 
 if should_run "lab-01-basic-magecart"; then
   echo "8️⃣  Deploying lab-01-basic-magecart-${ENVIRONMENT}..."
-  # lab1: no sign-in (PRD); lab2/lab3 require sign-in
-  LAB1_TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab1-static_rule_id=lab1-static,traefik_http_routers_lab1-static_priority=250,traefik_http_routers_lab1-static_entrypoints=web,traefik_http_routers_lab1-static_middlewares=strip-lab1-prefix-file,traefik_http_routers_lab1-static_service=lab1,traefik_http_routers_lab1_rule_id=lab1,traefik_http_routers_lab1_priority=200,traefik_http_routers_lab1_entrypoints=web,traefik_http_routers_lab1_middlewares=strip-lab1-prefix-file,traefik_http_routers_lab1_service=lab1,traefik_http_services_lab1_lb_port=8080"
+  LAB1_TRAEFIK_LABELS=$(get_lab_labels "lab1-vulnerable-site")
   gcloud run deploy lab-01-basic-magecart-${ENVIRONMENT} \
     --image=${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/01-basic-magecart:${IMAGE_TAG} \
     --region=${REGION} \
@@ -301,7 +304,7 @@ fi
 
 if should_run "lab-02-dom-skimming"; then
   echo "9️⃣  Deploying lab-02-dom-skimming-${ENVIRONMENT}..."
-  LAB2_TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab2-static_rule_id=lab2-static,traefik_http_routers_lab2-static_priority=250,traefik_http_routers_lab2-static_entrypoints=web,traefik_http_routers_lab2-static_middlewares=strip-lab2-prefix-file,traefik_http_routers_lab2-static_service=lab2-vulnerable-site,traefik_http_routers_lab2-main_rule_id=lab2-main,traefik_http_routers_lab2-main_priority=200,traefik_http_routers_lab2-main_entrypoints=web,traefik_http_routers_lab2-main_middlewares=lab2-auth-check-file__strip-lab2-prefix-file,traefik_http_services_lab2-vulnerable-site_lb_port=8080"
+  LAB2_TRAEFIK_LABELS=$(get_lab_labels "lab2-vulnerable-site")
   gcloud run deploy lab-02-dom-skimming-${ENVIRONMENT} \
     --image=${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/02-dom-skimming:${IMAGE_TAG} \
     --region=${REGION} \
@@ -324,7 +327,7 @@ fi
 
 if should_run "lab-03-extension-hijacking"; then
   echo "🔟 Deploying lab-03-extension-hijacking-${ENVIRONMENT}..."
-  LAB3_TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab3-static_rule_id=lab3-static,traefik_http_routers_lab3-static_priority=250,traefik_http_routers_lab3-static_entrypoints=web,traefik_http_routers_lab3-static_middlewares=strip-lab3-prefix-file,traefik_http_routers_lab3-static_service=lab3-vulnerable-site,traefik_http_routers_lab3-main_rule_id=lab3-main,traefik_http_routers_lab3-main_priority=200,traefik_http_routers_lab3-main_entrypoints=web,traefik_http_routers_lab3-main_middlewares=lab3-auth-check-file__strip-lab3-prefix-file,traefik_http_services_lab3-vulnerable-site_lb_port=8080"
+  LAB3_TRAEFIK_LABELS=$(get_lab_labels "lab3-vulnerable-site")
   gcloud run deploy lab-03-extension-hijacking-${ENVIRONMENT} \
     --image=${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/03-extension-hijacking:${IMAGE_TAG} \
     --region=${REGION} \

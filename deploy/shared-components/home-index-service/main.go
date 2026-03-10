@@ -356,7 +356,10 @@ func main() {
 
 	authValidator, err := auth.NewTokenValidator(authConfig)
 	if err != nil {
-		log.Fatalf("Failed to initialize auth validator: %v", err)
+		log.Printf("⚠️  WARNING: Failed to initialize auth validator: %v", err)
+		log.Printf("   Auth will be disabled. Set ENABLE_AUTH=false to suppress this warning.")
+		disabledConfig := auth.Config{Enabled: false}
+		authValidator, _ = auth.NewTokenValidator(disabledConfig)
 	}
 
 	// Add auth info to home page data
@@ -418,6 +421,13 @@ func main() {
 	// Auth API endpoints
 	mux.HandleFunc("/api/auth/validate", func(w http.ResponseWriter, r *http.Request) {
 		serveAuthValidate(w, r, authValidator)
+	})
+
+	// Session-cookie endpoint: validates a Firebase ID token from Authorization: Bearer
+	// and issues a long-lived HttpOnly __session cookie via Firebase Admin SDK.
+	// Called by the sign-in page JS immediately after Firebase auth succeeds.
+	mux.HandleFunc("/api/auth/session", func(w http.ResponseWriter, r *http.Request) {
+		serveAuthSession(w, r, authValidator)
 	})
 
 	mux.HandleFunc("/api/auth/sign-in-url", func(w http.ResponseWriter, r *http.Request) {
@@ -533,26 +543,40 @@ func main() {
 			return
 		}
 
-		// Extract token from request
-		// Priority order:
-		// 1. Cookie header (Firebase token) - prioritized when using gcloud proxy (gcloud sets Authorization)
-		// 2. Authorization header (Firebase token) - for direct access
-		// 3. Parsed Cookie (fallback)
-		// 4. Query parameter (fallback)
+		// Extract credentials from request.
+		// Priority:
+		// 1. __session cookie  — server-set HttpOnly Firebase session cookie (5-day lifetime)
+		// 2. firebase_token cookie — legacy JS-set ID-token cookie (1-hr lifetime, kept for fallback)
+		// 3. Authorization: Bearer — Firebase ID token from JS fetch/XHR calls
 		var token string
-		
-		// Check Cookie header first (when using gcloud proxy, Authorization is set by gcloud, not user)
-		// This avoids trying to validate gcloud's GCP token as a Firebase token
+
+		// 1. Try __session cookie (HttpOnly, server-set, most reliable for navigation)
+		if sc := auth.ExtractSessionCookie(r); sc != "" {
+			log.Printf("🔍 __session cookie found, validating as Firebase session cookie")
+			userInfo, sessionErr := authValidator.ValidateSessionCookie(r.Context(), sc)
+			if sessionErr == nil && userInfo != nil {
+				log.Printf("✅ Session cookie validated (user: %s)", userInfo.Email)
+				w.Header().Set("X-User-Id", userInfo.UserID)
+				w.Header().Set("X-User-Email", userInfo.Email)
+				// Preserve Firebase token for downstream services that need it
+				if existing := r.Header.Get("Authorization"); existing != "" {
+					w.Header().Set("X-Authorization", existing)
+				}
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			log.Printf("⚠️ __session cookie invalid: %v — falling back to ID token", sessionErr)
+		}
+
+		// 2. Fall back to firebase_token cookie (legacy JS-set, 1-hr expiry)
 		cookieHeader := r.Header.Get("Cookie")
 		if cookieHeader != "" {
-			log.Printf("🔍 Cookie header received: %s", sanitizeToken(cookieHeader))
-			// Parse the Cookie header manually to extract firebase_token
 			cookies := strings.Split(cookieHeader, ";")
 			for _, c := range cookies {
 				c = strings.TrimSpace(c)
 				if strings.HasPrefix(c, "firebase_token=") {
 					token = strings.TrimPrefix(c, "firebase_token=")
-					log.Printf("🔍 Token extracted from Cookie header: %s", sanitizeToken(token))
+					log.Printf("🔍 firebase_token cookie found: %s", sanitizeToken(token))
 					break
 				}
 			}
@@ -681,6 +705,13 @@ func main() {
 			if environment == "local" || isLikelyInternalHost {
 				// In local environment, or when we detect an internal hostname, use localhost:8080
 				host = "localhost:8080"
+			}
+			// Normalize 127.0.0.1 → localhost: the gcloud proxy rewrites Location headers to
+			// use 127.0.0.1 as the host, but cookies are set for the "localhost" domain.
+			// Using 127.0.0.1 in the redirect URL causes cookie domain mismatch.
+			if strings.HasPrefix(host, "127.0.0.1:") {
+				host = "localhost:" + strings.TrimPrefix(host, "127.0.0.1:")
+				scheme = "http"
 			}
 			return fmt.Sprintf("%s://%s%s", scheme, host, path)
 		}
@@ -817,6 +848,12 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
     <meta name="robots" content="index, follow">
     <meta name="keywords" content="e-skimming, cybersecurity, training, labs, payment security">
     <link rel="canonical" href="{{.Scheme}}://{{.Domain}}/">
+
+    <!-- Prefetch lab health endpoints to pre-warm backends (no auth required) -->
+    <link rel="prefetch" href="/lab1/health">
+    <link rel="prefetch" href="/lab2/health">
+    <link rel="prefetch" href="/lab3/health">
+    <link rel="prefetch" href="/lab4/health">
 
     <!-- Open Graph -->
     <meta property="og:title" content="E-Skimming Labs - Interactive Training Platform">
@@ -1360,7 +1397,13 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
                 })
                 .then(data => {
                     if (data.authenticated && data.user) {
-                        // User is logged in
+                        // User is logged in - refresh cookie so ForwardAuth has a current token
+                        const freshToken = sessionStorage.getItem('firebase_token');
+                        if (freshToken) {
+                            const isSecure = window.location.protocol === 'https:';
+                            const sameSiteAttr = isSecure ? 'SameSite=None; Secure' : 'SameSite=Lax';
+                            document.cookie = 'firebase_token=' + encodeURIComponent(freshToken) + '; path=/; max-age=3600; ' + sameSiteAttr;
+                        }
                         loginBtn.style.display = 'none';
                         logoutBtn.style.display = 'block';
                         if (userEmail) {
@@ -1409,6 +1452,8 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
                     // Clear cookie - must include same SameSite attrs used when setting it
                     document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=None; Secure';
                     document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=Lax';
+                    document.cookie = '__session=; path=/; max-age=0; SameSite=None; Secure';
+                    document.cookie = '__session=; path=/; max-age=0; SameSite=Lax';
                     updateAuthButtons();
                     // Reload to clear any protected content
                     window.location.reload();
@@ -2123,6 +2168,50 @@ func serveAuthValidate(w http.ResponseWriter, r *http.Request, validator *auth.T
 	})
 }
 
+// serveAuthSession exchanges a Firebase ID token (from Authorization: Bearer) for a
+// long-lived HttpOnly __session cookie via Firebase Admin SDK.
+// Called by sign-in page JS immediately after Firebase authentication succeeds.
+// The session cookie is valid for 5 days and is verified server-side on every
+// ForwardAuth check, making it safe even if the ID token's 1-hour window passes.
+func serveAuthSession(w http.ResponseWriter, r *http.Request, validator *auth.TokenValidator) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+		http.Error(w, "Authorization: Bearer token required", http.StatusBadRequest)
+		return
+	}
+	idToken := strings.TrimPrefix(authHeader, "Bearer ")
+
+	sessionCookie, err := validator.CreateSessionCookie(r.Context(), idToken)
+	if err != nil {
+		log.Printf("❌ Failed to create session cookie: %v", err)
+		http.Error(w, "Invalid token or session creation failed", http.StatusUnauthorized)
+		return
+	}
+
+	isSecure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
+	sameSite := http.SameSiteLaxMode
+	if isSecure {
+		sameSite = http.SameSiteStrictMode
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     "__session",
+		Value:    sessionCookie,
+		Path:     "/",
+		MaxAge:   int(auth.SessionCookieDuration.Seconds()),
+		HttpOnly: true,
+		Secure:   isSecure,
+		SameSite: sameSite,
+	})
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+}
+
 // serveAuthSignInURL returns the sign-in URL for the main app
 // IMPORTANT: This function MUST NOT contain routing logic. All routing belongs to Traefik.
 // Always uses relative URLs (/sign-in) - Traefik handles routing.
@@ -2423,18 +2512,14 @@ func serveAuthJS(w http.ResponseWriter, r *http.Request, homeData HomePageData) 
     const token = urlParams.get('token');
 
     if (token) {
-        // Store token in both sessionStorage (for client-side) and cookie (for server-side)
+        // Legacy URL token flow: store in sessionStorage and exchange for session cookie
         sessionStorage.setItem('firebase_token', token);
-        // Set cookie that will be sent with all requests
-        // Cookie expires in 1 hour (3600 seconds)
-        // Use SameSite=None; Secure for HTTPS (allows cross-site), SameSite=Lax for HTTP (local dev)
-        const isSecure = window.location.protocol === 'https:';
-        const sameSiteAttr = isSecure ? 'SameSite=None; Secure' : 'SameSite=Lax';
-        document.cookie = 'firebase_token=' + encodeURIComponent(token) + '; path=/; max-age=3600; ' + sameSiteAttr;
+        fetch('/api/auth/session', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } })
+            .catch(() => {});
         // Remove token from URL for security
         const newUrl = window.location.pathname + (window.location.search.replace(/[?&]token=[^&]*/, '').replace(/^&/, '?') || '');
         window.history.replaceState({}, '', newUrl);
-        console.log('✅ Token extracted from URL and stored in cookie (legacy flow)');
+        console.log('✅ Token extracted from URL, sessionStorage set, session cookie requested');
     }
 
     // Function to initialize auth - prevent multiple initializations
@@ -2465,6 +2550,13 @@ func serveAuthJS(w http.ResponseWriter, r *http.Request, homeData HomePageData) 
             .then(response => {
                 if (response.ok) {
                     console.log('✅ Authentication validated');
+                    // Refresh cookie from sessionStorage so ForwardAuth has a fresh token
+                    const freshToken = sessionStorage.getItem('firebase_token');
+                    if (freshToken) {
+                        const isSecure = window.location.protocol === 'https:';
+                        const sameSiteAttr = isSecure ? 'SameSite=None; Secure' : 'SameSite=Lax';
+                        document.cookie = 'firebase_token=' + encodeURIComponent(freshToken) + '; path=/; max-age=3600; ' + sameSiteAttr;
+                    }
                     return response.json();
                 } else {
                     // Token invalid, clear it
@@ -2915,19 +3007,28 @@ func serveSignInPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
                     tokenPrefix: token ? token.substring(0, 20) + '...' : 'none'
                 });
 
-                // Store token in cookie (for server-side auth) and sessionStorage (for client-side)
-                // Cookie expires in 1 hour (3600 seconds)
-                // Use SameSite=None; Secure for HTTPS (allows cross-site), SameSite=Lax for HTTP (local dev)
-                // Set cookie with path=/ to ensure it's sent for all routes
-                // No domain specified = cookie is set for current domain
-                const isSecure = window.location.protocol === 'https:';
-                const sameSiteAttr = isSecure ? 'SameSite=None; Secure' : 'SameSite=Lax';
-                document.cookie = 'firebase_token=' + encodeURIComponent(token) + '; path=/; max-age=3600; ' + sameSiteAttr;
-                console.log('🔍 Cookie set:', document.cookie.split(';').find(c => c.trim().startsWith('firebase_token=')));
+                // Store ID token in sessionStorage for JS API calls (Authorization: Bearer)
                 sessionStorage.setItem('firebase_token', token);
-                logInfo('✅ Token stored in cookie and sessionStorage');
+                logInfo('✅ Token stored in sessionStorage for API calls');
 
-                // Redirect without token in URL (token is now in cookie)
+                // Exchange ID token for a server-set HttpOnly __session cookie (5-day lifetime).
+                // The session cookie is what Traefik ForwardAuth will use to authenticate
+                // navigation requests — it survives the proxy chain unlike JS-set cookies.
+                try {
+                    const sessionResp = await fetch('/api/auth/session', {
+                        method: 'POST',
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (sessionResp.ok) {
+                        logInfo('✅ Session cookie created (HttpOnly, 5-day lifetime)');
+                    } else {
+                        logInfo('⚠️ Session cookie creation failed — lab navigation may require re-login');
+                    }
+                } catch (sessionErr) {
+                    logInfo('⚠️ Session cookie fetch error: ' + sessionErr.message);
+                }
+
+                // Redirect without token in URL (session cookie is set via Set-Cookie header above)
                 const redirectPath = '%s';
                 // Handle both absolute (https://...) and relative (/path) redirect values
                 const redirectUrl = /^https?:\/\//.test(redirectPath) ? redirectPath : window.location.origin + redirectPath;
@@ -3034,19 +3135,28 @@ func serveSignInPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
                     tokenPrefix: token ? token.substring(0, 20) + '...' : 'none'
                 });
 
-                // Store token in cookie (for server-side auth) and sessionStorage (for client-side)
-                // Cookie expires in 1 hour (3600 seconds)
-                // Use SameSite=None; Secure for HTTPS (allows cross-site), SameSite=Lax for HTTP (local dev)
-                // Set cookie with path=/ to ensure it's sent for all routes
-                // No domain specified = cookie is set for current domain
-                const isSecure = window.location.protocol === 'https:';
-                const sameSiteAttr = isSecure ? 'SameSite=None; Secure' : 'SameSite=Lax';
-                document.cookie = 'firebase_token=' + encodeURIComponent(token) + '; path=/; max-age=3600; ' + sameSiteAttr;
-                console.log('🔍 Cookie set:', document.cookie.split(';').find(c => c.trim().startsWith('firebase_token=')));
+                // Store ID token in sessionStorage for JS API calls (Authorization: Bearer)
                 sessionStorage.setItem('firebase_token', token);
-                logInfo('✅ Token stored in cookie and sessionStorage');
+                logInfo('✅ Token stored in sessionStorage for API calls');
 
-                // Redirect without token in URL (token is now in cookie)
+                // Exchange ID token for a server-set HttpOnly __session cookie (5-day lifetime).
+                // The session cookie is what Traefik ForwardAuth will use to authenticate
+                // navigation requests — it survives the proxy chain unlike JS-set cookies.
+                try {
+                    const sessionResp = await fetch('/api/auth/session', {
+                        method: 'POST',
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (sessionResp.ok) {
+                        logInfo('✅ Session cookie created (HttpOnly, 5-day lifetime)');
+                    } else {
+                        logInfo('⚠️ Session cookie creation failed — lab navigation may require re-login');
+                    }
+                } catch (sessionErr) {
+                    logInfo('⚠️ Session cookie fetch error: ' + sessionErr.message);
+                }
+
+                // Redirect without token in URL (session cookie is set via Set-Cookie header above)
                 const redirectPath = '%s';
                 // Handle both absolute (https://...) and relative (/path) redirect values
                 const redirectUrl = /^https?:\/\//.test(redirectPath) ? redirectPath : window.location.origin + redirectPath;
@@ -3382,18 +3492,20 @@ func serveSignUpPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
                 const result = await auth.signInWithPopup(provider);
                 const token = await result.user.getIdToken();
 
-                // Store token in cookie (for server-side auth) and sessionStorage (for client-side)
-                // Cookie expires in 1 hour (3600 seconds)
-                // Use SameSite=None; Secure for HTTPS (allows cross-site), SameSite=Lax for HTTP (local dev)
-                // Set cookie with path=/ to ensure it's sent for all routes
-                // No domain specified = cookie is set for current domain
-                const isSecure = window.location.protocol === 'https:';
-                const sameSiteAttr = isSecure ? 'SameSite=None; Secure' : 'SameSite=Lax';
-                document.cookie = 'firebase_token=' + encodeURIComponent(token) + '; path=/; max-age=3600; ' + sameSiteAttr;
-                console.log('🔍 Cookie set:', document.cookie.split(';').find(c => c.trim().startsWith('firebase_token=')));
                 sessionStorage.setItem('firebase_token', token);
+                try {
+                    const sessionResp = await fetch('/api/auth/session', {
+                        method: 'POST',
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (!sessionResp.ok) {
+                        console.warn('⚠️ Session cookie creation failed');
+                    }
+                } catch (sessionErr) {
+                    console.warn('⚠️ Session cookie fetch error:', sessionErr.message);
+                }
 
-                // Redirect without token in URL (token is now in cookie)
+                // Redirect without token in URL (session cookie is set via Set-Cookie header above)
                 const redirectPath = '%s';
                 // Handle both absolute (https://...) and relative (/path) redirect values
                 const redirectUrl = /^https?:\/\//.test(redirectPath) ? redirectPath : window.location.origin + redirectPath;
@@ -3505,7 +3617,7 @@ func checkServiceHealth(environment string) ([]ServiceStatus, bool, bool) {
 					// Don't block on Analytics service
 				}
 
-				if serviceMap["lab1@docker"] == "up" {
+				if serviceMap["lab1-vulnerable-site@docker"] == "up" {
 					services[4].Status = "up"
 				} else {
 					services[4].Status = "down"

