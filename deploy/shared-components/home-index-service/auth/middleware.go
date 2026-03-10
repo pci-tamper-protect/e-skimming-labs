@@ -109,11 +109,17 @@ func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 				return
 			}
 
-			// Extract token from various sources
-			token := extractToken(r)
-
-			// Validate token
-			userInfo, err := validator.ValidateToken(r.Context(), token)
+			// Try session cookie first (server-set HttpOnly, 5-day lifetime)
+			var userInfo *TokenInfo
+			var err error
+			if sc := ExtractSessionCookie(r); sc != "" {
+				userInfo, err = validator.ValidateSessionCookie(r.Context(), sc)
+			}
+			// Fall back to ID token (Authorization: Bearer or firebase_token cookie)
+			if userInfo == nil && err == nil {
+				token := extractToken(r)
+				userInfo, err = validator.ValidateToken(r.Context(), token)
+			}
 			if err != nil {
 				if validator.IsRequired() {
 					// Auth required but validation failed
@@ -127,8 +133,8 @@ func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 				return
 			}
 
-			// If auth is required but no token provided
-			if validator.IsRequired() && token == "" {
+			// If auth is required but no credentials provided
+			if validator.IsRequired() && ExtractSessionCookie(r) == "" && extractToken(r) == "" {
 				log.Printf("❌ Authentication required but no token provided")
 				respondAuthError(w, r, http.StatusUnauthorized, "Authentication required", validator.GetMainAppURL())
 				return
@@ -179,10 +185,20 @@ func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 	}
 }
 
-// extractToken extracts the Firebase token from the request
-// Checks: Authorization header, cookie, query parameter
+// ExtractSessionCookie returns the raw __session cookie value, or empty string.
+func ExtractSessionCookie(r *http.Request) string {
+	c, err := r.Cookie("__session")
+	if err == nil && c.Value != "" {
+		return c.Value
+	}
+	return ""
+}
+
+// extractToken extracts a Firebase ID token from the request.
+// Checks: Authorization header, firebase_token cookie, query parameter.
+// Does NOT check __session — session cookies are validated separately via ValidateSessionCookie.
 func extractToken(r *http.Request) string {
-	// 1. Check Authorization header (Bearer token)
+	// 1. Authorization: Bearer <firebase-ID-token>
 	authHeader := r.Header.Get("Authorization")
 	if authHeader != "" {
 		parts := strings.SplitN(authHeader, " ", 2)
@@ -191,13 +207,13 @@ func extractToken(r *http.Request) string {
 		}
 	}
 
-	// 2. Check cookie (for client-side token passing)
+	// 2. Legacy JS-set cookie (kept as fallback during transition)
 	cookie, err := r.Cookie("firebase_token")
 	if err == nil && cookie.Value != "" {
 		return cookie.Value
 	}
 
-	// 3. Check query parameter (for initial redirects)
+	// 3. Query parameter (for initial redirects)
 	token := r.URL.Query().Get("token")
 	if token != "" {
 		return token

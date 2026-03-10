@@ -157,6 +157,45 @@ func (tv *TokenValidator) ValidateToken(ctx context.Context, token string) (*Tok
 	return tokenInfo, nil
 }
 
+// SessionCookieDuration is the lifetime of Firebase session cookies.
+const SessionCookieDuration = 5 * 24 * time.Hour
+
+// CreateSessionCookie exchanges a Firebase ID token for a long-lived session cookie.
+// The caller should set the returned value as an HttpOnly Set-Cookie header.
+func (tv *TokenValidator) CreateSessionCookie(ctx context.Context, idToken string) (string, error) {
+	if !tv.enabled {
+		return "", fmt.Errorf("auth not enabled")
+	}
+	cookie, err := tv.authClient.SessionCookie(ctx, idToken, SessionCookieDuration)
+	if err != nil {
+		return "", fmt.Errorf("failed to create session cookie: %w", err)
+	}
+	return cookie, nil
+}
+
+// ValidateSessionCookie verifies a Firebase session cookie and returns user info.
+// Uses revocation check so sign-out invalidates the session server-side.
+func (tv *TokenValidator) ValidateSessionCookie(ctx context.Context, sessionCookie string) (*TokenInfo, error) {
+	if !tv.enabled {
+		return nil, nil
+	}
+	decoded, err := tv.authClient.VerifySessionCookieAndCheckRevoked(ctx, sessionCookie)
+	if err != nil {
+		return nil, fmt.Errorf("invalid session cookie: %w", err)
+	}
+	claims := decoded.Claims
+	email, _ := claims["email"].(string)
+	emailVerified, _ := claims["email_verified"].(bool)
+	exp, _ := claims["exp"].(float64)
+	return &TokenInfo{
+		UserID:        decoded.UID,
+		Email:         email,
+		EmailVerified: emailVerified,
+		ExpiresAt:     time.Unix(int64(exp), 0),
+		ValidatedAt:   time.Now(),
+	}, nil
+}
+
 // cleanCache removes expired entries from the cache
 func (tv *TokenValidator) cleanCache() {
 	now := time.Now()
