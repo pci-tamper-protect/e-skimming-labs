@@ -241,9 +241,6 @@ func respondAuthError(w http.ResponseWriter, r *http.Request, statusCode int, me
 		strings.Contains(acceptHeader, "*/*")
 
 	if isBrowserRequest {
-		// Redirect browser requests to sign-in page (URL built from request; mainAppURL unused when empty)
-		// Use X-Forwarded-Host if available (when behind proxy like Traefik),
-		// otherwise use request's Host header to avoid container hostname issues
 		scheme := "http"
 		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
 			scheme = "https"
@@ -251,16 +248,20 @@ func respondAuthError(w http.ResponseWriter, r *http.Request, statusCode int, me
 		host := r.Header.Get("X-Forwarded-Host")
 		environment := os.Getenv("ENVIRONMENT")
 		if host == "" {
-			// In local environment, always use localhost:8080, never use r.Host (internal Docker hostname)
 			if environment == "local" {
-				host = "127.0.0.1:8080"
+				host = "localhost:8080"
 			} else {
 				host = r.Host
 			}
 		} else if environment == "local" {
-			// Even if X-Forwarded-Host is set, in local environment ensure we use 127.0.0.1:8080
-			// X-Forwarded-Host might be set to internal hostname by Traefik
-			host = "127.0.0.1:8080"
+			host = "localhost:8080"
+		}
+		// Normalize 127.0.0.1 → localhost so cookies set at sign-in (localhost domain)
+		// are sent on subsequent requests to the same origin. The gcloud proxy binds on
+		// 127.0.0.1 but the browser uses "localhost" — cookies are domain-specific.
+		if strings.HasPrefix(host, "127.0.0.1:") {
+			host = "localhost:" + strings.TrimPrefix(host, "127.0.0.1:")
+			scheme = "http"
 		}
 		redirectURL := fmt.Sprintf("%s://%s/sign-in?redirect=%s", scheme, host, r.URL.String())
 		http.Redirect(w, r, redirectURL, http.StatusFound)

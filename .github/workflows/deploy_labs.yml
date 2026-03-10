@@ -188,6 +188,13 @@ jobs:
             if echo "$CHANGED_FILES" | grep -q "^deploy/traefik/"; then
               DEPLOY_TRAEFIK="true"
               echo "  ✅ Traefik changed"
+              # lab-labels.sh defines Cloud Run Traefik labels for every lab — if it
+              # changes, all labs must be redeployed so their labels are updated.
+              if echo "$CHANGED_FILES" | grep -q "^deploy/traefik/lab-labels\.sh"; then
+                DEPLOY_LABS="true"
+                CHANGED_LABS="all"
+                echo "  ✅ lab-labels.sh changed, redeploying all labs to update routing labels"
+              fi
             fi
 
             # Individual labs - detect which specific labs changed
