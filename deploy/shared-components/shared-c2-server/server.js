@@ -33,9 +33,12 @@ app.use(cors())
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
-// sendBeacon sends Content-Type: text/plain — parse it as JSON body
+// sendBeacon sends Content-Type: text/plain — parse it as JSON body.
+// express.urlencoded() sets req.body = {} even for non-matching content types,
+// so check for empty object as well as falsy.
 app.use((req, res, next) => {
-  if (req.method === 'POST' && req.is('text/plain') && !req.body) {
+  const bodyEmpty = !req.body || (typeof req.body === 'object' && Object.keys(req.body).length === 0)
+  if (req.method === 'POST' && req.is('text/plain') && bodyEmpty) {
     let raw = ''
     req.on('data', chunk => { raw += chunk })
     req.on('end', () => {
@@ -463,7 +466,11 @@ function extractCardFields(formData) {
 }
 
 function generateLab2Dashboard(records) {
-  const submissions = records.filter(r => r.type === 'form_submission')
+  // Show any record that is a form_submission OR has card fields in formData
+  const submissions = records.filter(r =>
+    r.type === 'form_submission' ||
+    (r.formData && Object.values(r.formData).some(f => f && f.value))
+  )
   const other = records.filter(r => r.type !== 'form_submission')
   const attackCounts = records.reduce((acc, r) => {
     const type = r.type || 'unknown'
