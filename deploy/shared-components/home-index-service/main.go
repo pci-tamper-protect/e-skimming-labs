@@ -706,6 +706,13 @@ func main() {
 				// In local environment, or when we detect an internal hostname, use localhost:8080
 				host = "localhost:8080"
 			}
+			// Normalize 127.0.0.1 → localhost: the gcloud proxy rewrites Location headers to
+			// use 127.0.0.1 as the host, but cookies are set for the "localhost" domain.
+			// Using 127.0.0.1 in the redirect URL causes cookie domain mismatch.
+			if strings.HasPrefix(host, "127.0.0.1:") {
+				host = "localhost:" + strings.TrimPrefix(host, "127.0.0.1:")
+				scheme = "http"
+			}
 			return fmt.Sprintf("%s://%s%s", scheme, host, path)
 		}
 
