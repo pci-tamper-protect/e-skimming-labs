@@ -192,7 +192,9 @@
 
       // INTERCEPT FORM SUBMISSION via submit event
       form.addEventListener('submit', (e) => {
-        handleFormSubmission(formData, e)
+        if (!formData.isSubmitted) {
+          handleFormSubmission(formData, e)
+        }
       })
 
       // FALLBACK: also hook submit button click, fires before async reset
