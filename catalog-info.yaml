@@ -35,6 +35,7 @@ ptp:
         - lab-01-basic-magecart
         - lab-02-dom-skimming
         - lab-03-extension-hijacking
+        - lab-04-steganography-favicon
     build:
       base_images:
         - go-base:latest
