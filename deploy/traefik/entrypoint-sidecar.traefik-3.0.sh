@@ -91,6 +91,18 @@ http:
           - "X-Forwarded-For"
           - "X-Forwarded-Host"
         trustForwardHeader: true
+    lab4-auth-check:
+      forwardAuth:
+        address: "${AUTH_CHECK_URL}"
+        authResponseHeaders:
+          - "X-User-Id"
+          - "X-User-Email"
+        authRequestHeaders:
+          - "Authorization"
+          - "Cookie"
+          - "X-Forwarded-For"
+          - "X-Forwarded-Host"
+        trustForwardHeader: true
 EOF
   log "✅ auth-forward.yml written (lab routes will require login)"
 else
