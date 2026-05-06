@@ -1,13 +1,13 @@
 /**
  * Global Setup for Playwright Tests - Authentication
  *
- * Authenticates once for staging tests and saves auth state to be reused across all tests.
- * This prevents the need to authenticate in every test, improving performance and reliability.
+ * Signs in once and saves the __session cookie + sessionStorage state so all tests
+ * can reuse it without re-authenticating.  Supports stg and prd environments.
  *
  * Only runs when:
- * - TEST_ENV === 'stg'
+ * - TEST_ENV is 'stg' or 'prd'
  * - AUTH_ENABLED === 'true'
- * - TEST_USER_EMAIL_STG and TEST_USER_PASSWORD_STG are provided
+ * - TEST_USER_EMAIL_<ENV> and TEST_USER_PASSWORD_<ENV> are set
  */
 
 const { chromium } = require('@playwright/test')
@@ -18,24 +18,27 @@ const fs = require('fs')
 const STORAGE_STATE_PATH = path.join(__dirname, '../.auth/storage-state.json')
 
 module.exports = async () => {
-  // Only run for staging environment
-  if (TEST_ENV !== 'stg') {
-    console.log('⏭️  Skipping auth setup: not staging environment')
+  // Only run for stg or prd
+  if (TEST_ENV !== 'stg' && TEST_ENV !== 'prd') {
+    console.log('⏭️  Skipping auth setup: not stg or prd environment')
     return
   }
 
-  // Check if auth is enabled
   if (process.env.AUTH_ENABLED !== 'true') {
     console.log('⏭️  Skipping auth setup: AUTH_ENABLED is not true')
     return
   }
 
-  // Check if test credentials are provided
-  const testEmail = process.env.TEST_USER_EMAIL_STG
-  const testPassword = process.env.TEST_USER_PASSWORD_STG
+  const testEmail = TEST_ENV === 'prd'
+    ? process.env.TEST_USER_EMAIL_PRD
+    : process.env.TEST_USER_EMAIL_STG
+  const testPassword = TEST_ENV === 'prd'
+    ? process.env.TEST_USER_PASSWORD_PRD
+    : process.env.TEST_USER_PASSWORD_STG
 
   if (!testEmail || !testPassword) {
-    console.log('⏭️  Skipping auth setup: TEST_USER_EMAIL_STG or TEST_USER_PASSWORD_STG not provided')
+    const envSuffix = TEST_ENV.toUpperCase()
+    console.log(`⏭️  Skipping auth setup: TEST_USER_EMAIL_${envSuffix} or TEST_USER_PASSWORD_${envSuffix} not provided`)
     return
   }
 
@@ -58,57 +61,39 @@ module.exports = async () => {
   const page = await context.newPage()
 
   try {
-    // Step 1: Sign in to main app (stg.pcioasis.com)
-    console.log(`🔗 Signing in to ${currentEnv.mainApp}/sign-in`)
-    await page.goto(`${currentEnv.mainApp}/sign-in`, { waitUntil: 'networkidle', timeout: 30000 })
+    // Step 1: Sign in via the labs sign-in page (home-index-service serves /sign-in).
+    // After sign-in the service sets an HttpOnly __session cookie (5-day lifetime)
+    // which is what Traefik ForwardAuth checks.
+    const signInUrl = `${currentEnv.homeIndex}/sign-in`
+    console.log(`🔗 Signing in at ${signInUrl}`)
+    await page.goto(signInUrl, { waitUntil: 'networkidle', timeout: 30000 })
 
-    // Fill in credentials
-    await page.fill('input[type="email"]', testEmail)
-    await page.fill('input[type="password"]', testPassword)
+    // Fill in credentials and submit
+    await page.fill('#email', testEmail)
+    await page.fill('#password', testPassword)
     await page.click('button[type="submit"]')
 
-    // Wait for sign-in to complete
-    await page.waitForURL(
-      new RegExp(`${currentEnv.mainApp}/dashboard|${currentEnv.mainApp}/`),
+    // Wait for redirect away from sign-in page (to home or originally-requested page)
+    await page.waitForFunction(
+      () => !window.location.pathname.startsWith('/sign-in'),
       { timeout: 30000 }
     )
 
-    console.log('✅ Signed in to main app')
+    console.log('✅ Signed in successfully')
 
-    // Step 2: Get Firebase token from localStorage
-    const token = await page.evaluate(() => {
-      return localStorage.getItem('accessToken')
-    })
-
-    if (!token) {
-      throw new Error('Failed to get access token from localStorage after sign-in')
-    }
-
-    console.log('✅ Retrieved Firebase access token')
-
-    // Step 3: Navigate to labs with token to establish auth state
-    console.log(`🔗 Establishing auth state at ${currentEnv.homeIndex}`)
-    await page.goto(`${currentEnv.homeIndex}?token=${token}`, {
-      waitUntil: 'networkidle',
-      timeout: 30000
-    })
-
-    // Verify we're authenticated (not redirected to sign-in)
+    // Step 2: Verify we are authenticated (not redirected back to sign-in)
     const currentUrl = page.url()
     if (currentUrl.includes('/sign-in')) {
-      throw new Error('Failed to authenticate: redirected to sign-in page')
+      throw new Error('Failed to authenticate: still on sign-in page after submit')
     }
 
-    // Verify token is stored in sessionStorage
-    const storedToken = await page.evaluate(() => {
-      return sessionStorage.getItem('firebase_token')
-    })
-
-    if (storedToken !== token) {
-      throw new Error('Token not properly stored in sessionStorage')
+    // Step 3: Verify Firebase token is in sessionStorage (set by sign-in page JS)
+    const storedToken = await page.evaluate(() => sessionStorage.getItem('firebase_token'))
+    if (!storedToken) {
+      throw new Error('firebase_token not found in sessionStorage after sign-in')
     }
 
-    console.log('✅ Auth state established on labs domain')
+    console.log('✅ Auth state established (session cookie + sessionStorage token)')
 
     // Step 4: Save storage state (cookies, localStorage, sessionStorage)
     await context.storageState({ path: STORAGE_STATE_PATH })

@@ -16,6 +16,14 @@ test.describe('Lab 2: Card Capture via DOM Skimmer', () => {
     // ── 1. Navigate to lab2 and wait for the skimmer to initialise (1s delay) ──
     await page.goto(`${currentEnv.lab2.vulnerable}/`)
     await page.waitForLoadState('networkidle')
+
+    // Skip gracefully if auth is required and we're not authenticated
+    if (page.url().includes('/sign-in')) {
+      console.log('⏭️  Lab 2 redirected to sign-in — skipping (set TEST_USER_EMAIL_* to run with auth)')
+      test.skip()
+      return
+    }
+
     await page.waitForTimeout(1500)  // skimmer setTimeout fires after 1s
 
     // Confirm the card form is visible

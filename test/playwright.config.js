@@ -6,16 +6,23 @@ const path = require('path')
 console.log(`🧪 E2E Test Environment: ${TEST_ENV}`)
 console.log(`🔗 Base URL: ${currentEnv.homeIndex}`)
 
-// Path to saved auth state (only used for staging with auth enabled)
+// Path to saved auth state
 const STORAGE_STATE_PATH = path.join(__dirname, '.auth/storage-state.json')
-const USE_AUTH_STATE = TEST_ENV === 'stg' &&
+
+const TEST_EMAIL = TEST_ENV === 'prd'
+  ? process.env.TEST_USER_EMAIL_PRD
+  : process.env.TEST_USER_EMAIL_STG
+const TEST_PASSWORD = TEST_ENV === 'prd'
+  ? process.env.TEST_USER_PASSWORD_PRD
+  : process.env.TEST_USER_PASSWORD_STG
+
+const USE_AUTH_STATE = (TEST_ENV === 'stg' || TEST_ENV === 'prd') &&
                        process.env.AUTH_ENABLED === 'true' &&
-                       process.env.TEST_USER_EMAIL_STG &&
-                       process.env.TEST_USER_PASSWORD_STG
+                       TEST_EMAIL && TEST_PASSWORD
 
 if (USE_AUTH_STATE) {
   console.log('🔐 Using authenticated test state')
-  console.log(`📧 Test account: ${process.env.TEST_USER_EMAIL_STG}`)
+  console.log(`📧 Test account: ${TEST_EMAIL}`)
 }
 
 /**
@@ -24,7 +31,7 @@ if (USE_AUTH_STATE) {
 module.exports = defineConfig({
   testDir: './e2e',
   /* Global setup: authenticate once and save auth state */
-  globalSetup: USE_AUTH_STATE ? require('./utils/global-setup-auth') : undefined,
+  globalSetup: USE_AUTH_STATE ? './utils/global-setup-auth' : undefined,
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */

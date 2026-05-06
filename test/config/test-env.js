@@ -1,14 +1,15 @@
 /**
  * Test Environment Configuration
  *
- * This module provides environment-aware URLs for running tests against different deployments:
- * - local: Docker Compose on localhost
- * - stg: Staging deployment at labs.stg.pcioasis.com
- * - prd: Production deployment at labs.pcioasis.com
+ * All lab URLs use path-based routing through Traefik:
+ *   prd  → https://labs.pcioasis.com/lab1
+ *   stg  → https://labs.stg.pcioasis.com/lab1  (or http://127.0.0.1:8082/lab1 via proxy)
+ *   local→ http://localhost:8080/lab1
  *
  * Usage:
- *   Set TEST_ENV environment variable: TEST_ENV=stg npm test
- *   Defaults to 'local' if not set
+ *   TEST_ENV=stg USE_PROXY=true npm test   # stg via gcloud proxy on port 8082
+ *   TEST_ENV=prd npm test                  # production
+ *   npm test                               # local docker-compose
  */
 
 const TEST_ENV = process.env.TEST_ENV || 'local'
@@ -37,24 +38,19 @@ const getProxyConfig = () => {
     const envStgPath = path.join(__dirname, '../../.env.stg')
     if (fs.existsSync(envStgPath)) {
       const envContent = fs.readFileSync(envStgPath, 'utf8')
-      // Parse .env file format (KEY="VALUE" or KEY=VALUE)
       const lines = envContent.split('\n')
       let proxyHost = null
       let proxyPort = null
 
       for (const line of lines) {
-        // Skip comments and empty lines
         if (line.trim().startsWith('#') || !line.trim()) continue
-        // Skip encrypted values
         if (line.includes('encrypted:')) continue
 
-        // Match PROXY_HOST="value" or PROXY_HOST=value
         const hostMatch = line.match(/^PROXY_HOST=(?:"([^"]+)"|([^\s#]+))/)
         if (hostMatch) {
           proxyHost = hostMatch[1] || hostMatch[2]
         }
 
-        // Match PROXY_PORT="value" or PROXY_PORT=value
         const portMatch = line.match(/^PROXY_PORT=(?:"([^"]+)"|([^\s#]+))/)
         if (portMatch) {
           proxyPort = portMatch[1] || portMatch[2]
@@ -69,13 +65,12 @@ const getProxyConfig = () => {
       }
     }
   } catch (error) {
-    // If parsing fails or file doesn't exist, use defaults
+    // fall through to defaults
   }
 
-  // Defaults
   return {
     host: '127.0.0.1',
-    port: 8080
+    port: 8082
   }
 }
 
@@ -84,193 +79,90 @@ const proxyConfig = getProxyConfig()
 // Allow BASE_URL override for local testing (e.g., sidecar on port 9090)
 const LOCAL_BASE_URL = process.env.BASE_URL || 'http://localhost:8080'
 
+// stg base: proxy when USE_PROXY=true, otherwise public stg domain
+const STG_BASE = (() => {
+  if (process.env.USE_PROXY === 'true') {
+    const url = process.env.PROXY_URL || `http://${proxyConfig.host}:${proxyConfig.port}`
+    return normalizeUrl(url)
+  }
+  return 'https://labs.stg.pcioasis.com'
+})()
+
 const environments = {
   local: {
     homeIndex: LOCAL_BASE_URL,
     mainApp: 'http://localhost:5173',
     lab1: {
       vulnerable: `${LOCAL_BASE_URL}/lab1`,
-      c2: `${LOCAL_BASE_URL}/lab1/c2`,
-      writeup: `${LOCAL_BASE_URL}/lab-01-writeup`,
+      c2:         `${LOCAL_BASE_URL}/lab1/c2`,
+      writeup:    `${LOCAL_BASE_URL}/lab-01-writeup`,
     },
     lab2: {
       vulnerable: `${LOCAL_BASE_URL}/lab2`,
-      c2: `${LOCAL_BASE_URL}/lab2/c2`,
-      writeup: `${LOCAL_BASE_URL}/lab-02-writeup`,
+      c2:         `${LOCAL_BASE_URL}/lab2/c2`,
+      writeup:    `${LOCAL_BASE_URL}/lab-02-writeup`,
     },
     lab3: {
       vulnerable: `${LOCAL_BASE_URL}/lab3`,
-      c2: `${LOCAL_BASE_URL}/lab3/extension`,
-      writeup: `${LOCAL_BASE_URL}/lab-03-writeup`,
+      c2:         `${LOCAL_BASE_URL}/lab3/extension`,
+      writeup:    `${LOCAL_BASE_URL}/lab-03-writeup`,
     },
     lab4: {
       vulnerable: `${LOCAL_BASE_URL}/lab4`,
-      c2: `${LOCAL_BASE_URL}/lab4/c2`,
-      writeup: `${LOCAL_BASE_URL}/lab-04-writeup`,
+      c2:         `${LOCAL_BASE_URL}/lab4/c2`,
+      writeup:    `${LOCAL_BASE_URL}/lab-04-writeup`,
     },
   },
   stg: {
-    // Use proxy URL if available (for CI/CD), otherwise use direct domain
-    // When using proxy, all URLs go through the proxy (relative paths)
-    // Construct proxy URL from config if PROXY_URL env var not set
-    homeIndex: (() => {
-      if (process.env.PROXY_URL && process.env.USE_PROXY === 'true') {
-        return normalizeUrl(process.env.PROXY_URL)
-      }
-      // If USE_PROXY is true but PROXY_URL not set, construct from config
-      if (process.env.USE_PROXY === 'true') {
-        return `http://${proxyConfig.host}:${proxyConfig.port}`
-      }
-      return 'https://labs.stg.pcioasis.com'
-    })(),
+    // All URLs use path-based routing through Traefik (proxy or public stg domain).
+    homeIndex: STG_BASE,
     mainApp: 'https://stg.pcioasis.com',
     firebaseProjectId: 'ui-firebase-pcioasis-stg',
     lab1: {
-      // When using proxy, use relative paths through Traefik
-      // Construct proxy URL from config if PROXY_URL env var not set
-      vulnerable: (() => {
-        if (process.env.PROXY_URL && process.env.USE_PROXY === 'true') {
-          return `${process.env.PROXY_URL}/lab1`
-        }
-        if (process.env.USE_PROXY === 'true') {
-          return `http://${proxyConfig.host}:${proxyConfig.port}/lab1`
-        }
-        return 'https://lab-01-basic-magecart-stg-mmwwcfi5za-uc.a.run.app'
-      })(),
-      c2: (() => {
-        if (process.env.PROXY_URL && process.env.USE_PROXY === 'true') {
-          return `${process.env.PROXY_URL}/lab1/c2`
-        }
-        if (process.env.USE_PROXY === 'true') {
-          return `http://${proxyConfig.host}:${proxyConfig.port}/lab1/c2`
-        }
-        return 'https://lab-01-basic-magecart-stg-mmwwcfi5za-uc.a.run.app'
-      })(),
-      writeup: (() => {
-        if (process.env.PROXY_URL && process.env.USE_PROXY === 'true') {
-          return `${process.env.PROXY_URL}/lab-01-writeup`
-        }
-        if (process.env.USE_PROXY === 'true') {
-          return `http://${proxyConfig.host}:${proxyConfig.port}/lab-01-writeup`
-        }
-        return 'https://labs.stg.pcioasis.com/lab-01-writeup'
-      })(),
+      vulnerable: `${STG_BASE}/lab1`,
+      c2:         `${STG_BASE}/lab1/c2`,
+      writeup:    `${STG_BASE}/lab-01-writeup`,
     },
     lab2: {
-      vulnerable: (() => {
-        if (process.env.PROXY_URL && process.env.USE_PROXY === 'true') {
-          return `${process.env.PROXY_URL}/lab2`
-        }
-        if (process.env.USE_PROXY === 'true') {
-          return `http://${proxyConfig.host}:${proxyConfig.port}/lab2`
-        }
-        return 'https://lab-02-dom-skimming-stg-mmwwcfi5za-uc.a.run.app'
-      })(),
-      c2: (() => {
-        if (process.env.PROXY_URL && process.env.USE_PROXY === 'true') {
-          return `${process.env.PROXY_URL}/lab2/c2`
-        }
-        if (process.env.USE_PROXY === 'true') {
-          return `http://${proxyConfig.host}:${proxyConfig.port}/lab2/c2`
-        }
-        return 'https://lab-02-dom-skimming-c2-stg-mmwwcfi5za-uc.a.run.app'
-      })(),
-      writeup: (() => {
-        if (process.env.PROXY_URL && process.env.USE_PROXY === 'true') {
-          return `${process.env.PROXY_URL}/lab-02-writeup`
-        }
-        if (process.env.USE_PROXY === 'true') {
-          return `http://${proxyConfig.host}:${proxyConfig.port}/lab-02-writeup`
-        }
-        return 'https://labs.stg.pcioasis.com/lab-02-writeup'
-      })(),
+      vulnerable: `${STG_BASE}/lab2`,
+      c2:         `${STG_BASE}/lab2/c2`,
+      writeup:    `${STG_BASE}/lab-02-writeup`,
     },
     lab3: {
-      vulnerable: (() => {
-        if (process.env.PROXY_URL && process.env.USE_PROXY === 'true') {
-          return `${process.env.PROXY_URL}/lab3`
-        }
-        if (process.env.USE_PROXY === 'true') {
-          return `http://${proxyConfig.host}:${proxyConfig.port}/lab3`
-        }
-        return 'https://lab-03-extension-hijacking-stg-mmwwcfi5za-uc.a.run.app'
-      })(),
-      c2: (() => {
-        if (process.env.PROXY_URL && process.env.USE_PROXY === 'true') {
-          return `${process.env.PROXY_URL}/lab3/extension`
-        }
-        if (process.env.USE_PROXY === 'true') {
-          return `http://${proxyConfig.host}:${proxyConfig.port}/lab3/extension`
-        }
-        return 'https://lab-03-extension-hijacking-c2-stg-mmwwcfi5za-uc.a.run.app'
-      })(),
-      writeup: (() => {
-        if (process.env.PROXY_URL && process.env.USE_PROXY === 'true') {
-          return `${process.env.PROXY_URL}/lab-03-writeup`
-        }
-        if (process.env.USE_PROXY === 'true') {
-          return `http://${proxyConfig.host}:${proxyConfig.port}/lab-03-writeup`
-        }
-        return 'https://labs.stg.pcioasis.com/lab-03-writeup'
-      })(),
+      vulnerable: `${STG_BASE}/lab3`,
+      c2:         `${STG_BASE}/lab3/extension`,
+      writeup:    `${STG_BASE}/lab-03-writeup`,
     },
     lab4: {
-      vulnerable: (() => {
-        if (process.env.PROXY_URL && process.env.USE_PROXY === 'true') {
-          return `${process.env.PROXY_URL}/lab4`
-        }
-        if (process.env.USE_PROXY === 'true') {
-          return `http://${proxyConfig.host}:${proxyConfig.port}/lab4`
-        }
-        return 'https://lab-04-steganography-stg-mmwwcfi5za-uc.a.run.app'
-      })(),
-      c2: (() => {
-        if (process.env.PROXY_URL && process.env.USE_PROXY === 'true') {
-          return `${process.env.PROXY_URL}/lab4/c2`
-        }
-        if (process.env.USE_PROXY === 'true') {
-          return `http://${proxyConfig.host}:${proxyConfig.port}/lab4/c2`
-        }
-        return 'https://lab-04-steganography-c2-stg-mmwwcfi5za-uc.a.run.app'
-      })(),
-      writeup: (() => {
-        if (process.env.PROXY_URL && process.env.USE_PROXY === 'true') {
-          return `${process.env.PROXY_URL}/lab-04-writeup`
-        }
-        if (process.env.USE_PROXY === 'true') {
-          return `http://${proxyConfig.host}:${proxyConfig.port}/lab-04-writeup`
-        }
-        return 'https://labs.stg.pcioasis.com/lab-04-writeup'
-      })(),
+      vulnerable: `${STG_BASE}/lab4`,
+      c2:         `${STG_BASE}/lab4/c2`,
+      writeup:    `${STG_BASE}/lab-04-writeup`,
     },
   },
   prd: {
+    // All URLs use path-based routing through labs.pcioasis.com (Traefik).
     homeIndex: 'https://labs.pcioasis.com',
     mainApp: 'https://www.pcioasis.com',
     firebaseProjectId: 'ui-firebase-pcioasis-prd',
     lab1: {
-      // Lab 1 uses combined deployment (nginx + C2 in same container)
-      vulnerable: 'https://lab-01-basic-magecart-prd-mmwwcfi5za-uc.a.run.app',
-      c2: 'https://lab-01-basic-magecart-prd-mmwwcfi5za-uc.a.run.app',
-      writeup: 'https://labs.pcioasis.com/lab-01-writeup',
+      vulnerable: 'https://labs.pcioasis.com/lab1',
+      c2:         'https://labs.pcioasis.com/lab1/c2',
+      writeup:    'https://labs.pcioasis.com/lab-01-writeup',
     },
     lab2: {
-      // Lab 2 uses separate deployments for vulnerable site and C2 server
-      vulnerable: 'https://lab-02-dom-skimming-prd-mmwwcfi5za-uc.a.run.app',
-      c2: 'https://lab-02-dom-skimming-c2-prd-mmwwcfi5za-uc.a.run.app',
-      writeup: 'https://labs.pcioasis.com/lab-02-writeup',
+      vulnerable: 'https://labs.pcioasis.com/lab2',
+      c2:         'https://labs.pcioasis.com/lab2/c2',
+      writeup:    'https://labs.pcioasis.com/lab-02-writeup',
     },
     lab3: {
-      // Lab 3 uses separate deployments for vulnerable site and C2 server
-      vulnerable: 'https://lab-03-extension-hijacking-prd-mmwwcfi5za-uc.a.run.app',
-      c2: 'https://lab-03-extension-hijacking-c2-prd-mmwwcfi5za-uc.a.run.app',
-      writeup: 'https://labs.pcioasis.com/lab-03-writeup',
+      vulnerable: 'https://labs.pcioasis.com/lab3',
+      c2:         'https://labs.pcioasis.com/lab3/extension',
+      writeup:    'https://labs.pcioasis.com/lab-03-writeup',
     },
     lab4: {
-      // Lab 4 uses separate deployments for vulnerable site and C2 server
-      vulnerable: 'https://lab-04-steganography-prd-mmwwcfi5za-uc.a.run.app',
-      c2: 'https://lab-04-steganography-c2-prd-mmwwcfi5za-uc.a.run.app',
-      writeup: 'https://labs.pcioasis.com/lab-04-writeup',
+      vulnerable: 'https://labs.pcioasis.com/lab4',
+      c2:         'https://labs.pcioasis.com/lab4/c2',
+      writeup:    'https://labs.pcioasis.com/lab-04-writeup',
     },
   },
 }
@@ -281,15 +173,11 @@ if (!currentEnv) {
   throw new Error(`Invalid TEST_ENV: ${TEST_ENV}. Must be one of: ${Object.keys(environments).join(', ')}`)
 }
 
-// Helper to get C2 API endpoint (adjusts port for local, path for prd)
+// Helper to get C2 API endpoint
 function getC2ApiEndpoint(labNumber) {
   const labKey = `lab${labNumber}`
   const c2Url = currentEnv[labKey]?.c2
-
-  if (!c2Url) {
-    throw new Error(`C2 URL not found for ${labKey}`)
-  }
-
+  if (!c2Url) throw new Error(`C2 URL not found for ${labKey}`)
   return `${c2Url}/api/stolen`
 }
 
@@ -297,17 +185,13 @@ function getC2ApiEndpoint(labNumber) {
 function getC2CollectEndpoint(labNumber) {
   const labKey = `lab${labNumber}`
   const c2Url = currentEnv[labKey]?.c2
-
-  if (!c2Url) {
-    throw new Error(`C2 URL not found for ${labKey}`)
-  }
-
+  if (!c2Url) throw new Error(`C2 URL not found for ${labKey}`)
   return `${c2Url}/collect`
 }
 
 console.log(`🧪 Test Environment: ${TEST_ENV}`)
-if (process.env.USE_PROXY === 'true' && process.env.PROXY_URL) {
-  console.log(`🔗 Using gcloud proxy: ${process.env.PROXY_URL}`)
+if (process.env.USE_PROXY === 'true') {
+  console.log(`🔗 Using gcloud proxy: ${STG_BASE}`)
 }
 console.log(`📍 Home Index: ${currentEnv.homeIndex}`)
 if (currentEnv.mainApp) {

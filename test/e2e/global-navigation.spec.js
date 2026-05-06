@@ -11,9 +11,21 @@ const { handleDangerousWarning } = require('../utils/handle-dangerous-warning')
 
 console.log(`🧪 Global Navigation Test - Environment: ${TEST_ENV}`)
 
-// Skip navigation tests in staging - staging requires authentication/tunneling
-// TODO: Add authentication support or tunnel setup for staging navigation tests
-const navigationTests = TEST_ENV === 'stg'
+/**
+ * After clicking a "Start Lab" link, the server may redirect to /sign-in when
+ * Firebase auth is required. If so, skip the test rather than fail — the redirect
+ * itself is correct behaviour; the test just can't proceed without credentials.
+ */
+async function skipIfAuthRedirect(page, labName) {
+  const url = page.url()
+  if (url.includes('/sign-in')) {
+    console.log(`⏭️  ${labName} redirected to sign-in — skipping (set TEST_USER_EMAIL_* to run with auth)`)
+    test.skip()
+  }
+}
+
+// stg: skip when proxy is not configured (labs are private, not reachable)
+const navigationTests = (TEST_ENV === 'stg' && process.env.USE_PROXY !== 'true')
   ? test.describe.skip
   : test.describe
 
@@ -133,13 +145,14 @@ navigationTests('Global Navigation', () => {
       console.log('Network idle timeout, checking page state...')
     }
 
-    // Check if we got an error page
+    // Check if we got an error page or auth redirect
     const currentUrl = page.url()
     console.log('Current URL after clicking Lab 1:', currentUrl)
 
     if (currentUrl.includes('chrome-error://') || currentUrl.includes('error')) {
       throw new Error(`Failed to load Lab 1 page. URL: ${currentUrl}. Check if lab1-vulnerable-site container is running.`)
     }
+    await skipIfAuthRedirect(page, 'Lab 1')
 
     // Verify we're on Lab 1 page
     console.log('✅ Verifying Lab 1 page')
@@ -216,13 +229,14 @@ navigationTests('Global Navigation', () => {
       console.log('Network idle timeout, checking page state...')
     }
 
-    // Check if we got an error page
+    // Check if we got an error page or auth redirect
     const currentUrl = page.url()
     console.log('Current URL after clicking Lab 2:', currentUrl)
 
     if (currentUrl.includes('chrome-error://') || currentUrl.includes('error')) {
       throw new Error(`Failed to load Lab 2 page. URL: ${currentUrl}. Check if lab2-vulnerable-site container is running.`)
     }
+    await skipIfAuthRedirect(page, 'Lab 2')
 
     // Verify we're on Lab 2 page
     console.log('✅ Verifying Lab 2 page')
@@ -304,13 +318,14 @@ navigationTests('Global Navigation', () => {
       console.log('Network idle timeout, checking page state...')
     }
 
-    // Check if we got an error page
+    // Check if we got an error page or auth redirect
     const currentUrl = page.url()
     console.log('Current URL after clicking Lab 3:', currentUrl)
 
     if (currentUrl.includes('chrome-error://') || currentUrl.includes('error')) {
       throw new Error(`Failed to load Lab 3 page. URL: ${currentUrl}. Check if lab3-vulnerable-site container is running.`)
     }
+    await skipIfAuthRedirect(page, 'Lab 3')
 
     // Verify we're on Lab 3 page
     console.log('✅ Verifying Lab 3 page')
@@ -410,6 +425,7 @@ navigationTests('Global Navigation', () => {
     await expect(lab1Link).toBeVisible()
     await lab1Link.click()
     await page.waitForLoadState('networkidle')
+    await skipIfAuthRedirect(page, 'Lab 1')
 
     // Verify we're on Lab 1 page
     await expect(page).toHaveTitle(/TechGear Store/)
@@ -500,11 +516,12 @@ navigationTests('Global Navigation', () => {
       console.log('Network idle timeout, checking page state...')
     }
 
-    // Check for error pages
+    // Check for error pages or auth redirect
     const lab1Url = page.url()
     if (lab1Url.includes('chrome-error://') || lab1Url.includes('error')) {
       throw new Error(`Failed to load Lab 1 page. URL: ${lab1Url}. Check if lab1-vulnerable-site container is running.`)
     }
+    await skipIfAuthRedirect(page, 'Lab 1 (full journey)')
 
     await expect(page).toHaveURL(/\/lab1/, { timeout: 10000 })
     await expect(page).toHaveTitle(/TechGear Store/, { timeout: 10000 })

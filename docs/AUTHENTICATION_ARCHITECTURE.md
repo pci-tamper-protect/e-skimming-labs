@@ -28,9 +28,12 @@ The authentication system uses:
 - `/lab1/c2` - Lab 1 C2 server (protected by Traefik ForwardAuth)
 - `/lab2/*` - Lab 2 and C2 server (protected by Traefik ForwardAuth)
 - `/lab3/*` - Lab 3 and extension server (protected by Traefik ForwardAuth)
+- `/lab4/*` - Lab 4 and its C2 dashboard (protected by the same ForwardAuth middleware)
+- `/lab4/c2` - Lab 4 C2 server (also guarded by ForwardAuth)
 - `/lab-01-writeup` - Lab 1 writeup (protected by Go middleware)
 - `/lab-02-writeup` - Lab 2 writeup (protected by Go middleware)
 - `/lab-03-writeup` - Lab 3 writeup (protected by Go middleware)
+- `/lab-04-writeup` - Lab 4 writeup (also served through Go middleware)
 
 ## Architecture Layers
 
@@ -53,6 +56,23 @@ lab1-auth-check:
       - "X-Forwarded-For"
       - "X-Forwarded-Host"
     trustForwardHeader: true
+```
+
+The entrypoint script now also writes `lab4-auth-check`, so the steganography lab and its C2 dashboard flow through the same `/api/auth/check` validation path before Traefik routes them into the lab containers.
+
+```94:105:deploy/traefik/entrypoint-sidecar.traefik-3.0.sh
+    lab4-auth-check:
+      forwardAuth:
+        address: "${AUTH_CHECK_URL}"
+        authResponseHeaders:
+          - "X-User-Id"
+          - "X-User-Email"
+        authRequestHeaders:
+          - "Authorization"
+          - "Cookie"
+          - "X-Forwarded-For"
+          - "X-Forwarded-Host"
+        trustForwardHeader: true
 ```
 
 **Service-to-Service Auth Header:** Traefik uses `X-Serverless-Authorization: Bearer <IAM-token>` (not `Authorization: Bearer`) for Cloud Run service-to-service auth. This preserves `Authorization: Bearer` for user Firebase JWTs. Cloud Run validates `X-Serverless-Authorization` for IAM access control and strips it before forwarding to the container; `Authorization` passes through to the app unchanged.
@@ -87,6 +107,14 @@ The `AuthMiddleware`:
 - If protected, validates Firebase token
 - Checks email verification status (if auth is required)
 - Redirects unverified users to sign-in
+
+The Go server now registers `/lab-04-writeup` in the same handler chain so the steganography writeup is guarded exactly like the other lab writeups.
+
+```392:406:deploy/shared-components/home-index-service/main.go
+	mux.HandleFunc("/lab-04-writeup", func(w http.ResponseWriter, r *http.Request) {
+		serveLabWriteup(w, r, "04-steganography-favicon", homeData, authValidator)
+	})
+```
 
 **Email Verification Check:**
 ```go
