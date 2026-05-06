@@ -70,7 +70,10 @@ jobs:
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             ENV="${{ github.event.inputs.environment }}"
-          elif [[ "${{ github.ref }}" == "refs/heads/stg" ]] || [[ "${{ github.base_ref }}" == "stg" ]]; then
+          elif [[ "${{ github.ref }}" == "refs/heads/stg" ]] || \
+               [[ "${{ github.base_ref }}" == "stg" ]] || \
+               [[ "${{ github.head_ref }}" == "stg" ]]; then
+            # stg branch push, PR targeting stg, or stg→main promotion PR
             ENV="stg"
           else
             ENV="prd"
