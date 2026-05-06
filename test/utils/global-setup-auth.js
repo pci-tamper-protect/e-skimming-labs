@@ -4,54 +4,88 @@
  * Signs in once and saves the __session cookie + sessionStorage state so all tests
  * can reuse it without re-authenticating.  Supports stg and prd environments.
  *
- * Only runs when:
- * - TEST_ENV is 'stg' or 'prd'
- * - AUTH_ENABLED === 'true'
- * - TEST_USER_EMAIL_<ENV> and TEST_USER_PASSWORD_<ENV> are set
+ * Credential resolution order:
+ *   1. Env vars TEST_USER_EMAIL_<ENV> / TEST_USER_PASSWORD_<ENV>
+ *   2. GCP Secret Manager: secret "e2e-test-user" in the env's labs GCP project
+ *      (works in CI via the existing GCP SA key, and locally via gcloud auth login)
+ *
+ * If no credentials are found, setup is skipped silently — tests run unauthenticated
+ * and will skip auth-gated assertions via skipIfAuthRedirect.
  */
 
 const { chromium } = require('@playwright/test')
+const { execSync } = require('child_process')
 const { currentEnv, TEST_ENV } = require('../config/test-env')
 const path = require('path')
 const fs = require('fs')
 
 const STORAGE_STATE_PATH = path.join(__dirname, '../.auth/storage-state.json')
 
+const GCP_PROJECTS = {
+  stg: 'labs-stg',
+  prd: 'labs-prd',
+}
+const SECRET_NAME = 'e2e-test-user'
+
+function getCredentialsFromGcp(env) {
+  const project = GCP_PROJECTS[env]
+  if (!project) return null
+
+  try {
+    const raw = execSync(
+      `gcloud secrets versions access latest --secret=${SECRET_NAME} --project=${project}`,
+      { encoding: 'utf8', timeout: 15000, stdio: ['pipe', 'pipe', 'pipe'] }
+    ).trim()
+    const creds = JSON.parse(raw)
+    if (creds.email && creds.password) {
+      console.log(`🔑 Fetched test credentials from GCP Secret Manager (${project}/${SECRET_NAME})`)
+      return creds
+    }
+  } catch (_) {
+    // gcloud not available, secret doesn't exist yet, or no access — fall through
+  }
+  return null
+}
+
+function getCredentials(env) {
+  const envSuffix = env.toUpperCase()
+  const email = process.env[`TEST_USER_EMAIL_${envSuffix}`]
+  const password = process.env[`TEST_USER_PASSWORD_${envSuffix}`]
+
+  if (email && password) {
+    return { email, password }
+  }
+
+  return getCredentialsFromGcp(env)
+}
+
 module.exports = async () => {
-  // Only run for stg or prd
   if (TEST_ENV !== 'stg' && TEST_ENV !== 'prd') {
     console.log('⏭️  Skipping auth setup: not stg or prd environment')
     return
   }
 
-  if (process.env.AUTH_ENABLED !== 'true') {
-    console.log('⏭️  Skipping auth setup: AUTH_ENABLED is not true')
+  const credentials = getCredentials(TEST_ENV)
+  if (!credentials) {
+    console.log(
+      `⏭️  Skipping auth setup: no credentials found.\n` +
+      `   Set TEST_USER_EMAIL_${TEST_ENV.toUpperCase()} / TEST_USER_PASSWORD_${TEST_ENV.toUpperCase()}, ` +
+      `or ensure the GCP secret "${SECRET_NAME}" exists in project "${GCP_PROJECTS[TEST_ENV]}" ` +
+      `and you have secretmanager.secretVersions.access.`
+    )
     return
   }
 
-  const testEmail = TEST_ENV === 'prd'
-    ? process.env.TEST_USER_EMAIL_PRD
-    : process.env.TEST_USER_EMAIL_STG
-  const testPassword = TEST_ENV === 'prd'
-    ? process.env.TEST_USER_PASSWORD_PRD
-    : process.env.TEST_USER_PASSWORD_STG
+  const { email: testEmail, password: testPassword } = credentials
 
-  if (!testEmail || !testPassword) {
-    const envSuffix = TEST_ENV.toUpperCase()
-    console.log(`⏭️  Skipping auth setup: TEST_USER_EMAIL_${envSuffix} or TEST_USER_PASSWORD_${envSuffix} not provided`)
-    return
-  }
-
-  console.log('🔐 Starting authentication setup for staging tests...')
+  console.log('🔐 Starting authentication setup...')
   console.log(`📧 Test account: ${testEmail}`)
 
-  // Create .auth directory if it doesn't exist
   const authDir = path.dirname(STORAGE_STATE_PATH)
   if (!fs.existsSync(authDir)) {
     fs.mkdirSync(authDir, { recursive: true })
   }
 
-  // Launch browser
   const browser = await chromium.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-dev-shm-usage']
@@ -61,33 +95,24 @@ module.exports = async () => {
   const page = await context.newPage()
 
   try {
-    // Step 1: Sign in via the labs sign-in page (home-index-service serves /sign-in).
-    // After sign-in the service sets an HttpOnly __session cookie (5-day lifetime)
-    // which is what Traefik ForwardAuth checks.
     const signInUrl = `${currentEnv.homeIndex}/sign-in`
     console.log(`🔗 Signing in at ${signInUrl}`)
     await page.goto(signInUrl, { waitUntil: 'networkidle', timeout: 30000 })
 
-    // Fill in credentials and submit
     await page.fill('#email', testEmail)
     await page.fill('#password', testPassword)
     await page.click('button[type="submit"]')
 
-    // Wait for redirect away from sign-in page (to home or originally-requested page)
     await page.waitForFunction(
       () => !window.location.pathname.startsWith('/sign-in'),
       { timeout: 30000 }
     )
 
-    console.log('✅ Signed in successfully')
-
-    // Step 2: Verify we are authenticated (not redirected back to sign-in)
     const currentUrl = page.url()
     if (currentUrl.includes('/sign-in')) {
       throw new Error('Failed to authenticate: still on sign-in page after submit')
     }
 
-    // Step 3: Verify Firebase token is in sessionStorage (set by sign-in page JS)
     const storedToken = await page.evaluate(() => sessionStorage.getItem('firebase_token'))
     if (!storedToken) {
       throw new Error('firebase_token not found in sessionStorage after sign-in')
@@ -95,11 +120,9 @@ module.exports = async () => {
 
     console.log('✅ Auth state established (session cookie + sessionStorage token)')
 
-    // Step 4: Save storage state (cookies, localStorage, sessionStorage)
     await context.storageState({ path: STORAGE_STATE_PATH })
     console.log(`✅ Saved auth state to ${STORAGE_STATE_PATH}`)
 
-    // Verify the file was created
     if (!fs.existsSync(STORAGE_STATE_PATH)) {
       throw new Error(`Storage state file was not created at ${STORAGE_STATE_PATH}`)
     }
@@ -107,7 +130,6 @@ module.exports = async () => {
     console.log('✅ Authentication setup complete!')
   } catch (error) {
     console.error('❌ Authentication setup failed:', error.message)
-    // Clean up on failure
     if (fs.existsSync(STORAGE_STATE_PATH)) {
       fs.unlinkSync(STORAGE_STATE_PATH)
     }

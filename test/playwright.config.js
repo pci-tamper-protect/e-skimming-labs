@@ -9,21 +9,9 @@ console.log(`🔗 Base URL: ${currentEnv.homeIndex}`)
 // Path to saved auth state
 const STORAGE_STATE_PATH = path.join(__dirname, '.auth/storage-state.json')
 
-const TEST_EMAIL = TEST_ENV === 'prd'
-  ? process.env.TEST_USER_EMAIL_PRD
-  : process.env.TEST_USER_EMAIL_STG
-const TEST_PASSWORD = TEST_ENV === 'prd'
-  ? process.env.TEST_USER_PASSWORD_PRD
-  : process.env.TEST_USER_PASSWORD_STG
-
-const USE_AUTH_STATE = (TEST_ENV === 'stg' || TEST_ENV === 'prd') &&
-                       process.env.AUTH_ENABLED === 'true' &&
-                       TEST_EMAIL && TEST_PASSWORD
-
-if (USE_AUTH_STATE) {
-  console.log('🔐 Using authenticated test state')
-  console.log(`📧 Test account: ${TEST_EMAIL}`)
-}
+// Always attempt auth for stg/prd — global-setup-auth handles credential
+// resolution (env vars → GCP Secret Manager) and skips gracefully if unavailable.
+const USE_AUTH_STATE = TEST_ENV === 'stg' || TEST_ENV === 'prd'
 
 /**
  * @see https://playwright.dev/docs/test-configuration

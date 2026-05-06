@@ -172,6 +172,7 @@ navigationTests('Global Navigation', () => {
       c2Link.click()
     ])
     await c2Page.waitForLoadState('networkidle')
+    await skipIfAuthRedirect(c2Page, 'C2 Dashboard')
 
     // Verify we're on C2 dashboard
     console.log('✅ Verifying C2 Dashboard')
@@ -256,6 +257,7 @@ navigationTests('Global Navigation', () => {
       c2Link.click()
     ])
     await c2Page.waitForLoadState('networkidle')
+    await skipIfAuthRedirect(c2Page, 'C2 Dashboard')
 
     // Verify we're on C2 dashboard
     console.log('✅ Verifying C2 Dashboard')
@@ -441,6 +443,7 @@ navigationTests('Global Navigation', () => {
       c2Link.click()
     ])
     await c2Page.waitForLoadState('networkidle')
+    await skipIfAuthRedirect(c2Page, 'C2 Dashboard')
 
     // Verify we're on C2 dashboard
     console.log('✅ Verifying C2 Dashboard')
