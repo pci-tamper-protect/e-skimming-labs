@@ -2434,6 +2434,12 @@ func injectAuthButtons(html string, homeData HomePageData, authRequired bool) st
 		description string
 	}{
 		{
+			// Pattern 0: Explicit placeholder (blog pages and any page with this marker)
+			find:    `<!-- AUTH_BUTTONS_PLACEHOLDER -->`,
+			replace: authButtonsHTML,
+			description: "AUTH_BUTTONS_PLACEHOLDER",
+		},
+		{
 			// Pattern 1: MITRE page - inject into header-top div
 			find:    `<div class="header-top">`,
 			replace: `<div class="header-top" style="display: flex; justify-content: space-between; align-items: center;">` + authButtonsHTML,
