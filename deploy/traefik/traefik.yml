@@ -35,6 +35,7 @@ entryPoints:
 providers:
   # Docker provider for local development
   docker:
+    endpoint: "unix:///var/run/docker.sock"
     exposedByDefault: false  # Only expose services with traefik.enable=true label
     network: e-skimming-labs-network    # Use the labs network for service discovery (Docker Compose adds project prefix)
     watch: true              # Watch for container changes

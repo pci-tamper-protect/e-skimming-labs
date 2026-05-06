@@ -106,6 +106,51 @@
         .nav-tabs {
             display: flex;
             gap: 20px;
+            align-items: center;
+        }
+
+        .auth-buttons {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: auto;
+        }
+
+        .auth-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .login-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .logout-btn {
+            background: rgba(255, 107, 107, 0.2);
+            color: #ff6b6b;
+            border: 1px solid #ff6b6b;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 107, 107, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .user-email {
+            color: var(--text-secondary);
+            font-size: 14px;
         }
 
         .nav-tab {
@@ -581,6 +626,7 @@
                     <a href="/mitre-attack" class="nav-tab">MITRE ATT&CK</a>
                     <a href="/threat-model" class="nav-tab">Threat Model</a>
                     <a href="/blog" class="nav-tab active">Blog</a>
+                    <!-- AUTH_BUTTONS_PLACEHOLDER -->
                 </nav>
             </div>
         </div>

@@ -38,20 +38,26 @@ The authentication system uses:
 
 Traefik uses ForwardAuth middleware to protect lab routes (`/lab1`, `/lab2`, `/lab3`) before requests reach the lab containers.
 
-**Configuration:** `deploy/traefik/dynamic/routes.yml`
+**Configuration:** Written at runtime by `deploy/traefik/entrypoint-sidecar.traefik-3.0.sh` to `/shared/traefik/dynamic/auth-forward.yml`. In Cloud Run the address is `http://localhost:8080/api/auth/check` (Traefik loopback, not docker-compose service name).
 
 ```yaml
 lab1-auth-check:
   forwardAuth:
-    address: "http://home-index:8080/api/auth/check"
+    address: "http://localhost:8080/api/auth/check"
     authResponseHeaders:
       - "X-User-Id"
       - "X-User-Email"
     authRequestHeaders:
       - "Authorization"
       - "Cookie"
+      - "X-Forwarded-For"
+      - "X-Forwarded-Host"
     trustForwardHeader: true
 ```
+
+**Service-to-Service Auth Header:** Traefik uses `X-Serverless-Authorization: Bearer <IAM-token>` (not `Authorization: Bearer`) for Cloud Run service-to-service auth. This preserves `Authorization: Bearer` for user Firebase JWTs. Cloud Run validates `X-Serverless-Authorization` for IAM access control and strips it before forwarding to the container; `Authorization` passes through to the app unchanged.
+
+**gcloud proxy and ForwardAuth:** When using `gcloud run services proxy`, the browser's `firebase_token` cookie must reach home-index's `/api/auth/check` via Traefik's ForwardAuth `authRequestHeaders: ["Cookie"]`. The gcloud proxy provides environment-level access (like a VPN) while Firebase auth provides individual user identity for Firestore progress tracking — these are distinct layers and both are required.
 
 **How it works:**
 1. User requests `/lab1/`

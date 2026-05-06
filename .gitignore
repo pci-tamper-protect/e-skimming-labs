@@ -43,6 +43,9 @@ Thumbs.db
 .idea/
 *.swp
 
+# Claude Code local settings
+.claude/settings.local.json
+
 # Logs
 *.log
 npm-debug.log*
@@ -82,6 +85,9 @@ test/MITRE_ATTACK_FIX_REPORT.md
 
 # Provider plugin vendor directory (not needed for sidecar builds)
 deploy/traefik/plugins-local/**/vendor/
+
+# Temporary GitHub clone of traefik-cloudrun-provider (CI/CD fallback)
+deploy/traefik/.traefik-cloudrun-provider-clone/
 
 # dotenvx encryption keys (added by dotenvx-converter)
 .env.*.keys

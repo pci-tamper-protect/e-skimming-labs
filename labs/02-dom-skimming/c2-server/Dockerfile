@@ -1,3 +1,4 @@
+# Enhanced Dockerfile supporting both local and cloud storage modes
 FROM node:20-alpine
 
 WORKDIR /app
@@ -5,20 +6,25 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
+# Install dependencies (including optional Google Cloud Storage)
 RUN npm install --production
 
 # Copy application files
-COPY server.js dashboard.html ./
+COPY *.js *.html ./
 
-# Create directory for stolen data
+# Create directory for local storage (only used in local mode)
 RUN mkdir -p stolen-data analysis
 
-# Port: 3000 when used with nginx; 8080 when C2_STANDALONE=true (e.g. Cloud Run)
-EXPOSE 3000
-EXPOSE 8080
+# Support both storage modes
+# Local mode: uses volume mounts for persistence
+# Cloud mode: uses Google Cloud Storage
 
-# C2_STANDALONE=true uses PORT (default 8080); otherwise uses 3000
-ENV C2_STANDALONE=${C2_STANDALONE:-false}
+# Health check endpoint
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-3000}/health || exit 1
 
+# Expose ports for different deployment scenarios
+EXPOSE 3000 8080
+
+# Enhanced server with storage abstraction and auto-detection
 CMD ["node", "server.js"]
