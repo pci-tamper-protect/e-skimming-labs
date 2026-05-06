@@ -5,7 +5,7 @@ const path = require('path')
 const { currentEnv } = require(path.resolve(__dirname, '../config/test-env.js'))
 
 test.describe('Lab 2: Card Capture via DOM Skimmer', () => {
-  test('captured card appears in C2 within 2s — verified by time and CVV', async ({ page, request }) => {
+  test('captured card appears in C2 within 2s — verified by time and CVV', async ({ page }) => {
     // Unique CVV per run — used to identify this specific capture
     const cvv = String(Math.floor(Math.random() * 900) + 100)
     const cardHolder = 'Jane Test'
@@ -54,7 +54,7 @@ test.describe('Lab 2: Card Capture via DOM Skimmer', () => {
     await page.waitForTimeout(2000)
 
     // ── 5. Query the C2 JSON API ──────────────────────────────────────────────
-    const response = await request.get(`${currentEnv.lab2.c2}/api/stolen`)
+    const response = await page.request.get(`${currentEnv.lab2.c2}/api/stolen`)
     expect(response.ok()).toBeTruthy()
 
     const records = await response.json()
