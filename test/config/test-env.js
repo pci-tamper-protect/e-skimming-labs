@@ -3,7 +3,7 @@
  *
  * All lab URLs use path-based routing through Traefik:
  *   prd  → https://labs.pcioasis.com/lab1
- *   stg  → https://labs.stg.pcioasis.com/lab1  (or http://127.0.0.1:8082/lab1 via proxy)
+ *   stg  → https://labs.stg.pcioasis.com/lab1  (or http://localhost:8082/lab1 via proxy)
  *   local→ http://localhost:8080/lab1
  *
  * Usage:
@@ -16,10 +16,10 @@ const TEST_ENV = process.env.TEST_ENV || 'local'
 const fs = require('fs')
 const path = require('path')
 
-// Normalize URLs to use 127.0.0.1 instead of localhost for consistency
+// Normalize proxy URLs to use localhost — Firebase only authorizes localhost, not 127.0.0.1
 const normalizeUrl = (url) => {
   if (!url) return url
-  return url.replace(/^https?:\/\/localhost/, 'http://127.0.0.1').replace(/^https?:\/\/127\.0\.0\.1/, 'http://127.0.0.1')
+  return url.replace(/^https?:\/\/127\.0\.0\.1/, 'http://localhost')
 }
 
 // Load proxy configuration from .env.stg (shared with workflows)
@@ -69,7 +69,7 @@ const getProxyConfig = () => {
   }
 
   return {
-    host: '127.0.0.1',
+    host: 'localhost',
     port: 8082
   }
 }

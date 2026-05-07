@@ -1,18 +1,23 @@
 name: E2E Tests
 
 on:
+  # Test-only changes: run immediately (no deploy needed)
   pull_request:
     branches: [main, stg]
     paths:
       - 'test/**'
-      - 'labs/**'
       - '.github/workflows/test.yml'
   push:
     branches: [main, stg]
     paths:
       - 'test/**'
-      - 'labs/**'
       - '.github/workflows/test.yml'
+  # Lab changes: run after deploy completes so tests hit the newly deployed code.
+  # No branches filter — deploy_labs only runs on stg/main pushes and PRs targeting them,
+  # so workflow_run only fires for those. Feature branches cannot trigger deploy_labs.
+  workflow_run:
+    workflows: ["Deploy CloudRun"]
+    types: [completed]
   workflow_dispatch:
     inputs:
       environment:
@@ -43,6 +48,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          # For workflow_run: check out the PR/push SHA that triggered the deploy,
+          # not the base branch (so new tests in the PR are included).
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || '' }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -70,6 +79,16 @@ jobs:
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             ENV="${{ github.event.inputs.environment }}"
+          elif [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            # Triggered by deploy completing.
+            # deploy_labs determines env from: PR base_ref (stg→stg, main→prd) or push ref.
+            # Replicate that logic: head_branch==main (push to main) → prd, everything else → stg.
+            HEAD_BRANCH="${{ github.event.workflow_run.head_branch }}"
+            if [[ "$HEAD_BRANCH" == "main" ]]; then
+              ENV="prd"
+            else
+              ENV="stg"
+            fi
           elif [[ "${{ github.ref }}" == "refs/heads/stg" ]] || \
                [[ "${{ github.base_ref }}" == "stg" ]] || \
                [[ "${{ github.head_ref }}" == "stg" ]]; then
@@ -102,7 +121,8 @@ jobs:
           set -e
 
           # Use values from .env.stg or fallback to defaults
-          PROXY_HOST="${PROXY_HOST:-127.0.0.1}"
+          # localhost required for Firebase auth (127.0.0.1 is not in Firebase authorized domains)
+          PROXY_HOST="${PROXY_HOST:-localhost}"
           PROXY_PORT="${PROXY_PORT:-8080}"
 
           echo "proxy_port=$PROXY_PORT" >> $GITHUB_OUTPUT
