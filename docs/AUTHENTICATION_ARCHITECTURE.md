@@ -170,6 +170,65 @@ When accessing protected routes:
 4. If not verified, user is redirected to sign-in with error message
 5. If verified, access is granted
 
+## E2E Test Authentication
+
+Playwright tests need to authenticate as a test user to access protected lab routes and C2 dashboards.
+
+### Credential Resolution (global-setup-auth.js)
+
+`test/utils/global-setup-auth.js` runs once before test workers via Playwright's `globalSetup`. It:
+
+1. Checks env vars `TEST_USER_EMAIL_<ENV>` / `TEST_USER_PASSWORD_<ENV>` (highest priority)
+2. Falls back to GCP Secret Manager: `gcloud secrets versions access latest --secret=e2e-test-user --project=labs-<env>`
+3. Signs in at `${currentEnv.homeIndex}/sign-in`, stores `__session` cookie + `firebase_token` in `test/.auth/storage-state.json`
+4. All test workers load this storage state automatically via `playwright.config.js`
+
+If no credentials are found, setup is skipped silently and tests fall back to `skipIfAuthRedirect`.
+
+### GCP Secret Manager Setup
+
+The secret `e2e-test-user` in projects `labs-stg` and `labs-prd` contains:
+```json
+{"email": "test-user@example.com", "password": "..."}
+```
+
+The GCP SA used in CI (`GCP_LABS_SA_KEY_STG` secret) must have `roles/secretmanager.secretAccessor` on project `labs-stg`.
+
+For local development, `gcloud auth login` provides access — no separate setup needed. Credentials rotate centrally via Secret Manager without changing `.env` files or GitHub secrets.
+
+### Stg Proxy and Firebase Authorized Domains
+
+**Critical:** Firebase only authorizes specific domains for OAuth. By default `localhost` is authorized but `127.0.0.1` is NOT.
+
+When using the stg proxy (`gcloud run services proxy traefik-stg --port=8082`), the test base URL **must** be `http://localhost:8082`, not `http://127.0.0.1:8082`. Using `127.0.0.1` causes Firebase to reject auth with:
+```
+auth/unauthorized-domain: This domain is not authorized for OAuth operations
+```
+
+This is enforced by:
+- `.env.stg`: `PROXY_HOST=localhost`
+- `test/config/test-env.js`: `normalizeUrl()` converts `127.0.0.1` → `localhost`
+- `test.yml`: `PROXY_HOST` defaults to `localhost`
+
+If `127.0.0.1` appears anywhere in the proxy URL chain (e.g., from `.env.stg` values, `PROXY_URL` env var, or link navigation), Firebase auth will fail.
+
+**Note:** The Go server (`main.go`) also normalizes `127.0.0.1` → `localhost` in ForwardAuth redirect URLs (so sign-in redirects land on `localhost:808x`), but this does not help if the initial page load URL uses `127.0.0.1`.
+
+### Secure Cookies and C2 API Calls
+
+The C2 `/api/stolen` endpoint requires auth via the `__session` Secure HttpOnly cookie. Browser Playwright tests fetch the C2 API via `page.evaluate(fetch, url)` rather than `page.request.get(url)`:
+
+```javascript
+// page.request is a Node.js HTTP client — it does NOT apply Chromium's localhost
+// exception for Secure cookies. Use page.evaluate so the request runs inside
+// Chromium and carries the __session cookie to loopback addresses.
+const records = await page.evaluate(async (url) => {
+  const resp = await fetch(url, { credentials: 'include' })
+  if (!resp.ok) throw new Error(`C2 API returned HTTP ${resp.status}`)
+  return resp.json()
+}, `${currentEnv.lab2.c2}/api/stolen`)
+```
+
 ## Service Account Configuration
 
 ### Firebase Admin SDK Runtime Service Account
@@ -267,6 +326,14 @@ This script:
 3. Runs docker-compose with authentication enabled
 
 ## Troubleshooting
+
+### Issue: E2E tests fail with "auth/unauthorized-domain" on stg proxy
+
+**Cause:** Firebase OAuth only authorizes `localhost`, not `127.0.0.1`. If the proxy base URL uses `127.0.0.1:8082`, the sign-in page fails silently in global-setup-auth, no storage state is created, and tests either skip or fail when accessing protected C2 APIs.
+
+**Fix:** Ensure `PROXY_HOST=localhost` in `.env.stg` and that `PROXY_URL` env var (if set) also uses `localhost`. The `normalizeUrl()` function in `test/config/test-env.js` converts `127.0.0.1` → `localhost` automatically.
+
+**Verify:** In test output, confirm `global-setup-auth.js` logs `✅ Auth state established` rather than `⏭️ Skipping auth setup`.
 
 ### Issue: "Email not verified" but user verified email
 
