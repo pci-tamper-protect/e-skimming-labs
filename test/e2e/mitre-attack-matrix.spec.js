@@ -496,19 +496,12 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
     // Check that scroll-to-top button appears (button shows when scrolled > 300px)
     const scrollTopButton = page.locator('.scroll-top')
 
-    // Button appears when scrolled > 300px, but if page isn't tall enough, use what we have
+    // If scrollTo didn't move the page (headless quirk or page too short), skip so
+    // CI output reflects the gap rather than silently passing with no assertions.
     if (scrolledPosition < 300) {
-      console.log(`Page only scrolled to ${scrolledPosition}px (less than 300px threshold). Button may not appear.`)
-      // If we can't scroll enough, the button won't appear - this is acceptable
-      // Just verify the button state matches the scroll position
-      const buttonVisible = await scrollTopButton.isVisible().catch(() => false)
-      if (!buttonVisible && scrolledPosition < 300) {
-        console.log('Button correctly hidden when scroll < 300px')
-        return // Test passes - button behavior is correct
-      }
+      console.log(`Scrolled to ${scrolledPosition}px — below 300px threshold, skipping scroll-to-top assertions`)
+      test.skip(true, `Page scrolled only ${scrolledPosition}px; scroll-to-top button threshold not reached`)
     }
-
-    expect(scrolledPosition).toBeGreaterThan(200) // At least some scroll happened
     await expect(scrollTopButton).toBeVisible({ timeout: 5000 })
 
     // Click the scroll-to-top button

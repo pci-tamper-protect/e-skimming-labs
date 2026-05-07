@@ -1,54 +1,104 @@
 /**
  * Global Setup for Playwright Tests - Authentication
  *
- * Authenticates once for staging tests and saves auth state to be reused across all tests.
- * This prevents the need to authenticate in every test, improving performance and reliability.
+ * Signs in once and saves the __session cookie (and localStorage) so all tests
+ * can reuse it without re-authenticating.  Supports stg and prd environments.
  *
- * Only runs when:
- * - TEST_ENV === 'stg'
- * - AUTH_ENABLED === 'true'
- * - TEST_USER_EMAIL_STG and TEST_USER_PASSWORD_STG are provided
+ * Note: Playwright's storageState persists cookies and localStorage only —
+ * sessionStorage is NOT persisted and NOT available to subsequent test pages.
+ * Auth is validated by checking the __session cookie after sign-in.
+ *
+ * Credential resolution order:
+ *   1. Env vars TEST_USER_EMAIL_<ENV> / TEST_USER_PASSWORD_<ENV>
+ *   2. GCP Secret Manager: secret "e2e-test-user" in the env's labs GCP project
+ *      (works in CI via the existing GCP SA key, and locally via gcloud auth login)
+ *
+ * If no credentials are found, any stale storage state file is removed so tests
+ * run unauthenticated and skip auth-gated assertions via skipIfAuthRedirect.
  */
 
 const { chromium } = require('@playwright/test')
+const { execSync } = require('child_process')
 const { currentEnv, TEST_ENV } = require('../config/test-env')
 const path = require('path')
 const fs = require('fs')
 
 const STORAGE_STATE_PATH = path.join(__dirname, '../.auth/storage-state.json')
 
+const GCP_PROJECTS = {
+  stg: 'labs-stg',
+  prd: 'labs-prd',
+}
+const SECRET_NAME = 'e2e-test-user'
+
+function getCredentialsFromGcp(env) {
+  const project = GCP_PROJECTS[env]
+  if (!project) return null
+
+  try {
+    const raw = execSync(
+      `gcloud secrets versions access latest --secret=${SECRET_NAME} --project=${project}`,
+      { encoding: 'utf8', timeout: 15000, stdio: ['pipe', 'pipe', 'pipe'] }
+    ).trim()
+    const creds = JSON.parse(raw)
+    if (creds.email && creds.password) {
+      console.log(`🔑 Fetched test credentials from GCP Secret Manager (${project}/${SECRET_NAME})`)
+      return creds
+    }
+  } catch (_) {
+    // gcloud not available, secret doesn't exist yet, or no access — fall through
+  }
+  return null
+}
+
+function getCredentials(env) {
+  const envSuffix = env.toUpperCase()
+  const email = process.env[`TEST_USER_EMAIL_${envSuffix}`]
+  const password = process.env[`TEST_USER_PASSWORD_${envSuffix}`]
+
+  if (email && password) {
+    return { email, password }
+  }
+
+  return getCredentialsFromGcp(env)
+}
+
+function clearStorageState() {
+  if (fs.existsSync(STORAGE_STATE_PATH)) {
+    fs.unlinkSync(STORAGE_STATE_PATH)
+    console.log('🗑️  Removed stale auth state file')
+  }
+}
+
 module.exports = async () => {
-  // Only run for staging environment
-  if (TEST_ENV !== 'stg') {
-    console.log('⏭️  Skipping auth setup: not staging environment')
+  if (TEST_ENV !== 'stg' && TEST_ENV !== 'prd') {
+    console.log('⏭️  Skipping auth setup: not stg or prd environment')
     return
   }
 
-  // Check if auth is enabled
-  if (process.env.AUTH_ENABLED !== 'true') {
-    console.log('⏭️  Skipping auth setup: AUTH_ENABLED is not true')
+  const credentials = getCredentials(TEST_ENV)
+  if (!credentials) {
+    console.log(
+      `⏭️  Skipping auth setup: no credentials found.\n` +
+      `   Set TEST_USER_EMAIL_${TEST_ENV.toUpperCase()} / TEST_USER_PASSWORD_${TEST_ENV.toUpperCase()}, ` +
+      `or ensure the GCP secret "${SECRET_NAME}" exists in project "${GCP_PROJECTS[TEST_ENV]}" ` +
+      `and you have secretmanager.secretVersions.access.`
+    )
+    // Remove any stale storage state so tests don't silently reuse old auth.
+    clearStorageState()
     return
   }
 
-  // Check if test credentials are provided
-  const testEmail = process.env.TEST_USER_EMAIL_STG
-  const testPassword = process.env.TEST_USER_PASSWORD_STG
+  const { email: testEmail, password: testPassword } = credentials
 
-  if (!testEmail || !testPassword) {
-    console.log('⏭️  Skipping auth setup: TEST_USER_EMAIL_STG or TEST_USER_PASSWORD_STG not provided')
-    return
-  }
-
-  console.log('🔐 Starting authentication setup for staging tests...')
+  console.log('🔐 Starting authentication setup...')
   console.log(`📧 Test account: ${testEmail}`)
 
-  // Create .auth directory if it doesn't exist
   const authDir = path.dirname(STORAGE_STATE_PATH)
   if (!fs.existsSync(authDir)) {
     fs.mkdirSync(authDir, { recursive: true })
   }
 
-  // Launch browser
   const browser = await chromium.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-dev-shm-usage']
@@ -58,63 +108,41 @@ module.exports = async () => {
   const page = await context.newPage()
 
   try {
-    // Step 1: Sign in to main app (stg.pcioasis.com)
-    console.log(`🔗 Signing in to ${currentEnv.mainApp}/sign-in`)
-    await page.goto(`${currentEnv.mainApp}/sign-in`, { waitUntil: 'networkidle', timeout: 30000 })
+    const signInUrl = `${currentEnv.homeIndex}/sign-in`
+    console.log(`🔗 Signing in at ${signInUrl}`)
+    await page.goto(signInUrl, { waitUntil: 'networkidle', timeout: 30000 })
 
-    // Fill in credentials
-    await page.fill('input[type="email"]', testEmail)
-    await page.fill('input[type="password"]', testPassword)
-    await page.click('button[type="submit"]')
+    await page.fill('#email', testEmail)
+    await page.fill('#password', testPassword)
 
-    // Wait for sign-in to complete
-    await page.waitForURL(
-      new RegExp(`${currentEnv.mainApp}/dashboard|${currentEnv.mainApp}/`),
+    // Start waiting for navigation away from /sign-in BEFORE clicking — the
+    // click triggers a full-page redirect which destroys the JS execution context,
+    // so waitForFunction called after the click can raise TargetClosedError.
+    const navigationDone = page.waitForURL(
+      url => !url.pathname.startsWith('/sign-in'),
       { timeout: 30000 }
     )
+    await page.click('button[type="submit"]')
+    await navigationDone
 
-    console.log('✅ Signed in to main app')
-
-    // Step 2: Get Firebase token from localStorage
-    const token = await page.evaluate(() => {
-      return localStorage.getItem('accessToken')
-    })
-
-    if (!token) {
-      throw new Error('Failed to get access token from localStorage after sign-in')
-    }
-
-    console.log('✅ Retrieved Firebase access token')
-
-    // Step 3: Navigate to labs with token to establish auth state
-    console.log(`🔗 Establishing auth state at ${currentEnv.homeIndex}`)
-    await page.goto(`${currentEnv.homeIndex}?token=${token}`, {
-      waitUntil: 'networkidle',
-      timeout: 30000
-    })
-
-    // Verify we're authenticated (not redirected to sign-in)
     const currentUrl = page.url()
     if (currentUrl.includes('/sign-in')) {
-      throw new Error('Failed to authenticate: redirected to sign-in page')
+      throw new Error('Failed to authenticate: still on sign-in page after submit')
     }
 
-    // Verify token is stored in sessionStorage
-    const storedToken = await page.evaluate(() => {
-      return sessionStorage.getItem('firebase_token')
-    })
-
-    if (storedToken !== token) {
-      throw new Error('Token not properly stored in sessionStorage')
+    // Validate that the __session cookie was set — this is what storageState
+    // persists and what auth-check middleware reads on subsequent requests.
+    const cookies = await context.cookies()
+    const sessionCookie = cookies.find(c => c.name === '__session')
+    if (!sessionCookie) {
+      throw new Error('__session cookie not found after sign-in — auth state will not be usable')
     }
 
-    console.log('✅ Auth state established on labs domain')
+    console.log('✅ Auth state established (__session cookie present)')
 
-    // Step 4: Save storage state (cookies, localStorage, sessionStorage)
     await context.storageState({ path: STORAGE_STATE_PATH })
     console.log(`✅ Saved auth state to ${STORAGE_STATE_PATH}`)
 
-    // Verify the file was created
     if (!fs.existsSync(STORAGE_STATE_PATH)) {
       throw new Error(`Storage state file was not created at ${STORAGE_STATE_PATH}`)
     }
@@ -122,10 +150,7 @@ module.exports = async () => {
     console.log('✅ Authentication setup complete!')
   } catch (error) {
     console.error('❌ Authentication setup failed:', error.message)
-    // Clean up on failure
-    if (fs.existsSync(STORAGE_STATE_PATH)) {
-      fs.unlinkSync(STORAGE_STATE_PATH)
-    }
+    clearStorageState()
     throw error
   } finally {
     await browser.close()

