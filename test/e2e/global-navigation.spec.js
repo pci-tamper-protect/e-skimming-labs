@@ -8,12 +8,12 @@ const { currentEnv, TEST_ENV } = require(testEnvPath)
 
 // Load dangerous warning handler
 const { handleDangerousWarning } = require('../utils/handle-dangerous-warning')
+const { skipIfAuthRedirect } = require('../utils/skip-if-auth-redirect')
 
 console.log(`🧪 Global Navigation Test - Environment: ${TEST_ENV}`)
 
-// Skip navigation tests in staging - staging requires authentication/tunneling
-// TODO: Add authentication support or tunnel setup for staging navigation tests
-const navigationTests = TEST_ENV === 'stg'
+// stg: skip when proxy is not configured (labs are private, not reachable)
+const navigationTests = (TEST_ENV === 'stg' && process.env.USE_PROXY !== 'true')
   ? test.describe.skip
   : test.describe
 
@@ -63,9 +63,9 @@ navigationTests('Global Navigation', () => {
     await expect(page).toHaveTitle(/MITRE ATT&CK/)
     await expect(page.getByRole('heading', { name: /MITRE ATT&CK Matrix/i }).first()).toBeVisible()
 
-    // Click back button
+    // Click back button — use .first() to avoid strict mode if multiple links match
     console.log('⬅️  Clicking back to home')
-    const backButton = page.getByRole('link', { name: /Back to Labs/i })
+    const backButton = page.getByRole('link', { name: /Back to Labs|Home/i }).first()
     await expect(backButton).toBeVisible()
     await backButton.click()
     await page.waitForLoadState('networkidle')
@@ -133,13 +133,14 @@ navigationTests('Global Navigation', () => {
       console.log('Network idle timeout, checking page state...')
     }
 
-    // Check if we got an error page
+    // Check if we got an error page or auth redirect
     const currentUrl = page.url()
     console.log('Current URL after clicking Lab 1:', currentUrl)
 
     if (currentUrl.includes('chrome-error://') || currentUrl.includes('error')) {
       throw new Error(`Failed to load Lab 1 page. URL: ${currentUrl}. Check if lab1-vulnerable-site container is running.`)
     }
+    await skipIfAuthRedirect(page, 'Lab 1')
 
     // Verify we're on Lab 1 page
     console.log('✅ Verifying Lab 1 page')
@@ -159,6 +160,7 @@ navigationTests('Global Navigation', () => {
       c2Link.click()
     ])
     await c2Page.waitForLoadState('networkidle')
+    await skipIfAuthRedirect(c2Page, 'C2 Dashboard')
 
     // Verify we're on C2 dashboard
     console.log('✅ Verifying C2 Dashboard')
@@ -216,13 +218,14 @@ navigationTests('Global Navigation', () => {
       console.log('Network idle timeout, checking page state...')
     }
 
-    // Check if we got an error page
+    // Check if we got an error page or auth redirect
     const currentUrl = page.url()
     console.log('Current URL after clicking Lab 2:', currentUrl)
 
     if (currentUrl.includes('chrome-error://') || currentUrl.includes('error')) {
       throw new Error(`Failed to load Lab 2 page. URL: ${currentUrl}. Check if lab2-vulnerable-site container is running.`)
     }
+    await skipIfAuthRedirect(page, 'Lab 2')
 
     // Verify we're on Lab 2 page
     console.log('✅ Verifying Lab 2 page')
@@ -242,6 +245,7 @@ navigationTests('Global Navigation', () => {
       c2Link.click()
     ])
     await c2Page.waitForLoadState('networkidle')
+    await skipIfAuthRedirect(c2Page, 'C2 Dashboard')
 
     // Verify we're on C2 dashboard
     console.log('✅ Verifying C2 Dashboard')
@@ -304,13 +308,14 @@ navigationTests('Global Navigation', () => {
       console.log('Network idle timeout, checking page state...')
     }
 
-    // Check if we got an error page
+    // Check if we got an error page or auth redirect
     const currentUrl = page.url()
     console.log('Current URL after clicking Lab 3:', currentUrl)
 
     if (currentUrl.includes('chrome-error://') || currentUrl.includes('error')) {
       throw new Error(`Failed to load Lab 3 page. URL: ${currentUrl}. Check if lab3-vulnerable-site container is running.`)
     }
+    await skipIfAuthRedirect(page, 'Lab 3')
 
     // Verify we're on Lab 3 page
     console.log('✅ Verifying Lab 3 page')
@@ -410,6 +415,7 @@ navigationTests('Global Navigation', () => {
     await expect(lab1Link).toBeVisible()
     await lab1Link.click()
     await page.waitForLoadState('networkidle')
+    await skipIfAuthRedirect(page, 'Lab 1')
 
     // Verify we're on Lab 1 page
     await expect(page).toHaveTitle(/TechGear Store/)
@@ -425,6 +431,7 @@ navigationTests('Global Navigation', () => {
       c2Link.click()
     ])
     await c2Page.waitForLoadState('networkidle')
+    await skipIfAuthRedirect(c2Page, 'C2 Dashboard')
 
     // Verify we're on C2 dashboard
     console.log('✅ Verifying C2 Dashboard')
@@ -500,11 +507,12 @@ navigationTests('Global Navigation', () => {
       console.log('Network idle timeout, checking page state...')
     }
 
-    // Check for error pages
+    // Check for error pages or auth redirect
     const lab1Url = page.url()
     if (lab1Url.includes('chrome-error://') || lab1Url.includes('error')) {
       throw new Error(`Failed to load Lab 1 page. URL: ${lab1Url}. Check if lab1-vulnerable-site container is running.`)
     }
+    await skipIfAuthRedirect(page, 'Lab 1 (full journey)')
 
     await expect(page).toHaveURL(/\/lab1/, { timeout: 10000 })
     await expect(page).toHaveTitle(/TechGear Store/, { timeout: 10000 })
@@ -547,7 +555,7 @@ navigationTests('Global Navigation', () => {
 
     // 7. Navigate back to Home
     console.log('7️⃣  MITRE → Home')
-    await page.getByRole('link', { name: /Back to Labs/i }).click()
+    await page.getByRole('link', { name: /Back to Labs|Home/i }).first().click()
     await page.waitForLoadState('networkidle')
     await expect(page).toHaveURL(currentEnv.homeIndex + '/')
 
