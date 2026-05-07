@@ -4,14 +4,7 @@ const path = require('path')
 
 const { currentEnv, TEST_ENV } = require(path.resolve(__dirname, '../config/test-env.js'))
 const { handleDangerousWarning } = require('../utils/handle-dangerous-warning')
-
-async function skipIfAuthRedirect(page, labName) {
-  const url = page.url()
-  if (url.includes('/sign-in')) {
-    console.log(`⏭️  ${labName} redirected to sign-in — skipping (set TEST_USER_EMAIL_* to run with auth)`)
-    test.skip()
-  }
-}
+const { skipIfAuthRedirect } = require('../utils/skip-if-auth-redirect')
 
 // stg: skip when proxy is not configured (labs are private, not reachable)
 const dashboardTests = (TEST_ENV === 'stg' && process.env.USE_PROXY !== 'true')

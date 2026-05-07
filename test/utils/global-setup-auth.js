@@ -1,16 +1,20 @@
 /**
  * Global Setup for Playwright Tests - Authentication
  *
- * Signs in once and saves the __session cookie + sessionStorage state so all tests
+ * Signs in once and saves the __session cookie (and localStorage) so all tests
  * can reuse it without re-authenticating.  Supports stg and prd environments.
+ *
+ * Note: Playwright's storageState persists cookies and localStorage only —
+ * sessionStorage is NOT persisted and NOT available to subsequent test pages.
+ * Auth is validated by checking the __session cookie after sign-in.
  *
  * Credential resolution order:
  *   1. Env vars TEST_USER_EMAIL_<ENV> / TEST_USER_PASSWORD_<ENV>
  *   2. GCP Secret Manager: secret "e2e-test-user" in the env's labs GCP project
  *      (works in CI via the existing GCP SA key, and locally via gcloud auth login)
  *
- * If no credentials are found, setup is skipped silently — tests run unauthenticated
- * and will skip auth-gated assertions via skipIfAuthRedirect.
+ * If no credentials are found, any stale storage state file is removed so tests
+ * run unauthenticated and skip auth-gated assertions via skipIfAuthRedirect.
  */
 
 const { chromium } = require('@playwright/test')
@@ -59,6 +63,13 @@ function getCredentials(env) {
   return getCredentialsFromGcp(env)
 }
 
+function clearStorageState() {
+  if (fs.existsSync(STORAGE_STATE_PATH)) {
+    fs.unlinkSync(STORAGE_STATE_PATH)
+    console.log('🗑️  Removed stale auth state file')
+  }
+}
+
 module.exports = async () => {
   if (TEST_ENV !== 'stg' && TEST_ENV !== 'prd') {
     console.log('⏭️  Skipping auth setup: not stg or prd environment')
@@ -73,6 +84,8 @@ module.exports = async () => {
       `or ensure the GCP secret "${SECRET_NAME}" exists in project "${GCP_PROJECTS[TEST_ENV]}" ` +
       `and you have secretmanager.secretVersions.access.`
     )
+    // Remove any stale storage state so tests don't silently reuse old auth.
+    clearStorageState()
     return
   }
 
@@ -101,24 +114,31 @@ module.exports = async () => {
 
     await page.fill('#email', testEmail)
     await page.fill('#password', testPassword)
-    await page.click('button[type="submit"]')
 
-    await page.waitForFunction(
-      () => !window.location.pathname.startsWith('/sign-in'),
+    // Start waiting for navigation away from /sign-in BEFORE clicking — the
+    // click triggers a full-page redirect which destroys the JS execution context,
+    // so waitForFunction called after the click can raise TargetClosedError.
+    const navigationDone = page.waitForURL(
+      url => !url.pathname.startsWith('/sign-in'),
       { timeout: 30000 }
     )
+    await page.click('button[type="submit"]')
+    await navigationDone
 
     const currentUrl = page.url()
     if (currentUrl.includes('/sign-in')) {
       throw new Error('Failed to authenticate: still on sign-in page after submit')
     }
 
-    const storedToken = await page.evaluate(() => sessionStorage.getItem('firebase_token'))
-    if (!storedToken) {
-      throw new Error('firebase_token not found in sessionStorage after sign-in')
+    // Validate that the __session cookie was set — this is what storageState
+    // persists and what auth-check middleware reads on subsequent requests.
+    const cookies = await context.cookies()
+    const sessionCookie = cookies.find(c => c.name === '__session')
+    if (!sessionCookie) {
+      throw new Error('__session cookie not found after sign-in — auth state will not be usable')
     }
 
-    console.log('✅ Auth state established (session cookie + sessionStorage token)')
+    console.log('✅ Auth state established (__session cookie present)')
 
     await context.storageState({ path: STORAGE_STATE_PATH })
     console.log(`✅ Saved auth state to ${STORAGE_STATE_PATH}`)
@@ -130,9 +150,7 @@ module.exports = async () => {
     console.log('✅ Authentication setup complete!')
   } catch (error) {
     console.error('❌ Authentication setup failed:', error.message)
-    if (fs.existsSync(STORAGE_STATE_PATH)) {
-      fs.unlinkSync(STORAGE_STATE_PATH)
-    }
+    clearStorageState()
     throw error
   } finally {
     await browser.close()

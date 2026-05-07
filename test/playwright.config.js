@@ -11,7 +11,7 @@ const STORAGE_STATE_PATH = path.join(__dirname, '.auth/storage-state.json')
 
 // Always attempt auth for stg/prd — global-setup-auth handles credential
 // resolution (env vars → GCP Secret Manager) and skips gracefully if unavailable.
-const USE_AUTH_STATE = TEST_ENV === 'stg' || TEST_ENV === 'prd'
+const USE_AUTH_STATE = Boolean(TEST_ENV === 'stg' || TEST_ENV === 'prd')
 
 /**
  * @see https://playwright.dev/docs/test-configuration

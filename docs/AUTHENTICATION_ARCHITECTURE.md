@@ -60,7 +60,8 @@ lab1-auth-check:
 
 The entrypoint script now also writes `lab4-auth-check`, so the steganography lab and its C2 dashboard flow through the same `/api/auth/check` validation path before Traefik routes them into the lab containers.
 
-```94:105:deploy/traefik/entrypoint-sidecar.traefik-3.0.sh
+From `deploy/traefik/entrypoint-sidecar.traefik-3.0.sh` (lines 94–105):
+```yaml
     lab4-auth-check:
       forwardAuth:
         address: "${AUTH_CHECK_URL}"
@@ -110,7 +111,8 @@ The `AuthMiddleware`:
 
 The Go server now registers `/lab-04-writeup` in the same handler chain so the steganography writeup is guarded exactly like the other lab writeups.
 
-```392:406:deploy/shared-components/home-index-service/main.go
+From `deploy/shared-components/home-index-service/main.go` (lines 392–406):
+```go
 	mux.HandleFunc("/lab-04-writeup", func(w http.ResponseWriter, r *http.Request) {
 		serveLabWriteup(w, r, "04-steganography-favicon", homeData, authValidator)
 	})

@@ -8,21 +8,9 @@ const { currentEnv, TEST_ENV } = require(testEnvPath)
 
 // Load dangerous warning handler
 const { handleDangerousWarning } = require('../utils/handle-dangerous-warning')
+const { skipIfAuthRedirect } = require('../utils/skip-if-auth-redirect')
 
 console.log(`🧪 Global Navigation Test - Environment: ${TEST_ENV}`)
-
-/**
- * After clicking a "Start Lab" link, the server may redirect to /sign-in when
- * Firebase auth is required. If so, skip the test rather than fail — the redirect
- * itself is correct behaviour; the test just can't proceed without credentials.
- */
-async function skipIfAuthRedirect(page, labName) {
-  const url = page.url()
-  if (url.includes('/sign-in')) {
-    console.log(`⏭️  ${labName} redirected to sign-in — skipping (set TEST_USER_EMAIL_* to run with auth)`)
-    test.skip()
-  }
-}
 
 // stg: skip when proxy is not configured (labs are private, not reachable)
 const navigationTests = (TEST_ENV === 'stg' && process.env.USE_PROXY !== 'true')

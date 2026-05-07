@@ -60,7 +60,7 @@ const getProxyConfig = () => {
       if (proxyHost && proxyPort) {
         return {
           host: proxyHost,
-          port: parseInt(proxyPort, 10) || 8080
+          port: parseInt(proxyPort, 10) || 8082
         }
       }
     }

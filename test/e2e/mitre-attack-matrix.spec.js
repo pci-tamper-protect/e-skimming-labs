@@ -496,10 +496,11 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
     // Check that scroll-to-top button appears (button shows when scrolled > 300px)
     const scrollTopButton = page.locator('.scroll-top')
 
-    // If scrollTo didn't move the page (headless quirk or page too short), skip assertions.
+    // If scrollTo didn't move the page (headless quirk or page too short), skip so
+    // CI output reflects the gap rather than silently passing with no assertions.
     if (scrolledPosition < 300) {
       console.log(`Scrolled to ${scrolledPosition}px — below 300px threshold, skipping scroll-to-top assertions`)
-      return
+      test.skip(true, `Page scrolled only ${scrolledPosition}px; scroll-to-top button threshold not reached`)
     }
     await expect(scrollTopButton).toBeVisible({ timeout: 5000 })
 
