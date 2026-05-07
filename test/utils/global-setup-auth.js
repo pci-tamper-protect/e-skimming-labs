@@ -120,7 +120,13 @@ module.exports = async () => {
         console.log(`🔄 Retry ${attempt}/${MAX_ATTEMPTS} — waiting 5s before re-navigating...`)
         await page.waitForTimeout(5000)
       }
-      await page.goto(signInUrl, { waitUntil: 'domcontentloaded', timeout: 30000 })
+      try {
+        await page.goto(signInUrl, { waitUntil: 'domcontentloaded', timeout: 30000 })
+      } catch (navErr) {
+        console.warn(`⚠️  Navigation error on attempt ${attempt}: ${navErr.message}`)
+        if (attempt === MAX_ATTEMPTS) throw navErr
+        continue
+      }
       const landedUrl = page.url()
       const hasEmailField = await page.locator('#email').count() > 0
       if (hasEmailField) {
@@ -130,12 +136,13 @@ module.exports = async () => {
       const pageTitle = await page.title()
       console.warn(`⚠️  Sign-in form not found on attempt ${attempt} (url: ${landedUrl}, title: "${pageTitle}")`)
       if (attempt === MAX_ATTEMPTS) {
-        const content = await page.content()
+        // Use innerText to avoid leaking script blocks (e.g. Firebase config) into CI logs.
+        const bodyText = await page.evaluate(() => document.body.innerText).catch(() => '(unavailable)')
         throw new Error(
           `Sign-in page did not render the email form after ${MAX_ATTEMPTS} attempts.\n` +
           `  Final URL: ${landedUrl}\n` +
           `  Page title: "${pageTitle}"\n` +
-          `  Body excerpt: ${content.slice(0, 400)}`
+          `  Body text: ${bodyText.slice(0, 400)}`
         )
       }
     }
