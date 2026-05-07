@@ -59,8 +59,9 @@ test.describe('Threat Model Page', () => {
     // Back button should use relative URL "/" - Traefik handles routing to correct host
     expect(actualHref).toBe('/')
 
-    // Test clicking the back button
-    await backButton.click()
+    // Test clicking the back button (force: true — D3 animation can block actionability on mobile)
+    await backButton.scrollIntoViewIfNeeded()
+    await backButton.click({ force: true })
 
     // Wait for navigation
     await page.waitForLoadState('networkidle')
@@ -167,8 +168,9 @@ test.describe('Threat Model Page', () => {
     const playButton = page.locator('button').filter({ hasText: '▶' })
     await expect(playButton).toBeVisible()
 
-    // Click play button
-    await playButton.click()
+    // Click play button (force: true — D3 overlay can block actionability on mobile)
+    await playButton.scrollIntoViewIfNeeded()
+    await playButton.click({ force: true })
 
     // Wait for state change - the play button should no longer be visible
     // (button changes to pause state)
@@ -185,8 +187,9 @@ test.describe('Threat Model Page', () => {
     // Test navigation from threat model to home and back
     const backButton = page.getByRole('link', { name: '← Back to Labs' })
 
-    // Go back to home
-    await backButton.click()
+    // Go back to home (force: true — D3 animation can block actionability on mobile)
+    await backButton.scrollIntoViewIfNeeded()
+    await backButton.click({ force: true })
     await page.waitForLoadState('networkidle')
 
     // Verify we're on the home page (URL should end with /)
