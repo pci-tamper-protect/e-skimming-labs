@@ -53,11 +53,15 @@ test.describe('Lab 2: Card Capture via DOM Skimmer', () => {
     // ── 4. Wait 2 s for the skimmer POST to reach the C2 server ──────────────
     await page.waitForTimeout(2000)
 
-    // ── 5. Query the C2 JSON API ──────────────────────────────────────────────
-    const response = await page.request.get(`${currentEnv.lab2.c2}/api/stolen`)
-    expect(response.ok()).toBeTruthy()
-
-    const records = await response.json()
+    // ── 5. Query the C2 JSON API via browser fetch ───────────────────────────
+    // page.request is a Node.js HTTP client that doesn't apply the browser's
+    // localhost exception for Secure cookies — use page.evaluate(fetch) so the
+    // request runs inside Chromium and carries the __session cookie correctly.
+    const records = await page.evaluate(async (url) => {
+      const resp = await fetch(url, { credentials: 'include' })
+      if (!resp.ok) throw new Error(`C2 API returned HTTP ${resp.status}`)
+      return resp.json()
+    }, `${currentEnv.lab2.c2}/api/stolen`)
     console.log(`📋 C2 records: ${records.length}`)
 
     // ── 6. Find the matching capture ──────────────────────────────────────────
