@@ -152,6 +152,8 @@ module.exports = async () => {
     )
     await page.click('button[type="submit"]')
     await navigationDone
+    // Wait for any pending requests (e.g. server-side session cookie exchange) to settle.
+    await page.waitForLoadState('networkidle', { timeout: 15000 })
 
     const currentUrl = page.url()
     if (currentUrl.includes('/sign-in')) {
