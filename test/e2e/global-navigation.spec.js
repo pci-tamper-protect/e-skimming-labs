@@ -75,9 +75,9 @@ navigationTests('Global Navigation', () => {
     await expect(page).toHaveTitle(/MITRE ATT&CK/)
     await expect(page.getByRole('heading', { name: /MITRE ATT&CK Matrix/i }).first()).toBeVisible()
 
-    // Click back button
+    // Click back button — use .first() to avoid strict mode if multiple links match
     console.log('⬅️  Clicking back to home')
-    const backButton = page.getByRole('link', { name: /Back to Labs/i })
+    const backButton = page.getByRole('link', { name: /Back to Labs|Home/i }).first()
     await expect(backButton).toBeVisible()
     await backButton.click()
     await page.waitForLoadState('networkidle')
@@ -567,7 +567,7 @@ navigationTests('Global Navigation', () => {
 
     // 7. Navigate back to Home
     console.log('7️⃣  MITRE → Home')
-    await page.getByRole('link', { name: /Back to Labs/i }).click()
+    await page.getByRole('link', { name: /Back to Labs|Home/i }).first().click()
     await page.waitForLoadState('networkidle')
     await expect(page).toHaveURL(currentEnv.homeIndex + '/')
 
