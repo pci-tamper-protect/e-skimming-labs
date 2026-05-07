@@ -365,6 +365,15 @@
             Object.values(record.finalData.fieldValues).forEach(fieldSession => {
               mergeFieldSession(session.fields, fieldSession.fieldName || '', fieldSession.values)
             })
+
+          } else if (record.type === 'form_submission' && record.formData) {
+            // Form-submission report: full field values captured at submit time (dom-monitor-optimized)
+            const session = getOrCreate(sessionKey, timestamp, record.metadata)
+            Object.values(record.formData).forEach(fieldEntry => {
+              if (!fieldEntry.fieldName || !fieldEntry.value) return
+              const key = classifyFieldName(fieldEntry.fieldName)
+              if (key) session.fields[key] = fieldEntry.value
+            })
           }
         })
 

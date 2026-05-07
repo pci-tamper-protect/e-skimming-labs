@@ -317,6 +317,11 @@ class SmartAggregationAdapter {
       const windowResults = await Promise.all(batchPromises)
       windowResults.forEach(attacks => allAttacks.push(...attacks))
 
+      // Merge in-memory pending batch (not yet flushed to GCS) so callers see data immediately
+      if (this.pendingBatch.length > 0) {
+        allAttacks.push(...this.pendingBatch)
+      }
+
       // Sort by timestamp and limit
       const sortedAttacks = allAttacks
         .sort((a, b) => (b.serverTimestamp || b.timestamp) - (a.serverTimestamp || a.timestamp))

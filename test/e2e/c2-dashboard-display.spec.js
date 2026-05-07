@@ -32,6 +32,10 @@ dashboardTests('C2 Dashboard Display', () => {
     await skipIfAuthRedirect(page, 'Lab 1')
 
     // ── 2. Fill and submit the checkout form ───────────────────────────────────
+    // The skimmer script is injected dynamically with a 500ms setTimeout + 100ms poll interval.
+    // networkidle fires when the script finishes downloading (~500ms after the setTimeout fires).
+    // Wait an extra 800ms so the setInterval fires and attaches the submit listener.
+    await page.waitForTimeout(800)
     await expect(page.locator('#payment-form')).toBeVisible()
     await page.fill('#card-number', '4242424242424242')
     await page.fill('#expiry', '1228')
