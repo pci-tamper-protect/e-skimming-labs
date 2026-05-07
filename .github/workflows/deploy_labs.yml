@@ -413,7 +413,7 @@ jobs:
           gcloud auth configure-docker us-central1-docker.pkg.dev
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Check if SEO image exists
         id: check-seo-image
@@ -430,7 +430,7 @@ jobs:
 
       - name: Build SEO Service
         if: needs.setup.outputs.deploy_seo == 'true' && steps.check-seo-image.outputs.exists != 'true'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: deploy/shared-components/seo-service
           file: deploy/shared-components/seo-service/Dockerfile
@@ -476,7 +476,7 @@ jobs:
 
       - name: Build Index Service
         if: needs.setup.outputs.deploy_home_index == 'true' && steps.check-index-image.outputs.exists != 'true'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: deploy/shared-components/home-index-service/Dockerfile
@@ -782,7 +782,7 @@ jobs:
           gcloud auth configure-docker us-central1-docker.pkg.dev
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Calculate Analytics content hash
         id: analytics-hash
@@ -821,7 +821,7 @@ jobs:
 
       - name: Build Analytics Service
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null && steps.check-analytics-image.outputs.exists != 'true'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: deploy/shared-components/analytics-service
           file: deploy/shared-components/analytics-service/Dockerfile
@@ -1112,7 +1112,7 @@ jobs:
           gcloud auth configure-docker us-central1-docker.pkg.dev
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Check if lab image exists
         id: check-lab-image
@@ -1129,7 +1129,7 @@ jobs:
 
       - name: Build lab container image
         if: steps.check-lab-image.outputs.exists != 'true'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: labs/${{ matrix.lab }}
           file: labs/${{ matrix.lab }}/Dockerfile
@@ -1337,7 +1337,7 @@ jobs:
           gcloud auth configure-docker us-central1-docker.pkg.dev
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Check if labs index image exists
         id: check-labs-index-image
@@ -1354,7 +1354,7 @@ jobs:
 
       - name: Build index page container
         if: steps.check-labs-index-image.outputs.exists != 'true'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: deploy/Dockerfile.index
@@ -1510,7 +1510,7 @@ jobs:
           gcloud auth configure-docker us-central1-docker.pkg.dev
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build and push Traefik v3.0 sidecar images
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
@@ -2224,7 +2224,7 @@ jobs:
 
       - name: Comment test results on commit
         if: always()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
