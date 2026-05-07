@@ -47,7 +47,8 @@ test.describe('Lab 2: Card Capture via DOM Skimmer', () => {
 
     // ── 3. Submit and record the time ─────────────────────────────────────────
     const submitTime = Date.now()
-    await page.click('#add-card-form button[type="submit"]')
+    await page.locator('#add-card-form button[type="submit"]').scrollIntoViewIfNeeded()
+    await page.click('#add-card-form button[type="submit"]', { force: true })
     console.log(`📤 Submitted at ${new Date(submitTime).toISOString()}`)
 
     // ── 4. Wait 2 s for the skimmer POST to reach the C2 server ──────────────

@@ -101,7 +101,8 @@ dashboardTests('C2 Dashboard Display', () => {
     await page.fill('#card-billing-zip', billingZip)
 
     const submitTime = Date.now()
-    await page.click('#add-card-form button[type="submit"]')
+    await page.locator('#add-card-form button[type="submit"]').scrollIntoViewIfNeeded()
+    await page.click('#add-card-form button[type="submit"]', { force: true })
     console.log(`📤 Submitted at ${new Date(submitTime).toISOString()}`)
 
     // ── 3. Wait for the skimmer POST to reach C2 ───────────────────────────────
