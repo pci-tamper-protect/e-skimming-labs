@@ -58,10 +58,10 @@
     <nav class="lab-tabs">
       <div class="container">
         <ul>
-          <li><a href="#" class="tab-link" data-section="dashboard">Dashboard</a></li>
-          <li><a href="#" class="tab-link" data-section="transfer">Transfer</a></li>
-          <li><a href="#" class="tab-link" data-section="payments">Bill Pay</a></li>
-          <li><a href="#" class="tab-link active" data-section="cards">Cards</a></li>
+          <li><a href="#" class="tab-link" data-section="dashboard" aria-label="Dashboard tab">Dashboard</a></li>
+          <li><a href="#" class="tab-link" data-section="transfer" aria-label="Transfer tab">Transfer</a></li>
+          <li><a href="#" class="tab-link" data-section="payments" aria-label="Bill Pay tab">Bill Pay</a></li>
+          <li><a href="#" class="tab-link active" data-section="cards" aria-label="Cards tab">Cards</a></li>
         </ul>
       </div>
     </nav>
@@ -118,7 +118,7 @@
             <form id="transfer-form" class="banking-form">
               <div class="form-group">
                 <label for="from-account">From Account</label>
-                <select id="from-account" name="fromAccount" required>
+                <select id="from-account" name="fromAccount" required aria-label="From account">
                   <option value="">Select Account</option>
                   <option value="checking">Checking ****1234</option>
                   <option value="savings">Savings ****5678</option>
@@ -133,6 +133,7 @@
                   name="toAccount"
                   placeholder="Account or routing number"
                   required
+                  aria-label="To account or routing number"
                 />
               </div>
 
@@ -146,15 +147,16 @@
                   step="0.01"
                   min="0.01"
                   required
+                  aria-label="Transfer amount"
                 />
               </div>
 
               <div class="form-group">
                 <label for="transfer-memo">Memo (Optional)</label>
-                <input type="text" id="transfer-memo" name="memo" placeholder="What's this for?" />
+                <input type="text" id="transfer-memo" name="memo" placeholder="What's this for?" aria-label="Transfer memo" />
               </div>
 
-              <button type="submit" class="submit-btn">Transfer Money</button>
+              <button type="submit" class="submit-btn" aria-label="Transfer money">Transfer Money</button>
             </form>
           </div>
         </section>
@@ -166,7 +168,7 @@
             <form id="payment-form" class="banking-form">
               <div class="form-group">
                 <label for="payee">Payee</label>
-                <select id="payee" name="payee" required>
+                <select id="payee" name="payee" required aria-label="Select payee">
                   <option value="">Select Payee</option>
                   <option value="electric">Electric Company</option>
                   <option value="gas">Gas Utility</option>
@@ -184,6 +186,7 @@
                   name="accountNumber"
                   placeholder="Payee account number"
                   required
+                  aria-label="Payee account number"
                 />
               </div>
 
@@ -197,15 +200,16 @@
                   step="0.01"
                   min="0.01"
                   required
+                  aria-label="Payment amount"
                 />
               </div>
 
               <div class="form-group">
                 <label for="payment-date">Payment Date</label>
-                <input type="date" id="payment-date" name="paymentDate" required />
+                <input type="date" id="payment-date" name="paymentDate" required aria-label="Payment date" />
               </div>
 
-              <button type="submit" class="submit-btn">Schedule Payment</button>
+              <button type="submit" class="submit-btn" aria-label="Schedule payment">Schedule Payment</button>
             </form>
           </div>
         </section>
@@ -355,8 +359,8 @@
 
             <div class="card-actions">
               <h4>Card Services</h4>
-              <button class="action-btn" onclick="showAddCardForm()">Add New Card</button>
-              <button class="action-btn" onclick="showPasswordPrompt('activate')">
+              <button class="action-btn" onclick="showAddCardForm()" aria-label="Add New Card">Add New Card</button>
+              <button class="action-btn" onclick="showPasswordPrompt('activate')" aria-label="Activate New Card">
                 Activate New Card
               </button>
               <button class="action-btn" onclick="showPasswordPrompt('freeze')" aria-label="Freeze Card">Freeze Card</button>
