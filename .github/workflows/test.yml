@@ -161,21 +161,23 @@ jobs:
           echo "proxy_pid=$PROXY_PID" >> $GITHUB_OUTPUT
           echo "proxy_port=$PROXY_PORT" >> $GITHUB_OUTPUT
 
-          # Wait for proxy to be ready
-          echo "⏳ Waiting for proxy to be ready..."
-          MAX_WAIT=30
+          # Wait for proxy to be ready — check /sign-in specifically because the
+          # /health and / checks can return 200 before all tunnel routes are ready.
+          # A transient proxy error on /sign-in causes the auth setup to fail with
+          # "waiting for locator('#email')" since the error page has no email field.
+          echo "⏳ Waiting for proxy to be ready (sign-in page)..."
+          MAX_WAIT=45
           WAIT_COUNT=0
           while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
-            # Check if proxy is responding (try both health endpoint and root)
-            if curl -sf --max-time 2 http://$PROXY_HOST:$PROXY_PORT/health > /dev/null 2>&1 || \
-               curl -sf --max-time 2 http://$PROXY_HOST:$PROXY_PORT/ > /dev/null 2>&1; then
-              echo "✅ Proxy is ready on port $PROXY_PORT"
+            # Require /sign-in to return a page containing id="email" (the form field)
+            if curl -sf --max-time 3 http://$PROXY_HOST:$PROXY_PORT/sign-in 2>/dev/null | grep -q 'id="email"'; then
+              echo "✅ Proxy is ready on port $PROXY_PORT (sign-in form confirmed)"
               break
             fi
             sleep 1
             WAIT_COUNT=$((WAIT_COUNT + 1))
             if [ $((WAIT_COUNT % 5)) -eq 0 ]; then
-              echo "  Still waiting... ($WAIT_COUNT/$MAX_WAIT)"
+              echo "  Still waiting for sign-in form... ($WAIT_COUNT/$MAX_WAIT)"
               # Show proxy log if available
               if [ -f /tmp/proxy.log ]; then
                 echo "  Proxy log (last 5 lines):"

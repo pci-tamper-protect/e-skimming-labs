@@ -98,7 +98,8 @@ navigationTests('Global Navigation', () => {
     console.log('⬅️  Clicking back to home')
     const backButton = page.getByRole('link', { name: /Back to Labs/i })
     await expect(backButton).toBeVisible()
-    await backButton.click()
+    await backButton.scrollIntoViewIfNeeded()
+    await backButton.click({ force: true })
     await page.waitForLoadState('networkidle')
 
     // Verify we're back on home page

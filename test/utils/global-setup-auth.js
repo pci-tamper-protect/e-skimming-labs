@@ -110,7 +110,42 @@ module.exports = async () => {
   try {
     const signInUrl = `${currentEnv.homeIndex}/sign-in`
     console.log(`🔗 Signing in at ${signInUrl}`)
-    await page.goto(signInUrl, { waitUntil: 'networkidle', timeout: 30000 })
+
+    // Retry loop: the gcloud proxy can return a transient error page in the first
+    // few seconds after it passes the /health check but before all routes are fully
+    // tunnelled.  Retry up to 3 times with a short pause.
+    const MAX_ATTEMPTS = 3
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      if (attempt > 1) {
+        console.log(`🔄 Retry ${attempt}/${MAX_ATTEMPTS} — waiting 5s before re-navigating...`)
+        await page.waitForTimeout(5000)
+      }
+      try {
+        await page.goto(signInUrl, { waitUntil: 'domcontentloaded', timeout: 30000 })
+      } catch (navErr) {
+        console.warn(`⚠️  Navigation error on attempt ${attempt}: ${navErr.message}`)
+        if (attempt === MAX_ATTEMPTS) throw navErr
+        continue
+      }
+      const landedUrl = page.url()
+      const hasEmailField = await page.locator('#email').count() > 0
+      if (hasEmailField) {
+        console.log(`✅ Sign-in form loaded (attempt ${attempt})`)
+        break
+      }
+      const pageTitle = await page.title()
+      console.warn(`⚠️  Sign-in form not found on attempt ${attempt} (url: ${landedUrl}, title: "${pageTitle}")`)
+      if (attempt === MAX_ATTEMPTS) {
+        // Use innerText to avoid leaking script blocks (e.g. Firebase config) into CI logs.
+        const bodyText = await page.evaluate(() => document.body.innerText).catch(() => '(unavailable)')
+        throw new Error(
+          `Sign-in page did not render the email form after ${MAX_ATTEMPTS} attempts.\n` +
+          `  Final URL: ${landedUrl}\n` +
+          `  Page title: "${pageTitle}"\n` +
+          `  Body text: ${bodyText.slice(0, 400)}`
+        )
+      }
+    }
 
     await page.fill('#email', testEmail)
     await page.fill('#password', testPassword)
@@ -124,6 +159,8 @@ module.exports = async () => {
     )
     await page.click('button[type="submit"]')
     await navigationDone
+    // Wait for any pending requests (e.g. server-side session cookie exchange) to settle.
+    await page.waitForLoadState('networkidle', { timeout: 15000 })
 
     const currentUrl = page.url()
     if (currentUrl.includes('/sign-in')) {

@@ -55,13 +55,13 @@
     </div>
 
     <!-- Lab Page Tabs -->
-    <nav class="lab-tabs">
+    <nav class="lab-tabs" role="tablist" aria-label="Banking sections">
       <div class="container">
         <ul>
-          <li><a href="#" class="tab-link" data-section="dashboard">Dashboard</a></li>
-          <li><a href="#" class="tab-link" data-section="transfer">Transfer</a></li>
-          <li><a href="#" class="tab-link" data-section="payments">Bill Pay</a></li>
-          <li><a href="#" class="tab-link active" data-section="cards">Cards</a></li>
+          <li><a href="#" class="tab-link" data-section="dashboard" role="tab" aria-selected="false" aria-controls="dashboard">Dashboard</a></li>
+          <li><a href="#" class="tab-link" data-section="transfer" role="tab" aria-selected="false" aria-controls="transfer">Transfer</a></li>
+          <li><a href="#" class="tab-link" data-section="payments" role="tab" aria-selected="false" aria-controls="payments">Bill Pay</a></li>
+          <li><a href="#" class="tab-link active" data-section="cards" role="tab" aria-selected="true" aria-controls="cards">Cards</a></li>
         </ul>
       </div>
     </nav>
@@ -154,7 +154,7 @@
                 <input type="text" id="transfer-memo" name="memo" placeholder="What's this for?" />
               </div>
 
-              <button type="submit" class="submit-btn">Transfer Money</button>
+              <button type="submit" class="submit-btn" aria-label="Transfer money">Transfer Money</button>
             </form>
           </div>
         </section>
@@ -205,7 +205,7 @@
                 <input type="date" id="payment-date" name="paymentDate" required />
               </div>
 
-              <button type="submit" class="submit-btn">Schedule Payment</button>
+              <button type="submit" class="submit-btn" aria-label="Schedule payment">Schedule Payment</button>
             </form>
           </div>
         </section>
@@ -355,8 +355,8 @@
 
             <div class="card-actions">
               <h4>Card Services</h4>
-              <button class="action-btn" onclick="showAddCardForm()">Add New Card</button>
-              <button class="action-btn" onclick="showPasswordPrompt('activate')">
+              <button class="action-btn" onclick="showAddCardForm()" aria-label="Add New Card">Add New Card</button>
+              <button class="action-btn" onclick="showPasswordPrompt('activate')" aria-label="Activate New Card">
                 Activate New Card
               </button>
               <button class="action-btn" onclick="showPasswordPrompt('freeze')" aria-label="Freeze Card">Freeze Card</button>
