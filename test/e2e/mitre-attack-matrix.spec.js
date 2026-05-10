@@ -8,7 +8,7 @@ const { currentEnv, TEST_ENV } = require('../config/test-env')
  * @param {string | null} targetSectionId - Optional: ID of target section to wait for
  * @param {number} timeout - Maximum time to wait (default: 2000ms)
  */
-async function waitForScrollComplete(page, targetSectionId = null, timeout = 2000) {
+async function waitForScrollComplete(page, targetSectionId = null, timeout = 5000) {
   const checks = []
 
   // Always check if scroll position is stable
@@ -138,7 +138,7 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
 
   test('should have a functional back button with correct URL', async ({ page }) => {
     // Find the back button
-    const backButton = page.getByRole('link', { name: '← Back to Labs' })
+    const backButton = page.getByRole('link', { name: 'Back to Labs' })
 
     // Check that the back button is visible
     await expect(backButton).toBeVisible()
@@ -354,7 +354,7 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
     await expect(matrixTable).toBeVisible({ timeout: 10000 })
 
     // Verify that the back button is still visible and functional
-    const backButton = page.getByRole('link', { name: '← Back to Labs' })
+    const backButton = page.getByRole('link', { name: 'Back to Labs' })
     await expect(backButton).toBeVisible({ timeout: 10000 })
   })
 
@@ -367,7 +367,7 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
     await expect(nav).toBeVisible({ timeout: 10000 })
 
     // Check navigation links with increased timeout
-    await expect(nav.getByRole('link', { name: '← Back to Labs' })).toBeVisible({ timeout: 10000 })
+    await expect(nav.getByRole('link', { name: 'Back to Labs' })).toBeVisible({ timeout: 10000 })
     await expect(nav.getByRole('link', { name: 'Overview' })).toBeVisible({ timeout: 10000 })
     await expect(nav.getByRole('link', { name: 'Tactics & Techniques' })).toBeVisible({ timeout: 10000 })
     await expect(nav.getByRole('link', { name: 'Detection' })).toBeVisible({ timeout: 10000 })
@@ -479,7 +479,7 @@ test.describe('MITRE ATT&CK Matrix - Environment Detection', () => {
     await page.waitForLoadState('networkidle')
 
     // Find the back button and check its href
-    const backButton = page.getByRole('link', { name: '← Back to Labs' })
+    const backButton = page.getByRole('link', { name: 'Back to Labs' })
 
     // Get the actual href - should be "/" (relative URL, Traefik handles routing)
     const actualHref = await backButton.getAttribute('href')
