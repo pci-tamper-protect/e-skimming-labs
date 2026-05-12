@@ -266,13 +266,13 @@ fi
 if should_run "shared-c2"; then
   echo "5️⃣  Deploying shared-c2-${ENVIRONMENT}..."
   SHARED_C2_TRAEFIK_LABELS=$(get_lab_labels "shared-c2")
-  # shared-c2 must be public: browser skimmer scripts POST card data without IAM tokens
+  # shared-c2 stays private; Traefik forwards only the intended /lab*/c2 routes
   gcloud run deploy shared-c2-${ENVIRONMENT} \
     --image=${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/shared-c2:${IMAGE_TAG} \
     --region=${REGION} \
     --platform=managed \
     --project=${LABS_PROJECT_ID} \
-    --allow-unauthenticated \
+    --no-allow-unauthenticated \
     --service-account=labs-runtime-sa@${LABS_PROJECT_ID}.iam.gserviceaccount.com \
     --port=3000 \
     --memory=512Mi \

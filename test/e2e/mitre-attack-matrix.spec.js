@@ -6,7 +6,7 @@ const { currentEnv, TEST_ENV } = require('../config/test-env')
  * Waits for smooth scroll animation to complete
  * @param {import('@playwright/test').Page} page - Playwright page object
  * @param {string | null} targetSectionId - Optional: ID of target section to wait for
- * @param {number} timeout - Maximum time to wait (default: 2000ms)
+ * @param {number} timeout - Maximum time to wait (default: 5000ms)
  */
 async function waitForScrollComplete(page, targetSectionId = null, timeout = 5000) {
   const checks = []

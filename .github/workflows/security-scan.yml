@@ -196,6 +196,9 @@ jobs:
             echo "head=${SHA}" >> $GITHUB_OUTPUT
           else
             BASE=$(git log --since="30 days ago" --format="%H" | tail -1)
+          if [[ -z "$BASE" ]]; then
+            BASE=$(git rev-parse HEAD^ 2>/dev/null || git rev-parse HEAD)
+          fi
             echo "base=${BASE}" >> $GITHUB_OUTPUT
             echo "head=HEAD" >> $GITHUB_OUTPUT
           fi

