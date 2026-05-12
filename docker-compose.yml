@@ -294,7 +294,6 @@ services:
 
   # Single C2 collection service for labs 1, 2, and 3.
   # Traefik sends the full path — no strip middleware — so shared-c2 can route by prefix.
-  # Lab 4 keeps its own combined container (nginx+C2) as an intentional educational feature.
   shared-c2:
     build: deploy/shared-components/shared-c2-server
     container_name: e-skimming-labs-shared-c2
@@ -304,6 +303,7 @@ services:
       - ./labs/01-basic-magecart/malicious-code/c2-server/stolen-data:/app/data/lab1
       - ./labs/02-dom-skimming/c2-server/stolen-data:/app/data/lab2
       - ./labs/03-extension-hijacking/test-server/stolen-data:/app/data/lab3
+      - ./labs/04-steganography-favicon/c2-data:/app/data/lab4
     depends_on:
       - traefik
     healthcheck:
@@ -350,6 +350,18 @@ services:
       - "traefik.http.routers.lab3-extension.entrypoints=web"
       - "traefik.http.routers.lab3-extension.middlewares=lab3-auth-check@file"
       - "traefik.http.routers.lab3-extension.service=shared-c2"
+      # ── Lab 4 C2 routes ──────────────────────────────────────────────────────
+      # Collect (no auth — skimmer posts from victim browser)
+      - "traefik.http.routers.lab4-c2-collect.rule=Path(`/lab4/c2/collect`)"
+      - "traefik.http.routers.lab4-c2-collect.priority=350"
+      - "traefik.http.routers.lab4-c2-collect.entrypoints=web"
+      - "traefik.http.routers.lab4-c2-collect.service=shared-c2"
+      # Dashboard & API (auth required)
+      - "traefik.http.routers.lab4-c2.rule=PathPrefix(`/lab4/c2`)"
+      - "traefik.http.routers.lab4-c2.priority=300"
+      - "traefik.http.routers.lab4-c2.entrypoints=web"
+      - "traefik.http.routers.lab4-c2.middlewares=lab4-auth-check@file"
+      - "traefik.http.routers.lab4-c2.service=shared-c2"
       # ── Backend ──────────────────────────────────────────────────────────────
       - "traefik.http.services.shared-c2.loadbalancer.server.port=3000"
 
@@ -448,17 +460,15 @@ services:
   # LAB 4: STEGANOGRAPHY / FAVICON TROJAN
   # =============================================================================
 
-  # Lab 4 - Combined container (nginx + C2 server), matches STG topology
-  # init.sh adds "127.0.0.1 lab4-c2-server" to /etc/hosts so nginx can proxy to the C2 server
+  # Lab 4 - nginx only (C2 collection handled by shared-c2, same as labs 1-3)
   lab4-vulnerable-site:
-    build: ./labs/04-steganography-favicon
+    build: ./labs/04-steganography-favicon/vulnerable-site
     container_name: lab4-shop
     networks:
       - labs-network
-    volumes:
-      - ./labs/04-steganography-favicon/c2-data:/app/c2-server/stolen-data
     depends_on:
       - traefik
+      - shared-c2
     healthcheck:
       test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:8080/health']
       interval: 10s
@@ -467,39 +477,25 @@ services:
       start_period: 5s
     labels:
       - "lab=lab4-steganography"
-      - "component=combined"
       - "traefik.enable=true"
-      # Health check router (no auth) - warms container on home-page prefetch
+      # Health check router (no auth)
       - "traefik.http.routers.lab4-health.rule=Path(`/lab4/health`)"
       - "traefik.http.routers.lab4-health.priority=400"
       - "traefik.http.routers.lab4-health.entrypoints=web"
       - "traefik.http.routers.lab4-health.middlewares=strip-lab4-prefix@file"
       - "traefik.http.routers.lab4-health.service=lab4-vulnerable-site"
-      # Static files router (no auth, higher priority)
-      - "traefik.http.routers.lab4-static.rule=PathPrefix(`/lab4/css/`) || PathPrefix(`/lab4/js/`) || PathPrefix(`/lab4/images/`) || PathPrefix(`/lab4/img/`) || PathPrefix(`/lab4/static/`) || PathPrefix(`/lab4/assets/`)"
+      # Static files (no auth, higher priority than main)
+      - "traefik.http.routers.lab4-static.rule=PathPrefix(`/lab4/css/`) || PathPrefix(`/lab4/js/`) || PathPrefix(`/lab4/images/`)"
       - "traefik.http.routers.lab4-static.priority=250"
       - "traefik.http.routers.lab4-static.entrypoints=web"
       - "traefik.http.routers.lab4-static.middlewares=strip-lab4-prefix@file"
       - "traefik.http.routers.lab4-static.service=lab4-vulnerable-site"
-      # Main router (with auth)
+      # Main router (with auth, routes /lab4/* to nginx after stripping /lab4)
       - "traefik.http.routers.lab4-main.rule=PathPrefix(`/lab4`)"
       - "traefik.http.routers.lab4-main.priority=200"
       - "traefik.http.routers.lab4-main.entrypoints=web"
       - "traefik.http.routers.lab4-main.middlewares=lab4-auth-check@file,strip-lab4-prefix@file"
       - "traefik.http.routers.lab4-main.service=lab4-vulnerable-site"
-      # C2 dashboard - with auth
-      - "traefik.http.routers.lab4-c2.rule=PathPrefix(`/lab4/c2`)"
-      - "traefik.http.routers.lab4-c2.priority=300"
-      - "traefik.http.routers.lab4-c2.entrypoints=web"
-      - "traefik.http.routers.lab4-c2.middlewares=lab4-auth-check@file,strip-lab4-prefix@file"
-      - "traefik.http.routers.lab4-c2.service=lab4-vulnerable-site"
-      # Collect endpoint - no auth required (skimmer needs to POST data)
-      - "traefik.http.routers.lab4-c2-collect.rule=Path(`/lab4/c2/collect`)"
-      - "traefik.http.routers.lab4-c2-collect.priority=350"
-      - "traefik.http.routers.lab4-c2-collect.entrypoints=web"
-      - "traefik.http.routers.lab4-c2-collect.middlewares=strip-lab4-prefix@file"
-      - "traefik.http.routers.lab4-c2-collect.service=lab4-vulnerable-site"
-      # Single backend: nginx on 8080 proxies C2 paths to internal port 3000 (via hosts hack)
       - "traefik.http.services.lab4-vulnerable-site.loadbalancer.server.port=8080"
 
 # =============================================================================

