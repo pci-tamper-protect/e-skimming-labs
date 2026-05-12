@@ -45,12 +45,7 @@
         const targetSection = link.getAttribute('data-section')
         
         if (targetSection) {
-          showSection(targetSection)
-
-          // Update active tab link
-          tabLinks.forEach(tab => tab.classList.remove('active'))
-          link.classList.add('active')
-
+          setActiveTab(link)
           appState.currentSection = targetSection
           console.log('[Banking] Navigated to section:', targetSection)
           
@@ -63,11 +58,44 @@
     })
 
     function showSection(sectionId) {
-      sections.forEach(section => section.classList.remove('active'))
-      const targetSection = document.getElementById(sectionId)
+      sections.forEach(section => {
+        const matches = section.id === sectionId
+        section.classList.toggle('active', matches)
+        section.setAttribute('aria-hidden', matches ? 'false' : 'true')
+      })
+    }
+    
+    function setActiveTab(activeLink) {
+      const targetSection = activeLink?.getAttribute('data-section')
       if (targetSection) {
-        targetSection.classList.add('active')
+        showSection(targetSection)
       }
+
+      tabLinks.forEach(link => {
+        const isActive = link === activeLink
+        link.classList.toggle('active', isActive)
+        link.setAttribute('aria-selected', isActive ? 'true' : 'false')
+      })
+    }
+
+    tabLinks.forEach((link, index) => {
+      const sectionId = link.getAttribute('data-section')
+      const tabId = link.id || `tab-${sectionId || index}`
+      link.id = tabId
+      if (sectionId) {
+        link.setAttribute('aria-controls', sectionId)
+        const section = document.getElementById(sectionId)
+        if (section) {
+          section.setAttribute('role', 'tabpanel')
+          section.setAttribute('aria-labelledby', tabId)
+          section.setAttribute('aria-hidden', section.classList.contains('active') ? 'false' : 'true')
+        }
+      }
+    })
+
+    const defaultTab = document.querySelector('.tab-link[data-section="cards"]')
+    if (defaultTab) {
+      setActiveTab(defaultTab)
     }
   }
 
@@ -758,16 +786,6 @@
       updateAccountBalances()
       initSecurityMonitoring()
 
-      // Set default section to cards and show add card form
-      const cardsSection = document.getElementById('cards')
-      if (cardsSection) {
-        // Hide other sections
-        document.querySelectorAll('.section').forEach(section => {
-          section.classList.remove('active')
-        })
-        cardsSection.classList.add('active')
-      }
-      
       // Show add card form by default
       showAddCardForm()
 
