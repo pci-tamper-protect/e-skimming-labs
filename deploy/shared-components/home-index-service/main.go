@@ -341,6 +341,27 @@ func main() {
 		os.Setenv("FIREBASE_API_KEY", "") //nolint:errcheck
 	}
 
+	// Startup validation: fail loudly if auth is enabled but required secrets are missing or
+	// still encrypted. This surfaces dotenvx decryption failures immediately at container
+	// start rather than silently serving a broken sign-in page.
+	if enableAuth {
+		type envCheck struct{ name, val string }
+		checks := []envCheck{
+			{"FIREBASE_PROJECT_ID", firebaseProjectID},
+			{"FIREBASE_SERVICE_ACCOUNT_KEY", firebaseServiceAccount},
+			{"FIREBASE_API_KEY", os.Getenv("FIREBASE_API_KEY")},
+		}
+		for _, c := range checks {
+			if c.val == "" {
+				log.Fatalf("❌ FATAL: %s is required when ENABLE_AUTH=true but was not set — check dotenvx decryption", c.name)
+			}
+			if strings.HasPrefix(strings.TrimSpace(c.val), "encrypted:") {
+				log.Fatalf("❌ FATAL: %s is still encrypted — dotenvx decryption failed (check DOTENVX_KEY secret)", c.name)
+			}
+		}
+		log.Printf("✅ All required auth env vars present and decrypted")
+	}
+
 	// MainAppURL is now empty (relative paths) - services always use relative URLs
 	// IMPORTANT: Traefik handles routing, so services don't need to know about proxy setup
 	// DO NOT add logic to detect environment or generate absolute URLs here

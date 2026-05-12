@@ -4,9 +4,9 @@
 #        image-tag: tag of pre-built images (default: current git SHA)
 #        --only: Comma-separated list of services to deploy (e.g. --only home-index,traefik)
 #                Services: home-seo, home-index, labs-analytics, labs-index,
-#                          lab1-c2, lab2-c2, lab3-extension,
+#                          shared-c2,
 #                          lab-01-basic-magecart, lab-02-dom-skimming, lab-03-extension-hijacking,
-#                          traefik
+#                          lab-04-steganography, traefik
 #        Called by build-deploy-all.sh after images are built, or standalone
 #        when images already exist in Artifact Registry.
 
@@ -83,6 +83,56 @@ echo ""
 
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
+
+# Enable required APIs on both GCP projects before any deployment.
+# identitytoolkit.googleapis.com must be enabled on the CALLING project (labs-home-*)
+# because Google checks API quota/enablement against the service account's project,
+# not the Firebase project. Without this, CreateSessionCookie returns 403.
+echo "🔧 Enabling required APIs..."
+gcloud services enable \
+  identitytoolkit.googleapis.com \
+  run.googleapis.com \
+  artifactregistry.googleapis.com \
+  --project="${HOME_PROJECT_ID}" --quiet
+gcloud services enable \
+  run.googleapis.com \
+  artifactregistry.googleapis.com \
+  storage.googleapis.com \
+  --project="${LABS_PROJECT_ID}" --quiet
+echo "   ✅ APIs enabled"
+echo ""
+
+# GCS bucket names for shared-c2 per-lab storage
+C2_BUCKET_LAB1="labs-c2-lab1-${ENVIRONMENT}"
+C2_BUCKET_LAB2="labs-c2-lab2-${ENVIRONMENT}"
+C2_BUCKET_LAB3="labs-c2-lab3-${ENVIRONMENT}"
+C2_BUCKET_LAB4="labs-c2-lab4-${ENVIRONMENT}"
+C2_SA="labs-runtime-sa@${LABS_PROJECT_ID}.iam.gserviceaccount.com"
+
+# Ensure C2 GCS buckets exist with correct IAM (idempotent)
+ensure_c2_buckets() {
+  for bucket in "$C2_BUCKET_LAB1" "$C2_BUCKET_LAB2" "$C2_BUCKET_LAB3" "$C2_BUCKET_LAB4"; do
+    if ! gcloud storage buckets describe "gs://${bucket}" --project="${LABS_PROJECT_ID}" &>/dev/null; then
+      echo "   Creating bucket gs://${bucket}..."
+      gcloud storage buckets create "gs://${bucket}" \
+        --project="${LABS_PROJECT_ID}" \
+        --location="${REGION}" \
+        --uniform-bucket-level-access \
+        --quiet
+    fi
+    gcloud storage buckets add-iam-policy-binding "gs://${bucket}" \
+      --member="serviceAccount:${C2_SA}" \
+      --role="roles/storage.objectAdmin" \
+      --quiet 2>/dev/null || true
+  done
+  echo "   ✅ C2 GCS buckets ready"
+}
+
+if should_run "shared-c2"; then
+  echo "🪣 Ensuring C2 GCS buckets..."
+  ensure_c2_buckets
+  echo ""
+fi
 
 grant_iam_access() {
   local service_name=$1
@@ -213,69 +263,25 @@ if should_run "labs-index"; then
   echo ""
 fi
 
-if should_run "lab1-c2"; then
-  echo "5️⃣  Deploying lab1-c2-${ENVIRONMENT}..."
-  LAB1_C2_TRAEFIK_LABELS=$(get_lab_labels "lab1-c2-server")
-  gcloud run deploy lab1-c2-${ENVIRONMENT} \
-    --image=${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/lab1-c2:${IMAGE_TAG} \
+if should_run "shared-c2"; then
+  echo "5️⃣  Deploying shared-c2-${ENVIRONMENT}..."
+  SHARED_C2_TRAEFIK_LABELS=$(get_lab_labels "shared-c2")
+  # shared-c2 stays private; Traefik forwards only the intended /lab*/c2 routes
+  gcloud run deploy shared-c2-${ENVIRONMENT} \
+    --image=${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/shared-c2:${IMAGE_TAG} \
     --region=${REGION} \
     --platform=managed \
     --project=${LABS_PROJECT_ID} \
     --no-allow-unauthenticated \
     --service-account=labs-runtime-sa@${LABS_PROJECT_ID}.iam.gserviceaccount.com \
-    --port=8080 \
-    --memory=256Mi \
+    --port=3000 \
+    --memory=512Mi \
     --cpu=1 \
-    --min-instances=0 \
+    --min-instances=1 \
     --max-instances=5 \
-    --set-env-vars="ENVIRONMENT=${ENVIRONMENT}" \
-    --labels="environment=${ENVIRONMENT},component=c2,lab=01-basic-magecart,project=e-skimming-labs,${LAB1_C2_TRAEFIK_LABELS}"
-  grant_iam_access "lab1-c2-${ENVIRONMENT}" "${LABS_PROJECT_ID}"
-  echo "   ✅ Lab 1 C2 deployed"
-  echo ""
-fi
-
-if should_run "lab2-c2"; then
-  echo "6️⃣  Deploying lab2-c2-${ENVIRONMENT}..."
-  LAB2_C2_TRAEFIK_LABELS=$(get_lab_labels "lab2-c2-server")
-  gcloud run deploy lab2-c2-${ENVIRONMENT} \
-    --image=${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/lab2-c2:${IMAGE_TAG} \
-    --region=${REGION} \
-    --platform=managed \
-    --project=${LABS_PROJECT_ID} \
-    --no-allow-unauthenticated \
-    --service-account=labs-runtime-sa@${LABS_PROJECT_ID}.iam.gserviceaccount.com \
-    --port=8080 \
-    --memory=256Mi \
-    --cpu=1 \
-    --min-instances=0 \
-    --max-instances=5 \
-    --set-env-vars="ENVIRONMENT=${ENVIRONMENT},C2_STANDALONE=true" \
-    --labels="environment=${ENVIRONMENT},component=c2,lab=02-dom-skimming,project=e-skimming-labs,${LAB2_C2_TRAEFIK_LABELS}"
-  grant_iam_access "lab2-c2-${ENVIRONMENT}" "${LABS_PROJECT_ID}"
-  echo "   ✅ Lab 2 C2 deployed"
-  echo ""
-fi
-
-if should_run "lab3-extension"; then
-  echo "7️⃣  Deploying lab3-extension-${ENVIRONMENT}..."
-  LAB3_EXT_TRAEFIK_LABELS=$(get_lab_labels "lab3-extension-server")
-  gcloud run deploy lab3-extension-${ENVIRONMENT} \
-    --image=${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/lab3-extension:${IMAGE_TAG} \
-    --region=${REGION} \
-    --platform=managed \
-    --project=${LABS_PROJECT_ID} \
-    --no-allow-unauthenticated \
-    --service-account=labs-runtime-sa@${LABS_PROJECT_ID}.iam.gserviceaccount.com \
-    --port=8080 \
-    --memory=256Mi \
-    --cpu=1 \
-    --min-instances=0 \
-    --max-instances=5 \
-    --set-env-vars="ENVIRONMENT=${ENVIRONMENT}" \
-    --labels="environment=${ENVIRONMENT},component=extension,lab=03-extension-hijacking,project=e-skimming-labs,${LAB3_EXT_TRAEFIK_LABELS}"
-  grant_iam_access "lab3-extension-${ENVIRONMENT}" "${LABS_PROJECT_ID}"
-  echo "   ✅ Lab 3 extension deployed"
+    --set-env-vars="ENVIRONMENT=${ENVIRONMENT},LAB1_BUCKET=${C2_BUCKET_LAB1},LAB2_BUCKET=${C2_BUCKET_LAB2},LAB3_BUCKET=${C2_BUCKET_LAB3},LAB4_BUCKET=${C2_BUCKET_LAB4}" \
+    --labels="environment=${ENVIRONMENT},component=shared-c2,project=e-skimming-labs,${SHARED_C2_TRAEFIK_LABELS}"
+  echo "   ✅ Shared C2 deployed"
   echo ""
 fi
 
@@ -348,6 +354,29 @@ if should_run "lab-03-extension-hijacking"; then
   echo ""
 fi
 
+if should_run "lab-04-steganography"; then
+  echo "1️⃣1️⃣ Deploying lab-04-steganography-${ENVIRONMENT}..."
+  LAB4_TRAEFIK_LABELS=$(get_lab_labels "lab4-vulnerable-site")
+  gcloud run deploy lab-04-steganography-${ENVIRONMENT} \
+    --image=${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/04-steganography:${IMAGE_TAG} \
+    --region=${REGION} \
+    --platform=managed \
+    --project=${LABS_PROJECT_ID} \
+    --no-allow-unauthenticated \
+    --service-account=labs-runtime-sa@${LABS_PROJECT_ID}.iam.gserviceaccount.com \
+    --port=8080 \
+    --memory=256Mi \
+    --cpu=1 \
+    --min-instances=0 \
+    --max-instances=10 \
+    --set-env-vars="LAB_NAME=04-steganography,ENVIRONMENT=${ENVIRONMENT},DOMAIN=${DOMAIN_PREFIX},HOME_URL=https://${DOMAIN_PREFIX},C2_URL=https://${DOMAIN_PREFIX}/lab4/c2" \
+    --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_${ENV_UPPER}:latest \
+    --labels="environment=${ENVIRONMENT},lab=04-steganography,project=e-skimming-labs,${LAB4_TRAEFIK_LABELS}"
+  grant_iam_access "lab-04-steganography-${ENVIRONMENT}" "${LABS_PROJECT_ID}"
+  echo "   ✅ Lab 4 deployed"
+  echo ""
+fi
+
 # ============================================================================
 # TRAEFIK (sidecar architecture - build + deploy handled by dedicated script)
 # ============================================================================
@@ -391,6 +420,9 @@ gcloud run services describe lab-02-dom-skimming-${ENVIRONMENT} \
 gcloud run services describe lab-03-extension-hijacking-${ENVIRONMENT} \
   --region=${REGION} --project=${LABS_PROJECT_ID} \
   --format="value(status.url)" 2>/dev/null | sed 's/^/   Lab 3: /' || echo "   Lab 3: (not available)"
+gcloud run services describe lab-04-steganography-${ENVIRONMENT} \
+  --region=${REGION} --project=${LABS_PROJECT_ID} \
+  --format="value(status.url)" 2>/dev/null | sed 's/^/   Lab 4: /' || echo "   Lab 4: (not available)"
 gcloud run services describe traefik-${ENVIRONMENT} \
   --region=${REGION} --project=${LABS_PROJECT_ID} \
   --format="value(status.url)" 2>/dev/null | sed 's/^/   Traefik: /' || echo "   Traefik: (not available)"

@@ -80,6 +80,19 @@ cd "$REPO_ROOT"
 echo "🔐 Authenticating to Artifact Registry..."
 gcloud auth configure-docker ${HOME_GAR_LOCATION}-docker.pkg.dev --quiet
 
+# Enable required APIs on the home project.
+# identitytoolkit.googleapis.com must be enabled on the CALLING project (labs-home-*)
+# because Google checks API quotas/enablement against the service account's project,
+# not the Firebase project. Without this, CreateSessionCookie returns 403.
+echo "🔧 Enabling required APIs on ${HOME_PROJECT_ID}..."
+gcloud services enable \
+  identitytoolkit.googleapis.com \
+  run.googleapis.com \
+  artifactregistry.googleapis.com \
+  --project="${HOME_PROJECT_ID}" --quiet
+echo "   ✅ APIs enabled"
+echo ""
+
 # ============================================================================
 # BUILD AND DEPLOY FUNCTIONS
 # ============================================================================
