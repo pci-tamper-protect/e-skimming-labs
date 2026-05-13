@@ -159,8 +159,8 @@ module.exports = async () => {
     )
     await page.click('button[type="submit"]')
     await navigationDone
-    // Wait for any pending requests (e.g. server-side session cookie exchange) to settle.
-    await page.waitForLoadState('networkidle', { timeout: 15000 })
+    // Wait for the sign-in email input to reappear (or the redirect to finish).
+    await page.locator('#email').waitFor({ state: 'visible', timeout: 30000 })
 
     const currentUrl = page.url()
     if (currentUrl.includes('/sign-in')) {
