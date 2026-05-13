@@ -696,15 +696,36 @@ func main() {
 		// Build absolute URL for redirects - ForwardAuth resolves relative URLs against its own address
 		// which causes browser to redirect to internal hostname (e.g., home-index:8080) instead of public hostname
 		buildRedirectURL := func(path string) string {
-			// Prefer an explicit public base URL if configured (e.g., https://labs.example.com)
-			if publicBase := os.Getenv("PUBLIC_BASE_URL"); publicBase != "" {
-				if u, err := url.Parse(publicBase); err == nil && u.Scheme != "" && u.Host != "" {
+			if rawBase := strings.TrimSpace(os.Getenv("PUBLIC_BASE_URL")); rawBase != "" {
+				normalized := strings.TrimRight(rawBase, "/")
+				if !strings.Contains(normalized, "://") {
+					normalized = "https://" + normalized
+				}
+				if u, err := url.Parse(normalized); err == nil && u.Scheme != "" && u.Host != "" {
 					return fmt.Sprintf("%s://%s%s", u.Scheme, u.Host, path)
 				}
+				log.Printf("⚠️ PUBLIC_BASE_URL invalid, falling back: %s", rawBase)
+			}
+
+			proxyHost := os.Getenv("PROXY_HOST")
+			proxyPort := os.Getenv("PROXY_PORT")
+			if proxyHost != "" && proxyPort != "" {
+				if proxyHost == "127.0.0.1" {
+					proxyHost = "localhost"
+				}
+				return fmt.Sprintf("http://%s:%s%s", proxyHost, proxyPort, path)
+			}
+
+			if envDomain := os.Getenv("DOMAIN"); envDomain != "" {
+				scheme := "https"
+				lowerDomain := strings.ToLower(envDomain)
+				if strings.Contains(lowerDomain, "localhost") || strings.Contains(lowerDomain, "127.") {
+					scheme = "http"
+				}
+				return fmt.Sprintf("%s://%s%s", scheme, envDomain, path)
 			}
 
 			scheme := "http"
-			// X-Forwarded-Proto can be comma-separated (e.g., "https,http"); use the first value
 			if xfProto := r.Header.Get("X-Forwarded-Proto"); xfProto != "" {
 				firstProto := strings.TrimSpace(strings.SplitN(xfProto, ",", 2)[0])
 				if strings.EqualFold(firstProto, "https") {
@@ -714,26 +735,21 @@ func main() {
 				scheme = "https"
 			}
 
-			// Prefer X-Forwarded-Host when present, but fall back to r.Host
 			host := r.Header.Get("X-Forwarded-Host")
 			if host == "" {
 				host = r.Host
 			}
 
 			environment := os.Getenv("ENVIRONMENT")
-			// Treat hosts without a dot (e.g., "home-index:8080") as internal/invalid for redirects
 			isLikelyInternalHost := !strings.Contains(host, ".")
 			if environment == "local" || isLikelyInternalHost {
-				// In local environment, or when we detect an internal hostname, use localhost:8080
 				host = "localhost:8080"
 			}
-			// Normalize 127.0.0.1 → localhost: the gcloud proxy rewrites Location headers to
-			// use 127.0.0.1 as the host, but cookies are set for the "localhost" domain.
-			// Using 127.0.0.1 in the redirect URL causes cookie domain mismatch.
 			if strings.HasPrefix(host, "127.0.0.1:") {
 				host = "localhost:" + strings.TrimPrefix(host, "127.0.0.1:")
 				scheme = "http"
 			}
+
 			return fmt.Sprintf("%s://%s%s", scheme, host, path)
 		}
 

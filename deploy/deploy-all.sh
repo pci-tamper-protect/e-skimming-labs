@@ -88,18 +88,36 @@ cd "$REPO_ROOT"
 # identitytoolkit.googleapis.com must be enabled on the CALLING project (labs-home-*)
 # because Google checks API quota/enablement against the service account's project,
 # not the Firebase project. Without this, CreateSessionCookie returns 403.
-echo "🔧 Enabling required APIs..."
-gcloud services enable \
+ensure_service_enabled() {
+  local project_id=$1
+  shift
+  local service
+  for service in "$@"; do
+    if gcloud services list \
+      --project="${project_id}" \
+      --filter="config.name:${service}" \
+      --limit=1 \
+      --format="value(config.name)" \
+      | grep -q "${service}"; then
+      echo "   ✔ ${service} already enabled on ${project_id}"
+    else
+      echo "   🔧 Enabling ${service} on ${project_id}..."
+      gcloud services enable "${service}" --project="${project_id}" --quiet
+      echo "   ✅ ${service} enabled"
+    fi
+  done
+}
+
+echo "🔧 Ensuring required APIs are enabled..."
+ensure_service_enabled "${HOME_PROJECT_ID}" \
   identitytoolkit.googleapis.com \
   run.googleapis.com \
-  artifactregistry.googleapis.com \
-  --project="${HOME_PROJECT_ID}" --quiet
-gcloud services enable \
+  artifactregistry.googleapis.com
+ensure_service_enabled "${LABS_PROJECT_ID}" \
   run.googleapis.com \
   artifactregistry.googleapis.com \
-  storage.googleapis.com \
-  --project="${LABS_PROJECT_ID}" --quiet
-echo "   ✅ APIs enabled"
+  storage.googleapis.com
+echo ""
 echo ""
 
 # GCS bucket names for shared-c2 per-lab storage
