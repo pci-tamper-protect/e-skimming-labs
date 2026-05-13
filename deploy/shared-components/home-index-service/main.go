@@ -696,13 +696,23 @@ func main() {
 		// Build absolute URL for redirects - ForwardAuth resolves relative URLs against its own address
 		// which causes browser to redirect to internal hostname (e.g., home-index:8080) instead of public hostname
 		buildRedirectURL := func(path string) string {
-			if publicBase := strings.TrimRight(os.Getenv("PUBLIC_BASE_URL"), "/"); publicBase != "" {
-				return publicBase + path
+			if rawBase := strings.TrimSpace(os.Getenv("PUBLIC_BASE_URL")); rawBase != "" {
+				normalized := strings.TrimRight(rawBase, "/")
+				if !strings.Contains(normalized, "://") {
+					normalized = "https://" + normalized
+				}
+				if u, err := url.Parse(normalized); err == nil && u.Scheme != "" && u.Host != "" {
+					return fmt.Sprintf("%s://%s%s", u.Scheme, u.Host, path)
+				}
+				log.Printf("⚠️ PUBLIC_BASE_URL invalid, falling back: %s", rawBase)
 			}
 
 			proxyHost := os.Getenv("PROXY_HOST")
 			proxyPort := os.Getenv("PROXY_PORT")
 			if proxyHost != "" && proxyPort != "" {
+				if proxyHost == "127.0.0.1" {
+					proxyHost = "localhost"
+				}
 				return fmt.Sprintf("http://%s:%s%s", proxyHost, proxyPort, path)
 			}
 
