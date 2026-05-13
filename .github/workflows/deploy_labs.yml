@@ -2,7 +2,7 @@ name: Deploy CloudRun
 
 on:
   pull_request:
-    branches: [main, stg]
+    branches: [stg]
     types: [opened, synchronize, reopened]
     paths:
       # Home components
