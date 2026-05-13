@@ -159,18 +159,21 @@ module.exports = async () => {
     )
     await page.click('button[type="submit"]')
     await navigationDone
-    // Wait for any pending requests (e.g. server-side session cookie exchange) to settle.
-    await page.waitForLoadState('networkidle', { timeout: 15000 })
 
-    const currentUrl = page.url()
-    if (currentUrl.includes('/sign-in')) {
-      throw new Error('Failed to authenticate: still on sign-in page after submit')
+    // Poll for __session rather than waiting for networkidle.
+    // networkidle requires 500ms with no network activity; background requests
+    // (analytics, lab polling) can prevent that window from ever opening.
+    // Polling the cookie directly tests the actual post-sign-in invariant.
+    const SESSION_POLL_MS = 15000
+    const SESSION_POLL_INTERVAL_MS = 300
+    const pollStart = Date.now()
+    let sessionCookie = null
+    while (Date.now() - pollStart < SESSION_POLL_MS) {
+      const cookies = await context.cookies()
+      sessionCookie = cookies.find(c => c.name === '__session')
+      if (sessionCookie) break
+      await page.waitForTimeout(SESSION_POLL_INTERVAL_MS)
     }
-
-    // Validate that the __session cookie was set — this is what storageState
-    // persists and what auth-check middleware reads on subsequent requests.
-    const cookies = await context.cookies()
-    const sessionCookie = cookies.find(c => c.name === '__session')
     if (!sessionCookie) {
       throw new Error('__session cookie not found after sign-in — auth state will not be usable')
     }

@@ -3,10 +3,9 @@ package auth
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
-	"os"
+	"net/url"
 	"path"
 	"strings"
 )
@@ -124,7 +123,7 @@ func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 				if validator.IsRequired() {
 					// Auth required but validation failed
 					log.Printf("❌ Authentication required but failed: %v", err)
-					respondAuthError(w, r, http.StatusUnauthorized, "Authentication required", validator.GetMainAppURL())
+					respondAuthError(w, r, http.StatusUnauthorized, "Authentication required")
 					return
 				}
 				// Auth optional, continue without user info
@@ -136,7 +135,7 @@ func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 			// If auth is required but no credentials provided
 			if validator.IsRequired() && ExtractSessionCookie(r) == "" && extractToken(r) == "" {
 				log.Printf("❌ Authentication required but no token provided")
-				respondAuthError(w, r, http.StatusUnauthorized, "Authentication required", validator.GetMainAppURL())
+				respondAuthError(w, r, http.StatusUnauthorized, "Authentication required")
 				return
 			}
 
@@ -149,17 +148,7 @@ func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 					acceptHeader == "" ||
 					strings.Contains(acceptHeader, "*/*")
 				if isBrowserRequest {
-					// Use X-Forwarded-Host if available (when behind proxy like Traefik),
-					// otherwise use request's Host header to avoid container hostname issues
-					scheme := "http"
-					if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
-						scheme = "https"
-					}
-					host := r.Header.Get("X-Forwarded-Host")
-					if host == "" {
-						host = r.Host
-					}
-					redirectURL := fmt.Sprintf("%s://%s/sign-in?error=email_not_verified&email=%s", scheme, host, userInfo.Email)
+					redirectURL := "/sign-in?error=email_not_verified&email=" + url.QueryEscape(userInfo.Email)
 					http.Redirect(w, r, redirectURL, http.StatusFound)
 					return
 				}
@@ -233,7 +222,7 @@ func GetUserInfo(r *http.Request) *TokenInfo {
 // respondAuthError sends an authentication error response
 // For browser requests, redirects to sign-in page
 // For API requests, returns JSON error
-func respondAuthError(w http.ResponseWriter, r *http.Request, statusCode int, message string, mainAppURL string) {
+func respondAuthError(w http.ResponseWriter, r *http.Request, statusCode int, message string) {
 	// Check if this is a browser request (has Accept: text/html)
 	acceptHeader := r.Header.Get("Accept")
 	isBrowserRequest := strings.Contains(acceptHeader, "text/html") ||
@@ -241,29 +230,10 @@ func respondAuthError(w http.ResponseWriter, r *http.Request, statusCode int, me
 		strings.Contains(acceptHeader, "*/*")
 
 	if isBrowserRequest {
-		scheme := "http"
-		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
-			scheme = "https"
-		}
-		host := r.Header.Get("X-Forwarded-Host")
-		environment := os.Getenv("ENVIRONMENT")
-		if host == "" {
-			if environment == "local" {
-				host = "localhost:8080"
-			} else {
-				host = r.Host
-			}
-		} else if environment == "local" {
-			host = "localhost:8080"
-		}
-		// Normalize 127.0.0.1 → localhost so cookies set at sign-in (localhost domain)
-		// are sent on subsequent requests to the same origin. The gcloud proxy binds on
-		// 127.0.0.1 but the browser uses "localhost" — cookies are domain-specific.
-		if strings.HasPrefix(host, "127.0.0.1:") {
-			host = "localhost:" + strings.TrimPrefix(host, "127.0.0.1:")
-			scheme = "http"
-		}
-		redirectURL := fmt.Sprintf("%s://%s/sign-in?redirect=%s", scheme, host, r.URL.String())
+		// Use a relative redirect so the browser resolves it against the URL it
+		// was actually visiting — works correctly whether accessed via the gcloud
+		// proxy, Traefik, or directly (no host/scheme guessing needed).
+		redirectURL := "/sign-in?redirect=" + url.QueryEscape(r.URL.RequestURI())
 		http.Redirect(w, r, redirectURL, http.StatusFound)
 		return
 	}
