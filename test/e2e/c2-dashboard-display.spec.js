@@ -34,12 +34,26 @@ dashboardTests('C2 Dashboard Display', () => {
     await page.fill('#expiry', '1228')
     await page.fill('#cvv', cvv)
 
+    // Start listening for the skimmer POST before clicking — the click fires
+    // the skimmer's submit handler which POSTs after a 100ms delay.
+    const collectPostPromise = page.waitForResponse(
+      resp => resp.url().includes('/lab1/c2/collect') && resp.request().method() === 'POST',
+      { timeout: 15000 }
+    ).catch(() => null) // don't throw if POST never arrives; let matchFound fail with clear message
+
     const submitTime = Date.now()
     await page.click('.submit-btn')
     console.log(`📤 Submitted at ${new Date(submitTime).toISOString()}`)
 
     // ── 3. Wait for the skimmer POST to reach C2 ───────────────────────────────
-    await page.waitForTimeout(2000)
+    const collectResp = await collectPostPromise
+    if (collectResp) {
+      console.log(`📡 Skimmer POST confirmed (status: ${collectResp.status()})`)
+    } else {
+      console.warn('⚠️  Skimmer POST to /lab1/c2/collect not detected within 15s')
+    }
+    // Extra wait for GCS write to complete before reading dashboard
+    await page.waitForTimeout(1500)
 
     // ── 4. Navigate to C2 dashboard ────────────────────────────────────────────
     await page.goto(`${currentEnv.lab1.c2}`)
@@ -173,12 +187,26 @@ dashboardTests('C2 Dashboard Display', () => {
 
     const submitBtn = page.locator('#add-card-form button[type="submit"]')
     await submitBtn.scrollIntoViewIfNeeded()
+
+    // Start listening for the skimmer POST before clicking
+    const collectPostPromise = page.waitForResponse(
+      resp => resp.url().includes('/lab2/c2/collect') && resp.request().method() === 'POST',
+      { timeout: 15000 }
+    ).catch(() => null)
+
     const submitTime = Date.now()
     await submitBtn.click({ force: true })
     console.log(`📤 Submitted at ${new Date(submitTime).toISOString()}`)
 
     // ── 3. Wait for the skimmer POST to reach C2 ───────────────────────────────
-    await page.waitForTimeout(2000)
+    const collectResp = await collectPostPromise
+    if (collectResp) {
+      console.log(`📡 Skimmer POST confirmed (status: ${collectResp.status()})`)
+    } else {
+      console.warn('⚠️  Skimmer POST to /lab2/c2/collect not detected within 15s')
+    }
+    // Extra wait for GCS write to complete before reading dashboard
+    await page.waitForTimeout(1500)
 
     // ── 4. Navigate to C2 dashboard ────────────────────────────────────────────
     await page.goto(`${currentEnv.lab2.c2}`)

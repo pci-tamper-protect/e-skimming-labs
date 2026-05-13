@@ -95,7 +95,7 @@ ensure_service_enabled() {
   for service in "$@"; do
     if gcloud services list \
       --project="${project_id}" \
-      --filter="config.name:${service}" \
+      --filter="config.name=${service}" \
       --limit=1 \
       --format="value(config.name)" \
       | grep -q "${service}"; then

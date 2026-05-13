@@ -287,6 +287,14 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     steps:
+      - name: Fail if deploy workflow failed (tests were not run)
+        if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure'
+        run: |
+          echo "❌ E2E tests were not run because the triggering deploy workflow failed."
+          echo "Deploy run: ${{ github.event.workflow_run.html_url }}"
+          echo "Fix the deploy pipeline first, then re-run."
+          exit 1
+
       - name: Checkout code
         uses: actions/checkout@v6
 

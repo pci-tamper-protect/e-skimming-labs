@@ -719,7 +719,7 @@ func main() {
 			if envDomain := os.Getenv("DOMAIN"); envDomain != "" {
 				scheme := "https"
 				lowerDomain := strings.ToLower(envDomain)
-				if strings.Contains(lowerDomain, "localhost") || strings.Contains(lowerDomain, "127.") {
+				if strings.Contains(lowerDomain, "localhost") || strings.HasPrefix(lowerDomain, "127.") {
 					scheme = "http"
 				}
 				return fmt.Sprintf("%s://%s%s", scheme, envDomain, path)
