@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"strings"
@@ -263,7 +264,8 @@ func respondAuthError(w http.ResponseWriter, r *http.Request, statusCode int, me
 			host = "localhost:" + strings.TrimPrefix(host, "127.0.0.1:")
 			scheme = "http"
 		}
-		redirectURL := fmt.Sprintf("%s://%s/sign-in?redirect=%s", scheme, host, r.URL.String())
+		redirectPath := fmt.Sprintf("/sign-in?redirect=%s", url.QueryEscape(r.URL.RequestURI()))
+		redirectURL := redirectPath
 		http.Redirect(w, r, redirectURL, http.StatusFound)
 		return
 	}

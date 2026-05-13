@@ -4,17 +4,6 @@ on:
   pull_request:
     branches: [main, stg]
     types: [opened, synchronize, reopened]
-    paths:
-      # Home components
-      - 'deploy/shared-components/seo-service/**'
-      - 'deploy/shared-components/home-index-service/**'
-      - 'deploy/Dockerfile.index'
-      # Labs components
-      - 'deploy/shared-components/analytics-service/**'
-      - 'deploy/shared-components/shared-c2-server/**'
-      - 'labs/**'
-      # Common files that affect all
-      - '.github/workflows/deploy_labs.yml'
   push:
     branches:
       - 'stg'
