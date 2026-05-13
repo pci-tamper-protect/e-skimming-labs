@@ -4,17 +4,6 @@ on:
   pull_request:
     branches: [main, stg]
     types: [opened, synchronize, reopened]
-    paths:
-      # Home components
-      - 'deploy/shared-components/seo-service/**'
-      - 'deploy/shared-components/home-index-service/**'
-      - 'deploy/Dockerfile.index'
-      # Labs components
-      - 'deploy/shared-components/analytics-service/**'
-      - 'deploy/shared-components/shared-c2-server/**'
-      - 'labs/**'
-      # Common files that affect all
-      - '.github/workflows/deploy_labs.yml'
   push:
     branches:
       - 'stg'
@@ -411,19 +400,6 @@ jobs:
           gcloud auth configure-docker ${{ env.HOME_GAR_LOCATION }}-docker.pkg.dev
           # Also configure cross-project access for golden images
           gcloud auth configure-docker us-central1-docker.pkg.dev
-
-      - name: Enable required APIs on home project
-        if: env.HOME_GCP_SA_KEY != '' && env.HOME_GCP_SA_KEY != null
-        run: |
-          # identitytoolkit.googleapis.com must be enabled on the CALLING project (labs-home-*)
-          # because Google checks API quota/enablement against the service account's project,
-          # not the Firebase project. Without this, CreateSessionCookie returns 403.
-          gcloud services enable \
-            identitytoolkit.googleapis.com \
-            run.googleapis.com \
-            artifactregistry.googleapis.com \
-            --project="${{ env.HOME_PROJECT_ID }}" --quiet
-          echo "✅ Required APIs enabled on ${{ env.HOME_PROJECT_ID }}"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
