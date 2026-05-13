@@ -1,21 +1,21 @@
 # Traefik Version Strategy
 
-## Default: Traefik v2.10
+## Default: Traefik v3.0
 
-All default Dockerfiles and deployment scripts use **Traefik v2.10** (stable, production-ready).
+All Dockerfiles and deployment scripts now target **Traefik v3.0** by default. Legacy Traefik v2.10 assets have been moved to `deploy/traefik/deprecated-v2/` for reference and manual use.
 
-## Experimental: Traefik v3.0
+## Legacy: Traefik v2.10
 
-Traefik v3.0 variants are available for experimentation when v3.0-specific features are needed. These are labeled with `.traefik-3.0` suffix.
+Traefik v2.10 resources live under `deploy/traefik/deprecated-v2/`. Use them only when needed for compatibility or rollback scenarios.
 
 ## Dockerfiles
 
 ### Sidecar Architecture (Cloud Run)
 
-- **Default**: `Dockerfile.cloudrun.sidecar` → Traefik v2.10
+- **Legacy**: `deprecated-v2/Dockerfile.cloudrun.sidecar` → Traefik v2.10
 - **Variant**: `Dockerfile.cloudrun.sidecar.traefik-3.0` → Traefik v3.0
 
-- **Default**: `Dockerfile.dashboard-sidecar` → Traefik v2.10
+- **Legacy**: `deprecated-v2/Dockerfile.dashboard-sidecar` → Traefik v2.10
 - **Variant**: `Dockerfile.dashboard-sidecar.traefik-3.0` → Traefik v3.0
 
 ### Plugin Architecture (Legacy)

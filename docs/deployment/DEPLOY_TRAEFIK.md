@@ -82,9 +82,9 @@ The Traefik deployment uses a sidecar architecture on Cloud Run:
 
 | Component | Source |
 |-----------|--------|
-| Main Traefik | `deploy/traefik/Dockerfile.cloudrun.sidecar` |
+| Main Traefik | `deploy/traefik/deprecated-v2/Dockerfile.cloudrun.sidecar` (Traefik v2.10 legacy) |
 | Provider | `../traefik-cloudrun-provider/` |
-| Dashboard | `deploy/traefik/Dockerfile.dashboard-sidecar` |
+| Dashboard | `deploy/traefik/deprecated-v2/Dockerfile.dashboard-sidecar` (Traefik v2.10 legacy) |
 
 ## After Deploying
 
