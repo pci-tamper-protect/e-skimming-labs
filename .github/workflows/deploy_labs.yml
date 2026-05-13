@@ -1014,14 +1014,39 @@ jobs:
           docker push "${IMAGE_BASE}:${{ github.sha }}" || { echo "❌ Failed to push shared-c2 image"; exit 1; }
           docker push "${IMAGE_BASE}:latest" || { echo "❌ Failed to push shared-c2 latest"; exit 1; }
 
+      - name: Ensure C2 GCS buckets
+        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        run: |
+          ENV="${{ needs.setup.outputs.environment }}"
+          REGION="${{ env.LABS_GAR_LOCATION }}"
+          PROJECT="${{ env.LABS_PROJECT_ID }}"
+          C2_SA="labs-runtime-sa@${PROJECT}.iam.gserviceaccount.com"
+          for lab in lab1 lab2 lab3 lab4; do
+            bucket="labs-c2-${lab}-${ENV}"
+            if ! gcloud storage buckets describe "gs://${bucket}" --project="${PROJECT}" &>/dev/null; then
+              echo "Creating bucket gs://${bucket}..."
+              gcloud storage buckets create "gs://${bucket}" \
+                --project="${PROJECT}" \
+                --location="${REGION}" \
+                --uniform-bucket-level-access \
+                --quiet
+            fi
+            gcloud storage buckets add-iam-policy-binding "gs://${bucket}" \
+              --member="serviceAccount:${C2_SA}" \
+              --role="roles/storage.objectAdmin" \
+              --quiet 2>/dev/null || true
+          done
+          echo "✅ C2 GCS buckets ready"
+
       - name: Deploy shared-c2 to Cloud Run
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
         run: |
+          ENV="${{ needs.setup.outputs.environment }}"
           source deploy/traefik/lab-labels.sh
           TRAEFIK_LABELS=$(get_lab_labels "shared-c2")
 
           # shared-c2 must be public: browser scripts POST card data without IAM tokens
-          gcloud run deploy shared-c2-${{ needs.setup.outputs.environment }} \
+          gcloud run deploy shared-c2-${ENV} \
             --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/shared-c2:${{ github.sha }} \
             --region=${{ env.LABS_GAR_LOCATION }} \
             --platform=managed \
@@ -1030,10 +1055,10 @@ jobs:
             --port=3000 \
             --memory=512Mi \
             --cpu=1 \
-            --min-instances=0 \
+            --min-instances=1 \
             --max-instances=5 \
-            --set-env-vars="ENVIRONMENT=${{ needs.setup.outputs.environment }}" \
-            --labels="environment=${{ needs.setup.outputs.environment }},component=shared-c2,project=e-skimming-labs,${TRAEFIK_LABELS}"
+            --set-env-vars="ENVIRONMENT=${ENV},LAB1_BUCKET=labs-c2-lab1-${ENV},LAB2_BUCKET=labs-c2-lab2-${ENV},LAB3_BUCKET=labs-c2-lab3-${ENV},LAB4_BUCKET=labs-c2-lab4-${ENV}" \
+            --labels="environment=${ENV},component=shared-c2,project=e-skimming-labs,${TRAEFIK_LABELS}"
 
   # ============================================================================
   # LABS - Individual lab services (matrix parallelization, only changed labs)
