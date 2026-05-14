@@ -46,7 +46,7 @@ That's it! 🎉
 
 **Port Summary:**
 - Sidecar simulation: `localhost:9090` (gateway), `localhost:9091` (dashboard)
-- Legacy local: `localhost:8080` (gateway), `localhost:8081` (dashboard)
+- Local Docker: `localhost:8080` (gateway), `localhost:8081` (dashboard)
 
 ---
 
@@ -69,7 +69,7 @@ All services accessible through Traefik at `http://localhost:9090`:
 | Lab 3 Extension | http://localhost:9090/lab3/extension |
 | Traefik Dashboard | http://localhost:9091/dashboard/ |
 
-### Legacy Local (`docker-compose.yml`)
+### Local Docker (`docker-compose.yml`)
 
 All services accessible through Traefik at `http://localhost:8080`:
 
@@ -81,22 +81,6 @@ All services accessible through Traefik at `http://localhost:8080`:
 | 🔬 Lab 2 | http://localhost:8080/lab2 |
 | 🔬 Lab 3 | http://localhost:8080/lab3 |
 | Traefik Dashboard | http://localhost:8081/dashboard/ |
-
----
-
-**Legacy Setup (`docker-compose.no-traefik.yml` - Port-Based Routing):**
-
-The legacy setup uses individual ports for each service:
-
-- 🏠 **Landing Page:** http://localhost:3000
-- 🔬 **Lab 1:** http://localhost:9001
-- 🔬 **Lab 2:** http://localhost:9003
-- 🔬 **Lab 3:** http://localhost:9005
-- **Lab 1 C2:** http://localhost:9002
-- **Lab 2 C2:** http://localhost:9004
-- **Lab 3 C2:** http://localhost:9006
-
-**Note:** The Traefik setup is recommended as it provides consistent path-based routing that matches production.
 
 ---
 
@@ -157,8 +141,6 @@ docker-compose up -d
 
 Open http://localhost:8080/docs/test-private-loader.html
 
-**Note:** If using the legacy `docker-compose.no-traefik.yml` (without Traefik), use `http://localhost:3000` instead.
-
 **You should see:**
 
 - ✅ Status: "Private data loaded successfully!"
@@ -211,10 +193,6 @@ docker-compose up -d --build      # Rebuild and restart
 docker-compose ps                 # Show all containers
 docker-compose ps | grep Up       # Show running only
 ```
-
-**Legacy Setup (`docker-compose.no-traefik.yml`):**
-
-For the old port-based setup, use: `docker-compose -f docker-compose.no-traefik.yml`
 
 ---
 
@@ -321,36 +299,30 @@ Always try different Traefik image versions if socket errors or API compatibilit
 ### Port Already in Use
 
 ```bash
-# Find what's using a port (e.g., 8080 for Traefik, or 3000 for legacy)
-lsof -i :8080  # Traefik setup
-lsof -i :3000  # Legacy setup
+# Find what's using a port
+lsof -i :8080
 
 # Kill it
-lsof -ti :8080 | xargs kill -9  # Traefik
-lsof -ti :3000 | xargs kill -9  # Legacy
+lsof -ti :8080 | xargs kill -9
 
 # Restart services
-docker-compose up -d  # Default (Traefik)
-docker-compose -f docker-compose.no-traefik.yml up -d  # Legacy
+docker-compose up -d
 ```
 
 ### Page Shows 404
 
 ```bash
 # Check services are running
-docker-compose ps  # Default (Traefik)
-docker-compose -f docker-compose.no-traefik.yml ps  # Legacy
+docker-compose ps
 
 # Check home-index logs
-docker-compose logs home-index  # Default (Traefik)
-docker-compose -f docker-compose.no-traefik.yml logs home-index  # Legacy
+docker-compose logs home-index
 
 # Check Traefik logs
 docker-compose logs traefik
 
 # Restart if needed
-docker-compose restart home-index  # Default (Traefik)
-docker-compose -f docker-compose.no-traefik.yml restart home-index  # Legacy
+docker-compose restart home-index
 ```
 
 ### Private Data Not Loading
@@ -410,29 +382,7 @@ All services are accessible through Traefik on port **8080**:
 - ✅ Consistent URLs across environments
 - ✅ No port juggling
 
-### Legacy Setup (`docker-compose.no-traefik.yml` - Port-Based)
-
-The old setup uses individual ports for each service:
-
-**Core Services (3000-3999):**
-
-| Service            | Host Port | URL                   | Description        |
-| ------------------ | --------- | --------------------- | ------------------ |
-| **home-index**     | **3000**  | http://localhost:3000 | Main landing page  |
-| **home-seo**       | **3001**  | http://localhost:3001 | SEO service        |
-| **labs-analytics** | **3002**  | http://localhost:3002 | Analytics tracking |
-
-**Lab Services (9000-9999):**
-
-| Lab       | Vulnerable Site | C2 Server | Description           |
-| --------- | --------------- | --------- | --------------------- |
-| **Lab 1** | 9001            | 9002      | Basic Magecart Attack |
-| **Lab 2** | 9003            | 9004      | DOM-Based Skimming    |
-| **Lab 3** | 9005            | 9006      | Extension Hijacking   |
-
-**Note:** The default `docker-compose.yml` (with Traefik) is recommended as it provides consistent path-based routing that matches production. The legacy setup (`docker-compose.no-traefik.yml`) is maintained for backward compatibility.
-
-**Change Ports:** Edit `docker-compose.yml` (default) or `docker-compose.no-traefik.yml` (legacy) and update port mappings.
+**Change Ports:** Edit `docker-compose.yml` and update port mappings.
 
 ---
 
@@ -460,7 +410,7 @@ All HTML files include JavaScript that detects the environment:
 const hostname = window.location.hostname
 
 if (hostname === 'localhost' || hostname === '127.0.0.1') {
-  // Local: http://localhost:8080 (Traefik) or http://localhost:3000 (legacy)
+  // Local: http://localhost:8080
 } else if (hostname.includes('labs.stg.pcioasis.com')) {
   // Staging: https://labs.stg.pcioasis.com
 } else if (hostname.includes('labs.pcioasis.com')) {
@@ -500,8 +450,6 @@ See [docs/ARCHITECTURE.md](ARCHITECTURE.md) for deployment details.
 
 ## 🎓 Learning Path
 
-**Using Traefik (Recommended):**
-
 1. **Start Here:** http://localhost:8080
 2. **Understand Threats:** MITRE Matrix & Threat Model
 3. **Hands-On Practice:**
@@ -512,16 +460,6 @@ See [docs/ARCHITECTURE.md](ARCHITECTURE.md) for deployment details.
    - Lab 1 C2: http://localhost:8080/lab1/c2
    - Lab 2 C2: http://localhost:8080/lab2/c2
    - Lab 3 Extension: http://localhost:8080/lab3/extension
-
-**Legacy Setup (`docker-compose.no-traefik.yml`):**
-
-1. **Start Here:** http://localhost:3000
-2. **Understand Threats:** MITRE Matrix & Threat Model
-3. **Hands-On Practice:**
-   - Lab 1: Basic Magecart (http://localhost:9001)
-   - Lab 2: DOM Skimming (http://localhost:9003)
-   - Lab 3: Extension Hijacking (http://localhost:9005)
-4. **Review C2 Dashboards:** http://localhost:9002, 9004, 9006
 
 ---
 
@@ -538,12 +476,8 @@ This is a **training environment** for cybersecurity education:
 
 ## 🆘 Need Help?
 
-1. **Check logs:** 
-   - Default: `docker-compose logs -f`
-   - Legacy: `docker-compose -f docker-compose.no-traefik.yml logs -f`
-2. **Test page:** 
-   - Default: http://localhost:8080/docs/test-private-loader.html
-   - Legacy: http://localhost:3000/docs/test-private-loader.html
+1. **Check logs:** `docker-compose logs -f`
+2. **Test page:** http://localhost:8080/docs/test-private-loader.html
 3. **Console:** Press F12 and check for errors
 4. **Documentation:** 
    - [Traefik Quick Start](./TRAEFIK-QUICKSTART.md) - Traefik setup guide

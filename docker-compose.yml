@@ -159,6 +159,10 @@ services:
 
   # Lab 1 - nginx only (C2 collection moved to shared-c2 service)
   lab1-vulnerable-site:
+    x-cloudrun:
+      service: lab-01-basic-magecart
+      image: 01-basic-magecart
+      c2-path: /lab1/c2
     build: ./labs/01-basic-magecart
     container_name: lab1-techgear-store
     networks:
@@ -201,6 +205,10 @@ services:
 
   # Lab 2 - nginx only (C2 collection moved to shared-c2 service)
   lab2-vulnerable-site:
+    x-cloudrun:
+      service: lab-02-dom-skimming
+      image: 02-dom-skimming
+      c2-path: /lab2/c2
     build: ./labs/02-dom-skimming
     container_name: lab2-securebank
     environment:
@@ -252,6 +260,10 @@ services:
 
   # Lab 3 - nginx only (extension C2 collection moved to shared-c2 service)
   lab3-vulnerable-site:
+    x-cloudrun:
+      service: lab-03-extension-hijacking
+      image: 03-extension-hijacking
+      c2-path: /lab3/extension
     build: ./labs/03-extension-hijacking
     container_name: lab3-vulnerable-site
     networks:
@@ -462,6 +474,10 @@ services:
 
   # Lab 4 - nginx only (C2 collection handled by shared-c2, same as labs 1-3)
   lab4-vulnerable-site:
+    x-cloudrun:
+      service: lab-04-steganography
+      image: 04-steganography-favicon
+      c2-path: /lab4/c2
     build: ./labs/04-steganography-favicon/vulnerable-site
     container_name: lab4-shop
     networks:
