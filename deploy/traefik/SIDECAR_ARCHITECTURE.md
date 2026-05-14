@@ -39,10 +39,10 @@ mode, run `go mod vendor` inside the provider directory.
 
 | Version | Status | Deploy Script | Use Case |
 |---------|--------|---------------|----------|
-| **v2.10** | Stable | `deploy-sidecar.sh` | Fallback if v3.0 has issues |
-| **v3.0** | Default | `deploy.sh` / `deploy-sidecar-traefik-3.0.sh` | Active deployments |
+| **v3.0** | **Default** | `deploy-sidecar.sh` / `deploy-sidecar-traefik-3.0.sh` | All active deployments — images tagged `:latest` |
+| **v2.10** | Legacy | `deprecated-v2/` artifacts, tag as `:legacy` | Rollback only |
 
-`deploy.sh` is a wrapper that calls `deploy-sidecar-traefik-3.0.sh`.
+`deploy.sh` is a wrapper that calls `deploy-sidecar-traefik-3.0.sh`. Both `deploy-sidecar.sh` and `deploy-sidecar-traefik-3.0.sh` now build v3.0 and push `:latest`.
 
 ## Overview
 
@@ -178,34 +178,32 @@ Cloud Run uses in-memory volumes to share data between sidecar containers. For d
 
 ### Build Images
 
-**Default (Traefik v2.10)**:
+**Default (Traefik v3.0)**:
 ```bash
-# Main Traefik (v2.10 legacy)
+# Main Traefik (v3.0) — tagged :latest
 cd deploy/traefik
-docker build -f deprecated-v2/Dockerfile.cloudrun.sidecar -t us-central1-docker.pkg.dev/labs-stg/e-skimming-labs/traefik:latest .
+docker build -f Dockerfile.cloudrun.sidecar.traefik-3.0 -t us-central1-docker.pkg.dev/labs-stg/e-skimming-labs/traefik:latest .
 
 # Provider sidecar
 cd ../../traefik-cloudrun-provider
 docker build -f Dockerfile.provider.sidecar -t us-central1-docker.pkg.dev/labs-stg/e-skimming-labs/traefik-cloudrun-provider:latest .
 
-# Dashboard sidecar (v2.10 legacy)
+# Dashboard sidecar (v3.0) — tagged :latest
 cd ../e-skimming-labs/deploy/traefik
-docker build -f deprecated-v2/Dockerfile.dashboard-sidecar -t us-central1-docker.pkg.dev/labs-stg/e-skimming-labs/traefik-dashboard:latest .
+docker build -f Dockerfile.dashboard-sidecar.traefik-3.0 -t us-central1-docker.pkg.dev/labs-stg/e-skimming-labs/traefik-dashboard:latest .
 ```
 
-**Traefik v3.0** (latest features):
+**Rollback to v2.10 (legacy)**:
 ```bash
-# Main Traefik (v3.0)
-docker build -f Dockerfile.cloudrun.sidecar.traefik-3.0 -t us-central1-docker.pkg.dev/labs-stg/e-skimming-labs/traefik:v3.0 .
-
-# Dashboard sidecar (v3.0)
-docker build -f Dockerfile.dashboard-sidecar.traefik-3.0 -t us-central1-docker.pkg.dev/labs-stg/e-skimming-labs/traefik-dashboard:v3.0 .
+# Build and push with :legacy tag — does not overwrite :latest
+docker build -f deprecated-v2/Dockerfile.cloudrun.sidecar -t us-central1-docker.pkg.dev/labs-stg/e-skimming-labs/traefik:legacy .
+docker build -f deprecated-v2/Dockerfile.dashboard-sidecar -t us-central1-docker.pkg.dev/labs-stg/e-skimming-labs/traefik-dashboard:legacy .
 ```
 
 **Version Notes**:
-- **Default is Traefik v3.0** via `deploy.sh` (wrapper for `deploy-sidecar-traefik-3.0.sh`)
+- **Default is Traefik v3.0** — both `deploy-sidecar.sh` and `deploy-sidecar-traefik-3.0.sh` build v3.0
 - **Traefik v2.10** (legacy scripts + config) live under `deploy/traefik/deprecated-v2/`
-- v3.0 images are tagged `:v3.0`, v2.10 images use `:latest`
+- v3.0 images are tagged `:latest`; v2.10 legacy images use `:legacy`
 
 ### Deploy
 

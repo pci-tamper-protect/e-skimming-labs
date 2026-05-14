@@ -79,7 +79,7 @@ accessLog:
         X-Forwarded-For: keep
         X-Forwarded-Proto: keep
         X-Cloud-Trace-Context: keep
-        Authorization: keep  # Log Authorization header for debugging
+        Authorization: redact  # Never log bearer tokens
 
 # Metrics for Cloud Monitoring
 metrics:

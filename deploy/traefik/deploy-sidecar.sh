@@ -13,9 +13,10 @@
 # - Provider sidecar: generates routes.yml into shared volume
 # - Dashboard sidecar: serves dashboard UI (separate service)
 #
-# Version: Deploys Traefik v3.0 by default. The v3.0 Dockerfiles and entrypoint
-# are already provided in this directory (traefik.cloudrun.sidecar.traefik-3.0.yml,
-# Dockerfile.cloudrun.sidecar.traefik-3.0, Dockerfile.dashboard-sidecar.traefik-3.0).
+# Version: Deploys Traefik v3.0 (default). Images are pushed as :latest.
+# Uses: Dockerfile.cloudrun.sidecar.traefik-3.0, Dockerfile.dashboard-sidecar.traefik-3.0
+# Cloud Run YAML: cloudrun-sidecar.yaml (HOME_INDEX_URL substituted at deploy time)
+# For the v2 legacy path see deploy/traefik/deprecated-v2/.
 
 set -e
 

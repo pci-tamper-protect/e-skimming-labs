@@ -25,7 +25,7 @@ HOME_INDEX_URL=$(gcloud run services describe home-index-stg --region=us-central
 env HOME_INDEX_URL="$HOME_INDEX_URL" gcloud run services replace deprecated-v2/traefik.cloudrun.sidecar.yml \
   --region=us-central1 --project=labs-stg
 
-gcloud run services replace deprecated-v2/traefik-dashboard-sidecar.yml \
+gcloud run services replace traefik-dashboard-sidecar.yaml \
   --region=us-central1 --project=labs-stg
 ```
 
