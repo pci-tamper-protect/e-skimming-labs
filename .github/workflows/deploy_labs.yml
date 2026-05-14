@@ -197,6 +197,14 @@ jobs:
               fi
             fi
 
+            # docker-compose.yml: x-cloudrun metadata is SSOT for lab service names,
+            # image names, and c2-paths — changes must propagate to all lab deployments.
+            if echo "$CHANGED_FILES" | grep -q "^docker-compose\.yml"; then
+              DEPLOY_LABS="true"
+              CHANGED_LABS="all"
+              echo "  ✅ docker-compose.yml changed, redeploying all labs to update metadata"
+            fi
+
             # Individual labs - detect which specific labs changed
             LABS_CHANGED=()
             for lab_dir in ./labs/*/; do
@@ -1203,36 +1211,27 @@ jobs:
             exit 1
           }
 
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
       - name: Deploy to Cloud Run
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
         run: |
           # Source generated Cloud Run labels (from docker-compose.yml)
           source deploy/traefik/lab-labels.sh
 
-          # Map GHA matrix name → compose service names.
-          # Each lab is a single container (nginx + C2 server), so we combine
-          # labels from both the vulnerable-site and C2 server compose services.
-          case "${{ matrix.lab }}" in
-            # All labs: C2 is handled by shared-c2 service (separate deployment).
-            # No c2-server labels on the lab service itself.
-            01-basic-magecart)      COMPOSE_SVC="lab1-vulnerable-site" ; COMPOSE_SVC2="" ;;
-            02-dom-skimming)        COMPOSE_SVC="lab2-vulnerable-site" ; COMPOSE_SVC2="" ;;
-            03-extension-hijacking) COMPOSE_SVC="lab3-vulnerable-site" ; COMPOSE_SVC2="" ;;
-            # Lab 4: C2 is handled by shared-c2 (embedded C2 is local-dev only).
-            04-steganography-favicon) COMPOSE_SVC="lab4-vulnerable-site" ; COMPOSE_SVC2="" ;;
-            *) COMPOSE_SVC="" ; COMPOSE_SVC2="" ;;
-          esac
+          # Look up compose service name and c2-path from docker-compose.yml (SSOT).
+          # matrix.lab is the image name; find the compose service with matching x-cloudrun.image.
+          COMPOSE_SVC=$(yq -r '.services | to_entries[] | select(.value["x-cloudrun"].image == "${{ matrix.lab }}") | .key' docker-compose.yml)
+          C2_PATH=$(yq -r ".services[\"${COMPOSE_SVC}\"][\"x-cloudrun\"][\"c2-path\"] // \"/${{ matrix.lab }}/c2\"" docker-compose.yml 2>/dev/null || echo "/${{ matrix.lab }}/c2")
 
           if [[ -n "$COMPOSE_SVC" ]]; then
             TRAEFIK_LABELS=$(get_lab_labels "$COMPOSE_SVC" 2>/dev/null || echo "traefik_enable=true")
-            # Append C2 server labels (strip duplicate traefik_enable=true)
-            if [[ -n "$COMPOSE_SVC2" ]]; then
-              LABELS2=$(get_lab_labels "$COMPOSE_SVC2" 2>/dev/null || echo "")
-              LABELS2_ONLY="${LABELS2#traefik_enable=true,}"
-              [[ -n "$LABELS2_ONLY" ]] && TRAEFIK_LABELS="${TRAEFIK_LABELS},${LABELS2_ONLY}"
-            fi
           else
             TRAEFIK_LABELS="traefik_enable=true"
+            C2_PATH="/${{ matrix.lab }}/c2"
           fi
 
           # Determine secrets and auth based on environment
@@ -1255,7 +1254,7 @@ jobs:
             --cpu=1 \
             --min-instances=0 \
             --max-instances=10 \
-            --set-env-vars="LAB_NAME=${{ matrix.lab }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},HOME_URL=https://${{ needs.setup.outputs.domain_prefix }},C2_URL=https://${{ needs.setup.outputs.domain_prefix }}/${{ matrix.lab }}/c2" \
+            --set-env-vars="LAB_NAME=${{ matrix.lab }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},HOME_URL=https://${{ needs.setup.outputs.domain_prefix }},C2_URL=https://${{ needs.setup.outputs.domain_prefix }}${C2_PATH}" \
             $SECRETS_FLAG \
             --labels="environment=${{ needs.setup.outputs.environment }},lab=${{ matrix.lab }},project=e-skimming-labs,${TRAEFIK_LABELS}"
 
