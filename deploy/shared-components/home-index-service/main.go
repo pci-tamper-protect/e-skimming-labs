@@ -1840,6 +1840,9 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, homeD
             </div>`
 	}
 
+	// Lab1 is public; other labs respect the global REQUIRE_AUTH setting.
+	writeupAuthRequired := homeData.AuthRequired && labID != "01-basic-magecart"
+
 	// Build auth scripts if enabled
 	authScripts := ""
 	if homeData.AuthEnabled {
@@ -1936,7 +1939,7 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, homeD
 				}
 			});
 		</script>
-		`, homeData.AuthRequired, homeData.MainAppURL, homeData.FirebaseProjectID, homeData.MainAppURL)
+		`, writeupAuthRequired, homeData.MainAppURL, homeData.FirebaseProjectID, homeData.MainAppURL)
 	}
 
 	// Create HTML page
@@ -2269,35 +2272,42 @@ func serveAuthUser(w http.ResponseWriter, r *http.Request, validator *auth.Token
 	// First try to get user info from context (if request went through auth middleware)
 	userInfo := auth.GetUserInfo(r)
 
-	// If not in context, extract and validate token directly (for public endpoint)
+	// If not in context, validate directly (for public endpoint)
 	if userInfo == nil {
-		// Extract token from request
-		token := extractTokenFromRequest(r)
-		if token == "" {
-			// Log for debugging
-			log.Printf("🔍 /api/auth/user - No token found (cookies: %v)", r.Cookies())
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"authenticated": false,
-			})
-			return
+		// 1. Try __session cookie (HttpOnly, 5-day server-set cookie — survives firebase_token expiry)
+		if sessionCookie, err := r.Cookie("__session"); err == nil && sessionCookie.Value != "" {
+			if info, err := validator.ValidateSessionCookie(r.Context(), sessionCookie.Value); err == nil && info != nil {
+				userInfo = info
+				log.Printf("🔍 /api/auth/user - authenticated via __session cookie")
+			} else {
+				log.Printf("🔍 /api/auth/user - __session invalid: %v", err)
+			}
 		}
 
-		// Log token for debugging (sanitized)
-		log.Printf("🔍 /api/auth/user - Token found: %s", sanitizeToken(token))
-
-		// Validate token
-		var err error
-		userInfo, err = validator.ValidateToken(r.Context(), token)
-		if err != nil || userInfo == nil {
-			log.Printf("❌ /api/auth/user - Token validation failed: %v", err)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"authenticated": false,
-			})
-			return
+		// 2. Fall back to short-lived firebase_token (Authorization header or cookie)
+		if userInfo == nil {
+			token := extractTokenFromRequest(r)
+			if token == "" {
+				log.Printf("🔍 /api/auth/user - No token found (cookies: %v)", r.Cookies())
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"authenticated": false,
+				})
+				return
+			}
+			log.Printf("🔍 /api/auth/user - Token found: %s", sanitizeToken(token))
+			var err error
+			userInfo, err = validator.ValidateToken(r.Context(), token)
+			if err != nil || userInfo == nil {
+				log.Printf("❌ /api/auth/user - Token validation failed: %v", err)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"authenticated": false,
+				})
+				return
+			}
 		}
 	}
 
