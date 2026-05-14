@@ -87,6 +87,8 @@ if [ -z "$IMAGE_TAG" ]; then
        --project="${LABS_PROJECT_ID}" --filter="tag=$FULL_SHA" --format="value(tag)" 2>/dev/null | grep -q .; then
     IMAGE_TAG="$FULL_SHA"
   else
+    echo "⚠️  WARNING: No image found for short SHA ($SHORT_SHA) or full SHA ($FULL_SHA) in Artifact Registry."
+    echo "   Falling back to 'latest' — this may deploy a stale image. Run CI first or pass an explicit tag."
     IMAGE_TAG="latest"
   fi
 fi
@@ -337,6 +339,10 @@ for compose_svc in "${LAB_COMPOSE_SVCS[@]}"; do
   image=$(yq -r ".services[\"${compose_svc}\"][\"x-cloudrun\"].image" "$COMPOSE_FILE")
   c2_path=$(yq -r ".services[\"${compose_svc}\"][\"x-cloudrun\"][\"c2-path\"]" "$COMPOSE_FILE")
   memory=$(yq -r ".services[\"${compose_svc}\"][\"x-cloudrun\"].memory // \"512Mi\"" "$COMPOSE_FILE")
+  [ -z "$cr_service" ] || [ "$cr_service" = "null" ] && { echo "❌ Missing x-cloudrun.service for ${compose_svc}"; exit 1; }
+  [ -z "$image" ]      || [ "$image"      = "null" ] && { echo "❌ Missing x-cloudrun.image for ${compose_svc}"; exit 1; }
+  [ -z "$c2_path" ]    || [ "$c2_path"    = "null" ] && { echo "❌ Missing x-cloudrun.c2-path for ${compose_svc}"; exit 1; }
+  [ -z "$memory" ]                                   && memory="512Mi"
   lab_name="${cr_service#lab-}"
 
   if ! should_run "${cr_service}"; then

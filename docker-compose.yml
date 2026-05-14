@@ -163,6 +163,7 @@ services:
       service: lab-01-basic-magecart
       image: 01-basic-magecart
       c2-path: /lab1/c2
+      memory: 512Mi
     build: ./labs/01-basic-magecart
     container_name: lab1-techgear-store
     networks:
@@ -209,6 +210,7 @@ services:
       service: lab-02-dom-skimming
       image: 02-dom-skimming
       c2-path: /lab2/c2
+      memory: 512Mi
     build: ./labs/02-dom-skimming
     container_name: lab2-securebank
     environment:
@@ -264,6 +266,7 @@ services:
       service: lab-03-extension-hijacking
       image: 03-extension-hijacking
       c2-path: /lab3/extension
+      memory: 512Mi
     build: ./labs/03-extension-hijacking
     container_name: lab3-vulnerable-site
     networks:
@@ -478,6 +481,7 @@ services:
       service: lab-04-steganography
       image: 04-steganography-favicon
       c2-path: /lab4/c2
+      memory: 512Mi
     build: ./labs/04-steganography-favicon/vulnerable-site
     container_name: lab4-shop
     networks:

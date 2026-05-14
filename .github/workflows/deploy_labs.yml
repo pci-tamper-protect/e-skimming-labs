@@ -1213,7 +1213,8 @@ jobs:
 
       - name: Install yq
         run: |
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.6/yq_linux_amd64
+          echo "0c2b24e645b57d8e7c0566d18643a6d4f5580feeea3878127354a46f2a1e4598  /usr/local/bin/yq" | sha256sum -c
           sudo chmod +x /usr/local/bin/yq
 
       - name: Deploy to Cloud Run
@@ -1225,13 +1226,13 @@ jobs:
           # Look up compose service name and c2-path from docker-compose.yml (SSOT).
           # matrix.lab is the image name; find the compose service with matching x-cloudrun.image.
           COMPOSE_SVC=$(yq -r '.services | to_entries[] | select(.value["x-cloudrun"].image == "${{ matrix.lab }}") | .key' docker-compose.yml)
-          C2_PATH=$(yq -r ".services[\"${COMPOSE_SVC}\"][\"x-cloudrun\"][\"c2-path\"] // \"/${{ matrix.lab }}/c2\"" docker-compose.yml 2>/dev/null || echo "/${{ matrix.lab }}/c2")
+          C2_PATH=$(yq -re ".services[\"${COMPOSE_SVC}\"][\"x-cloudrun\"][\"c2-path\"]" docker-compose.yml 2>/dev/null || echo "")
+          [[ -z "$C2_PATH" || "$C2_PATH" == "null" ]] && C2_PATH="/${{ matrix.lab }}/c2"
 
           if [[ -n "$COMPOSE_SVC" ]]; then
             TRAEFIK_LABELS=$(get_lab_labels "$COMPOSE_SVC" 2>/dev/null || echo "traefik_enable=true")
           else
             TRAEFIK_LABELS="traefik_enable=true"
-            C2_PATH="/${{ matrix.lab }}/c2"
           fi
 
           # Determine secrets and auth based on environment
