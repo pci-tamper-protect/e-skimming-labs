@@ -1016,6 +1016,7 @@ jobs:
 
       - name: Ensure C2 GCS buckets
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
+        continue-on-error: true  # labs-deploy-sa may lack storage.buckets.create; buckets pre-created via deploy-all.sh
         run: |
           ENV="${{ needs.setup.outputs.environment }}"
           REGION="${{ env.LABS_GAR_LOCATION }}"
@@ -2249,6 +2250,7 @@ jobs:
 
       - name: Comment test results on commit
         if: always()
+        continue-on-error: true  # GITHUB_TOKEN may lack commit:write on push to main; don't fail workflow
         uses: actions/github-script@v9
         with:
           script: |
