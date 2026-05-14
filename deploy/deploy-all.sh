@@ -392,7 +392,7 @@ if should_run "lab-04-steganography"; then
   echo "1️⃣1️⃣ Deploying lab-04-steganography-${ENVIRONMENT}..."
   LAB4_TRAEFIK_LABELS=$(get_lab_labels "lab4-vulnerable-site")
   gcloud run deploy lab-04-steganography-${ENVIRONMENT} \
-    --image=${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/04-steganography:${IMAGE_TAG} \
+    --image=${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/04-steganography-favicon:${IMAGE_TAG} \
     --region=${REGION} \
     --platform=managed \
     --project=${LABS_PROJECT_ID} \
