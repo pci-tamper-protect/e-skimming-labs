@@ -189,7 +189,7 @@ http:
           X-Frame-Options: "SAMEORIGIN"
           X-Content-Type-Options: "nosniff"
           X-XSS-Protection: "1; mode=block"
-        sslRedirect: false  # Set to true for production
+
 
     # Sign-in page headers - Allow cross-origin popups for Firebase authentication
     signin-headers:

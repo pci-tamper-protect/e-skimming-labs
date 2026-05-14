@@ -353,7 +353,7 @@ This script:
 **Staging/Production (Cloud Run):**
 1. The Traefik image does *not* include `local-auth-stubs.yml` (empty chains). It only includes `routes.yml` (strip-prefix, retry).
 2. ForwardAuth middlewares (`lab1-auth-check`, etc.) are written at runtime by the entrypoint when `HOME_INDEX_URL` is set:
-   - **Sidecar deploy** (traefik + provider containers): `deploy/traefik/entrypoint-sidecar.sh` writes `/shared/traefik/dynamic/auth-forward.yml`. Set `HOME_INDEX_URL` in `cloudrun-sidecar.yaml`; `deploy-sidecar.sh` and `deploy-sidecar-traefik-3.0.sh` substitute the home-index service URL when deploying.
+   - **Sidecar deploy** (traefik + provider containers): `deploy/traefik/entrypoint-sidecar.traefik-3.0.sh` writes `/shared/traefik/dynamic/auth-forward.yml`. Set `HOME_INDEX_URL` in `cloudrun-sidecar.yaml`; `deploy-sidecar.sh` and `deploy-sidecar-traefik-3.0.sh` substitute the home-index service URL when deploying.
    - **Plugin deploy** (single container): `deploy/traefik/entrypoint-plugin.sh` writes `/etc/traefik/dynamic/auth-forward.yml`; the deploy workflow or `deploy.sh` sets `HOME_INDEX_URL` on the service.
 3. If lab routes are still public: (a) Verify `HOME_INDEX_URL` is set on the Traefik Cloud Run service (e.g. in the GCP Console or `gcloud run services describe traefik-stg --region=us-central1 --project=labs-stg --format='yaml(spec.template.spec.containers[0].env)'`). (b) If it is missing, run `./deploy/traefik/set-home-index-url.sh stg` to set it and create a new revision (no full redeploy needed). (c) Check Traefik logs for "auth-forward.yml written".
 

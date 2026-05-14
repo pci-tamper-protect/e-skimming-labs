@@ -13,8 +13,8 @@
 # - Provider sidecar: generates routes.yml into shared volume
 # - Dashboard sidecar: serves dashboard UI (separate service, Traefik v3.0)
 #
-# Version: Uses Traefik v3.0 (latest features)
-# For Traefik v2.10 (stable), use deploy-sidecar.sh
+# Version: Uses Traefik v3.0. Both this script and deploy-sidecar.sh build v3.0.
+# For the archived v2.10 path see deploy/traefik/deprecated-v2/.
 
 set -e
 
@@ -105,6 +105,9 @@ PROVIDER_DIR=""
 if [ -d "${TRAEFIK_DEPLOY_DIR}/src/github.com/pci-tamper-protect/traefik-cloudrun-provider" ]; then
   PROVIDER_DIR="${TRAEFIK_DEPLOY_DIR}/src/github.com/pci-tamper-protect/traefik-cloudrun-provider"
   echo "   Using provider from localPlugins path: ${PROVIDER_DIR}"
+elif [ -d "${REPO_ROOT}/traefik-cloudrun-provider" ]; then
+  PROVIDER_DIR="${REPO_ROOT}/traefik-cloudrun-provider"
+  echo "   Using provider from repo-local checkout: ${PROVIDER_DIR}"
 elif [ -d "${REPO_ROOT}/../traefik-cloudrun-provider" ]; then
   PROVIDER_DIR="${REPO_ROOT}/../traefik-cloudrun-provider"
   echo "   Using provider from sibling repo: ${PROVIDER_DIR}"
