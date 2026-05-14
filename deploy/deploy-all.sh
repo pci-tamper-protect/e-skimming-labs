@@ -70,7 +70,23 @@ else
   DOMAIN_PREFIX="labs.stg.pcioasis.com"
 fi
 
-IMAGE_TAG="${IMAGE_TAG:-$(git rev-parse --short HEAD 2>/dev/null || echo 'latest')}"
+# Resolve IMAGE_TAG: prefer explicit arg, then short SHA, then full SHA (used by CI), then latest.
+# CI tags images with the full github.sha; local builds use the short SHA.
+if [ -z "$IMAGE_TAG" ]; then
+  SHORT_SHA=$(git rev-parse --short HEAD 2>/dev/null || true)
+  FULL_SHA=$(git rev-parse HEAD 2>/dev/null || true)
+  # Probe Artifact Registry for a known service image to find which tag format was pushed.
+  PROBE_REPO="${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/shared-c2"
+  if [ -n "$SHORT_SHA" ] && gcloud artifacts docker tags list "$PROBE_REPO" \
+       --project="${LABS_PROJECT_ID}" --filter="tag=$SHORT_SHA" --format="value(tag)" 2>/dev/null | grep -q .; then
+    IMAGE_TAG="$SHORT_SHA"
+  elif [ -n "$FULL_SHA" ] && gcloud artifacts docker tags list "$PROBE_REPO" \
+       --project="${LABS_PROJECT_ID}" --filter="tag=$FULL_SHA" --format="value(tag)" 2>/dev/null | grep -q .; then
+    IMAGE_TAG="$FULL_SHA"
+  else
+    IMAGE_TAG="latest"
+  fi
+fi
 
 echo "🚀 Deploying all services to ${ENVIRONMENT}..."
 echo "   Image tag: $IMAGE_TAG"
