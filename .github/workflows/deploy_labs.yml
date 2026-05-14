@@ -1831,7 +1831,6 @@ jobs:
           sleep 30
 
       - name: Check GCP credentials availability
-        if: needs.setup.outputs.environment == 'stg'
         id: check-gcp-creds
         env:
           # Pass the SA key as env var to avoid shell expansion issues with multi-line JSON
@@ -1840,22 +1839,22 @@ jobs:
           # Use env var to check - avoids shell expansion issues with JSON strings
           if [ -n "$SA_KEY" ]; then
             echo "has_creds=true" >> $GITHUB_OUTPUT
-            echo "✅ GCP credentials available for proxy"
+            echo "✅ GCP credentials available"
           else
             echo "has_creds=false" >> $GITHUB_OUTPUT
-            echo "⚠️  GCP credentials not available - proxy will not be started"
-            echo "   Tests will fail with 401 errors when accessing staging services directly"
-            echo "   Ensure GCP_LABS_SA_KEY_STG secret is set in repository or environment secrets"
+            echo "⚠️  GCP credentials not available"
+            echo "   STG: tests will fail with 401 errors (proxy requires GCP auth)"
+            echo "   PRD: auth setup will be skipped (no Secret Manager access)"
           fi
 
-      - name: Authenticate to Google Cloud (for proxy)
-        if: needs.setup.outputs.environment == 'stg' && steps.check-gcp-creds.outputs.has_creds == 'true'
+      - name: Authenticate to Google Cloud
+        if: steps.check-gcp-creds.outputs.has_creds == 'true'
         uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ env.LABS_GCP_SA_KEY }}
 
-      - name: Set up Cloud SDK (for proxy)
-        if: needs.setup.outputs.environment == 'stg' && steps.check-gcp-creds.outputs.has_creds == 'true'
+      - name: Set up Cloud SDK
+        if: steps.check-gcp-creds.outputs.has_creds == 'true'
         uses: google-github-actions/setup-gcloud@v3
 
       - name: Load proxy configuration from .env.stg
@@ -2090,13 +2089,15 @@ jobs:
                   # Playwright JSON results format
                   stats=$(jq -r '.stats // {}' "$json_file" 2>/dev/null || echo "{}")
                   if [ -n "$stats" ] && [ "$stats" != "{}" ]; then
-                    failures=$(echo "$stats" | jq -r '.failures // 0' 2>/dev/null || echo "0")
-                    total=$(echo "$stats" | jq -r '.total // 0' 2>/dev/null || echo "0")
-                    passed=$(echo "$stats" | jq -r '.passed // 0' 2>/dev/null || echo "0")
-                    FAILED_TESTS=$((FAILED_TESTS + failures))
+                    unexpected=$(echo "$stats" | jq -r '.unexpected // 0' 2>/dev/null || echo "0")
+                    expected=$(echo "$stats" | jq -r '.expected // 0' 2>/dev/null || echo "0")
+                    flaky=$(echo "$stats" | jq -r '.flaky // 0' 2>/dev/null || echo "0")
+                    skipped=$(echo "$stats" | jq -r '.skipped // 0' 2>/dev/null || echo "0")
+                    total=$((expected + unexpected + flaky + skipped))
+                    FAILED_TESTS=$((FAILED_TESTS + unexpected))
                     TOTAL_TESTS=$((TOTAL_TESTS + total))
-                    PASSED_TESTS=$((PASSED_TESTS + passed))
-                    echo "  Failures: $failures, Passed: $passed, Total: $total"
+                    PASSED_TESTS=$((PASSED_TESTS + expected + flaky))
+                    echo "  Failures: $unexpected, Passed: $((expected + flaky)), Flaky: $flaky, Skipped: $skipped, Total: $total"
                   fi
                 fi
               fi
