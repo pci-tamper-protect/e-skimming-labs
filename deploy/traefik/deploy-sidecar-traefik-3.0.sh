@@ -105,6 +105,9 @@ PROVIDER_DIR=""
 if [ -d "${TRAEFIK_DEPLOY_DIR}/src/github.com/pci-tamper-protect/traefik-cloudrun-provider" ]; then
   PROVIDER_DIR="${TRAEFIK_DEPLOY_DIR}/src/github.com/pci-tamper-protect/traefik-cloudrun-provider"
   echo "   Using provider from localPlugins path: ${PROVIDER_DIR}"
+elif [ -d "${REPO_ROOT}/traefik-cloudrun-provider" ]; then
+  PROVIDER_DIR="${REPO_ROOT}/traefik-cloudrun-provider"
+  echo "   Using provider from repo-local checkout: ${PROVIDER_DIR}"
 elif [ -d "${REPO_ROOT}/../traefik-cloudrun-provider" ]; then
   PROVIDER_DIR="${REPO_ROOT}/../traefik-cloudrun-provider"
   echo "   Using provider from sibling repo: ${PROVIDER_DIR}"
