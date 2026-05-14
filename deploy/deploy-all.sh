@@ -1,14 +1,17 @@
 #!/bin/bash
 # Deploy all pre-built services to Cloud Run
 # Usage: ./deploy/deploy-all.sh [stg|prd] [image-tag] [--only service1,service2]
-#        image-tag: tag of pre-built images (default: current git SHA)
+#        image-tag: tag of pre-built images (default: auto-detected from registry)
 #        --only: Comma-separated list of services to deploy (e.g. --only home-index,traefik)
-#                Services: home-seo, home-index, labs-analytics, labs-index,
-#                          shared-c2,
-#                          lab-01-basic-magecart, lab-02-dom-skimming, lab-03-extension-hijacking,
-#                          lab-04-steganography, traefik
+#                Fixed services: home-seo, home-index, labs-analytics, labs-index, shared-c2, traefik
+#                Lab services:   read from docker-compose.yml x-cloudrun.service fields
+#                                (e.g. lab-01-basic-magecart, lab-02-dom-skimming, ...)
 #        Called by build-deploy-all.sh after images are built, or standalone
 #        when images already exist in Artifact Registry.
+#
+# Lab metadata (service name, image name, C2 path) is the single source of truth in
+# docker-compose.yml via x-cloudrun extension fields. To add a new lab, add an
+# x-cloudrun block to its service entry — no changes needed here.
 
 set -e
 
@@ -70,7 +73,25 @@ else
   DOMAIN_PREFIX="labs.stg.pcioasis.com"
 fi
 
-IMAGE_TAG="${IMAGE_TAG:-$(git rev-parse --short HEAD 2>/dev/null || echo 'latest')}"
+# Resolve IMAGE_TAG: prefer explicit arg, then short SHA, then full SHA (used by CI), then latest.
+# CI tags images with the full github.sha; local builds use the short SHA.
+if [ -z "$IMAGE_TAG" ]; then
+  SHORT_SHA=$(git rev-parse --short HEAD 2>/dev/null || true)
+  FULL_SHA=$(git rev-parse HEAD 2>/dev/null || true)
+  # Probe Artifact Registry for a known service image to find which tag format was pushed.
+  PROBE_REPO="${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/shared-c2"
+  if [ -n "$SHORT_SHA" ] && gcloud artifacts docker tags list "$PROBE_REPO" \
+       --project="${LABS_PROJECT_ID}" --filter="tag=$SHORT_SHA" --format="value(tag)" 2>/dev/null | grep -q .; then
+    IMAGE_TAG="$SHORT_SHA"
+  elif [ -n "$FULL_SHA" ] && gcloud artifacts docker tags list "$PROBE_REPO" \
+       --project="${LABS_PROJECT_ID}" --filter="tag=$FULL_SHA" --format="value(tag)" 2>/dev/null | grep -q .; then
+    IMAGE_TAG="$FULL_SHA"
+  else
+    echo "⚠️  WARNING: No image found for short SHA ($SHORT_SHA) or full SHA ($FULL_SHA) in Artifact Registry."
+    echo "   Falling back to 'latest' — this may deploy a stale image. Run CI first or pass an explicit tag."
+    IMAGE_TAG="latest"
+  fi
+fi
 
 echo "🚀 Deploying all services to ${ENVIRONMENT}..."
 echo "   Image tag: $IMAGE_TAG"
@@ -303,97 +324,52 @@ if should_run "shared-c2"; then
   echo ""
 fi
 
-if should_run "lab-01-basic-magecart"; then
-  echo "8️⃣  Deploying lab-01-basic-magecart-${ENVIRONMENT}..."
-  LAB1_TRAEFIK_LABELS=$(get_lab_labels "lab1-vulnerable-site")
-  gcloud run deploy lab-01-basic-magecart-${ENVIRONMENT} \
-    --image=${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/01-basic-magecart:${IMAGE_TAG} \
-    --region=${REGION} \
-    --platform=managed \
-    --project=${LABS_PROJECT_ID} \
-    --no-allow-unauthenticated \
-    --service-account=labs-runtime-sa@${LABS_PROJECT_ID}.iam.gserviceaccount.com \
-    --port=8080 \
-    --memory=512Mi \
-    --cpu=1 \
-    --min-instances=0 \
-    --max-instances=10 \
-    --set-env-vars="LAB_NAME=01-basic-magecart,ENVIRONMENT=${ENVIRONMENT},DOMAIN=${DOMAIN_PREFIX},HOME_URL=https://${DOMAIN_PREFIX},C2_URL=https://${DOMAIN_PREFIX}/lab1/c2" \
-    --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_${ENV_UPPER}:latest \
-    --labels="environment=${ENVIRONMENT},lab=01-basic-magecart,project=e-skimming-labs,${LAB1_TRAEFIK_LABELS}"
-  grant_iam_access "lab-01-basic-magecart-${ENVIRONMENT}" "${LABS_PROJECT_ID}"
-  echo "   ✅ Lab 1 deployed"
-  echo ""
+# Deploy labs — metadata read from docker-compose.yml x-cloudrun fields (single source of truth).
+# To add a new lab: add an x-cloudrun block to its service in docker-compose.yml.
+if ! command -v yq &>/dev/null; then
+  echo "❌ yq is required for lab discovery. Install: brew install yq"
+  exit 1
 fi
 
-if should_run "lab-02-dom-skimming"; then
-  echo "9️⃣  Deploying lab-02-dom-skimming-${ENVIRONMENT}..."
-  LAB2_TRAEFIK_LABELS=$(get_lab_labels "lab2-vulnerable-site")
-  gcloud run deploy lab-02-dom-skimming-${ENVIRONMENT} \
-    --image=${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/02-dom-skimming:${IMAGE_TAG} \
-    --region=${REGION} \
-    --platform=managed \
-    --project=${LABS_PROJECT_ID} \
-    --no-allow-unauthenticated \
-    --service-account=labs-runtime-sa@${LABS_PROJECT_ID}.iam.gserviceaccount.com \
-    --port=8080 \
-    --memory=512Mi \
-    --cpu=1 \
-    --min-instances=0 \
-    --max-instances=10 \
-    --set-env-vars="LAB_NAME=02-dom-skimming,ENVIRONMENT=${ENVIRONMENT},DOMAIN=${DOMAIN_PREFIX},HOME_URL=https://${DOMAIN_PREFIX},C2_URL=https://${DOMAIN_PREFIX}/lab2/c2" \
-    --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_${ENV_UPPER}:latest \
-    --labels="environment=${ENVIRONMENT},lab=02-dom-skimming,project=e-skimming-labs,${LAB2_TRAEFIK_LABELS}"
-  grant_iam_access "lab-02-dom-skimming-${ENVIRONMENT}" "${LABS_PROJECT_ID}"
-  echo "   ✅ Lab 2 deployed"
-  echo ""
-fi
+COMPOSE_FILE="${REPO_ROOT}/docker-compose.yml"
+mapfile -t LAB_COMPOSE_SVCS < <(yq -r '.services | to_entries[] | select(.value["x-cloudrun"] != null) | .key' "$COMPOSE_FILE")
 
-if should_run "lab-03-extension-hijacking"; then
-  echo "🔟 Deploying lab-03-extension-hijacking-${ENVIRONMENT}..."
-  LAB3_TRAEFIK_LABELS=$(get_lab_labels "lab3-vulnerable-site")
-  gcloud run deploy lab-03-extension-hijacking-${ENVIRONMENT} \
-    --image=${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/03-extension-hijacking:${IMAGE_TAG} \
-    --region=${REGION} \
-    --platform=managed \
-    --project=${LABS_PROJECT_ID} \
-    --no-allow-unauthenticated \
-    --service-account=labs-runtime-sa@${LABS_PROJECT_ID}.iam.gserviceaccount.com \
-    --port=8080 \
-    --memory=512Mi \
-    --cpu=1 \
-    --min-instances=0 \
-    --max-instances=10 \
-    --set-env-vars="LAB_NAME=03-extension-hijacking,ENVIRONMENT=${ENVIRONMENT},DOMAIN=${DOMAIN_PREFIX},HOME_URL=https://${DOMAIN_PREFIX},C2_URL=https://${DOMAIN_PREFIX}/lab3/extension" \
-    --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_${ENV_UPPER}:latest \
-    --labels="environment=${ENVIRONMENT},lab=03-extension-hijacking,project=e-skimming-labs,${LAB3_TRAEFIK_LABELS}"
-  grant_iam_access "lab-03-extension-hijacking-${ENVIRONMENT}" "${LABS_PROJECT_ID}"
-  echo "   ✅ Lab 3 deployed"
-  echo ""
-fi
+for compose_svc in "${LAB_COMPOSE_SVCS[@]}"; do
+  cr_service=$(yq -r ".services[\"${compose_svc}\"][\"x-cloudrun\"].service" "$COMPOSE_FILE")
+  image=$(yq -r ".services[\"${compose_svc}\"][\"x-cloudrun\"].image" "$COMPOSE_FILE")
+  c2_path=$(yq -r ".services[\"${compose_svc}\"][\"x-cloudrun\"][\"c2-path\"]" "$COMPOSE_FILE")
+  memory=$(yq -r ".services[\"${compose_svc}\"][\"x-cloudrun\"].memory // \"512Mi\"" "$COMPOSE_FILE")
+  [ -z "$cr_service" ] || [ "$cr_service" = "null" ] && { echo "❌ Missing x-cloudrun.service for ${compose_svc}"; exit 1; }
+  [ -z "$image" ]      || [ "$image"      = "null" ] && { echo "❌ Missing x-cloudrun.image for ${compose_svc}"; exit 1; }
+  [ -z "$c2_path" ]    || [ "$c2_path"    = "null" ] && { echo "❌ Missing x-cloudrun.c2-path for ${compose_svc}"; exit 1; }
+  [ -z "$memory" ]                                   && memory="512Mi"
+  lab_name="${cr_service#lab-}"
 
-if should_run "lab-04-steganography"; then
-  echo "1️⃣1️⃣ Deploying lab-04-steganography-${ENVIRONMENT}..."
-  LAB4_TRAEFIK_LABELS=$(get_lab_labels "lab4-vulnerable-site")
-  gcloud run deploy lab-04-steganography-${ENVIRONMENT} \
-    --image=${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/04-steganography:${IMAGE_TAG} \
+  if ! should_run "${cr_service}"; then
+    continue
+  fi
+
+  echo "   Deploying ${cr_service}-${ENVIRONMENT}..."
+  TRAEFIK_LABELS=$(get_lab_labels "${compose_svc}")
+  gcloud run deploy "${cr_service}-${ENVIRONMENT}" \
+    --image=${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/${image}:${IMAGE_TAG} \
     --region=${REGION} \
     --platform=managed \
     --project=${LABS_PROJECT_ID} \
     --no-allow-unauthenticated \
     --service-account=labs-runtime-sa@${LABS_PROJECT_ID}.iam.gserviceaccount.com \
     --port=8080 \
-    --memory=256Mi \
+    --memory=${memory} \
     --cpu=1 \
     --min-instances=0 \
     --max-instances=10 \
-    --set-env-vars="LAB_NAME=04-steganography,ENVIRONMENT=${ENVIRONMENT},DOMAIN=${DOMAIN_PREFIX},HOME_URL=https://${DOMAIN_PREFIX},C2_URL=https://${DOMAIN_PREFIX}/lab4/c2" \
+    --set-env-vars="LAB_NAME=${lab_name},ENVIRONMENT=${ENVIRONMENT},DOMAIN=${DOMAIN_PREFIX},HOME_URL=https://${DOMAIN_PREFIX},C2_URL=https://${DOMAIN_PREFIX}${c2_path}" \
     --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_${ENV_UPPER}:latest \
-    --labels="environment=${ENVIRONMENT},lab=04-steganography,project=e-skimming-labs,${LAB4_TRAEFIK_LABELS}"
-  grant_iam_access "lab-04-steganography-${ENVIRONMENT}" "${LABS_PROJECT_ID}"
-  echo "   ✅ Lab 4 deployed"
+    --labels="environment=${ENVIRONMENT},lab=${lab_name},project=e-skimming-labs,${TRAEFIK_LABELS}"
+  grant_iam_access "${cr_service}-${ENVIRONMENT}" "${LABS_PROJECT_ID}"
+  echo "   ✅ ${cr_service} deployed"
   echo ""
-fi
+done
 
 # ============================================================================
 # TRAEFIK (sidecar architecture - build + deploy handled by dedicated script)
@@ -429,18 +405,13 @@ gcloud run services describe labs-analytics-${ENVIRONMENT} \
 gcloud run services describe labs-index-${ENVIRONMENT} \
   --region=${REGION} --project=${LABS_PROJECT_ID} \
   --format="value(status.url)" 2>/dev/null | sed 's/^/   Labs Index: /' || echo "   Labs Index: (not available)"
-gcloud run services describe lab-01-basic-magecart-${ENVIRONMENT} \
-  --region=${REGION} --project=${LABS_PROJECT_ID} \
-  --format="value(status.url)" 2>/dev/null | sed 's/^/   Lab 1: /' || echo "   Lab 1: (not available)"
-gcloud run services describe lab-02-dom-skimming-${ENVIRONMENT} \
-  --region=${REGION} --project=${LABS_PROJECT_ID} \
-  --format="value(status.url)" 2>/dev/null | sed 's/^/   Lab 2: /' || echo "   Lab 2: (not available)"
-gcloud run services describe lab-03-extension-hijacking-${ENVIRONMENT} \
-  --region=${REGION} --project=${LABS_PROJECT_ID} \
-  --format="value(status.url)" 2>/dev/null | sed 's/^/   Lab 3: /' || echo "   Lab 3: (not available)"
-gcloud run services describe lab-04-steganography-${ENVIRONMENT} \
-  --region=${REGION} --project=${LABS_PROJECT_ID} \
-  --format="value(status.url)" 2>/dev/null | sed 's/^/   Lab 4: /' || echo "   Lab 4: (not available)"
+for compose_svc in "${LAB_COMPOSE_SVCS[@]}"; do
+  cr_service=$(yq -r ".services[\"${compose_svc}\"][\"x-cloudrun\"].service" "$COMPOSE_FILE")
+  label="${cr_service#lab-}"
+  gcloud run services describe "${cr_service}-${ENVIRONMENT}" \
+    --region=${REGION} --project=${LABS_PROJECT_ID} \
+    --format="value(status.url)" 2>/dev/null | sed "s|^|   ${label}: |" || echo "   ${label}: (not available)"
+done
 gcloud run services describe traefik-${ENVIRONMENT} \
   --region=${REGION} --project=${LABS_PROJECT_ID} \
   --format="value(status.url)" 2>/dev/null | sed 's/^/   Traefik: /' || echo "   Traefik: (not available)"

@@ -197,6 +197,14 @@ jobs:
               fi
             fi
 
+            # docker-compose.yml: x-cloudrun metadata is SSOT for lab service names,
+            # image names, and c2-paths — changes must propagate to all lab deployments.
+            if echo "$CHANGED_FILES" | grep -q "^docker-compose\.yml"; then
+              DEPLOY_LABS="true"
+              CHANGED_LABS="all"
+              echo "  ✅ docker-compose.yml changed, redeploying all labs to update metadata"
+            fi
+
             # Individual labs - detect which specific labs changed
             LABS_CHANGED=()
             for lab_dir in ./labs/*/; do
@@ -1203,34 +1211,26 @@ jobs:
             exit 1
           }
 
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.6/yq_linux_amd64
+          echo "0c2b24e645b57d8e7c0566d18643a6d4f5580feeea3878127354a46f2a1e4598  /usr/local/bin/yq" | sha256sum -c
+          sudo chmod +x /usr/local/bin/yq
+
       - name: Deploy to Cloud Run
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
         run: |
           # Source generated Cloud Run labels (from docker-compose.yml)
           source deploy/traefik/lab-labels.sh
 
-          # Map GHA matrix name → compose service names.
-          # Each lab is a single container (nginx + C2 server), so we combine
-          # labels from both the vulnerable-site and C2 server compose services.
-          case "${{ matrix.lab }}" in
-            # Labs 1-3: C2 is handled by shared-c2 service (separate deployment).
-            # No c2-server labels on the lab service itself.
-            01-basic-magecart)      COMPOSE_SVC="lab1-vulnerable-site" ; COMPOSE_SVC2="" ;;
-            02-dom-skimming)        COMPOSE_SVC="lab2-vulnerable-site" ; COMPOSE_SVC2="" ;;
-            03-extension-hijacking) COMPOSE_SVC="lab3-vulnerable-site" ; COMPOSE_SVC2="" ;;
-            # Lab 4: still has its own embedded C2 server
-            04-steganography-favicon) COMPOSE_SVC="lab4-vulnerable-site" ; COMPOSE_SVC2="lab4-c2-server" ;;
-            *) COMPOSE_SVC="" ; COMPOSE_SVC2="" ;;
-          esac
+          # Look up compose service name and c2-path from docker-compose.yml (SSOT).
+          # matrix.lab is the image name; find the compose service with matching x-cloudrun.image.
+          COMPOSE_SVC=$(yq -r '.services | to_entries[] | select(.value["x-cloudrun"].image == "${{ matrix.lab }}") | .key' docker-compose.yml)
+          C2_PATH=$(yq -re ".services[\"${COMPOSE_SVC}\"][\"x-cloudrun\"][\"c2-path\"]" docker-compose.yml 2>/dev/null || echo "")
+          [[ -z "$C2_PATH" || "$C2_PATH" == "null" ]] && C2_PATH="/${{ matrix.lab }}/c2"
 
           if [[ -n "$COMPOSE_SVC" ]]; then
             TRAEFIK_LABELS=$(get_lab_labels "$COMPOSE_SVC" 2>/dev/null || echo "traefik_enable=true")
-            # Append C2 server labels (strip duplicate traefik_enable=true)
-            if [[ -n "$COMPOSE_SVC2" ]]; then
-              LABELS2=$(get_lab_labels "$COMPOSE_SVC2" 2>/dev/null || echo "")
-              LABELS2_ONLY="${LABELS2#traefik_enable=true,}"
-              [[ -n "$LABELS2_ONLY" ]] && TRAEFIK_LABELS="${TRAEFIK_LABELS},${LABELS2_ONLY}"
-            fi
           else
             TRAEFIK_LABELS="traefik_enable=true"
           fi
@@ -1255,7 +1255,7 @@ jobs:
             --cpu=1 \
             --min-instances=0 \
             --max-instances=10 \
-            --set-env-vars="LAB_NAME=${{ matrix.lab }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},HOME_URL=https://${{ needs.setup.outputs.domain_prefix }},C2_URL=https://${{ needs.setup.outputs.domain_prefix }}/${{ matrix.lab }}/c2" \
+            --set-env-vars="LAB_NAME=${{ matrix.lab }},ENVIRONMENT=${{ needs.setup.outputs.environment }},DOMAIN=${{ needs.setup.outputs.domain_prefix }},HOME_URL=https://${{ needs.setup.outputs.domain_prefix }},C2_URL=https://${{ needs.setup.outputs.domain_prefix }}${C2_PATH}" \
             $SECRETS_FLAG \
             --labels="environment=${{ needs.setup.outputs.environment }},lab=${{ matrix.lab }},project=e-skimming-labs,${TRAEFIK_LABELS}"
 
@@ -1538,134 +1538,9 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Build and push Traefik v3.0 sidecar images
+      - name: Deploy Traefik sidecar
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
-        run: |
-          IMAGE_BASE="${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}"
-
-          # 1. Build main Traefik v3.0 image
-          echo "📦 Building main Traefik v3.0 image..."
-          docker build \
-            -f deploy/traefik/Dockerfile.cloudrun.sidecar.traefik-3.0 \
-            -t "${IMAGE_BASE}/traefik:v3.0" \
-            -t "${IMAGE_BASE}/traefik:${{ github.sha }}" \
-            deploy/traefik
-          docker push "${IMAGE_BASE}/traefik:v3.0"
-          docker push "${IMAGE_BASE}/traefik:${{ github.sha }}"
-
-          # 2. Build provider sidecar image
-          echo "📦 Building provider sidecar image..."
-          docker build \
-            -f traefik-cloudrun-provider/Dockerfile.provider.sidecar \
-            -t "${IMAGE_BASE}/traefik-cloudrun-provider:latest" \
-            -t "${IMAGE_BASE}/traefik-cloudrun-provider:${{ github.sha }}" \
-            traefik-cloudrun-provider
-          docker push "${IMAGE_BASE}/traefik-cloudrun-provider:latest"
-          docker push "${IMAGE_BASE}/traefik-cloudrun-provider:${{ github.sha }}"
-
-          # 3. Build dashboard sidecar image (Traefik v3.0)
-          echo "📦 Building dashboard sidecar image..."
-          docker build \
-            -f deploy/traefik/Dockerfile.dashboard-sidecar.traefik-3.0 \
-            -t "${IMAGE_BASE}/traefik-dashboard:v3.0" \
-            -t "${IMAGE_BASE}/traefik-dashboard:${{ github.sha }}" \
-            deploy/traefik
-          docker push "${IMAGE_BASE}/traefik-dashboard:v3.0"
-          docker push "${IMAGE_BASE}/traefik-dashboard:${{ github.sha }}"
-
-          echo "✅ All sidecar images built and pushed"
-
-      - name: Deploy Traefik with sidecar architecture
-        if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
-        run: |
-          ENV="${{ needs.setup.outputs.environment }}"
-
-          # Fetch HOME_INDEX_URL so entrypoint writes ForwardAuth middlewares (lab routes require login)
-          # Labs deploy SA needs roles/run.viewer on labs-home-* (run: ./deploy/traefik/APPLY_PERMISSIONS.sh <env>)
-          HOME_INDEX_URL=$(gcloud run services describe home-index-${{ needs.setup.outputs.environment }} \
-            --region=${{ env.LABS_GAR_LOCATION }} \
-            --project=${{ env.HOME_PROJECT_ID }} \
-            --format='value(status.url)' 2>/dev/null || echo "")
-          if [[ -n "$HOME_INDEX_URL" ]]; then
-            echo "✅ HOME_INDEX_URL set for lab auth: $HOME_INDEX_URL"
-          else
-            echo "⚠️ Could not get home-index URL; run ./deploy/traefik/APPLY_PERMISSIONS.sh $ENV to grant Labs SA run.viewer on Home project"
-          fi
-          ENV_VARS="ENVIRONMENT=${{ needs.setup.outputs.environment }},LABS_PROJECT_ID=${{ env.LABS_PROJECT_ID }},HOME_PROJECT_ID=${{ env.HOME_PROJECT_ID }},MAIN_DOMAIN=pcioasis.com,LABS_DOMAIN=${{ needs.setup.outputs.domain_prefix }},USER_AUTH_ENABLED=true"
-          if [[ -n "$HOME_INDEX_URL" ]]; then
-            ENV_VARS="$ENV_VARS,HOME_INDEX_URL=$HOME_INDEX_URL"
-          fi
-          if [[ "${{ needs.setup.outputs.environment }}" == "stg" ]]; then
-            gcloud run deploy traefik-${{ needs.setup.outputs.environment }} \
-              --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/traefik:${{ github.sha }} \
-              --region=${{ env.LABS_GAR_LOCATION }} \
-              --platform=managed \
-              --no-allow-unauthenticated \
-              --service-account=traefik-${{ needs.setup.outputs.environment }}@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
-              --port=8080 \
-              --memory=512Mi \
-              --cpu=1 \
-              --min-instances=1 \
-              --max-instances=5 \
-              --set-env-vars="$ENV_VARS" \
-              --labels="environment=${{ needs.setup.outputs.environment }},component=traefik,project=e-skimming-labs"
-          else
-            gcloud run deploy traefik-${{ needs.setup.outputs.environment }} \
-              --image=${{ env.LABS_GAR_LOCATION }}-docker.pkg.dev/${{ env.LABS_PROJECT_ID }}/${{ env.LABS_REPOSITORY }}/traefik:${{ github.sha }} \
-              --region=${{ env.LABS_GAR_LOCATION }} \
-              --platform=managed \
-              --allow-unauthenticated \
-              --service-account=traefik-${{ needs.setup.outputs.environment }}@${{ env.LABS_PROJECT_ID }}.iam.gserviceaccount.com \
-              --port=8080 \
-              --memory=512Mi \
-              --cpu=1 \
-              --min-instances=1 \
-              --max-instances=5 \
-              --set-env-vars="$ENV_VARS" \
-              --labels="environment=${{ needs.setup.outputs.environment }},component=traefik,project=e-skimming-labs"
-          fi
-
-          # Generate Cloud Run YAML with environment-specific values
-          # Substitute __HOME_INDEX_URL__ so Traefik entrypoint writes ForwardAuth middlewares (lab routes require login)
-          sed "s/labs-stg/${{ env.LABS_PROJECT_ID }}/g; \
-               s/labs-home-stg/${{ env.HOME_PROJECT_ID }}/g; \
-               s/stg/${ENV}/g; \
-               s|__HOME_INDEX_URL__|${HOME_INDEX_URL}|g; \
-               s|traefik:latest|traefik:v3.0|g" \
-            deploy/traefik/cloudrun-sidecar.yaml > /tmp/traefik-deploy.yaml
-
-          echo "🚀 Deploying main Traefik v3.0 service with provider sidecar..."
-          gcloud run services replace /tmp/traefik-deploy.yaml \
-            --region=${{ env.LABS_GAR_LOCATION }} \
-            --project=${{ env.LABS_PROJECT_ID }}
-
-          # Get the main service URL for dashboard config
-          MAIN_TRAEFIK_URL=$(gcloud run services describe "traefik-${ENV}" \
-            --region=${{ env.LABS_GAR_LOCATION }} \
-            --project=${{ env.LABS_PROJECT_ID }} \
-            --format="value(status.url)")
-
-          echo "✅ Main Traefik service: ${MAIN_TRAEFIK_URL}"
-
-          # Deploy dashboard as separate service
-          echo "🚀 Deploying dashboard service..."
-          sed "s/labs-stg/${{ env.LABS_PROJECT_ID }}/g; \
-               s/labs-home-stg/${{ env.HOME_PROJECT_ID }}/g; \
-               s/stg/${ENV}/g; \
-               s|<PROJECT_NUMBER>|${MAIN_TRAEFIK_URL}|g; \
-               s|traefik-dashboard:latest|traefik-dashboard:v3.0|g" \
-            deploy/traefik/traefik-dashboard-sidecar.yaml > /tmp/dashboard-deploy.yaml
-
-          gcloud run services replace /tmp/dashboard-deploy.yaml \
-            --region=${{ env.LABS_GAR_LOCATION }} \
-            --project=${{ env.LABS_PROJECT_ID }}
-
-          DASHBOARD_URL=$(gcloud run services describe "traefik-dashboard-${ENV}" \
-            --region=${{ env.LABS_GAR_LOCATION }} \
-            --project=${{ env.LABS_PROJECT_ID }} \
-            --format="value(status.url)")
-
-          echo "✅ Dashboard service: ${DASHBOARD_URL}"
+        run: ./deploy/traefik/deploy-sidecar-traefik-3.0.sh ${{ needs.setup.outputs.environment }}
 
       - name: Grant access for staging
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null && needs.setup.outputs.environment == 'stg'
