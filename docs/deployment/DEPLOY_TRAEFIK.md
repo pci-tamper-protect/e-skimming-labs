@@ -78,13 +78,13 @@ The Traefik deployment uses a sidecar architecture on Cloud Run:
 - Serves Traefik dashboard UI
 - Proxies API requests to main Traefik service
 
-## Source Locations
+## Source Locations (Traefik v3.0)
 
 | Component | Source |
 |-----------|--------|
-| Main Traefik | `deploy/traefik/deprecated-v2/Dockerfile.cloudrun.sidecar` (Traefik v2.10 legacy) |
+| Main Traefik | `deploy/traefik/Dockerfile.cloudrun.sidecar.traefik-3.0` |
 | Provider | `../traefik-cloudrun-provider/` |
-| Dashboard | `deploy/traefik/deprecated-v2/Dockerfile.dashboard-sidecar` (Traefik v2.10 legacy) |
+| Dashboard | `deploy/traefik/Dockerfile.dashboard-sidecar.traefik-3.0` |
 
 ## After Deploying
 
@@ -162,3 +162,7 @@ gcloud run services replace deploy/traefik/cloudrun-sidecar.yaml \
   --project=labs-stg \
   --region=us-central1
 ```
+
+## Legacy v2 Instructions (deprecated)
+
+All v2 artifacts now live under `deploy/traefik/deprecated-v2/` and are documented in [DEPLOY_TRAEFIK_V2_DEPRECATED.md](DEPLOY_TRAEFIK_V2_DEPRECATED.md).
