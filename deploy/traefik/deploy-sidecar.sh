@@ -13,9 +13,10 @@
 # - Provider sidecar: generates routes.yml into shared volume
 # - Dashboard sidecar: serves dashboard UI (separate service)
 #
-# Version: Uses Traefik v2.10 by default (stable)
-# For Traefik v3.0, use Dockerfile.cloudrun.sidecar.traefik-3.0 and
-# Dockerfile.dashboard-sidecar.traefik-3.0
+# Version: Deploys Traefik v3.0 (default). Images are pushed as :latest.
+# Uses: Dockerfile.cloudrun.sidecar.traefik-3.0, Dockerfile.dashboard-sidecar.traefik-3.0
+# Cloud Run YAML: cloudrun-sidecar.yaml (HOME_INDEX_URL substituted at deploy time)
+# For the v2 legacy path see deploy/traefik/deprecated-v2/.
 
 set -e
 
@@ -102,9 +103,9 @@ if [ ! -d "${PROVIDER_DIR}" ]; then
 fi
 
 # Build main Traefik image
-echo "   Building main Traefik image..."
+echo "   Building main Traefik image (Traefik v3.0)..."
 cd "${TRAEFIK_DEPLOY_DIR}"
-docker build -f Dockerfile.cloudrun.sidecar -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/e-skimming-labs/traefik:latest" .
+docker build -f Dockerfile.cloudrun.sidecar.traefik-3.0 -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/e-skimming-labs/traefik:latest" .
 docker push "${REGION}-docker.pkg.dev/${PROJECT_ID}/e-skimming-labs/traefik:latest"
 
 # Build provider sidecar image
@@ -113,10 +114,10 @@ cd "${PROVIDER_DIR}"
 docker build -f Dockerfile.provider.sidecar -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/e-skimming-labs/traefik-cloudrun-provider:latest" .
 docker push "${REGION}-docker.pkg.dev/${PROJECT_ID}/e-skimming-labs/traefik-cloudrun-provider:latest"
 
-# Build dashboard sidecar image
+# Build dashboard sidecar image (Traefik v3.0)
 echo "   Building dashboard sidecar image..."
 cd "${TRAEFIK_DEPLOY_DIR}"
-docker build -f Dockerfile.dashboard-sidecar -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/e-skimming-labs/traefik-dashboard:latest" .
+docker build -f Dockerfile.dashboard-sidecar.traefik-3.0 -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/e-skimming-labs/traefik-dashboard:latest" .
 docker push "${REGION}-docker.pkg.dev/${PROJECT_ID}/e-skimming-labs/traefik-dashboard:latest"
 
 echo "✅ All images built and pushed"

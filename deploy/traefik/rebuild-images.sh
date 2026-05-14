@@ -40,10 +40,10 @@ if [ ! -d "${PROVIDER_DIR}" ]; then
   exit 1
 fi
 
-# Build main Traefik image
-echo "📦 Building main Traefik image (--no-cache)..."
+# Build main Traefik image (v3.0)
+echo "📦 Building main Traefik image (--no-cache, Traefik v3.0)..."
 cd "${TRAEFIK_DEPLOY_DIR}"
-docker build --no-cache -f Dockerfile.cloudrun.sidecar -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/e-skimming-labs/traefik:latest" .
+docker build --no-cache -f Dockerfile.cloudrun.sidecar.traefik-3.0 -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/e-skimming-labs/traefik:latest" .
 docker push "${REGION}-docker.pkg.dev/${PROJECT_ID}/e-skimming-labs/traefik:latest"
 echo "✅ Main Traefik image built and pushed"
 echo ""
@@ -57,9 +57,9 @@ echo "✅ Provider sidecar image built and pushed"
 echo ""
 
 # Build dashboard sidecar image
-echo "📦 Building dashboard sidecar image (--no-cache)..."
+echo "📦 Building dashboard sidecar image (--no-cache, Traefik v3.0)..."
 cd "${TRAEFIK_DEPLOY_DIR}"
-docker build --no-cache -f Dockerfile.dashboard-sidecar -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/e-skimming-labs/traefik-dashboard:latest" .
+docker build --no-cache -f Dockerfile.dashboard-sidecar.traefik-3.0 -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/e-skimming-labs/traefik-dashboard:latest" .
 docker push "${REGION}-docker.pkg.dev/${PROJECT_ID}/e-skimming-labs/traefik-dashboard:latest"
 echo "✅ Dashboard sidecar image built and pushed"
 echo ""
