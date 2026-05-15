@@ -459,6 +459,29 @@ func main() {
 		serveAuthUser(w, r, authValidator)
 	})
 
+	mux.HandleFunc("/api/auth/logout", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		isSecure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
+		sameSite := http.SameSiteLaxMode
+		if isSecure {
+			sameSite = http.SameSiteStrictMode
+		}
+		http.SetCookie(w, &http.Cookie{
+			Name:     "__session",
+			Value:    "",
+			Path:     "/",
+			MaxAge:   -1,
+			HttpOnly: true,
+			Secure:   isSecure,
+			SameSite: sameSite,
+		})
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+	})
+
 	// Auth check endpoint for Traefik ForwardAuth middleware
 	// Returns 200 if authenticated, 302 redirect to sign-in for browser requests, 401 for API requests
 	// Reference: https://doc.traefik.io/traefik/middlewares/http/forwardauth/
@@ -1486,14 +1509,11 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
             if (logoutBtn) {
                 logoutBtn.addEventListener('click', function() {
                     sessionStorage.removeItem('firebase_token');
-                    // Clear cookie - must include same SameSite attrs used when setting it
                     document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=None; Secure';
                     document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=Lax';
-                    document.cookie = '__session=; path=/; max-age=0; SameSite=None; Secure';
-                    document.cookie = '__session=; path=/; max-age=0; SameSite=Lax';
-                    updateAuthButtons();
-                    // Reload to clear any protected content
-                    window.location.reload();
+                    // __session is HttpOnly — must be cleared server-side
+                    fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+                        .finally(function() { window.location.reload(); });
                 });
             }
         });
@@ -1840,6 +1860,9 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, homeD
             </div>`
 	}
 
+	// Lab1 is public; other labs respect the global REQUIRE_AUTH setting.
+	writeupAuthRequired := homeData.AuthRequired && labID != "01-basic-magecart"
+
 	// Build auth scripts if enabled
 	authScripts := ""
 	if homeData.AuthEnabled {
@@ -1926,17 +1949,16 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, homeD
 				if (logoutBtn) {
 					logoutBtn.addEventListener('click', function() {
 						sessionStorage.removeItem('firebase_token');
-						// Clear cookie - must include same SameSite attrs used when setting it
 						document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=None; Secure';
 						document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=Lax';
-						updateAuthButtons();
-						// Reload to clear any protected content
-						window.location.reload();
+						// __session is HttpOnly — must be cleared server-side
+						fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+							.finally(function() { window.location.reload(); });
 					});
 				}
 			});
 		</script>
-		`, homeData.AuthRequired, homeData.MainAppURL, homeData.FirebaseProjectID, homeData.MainAppURL)
+		`, writeupAuthRequired, homeData.MainAppURL, homeData.FirebaseProjectID, homeData.MainAppURL)
 	}
 
 	// Create HTML page
@@ -2269,35 +2291,46 @@ func serveAuthUser(w http.ResponseWriter, r *http.Request, validator *auth.Token
 	// First try to get user info from context (if request went through auth middleware)
 	userInfo := auth.GetUserInfo(r)
 
-	// If not in context, extract and validate token directly (for public endpoint)
+	// If not in context, validate directly (for public endpoint)
 	if userInfo == nil {
-		// Extract token from request
-		token := extractTokenFromRequest(r)
-		if token == "" {
-			// Log for debugging
-			log.Printf("🔍 /api/auth/user - No token found (cookies: %v)", r.Cookies())
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"authenticated": false,
-			})
-			return
+		// 1. Try __session cookie (HttpOnly, 5-day server-set cookie — survives firebase_token expiry)
+		if sessionCookie, err := r.Cookie("__session"); err == nil && sessionCookie.Value != "" {
+			if info, err := validator.ValidateSessionCookie(r.Context(), sessionCookie.Value); err == nil && info != nil {
+				userInfo = info
+				log.Printf("🔍 /api/auth/user - authenticated via __session cookie")
+			} else {
+				log.Printf("🔍 /api/auth/user - __session invalid: %v", err)
+			}
 		}
 
-		// Log token for debugging (sanitized)
-		log.Printf("🔍 /api/auth/user - Token found: %s", sanitizeToken(token))
-
-		// Validate token
-		var err error
-		userInfo, err = validator.ValidateToken(r.Context(), token)
-		if err != nil || userInfo == nil {
-			log.Printf("❌ /api/auth/user - Token validation failed: %v", err)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"authenticated": false,
-			})
-			return
+		// 2. Fall back to short-lived firebase_token (Authorization header or cookie)
+		if userInfo == nil {
+			token := extractTokenFromRequest(r)
+			if token == "" {
+				cookieNames := make([]string, 0, len(r.Cookies()))
+			for _, c := range r.Cookies() {
+				cookieNames = append(cookieNames, c.Name)
+			}
+			log.Printf("🔍 /api/auth/user - No token found (cookie names: %v)", cookieNames)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"authenticated": false,
+				})
+				return
+			}
+			log.Printf("🔍 /api/auth/user - Token found: %s", sanitizeToken(token))
+			var err error
+			userInfo, err = validator.ValidateToken(r.Context(), token)
+			if err != nil || userInfo == nil {
+				log.Printf("❌ /api/auth/user - Token validation failed: %v", err)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"authenticated": false,
+				})
+				return
+			}
 		}
 	}
 
@@ -2451,12 +2484,11 @@ func injectAuthButtons(html string, homeData HomePageData, authRequired bool) st
 				if (logoutBtn) {
 					logoutBtn.addEventListener('click', function() {
 						sessionStorage.removeItem('firebase_token');
-						// Clear cookie - must include same SameSite attrs used when setting it
 						document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=None; Secure';
 						document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=Lax';
-						updateAuthButtons();
-						// Reload to clear any protected content
-						window.location.reload();
+						// __session is HttpOnly — must be cleared server-side
+						fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+							.finally(function() { window.location.reload(); });
 					});
 				}
 			});
