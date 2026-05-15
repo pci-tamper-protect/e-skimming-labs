@@ -2319,7 +2319,6 @@ func serveAuthUser(w http.ResponseWriter, r *http.Request, validator *auth.Token
 				})
 				return
 			}
-			log.Printf("🔍 /api/auth/user - Token found: %s", sanitizeToken(token))
 			var err error
 			userInfo, err = validator.ValidateToken(r.Context(), token)
 			if err != nil || userInfo == nil {
