@@ -196,7 +196,7 @@ services:
       - "traefik.http.routers.lab1.rule=PathPrefix(`/lab1`)"
       - "traefik.http.routers.lab1.priority=200"
       - "traefik.http.routers.lab1.entrypoints=web"
-      - "traefik.http.routers.lab1.middlewares=lab1-auth-check@file,strip-lab1-prefix@file"
+      - "traefik.http.routers.lab1.middlewares=strip-lab1-prefix@file"
       - "traefik.http.routers.lab1.service=lab1-vulnerable-site"
       - "traefik.http.services.lab1-vulnerable-site.loadbalancer.server.port=8080"
 
@@ -339,7 +339,7 @@ services:
       - "traefik.http.routers.lab1-c2.rule=PathPrefix(`/lab1/c2`)"
       - "traefik.http.routers.lab1-c2.priority=300"
       - "traefik.http.routers.lab1-c2.entrypoints=web"
-      - "traefik.http.routers.lab1-c2.middlewares=lab1-auth-check@file"
+      - "traefik.http.routers.lab1-c2.middlewares=strip-passthrough-prefix@file"
       - "traefik.http.routers.lab1-c2.service=shared-c2"
       # ── Lab 2 C2 routes ──────────────────────────────────────────────────────
       # Collect (no auth)
@@ -410,7 +410,7 @@ services:
       - "traefik.http.routers.lab1-event-listener.rule=PathPrefix(`/lab1/variants/event-listener`)"
       - "traefik.http.routers.lab1-event-listener.priority=400"
       - "traefik.http.routers.lab1-event-listener.entrypoints=web"
-      - "traefik.http.routers.lab1-event-listener.middlewares=lab1-auth-check@file,strip-lab1-event-listener-prefix@file"
+      - "traefik.http.routers.lab1-event-listener.middlewares=strip-lab1-event-listener-prefix@file"
       - "traefik.http.services.lab1-event-listener-variant.loadbalancer.server.port=80"
 
   # Lab 1 Variant - Obfuscated Base64 Variant
@@ -439,7 +439,7 @@ services:
       - "traefik.http.routers.lab1-obfuscated.rule=PathPrefix(`/lab1/variants/obfuscated`)"
       - "traefik.http.routers.lab1-obfuscated.priority=400"
       - "traefik.http.routers.lab1-obfuscated.entrypoints=web"
-      - "traefik.http.routers.lab1-obfuscated.middlewares=lab1-auth-check@file,strip-lab1-obfuscated-prefix@file"
+      - "traefik.http.routers.lab1-obfuscated.middlewares=strip-lab1-obfuscated-prefix@file"
       - "traefik.http.services.lab1-obfuscated-variant.loadbalancer.server.port=80"
 
   # Lab 1 Variant - WebSocket Exfiltration
@@ -468,7 +468,7 @@ services:
       - "traefik.http.routers.lab1-websocket.rule=PathPrefix(`/lab1/variants/websocket`)"
       - "traefik.http.routers.lab1-websocket.priority=400"
       - "traefik.http.routers.lab1-websocket.entrypoints=web"
-      - "traefik.http.routers.lab1-websocket.middlewares=lab1-auth-check@file,strip-lab1-websocket-prefix@file"
+      - "traefik.http.routers.lab1-websocket.middlewares=strip-lab1-websocket-prefix@file"
       - "traefik.http.services.lab1-websocket-variant.loadbalancer.server.port=80"
 
   # =============================================================================
