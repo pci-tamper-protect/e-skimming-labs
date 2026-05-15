@@ -21,6 +21,7 @@ const (
 )
 
 var ruleMap = map[string]string{
+	"home-index":         "PathPrefix(`/`)",
 	"home-index-root":    "PathPrefix(`/`)",
 	"home-index-signin":  "Path(`/sign-in`) || Path(`/sign-up`)",
 	"home-seo":           "PathPrefix(`/api/seo`)",
