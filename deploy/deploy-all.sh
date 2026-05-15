@@ -176,20 +176,34 @@ fi
 grant_iam_access() {
   local service_name=$1
   local project_id=$2
+  local max_attempts=5
 
-  gcloud run services add-iam-policy-binding "${service_name}" \
-    --region="${REGION}" \
-    --project="${project_id}" \
-    --member="group:2025-interns@pcioasis.com" \
-    --role="roles/run.invoker" \
-    --quiet || echo "     ⚠️  Failed to grant access to 2025-interns (may already exist)"
-
-  gcloud run services add-iam-policy-binding "${service_name}" \
-    --region="${REGION}" \
-    --project="${project_id}" \
-    --member="group:core-eng@pcioasis.com" \
-    --role="roles/run.invoker" \
-    --quiet || echo "     ⚠️  Failed to grant access to core-eng (may already exist)"
+  for member in "group:2025-interns@pcioasis.com" "group:core-eng@pcioasis.com"; do
+    local attempt=0
+    local success=false
+    while [ $attempt -lt $max_attempts ]; do
+      attempt=$((attempt + 1))
+      if gcloud run services add-iam-policy-binding "${service_name}" \
+          --region="${REGION}" \
+          --project="${project_id}" \
+          --member="${member}" \
+          --role="roles/run.invoker" \
+          --quiet 2>&1; then
+        success=true
+        break
+      fi
+      local code=$?
+      # Retry only on concurrent-modification (ABORTED) errors
+      if [ $attempt -lt $max_attempts ]; then
+        local delay=$(( 2 ** attempt ))
+        echo "     ⚠️  IAM binding conflict for ${member}, retrying in ${delay}s (attempt ${attempt}/${max_attempts})..."
+        sleep $delay
+      fi
+    done
+    if [ "$success" = false ]; then
+      echo "     ⚠️  Failed to grant ${member} access to ${service_name} after ${max_attempts} attempts (may already exist)"
+    fi
+  done
 }
 
 # ============================================================================
