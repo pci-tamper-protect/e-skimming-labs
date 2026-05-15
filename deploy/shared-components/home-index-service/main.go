@@ -459,6 +459,29 @@ func main() {
 		serveAuthUser(w, r, authValidator)
 	})
 
+	mux.HandleFunc("/api/auth/logout", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		isSecure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
+		sameSite := http.SameSiteLaxMode
+		if isSecure {
+			sameSite = http.SameSiteStrictMode
+		}
+		http.SetCookie(w, &http.Cookie{
+			Name:     "__session",
+			Value:    "",
+			Path:     "/",
+			MaxAge:   -1,
+			HttpOnly: true,
+			Secure:   isSecure,
+			SameSite: sameSite,
+		})
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+	})
+
 	// Auth check endpoint for Traefik ForwardAuth middleware
 	// Returns 200 if authenticated, 302 redirect to sign-in for browser requests, 401 for API requests
 	// Reference: https://doc.traefik.io/traefik/middlewares/http/forwardauth/
@@ -1486,14 +1509,11 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
             if (logoutBtn) {
                 logoutBtn.addEventListener('click', function() {
                     sessionStorage.removeItem('firebase_token');
-                    // Clear cookie - must include same SameSite attrs used when setting it
                     document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=None; Secure';
                     document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=Lax';
-                    document.cookie = '__session=; path=/; max-age=0; SameSite=None; Secure';
-                    document.cookie = '__session=; path=/; max-age=0; SameSite=Lax';
-                    updateAuthButtons();
-                    // Reload to clear any protected content
-                    window.location.reload();
+                    // __session is HttpOnly — must be cleared server-side
+                    fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+                        .finally(function() { window.location.reload(); });
                 });
             }
         });
@@ -1929,12 +1949,11 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, homeD
 				if (logoutBtn) {
 					logoutBtn.addEventListener('click', function() {
 						sessionStorage.removeItem('firebase_token');
-						// Clear cookie - must include same SameSite attrs used when setting it
 						document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=None; Secure';
 						document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=Lax';
-						updateAuthButtons();
-						// Reload to clear any protected content
-						window.location.reload();
+						// __session is HttpOnly — must be cleared server-side
+						fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+							.finally(function() { window.location.reload(); });
 					});
 				}
 			});
@@ -2288,7 +2307,11 @@ func serveAuthUser(w http.ResponseWriter, r *http.Request, validator *auth.Token
 		if userInfo == nil {
 			token := extractTokenFromRequest(r)
 			if token == "" {
-				log.Printf("🔍 /api/auth/user - No token found (cookies: %v)", r.Cookies())
+				cookieNames := make([]string, 0, len(r.Cookies()))
+			for _, c := range r.Cookies() {
+				cookieNames = append(cookieNames, c.Name)
+			}
+			log.Printf("🔍 /api/auth/user - No token found (cookie names: %v)", cookieNames)
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnauthorized)
 				json.NewEncoder(w).Encode(map[string]interface{}{
@@ -2461,12 +2484,11 @@ func injectAuthButtons(html string, homeData HomePageData, authRequired bool) st
 				if (logoutBtn) {
 					logoutBtn.addEventListener('click', function() {
 						sessionStorage.removeItem('firebase_token');
-						// Clear cookie - must include same SameSite attrs used when setting it
 						document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=None; Secure';
 						document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=Lax';
-						updateAuthButtons();
-						// Reload to clear any protected content
-						window.location.reload();
+						// __session is HttpOnly — must be cleared server-side
+						fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+							.finally(function() { window.location.reload(); });
 					});
 				}
 			});
