@@ -27,14 +27,16 @@ Traditional e-skimming requires the attacker to inject malicious JavaScript or t
 
 ### Extensions Investigated
 
+> **Note:** Results below reflect controlled testing against Chrome Web Store extension versions available in May 2026 using this lab's specific payload. See `analysis/technical-analysis.md` for full test methodology. Extension behavior changes with updates; contributions with updated results are welcome.
+
 | Extension | Can Read Payment Forms? | Guardrails Against Injection? | Exfiltration Risk |
 |-----------|------------------------|------------------------------|-------------------|
-| Claude for Chrome | ✅ Yes (page context) | ⚠️ Partial (refuses some) | Medium |
-| ChatGPT Chrome Extension | ✅ Yes | ⚠️ Partial | Medium |
+| Claude for Chrome (v3.x) | ✅ Yes (page context) | ⚠️ Partial (refuses some) | Medium |
+| ChatGPT Chrome Extension (v2.x) | ✅ Yes | ⚠️ Partial | Medium |
 | Gemini Extension | ✅ Yes | ❌ Minimal | High |
-| Monica AI | ✅ Yes | ❌ None detected | High |
-| Merlin AI | ✅ Yes | ❌ None detected | High |
-| Sider AI | ✅ Yes | ❌ None detected | High |
+| Monica AI (v5.x) | ✅ Yes | ❌ None detected | High |
+| Merlin AI (v7.x) | ✅ Yes | ❌ None detected | High |
+| Sider AI (v4.x) | ✅ Yes | ❌ None detected | High |
 
 ## Attack Scenarios
 
