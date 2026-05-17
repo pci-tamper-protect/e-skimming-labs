@@ -47,6 +47,27 @@ for arg in "$@"; do
   fi
 done
 
+# Guard: catch service names accidentally passed as the image-tag positional arg.
+# Image tags look like git SHAs (hex), "latest", or version strings (v1.2.3).
+# Service names contain word-hyphens like "shared-c2", "home-seo", "lab-01-basic-magecart".
+# Heuristic: tags never start with a known service prefix.
+KNOWN_SERVICES="home-seo home-index labs-analytics labs-index shared-c2 traefik"
+for svc in $KNOWN_SERVICES; do
+  if [ "$IMAGE_TAG" = "$svc" ]; then
+    echo "❌ ERROR: '$IMAGE_TAG' looks like a service name, not an image tag."
+    echo "   To deploy a specific service use: --only $IMAGE_TAG"
+    echo "   Example: $0 ${ENVIRONMENT:-prd} --only $IMAGE_TAG"
+    exit 1
+  fi
+done
+# Also catch lab service names (lab-NN-* pattern)
+if echo "$IMAGE_TAG" | grep -qE '^lab-[0-9]'; then
+  echo "❌ ERROR: '$IMAGE_TAG' looks like a lab service name, not an image tag."
+  echo "   To deploy a specific service use: --only $IMAGE_TAG"
+  echo "   Example: $0 ${ENVIRONMENT:-prd} --only $IMAGE_TAG"
+  exit 1
+fi
+
 # Helper: returns 0 (true) if the service should be deployed
 should_run() {
   local svc="$1"
