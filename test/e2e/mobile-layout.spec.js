@@ -52,7 +52,11 @@ mobileLayoutTests('Mobile layout (forms, tabs, tables)', () => {
 
     const formRow = page.locator('.form-row').first()
     await expect(formRow).toBeVisible()
-    await expect(formRow).toHaveCSS('grid-template-columns', /^1fr/)
+    const columnCount = await formRow.evaluate((el) => {
+      const columns = getComputedStyle(el).gridTemplateColumns.trim()
+      return columns ? columns.split(/\s+/).length : 0
+    })
+    expect(columnCount).toBe(1)
   })
 
   test('Lab 2 C2 dashboard exposes scrollable tab bar', async ({ page }) => {
