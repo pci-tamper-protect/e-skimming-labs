@@ -94,6 +94,28 @@ npm run test:mitre:tablet    # MITRE tests on Tablet Chrome
 npm run test:report
 ```
 
+### Pre-push / CI-parity E2E (C2 + navigation)
+
+These specs fail in CI when Traefik routes lab C2 traffic to the wrong backend.
+Run them locally against the same path-based stack CI uses in staging (`/lab1/c2`, `/lab2/c2`, `/lab3/extension` via **shared-c2**):
+
+```bash
+# From repo root — start Traefik + home-index + shared-c2 (full stack: ./docker-labs.sh start)
+docker compose up -d traefik home-index shared-c2 lab2-vulnerable-site lab3-vulnerable-site
+
+cd test
+npm install
+
+# Health check + chromium specs (matches CI shard 2/4 focus)
+npm run test:prepush
+
+# Or run directly without the curl guard:
+npm run test:ci-parity          # desktop chromium
+npm run test:ci-parity:mobile   # chrome-mobile (CI default project)
+```
+
+`playwright.config.js` uses `reuseExistingServer: true` — if Traefik is already on port 8080, Playwright will not start duplicate containers.
+
 ## Test Coverage
 
 ### Back Button Tests
