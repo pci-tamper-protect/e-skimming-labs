@@ -184,19 +184,33 @@
     }
 
     // Continuous monitoring via MutationObserver
+    // Walks the full subtree of added nodes to catch injections nested inside wrapper elements
     const observer = new MutationObserver((mutations) => {
+        const findings = [];
         for (const mutation of mutations) {
             for (const node of mutation.addedNodes) {
-                if (node.nodeType === Node.ELEMENT_NODE) {
-                    const result = scanElement(node);
-                    if (result) {
-                        log('error', '⚠️ DYNAMIC INJECTION DETECTED (added after page load):');
-                        log('warn', `  Severity: ${result.severity} | Keywords: ${result.matchedKeywords.join(', ')}`);
-                        neutralize(result);
-                        report([result]);
-                    }
+                if (node.nodeType !== Node.ELEMENT_NODE) continue;
+                
+                // Scan the added node itself
+                const result = scanElement(node);
+                if (result) findings.push(result);
+                
+                // Walk all descendants — injections are often nested inside wrapper divs
+                const descendants = node.querySelectorAll('*');
+                for (const descendant of descendants) {
+                    const childResult = scanElement(descendant);
+                    if (childResult) findings.push(childResult);
                 }
             }
+        }
+        
+        if (findings.length > 0) {
+            log('error', `⚠️ DYNAMIC INJECTION DETECTED (${findings.length} element(s) added after page load):`);
+            findings.forEach(f => {
+                log('warn', `  Severity: ${f.severity} | Keywords: ${f.matchedKeywords.join(', ')}`);
+                neutralize(f);
+            });
+            report(findings);
         }
     });
 
