@@ -9,6 +9,7 @@ const { currentEnv, TEST_ENV } = require(testEnvPath)
 // Load dangerous warning handler
 const { handleDangerousWarning } = require('../utils/handle-dangerous-warning')
 const { skipIfAuthRedirect } = require('../utils/skip-if-auth-redirect')
+const { NAV_LABELS, navLink, openHomeNavMenu } = require('../utils/nav')
 
 console.log(`🧪 Global Navigation Test - Environment: ${TEST_ENV}`)
 
@@ -53,6 +54,7 @@ navigationTests('Global Navigation', () => {
 
     // Click MITRE ATT&CK link
     console.log('🔗 Clicking MITRE ATT&CK link')
+    await openHomeNavMenu(page)
     const mitreLink = page.getByRole('link', { name: /MITRE ATT&CK/i })
     await expect(mitreLink).toBeVisible()
     await mitreLink.click()
@@ -65,7 +67,7 @@ navigationTests('Global Navigation', () => {
 
     // Click back button — use .first() to avoid strict mode if multiple links match
     console.log('⬅️  Clicking back to home')
-    const backButton = page.getByRole('link', { name: /Back to Labs|Home/i }).first()
+    const backButton = navLink(page, 'labsHome').first()
     await expect(backButton).toBeVisible()
     await backButton.click()
     await page.waitForLoadState('networkidle')
@@ -84,6 +86,7 @@ navigationTests('Global Navigation', () => {
 
     // Click Threat Model link (use first to handle duplicate links)
     console.log('🔗 Clicking Threat Model link')
+    await openHomeNavMenu(page)
     const threatModelLink = page.getByRole('link', { name: /Threat Model/i }).first()
     await expect(threatModelLink).toBeVisible()
     await threatModelLink.click()
@@ -96,7 +99,7 @@ navigationTests('Global Navigation', () => {
 
     // Click back button
     console.log('⬅️  Clicking back to home')
-    const backButton = page.getByRole('link', { name: /Back to Labs/i })
+    const backButton = navLink(page, 'labsHome')
     await expect(backButton).toBeVisible()
     await backButton.scrollIntoViewIfNeeded()
     await backButton.click({ force: true })
@@ -152,7 +155,11 @@ navigationTests('Global Navigation', () => {
 
     // Click C2 server link
     console.log('🔗 Clicking C2 Server link')
-    const c2Link = page.getByRole('link', { name: /View Stolen Data|C2/i }).first()
+    const c2Link = page
+      .getByRole('link', {
+        name: new RegExp(`${NAV_LABELS.attackServer.ariaLabel}|C2|Extension Server`, 'i'),
+      })
+      .first()
     await expect(c2Link).toBeVisible()
 
     // Handle C2 link opening in new tab
@@ -182,7 +189,7 @@ navigationTests('Global Navigation', () => {
 
     // Navigate back to home from Lab 1
     console.log('⬅️  Clicking back to home from Lab 1')
-    const lab1BackButton = page.getByRole('link', { name: /Back to Labs/i }).first()
+    const lab1BackButton = navLink(page, 'labsHome').first()
     await expect(lab1BackButton).toBeVisible()
     await lab1BackButton.click()
     await page.waitForLoadState('networkidle')
@@ -237,7 +244,11 @@ navigationTests('Global Navigation', () => {
 
     // Click C2 server link
     console.log('🔗 Clicking C2 Server link')
-    const c2Link = page.getByRole('link', { name: /View Stolen Data|C2/i }).first()
+    const c2Link = page
+      .getByRole('link', {
+        name: new RegExp(`${NAV_LABELS.attackServer.ariaLabel}|C2|Extension Server`, 'i'),
+      })
+      .first()
     await expect(c2Link).toBeVisible()
 
     // Handle C2 link opening in new tab
@@ -327,7 +338,11 @@ navigationTests('Global Navigation', () => {
 
     // Click C2 server link
     console.log('🔗 Clicking C2 Server link')
-    const c2Link = page.getByRole('link', { name: /View Stolen Data|C2|Extension Server/i }).first()
+    const c2Link = page
+      .getByRole('link', {
+        name: new RegExp(`${NAV_LABELS.attackServer.ariaLabel}|C2|Extension Server`, 'i'),
+      })
+      .first()
 
     // Check if C2 link exists (Lab 3 might have different structure)
     if (await c2Link.isVisible()) {
@@ -359,7 +374,7 @@ navigationTests('Global Navigation', () => {
 
     // Navigate back to home from Lab 3
     console.log('⬅️  Clicking back to home from Lab 3')
-    const lab3BackButton = page.getByRole('link', { name: /Back to Labs/i }).first()
+    const lab3BackButton = navLink(page, 'labsHome').first()
     await expect(lab3BackButton).toBeVisible()
 
     // Note: Lab 3 may have incorrect back link, navigate directly to home instead
@@ -377,6 +392,8 @@ navigationTests('Global Navigation', () => {
 
     // Verify home page loaded
     await expect(page).toHaveTitle(/E-Skimming Labs/)
+
+    await openHomeNavMenu(page)
 
     // Check for MITRE ATT&CK link
     const mitreLink = page.getByRole('link', { name: /MITRE ATT&CK/i })
@@ -423,7 +440,11 @@ navigationTests('Global Navigation', () => {
 
     // Click C2 server link
     console.log('🔗 Opening C2 dashboard')
-    const c2Link = page.getByRole('link', { name: /View Stolen Data|C2/i }).first()
+    const c2Link = page
+      .getByRole('link', {
+        name: new RegExp(`${NAV_LABELS.attackServer.ariaLabel}|C2|Extension Server`, 'i'),
+      })
+      .first()
     await expect(c2Link).toBeVisible()
 
     // Handle C2 link opening in new tab
@@ -461,7 +482,9 @@ navigationTests('Global Navigation', () => {
 
     // Go back to C2 to test Home button
     console.log('🔗 Returning to C2 dashboard')
-    const c2LinkAgain = c2Page.getByRole('link', { name: /View Stolen Data|C2/i }).first()
+    const c2LinkAgain = c2Page
+      .getByRole('link', { name: new RegExp(`${NAV_LABELS.attackServer.ariaLabel}|C2`, 'i') })
+      .first()
     await expect(c2LinkAgain).toBeVisible({ timeout: 10000 })
 
     const [c2PageAgain] = await Promise.all([
@@ -520,7 +543,11 @@ navigationTests('Global Navigation', () => {
 
     // 3. Navigate to C2
     console.log('3️⃣  Lab 1 → C2')
-    const c2Link = page.getByRole('link', { name: /View Stolen Data|C2/i }).first()
+    const c2Link = page
+      .getByRole('link', {
+        name: new RegExp(`${NAV_LABELS.attackServer.ariaLabel}|C2|Extension Server`, 'i'),
+      })
+      .first()
     const [c2Page] = await Promise.all([
       page.context().waitForEvent('page'),
       c2Link.click()
@@ -544,19 +571,20 @@ navigationTests('Global Navigation', () => {
 
     // 5. Navigate back to Home from Lab 1
     console.log('5️⃣  Lab 1 → Home')
-    await page.getByRole('link', { name: /Back to Labs/i }).first().click()
+    await navLink(page, 'labsHome').first().click()
     await page.waitForLoadState('networkidle')
     await expect(page).toHaveURL(currentEnv.homeIndex + '/')
 
     // 6. Navigate to MITRE
     console.log('6️⃣  Home → MITRE')
+    await openHomeNavMenu(page)
     await page.getByRole('link', { name: /MITRE ATT&CK/i }).click()
     await page.waitForLoadState('networkidle')
     await expect(page).toHaveTitle(/MITRE ATT&CK/)
 
     // 7. Navigate back to Home
     console.log('7️⃣  MITRE → Home')
-    await page.getByRole('link', { name: /Back to Labs|Home/i }).first().click()
+    await navLink(page, 'labsHome').first().click()
     await page.waitForLoadState('networkidle')
     await expect(page).toHaveURL(currentEnv.homeIndex + '/')
 

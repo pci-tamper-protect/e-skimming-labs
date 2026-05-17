@@ -1,6 +1,7 @@
 // @ts-check
 const { test, expect } = require('@playwright/test')
 const { currentEnv, TEST_ENV } = require('../config/test-env')
+const { NAV_LABELS, navLink } = require('../utils/nav')
 
 /**
  * Waits for smooth scroll animation to complete
@@ -138,7 +139,7 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
 
   test('should have a functional back button with correct URL', async ({ page }) => {
     // Find the back button
-    const backButton = page.getByRole('link', { name: 'Back to Labs' })
+    const backButton = navLink(page, 'labsHome')
 
     // Check that the back button is visible
     await expect(backButton).toBeVisible()
@@ -354,7 +355,7 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
     await expect(matrixTable).toBeVisible({ timeout: 10000 })
 
     // Verify that the back button is still visible and functional
-    const backButton = page.getByRole('link', { name: 'Back to Labs' })
+    const backButton = navLink(page, 'labsHome')
     await expect(backButton).toBeVisible({ timeout: 10000 })
   })
 
@@ -367,7 +368,9 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
     await expect(nav).toBeVisible({ timeout: 10000 })
 
     // Check navigation links with increased timeout
-    await expect(nav.getByRole('link', { name: 'Back to Labs' })).toBeVisible({ timeout: 10000 })
+    await expect(nav.getByRole('link', { name: NAV_LABELS.labsHome.ariaLabel })).toBeVisible({
+      timeout: 10000,
+    })
     await expect(nav.getByRole('link', { name: 'Overview' })).toBeVisible({ timeout: 10000 })
     await expect(nav.getByRole('link', { name: 'Tactics & Techniques' })).toBeVisible({ timeout: 10000 })
     await expect(nav.getByRole('link', { name: 'Detection' })).toBeVisible({ timeout: 10000 })
@@ -479,7 +482,7 @@ test.describe('MITRE ATT&CK Matrix - Environment Detection', () => {
     await page.waitForLoadState('networkidle')
 
     // Find the back button and check its href
-    const backButton = page.getByRole('link', { name: 'Back to Labs' })
+    const backButton = navLink(page, 'labsHome')
 
     // Get the actual href - should be "/" (relative URL, Traefik handles routing)
     const actualHref = await backButton.getAttribute('href')

@@ -986,12 +986,19 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
             position: sticky;
             top: 0;
             z-index: 100;
+            transition: transform 0.2s ease;
         }
 
         .header-content {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 16px;
+        }
+
+        .header-brand {
+            flex: 1;
+            min-width: 0;
         }
 
         .logo {
@@ -999,11 +1006,81 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
             font-weight: 700;
             color: var(--accent-blue);
             text-decoration: none;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: inline-block;
+            max-width: 100%;
+        }
+
+        .nav-menu-toggle {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .nav-menu-toggle:hover {
+            background: var(--bg-hover);
+        }
+
+        .nav-menu-icon,
+        .nav-menu-icon::before,
+        .nav-menu-icon::after {
+            display: block;
+            width: 20px;
+            height: 2px;
+            background: currentColor;
+            border-radius: 1px;
+            position: relative;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+
+        .nav-menu-icon::before,
+        .nav-menu-icon::after {
+            content: '';
+            position: absolute;
+            left: 0;
+        }
+
+        .nav-menu-icon::before {
+            top: -6px;
+        }
+
+        .nav-menu-icon::after {
+            top: 6px;
+        }
+
+        .header.nav-open .nav-menu-icon {
+            background: transparent;
+        }
+
+        .header.nav-open .nav-menu-icon::before {
+            top: 0;
+            transform: rotate(45deg);
+        }
+
+        .header.nav-open .nav-menu-icon::after {
+            top: 0;
+            transform: rotate(-45deg);
+        }
+
+        .nav-menu-backdrop {
+            display: none;
         }
 
         .nav-tabs {
             display: flex;
             gap: 20px;
+            align-items: center;
         }
 
         .nav-tab {
@@ -1313,17 +1390,88 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
 
         /* Responsive */
         @media (max-width: 768px) {
+            .header {
+                padding: 10px 0;
+            }
+
+            .header.header--scroll-hidden {
+                transform: translateY(-100%);
+            }
+
+            .logo {
+                font-size: 18px;
+                font-weight: 600;
+            }
+
+            .nav-menu-toggle {
+                display: inline-flex;
+            }
+
+            .nav-menu-backdrop {
+                display: block;
+                position: fixed;
+                inset: 0;
+                background: rgba(10, 14, 39, 0.65);
+                z-index: 90;
+            }
+
+            .nav-menu-backdrop[hidden] {
+                display: none;
+            }
+
+            .nav-tabs {
+                display: none;
+                position: fixed;
+                top: 56px;
+                left: 0;
+                right: 0;
+                max-height: min(70vh, calc(100vh - 56px));
+                overflow-y: auto;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+                padding: 12px 20px 20px;
+                background: var(--bg-secondary);
+                border-bottom: 1px solid var(--border-color);
+                box-shadow: var(--shadow-lg);
+                z-index: 95;
+            }
+
+            .header.nav-open .nav-tabs {
+                display: flex;
+            }
+
+            .nav-tab,
+            .auth-btn {
+                width: 100%;
+                text-align: center;
+            }
+
+            .auth-buttons {
+                flex-direction: column;
+                width: 100%;
+                gap: 8px;
+            }
+
+            .user-email {
+                text-align: center;
+                padding: 0;
+            }
+
+            body.nav-menu-open {
+                overflow: hidden;
+            }
+
+            .hero {
+                padding: 48px 0;
+            }
+
             .hero h1 {
                 font-size: 36px;
             }
 
             .hero p {
                 font-size: 18px;
-            }
-
-            .nav-tabs {
-                flex-direction: column;
-                gap: 10px;
             }
 
             .labs-grid {
@@ -1337,11 +1485,16 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
     </style>
 </head>
 <body>
-    <header class="header">
+    <header class="header" id="site-header">
         <div class="container">
             <div class="header-content">
-                <a href="/" class="logo">E-Skimming Labs</a>
-                <nav class="nav-tabs">
+                <div class="header-brand">
+                    <a href="/" class="logo">E-Skimming Labs</a>
+                </div>
+                <button type="button" class="nav-menu-toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="site-nav">
+                    <span class="nav-menu-icon" aria-hidden="true"></span>
+                </button>
+                <nav class="nav-tabs" id="site-nav" aria-label="Site navigation">
                     <a href="/" class="nav-tab active">Home</a>
                     <a href="{{.MITREURL}}" class="nav-tab">MITRE ATT&CK</a>
                     <a href="{{.ThreatModelURL}}" class="nav-tab">Threat Model</a>
@@ -1356,6 +1509,7 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
                 </nav>
             </div>
         </div>
+        <div class="nav-menu-backdrop" hidden></div>
     </header>
 
     <main>
@@ -1521,6 +1675,70 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
     {{end}}
 
     <script>
+        (function () {
+            const header = document.getElementById('site-header');
+            const toggle = document.querySelector('.nav-menu-toggle');
+            const nav = document.getElementById('site-nav');
+            const backdrop = document.querySelector('.nav-menu-backdrop');
+            if (!header || !toggle || !nav) {
+                return;
+            }
+
+            function setNavOpen(open) {
+                header.classList.toggle('nav-open', open);
+                toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                toggle.setAttribute('aria-label', open ? 'Close navigation menu' : 'Open navigation menu');
+                if (backdrop) {
+                    backdrop.hidden = !open;
+                }
+                document.body.classList.toggle('nav-menu-open', open);
+            }
+
+            toggle.addEventListener('click', function () {
+                setNavOpen(!header.classList.contains('nav-open'));
+            });
+
+            if (backdrop) {
+                backdrop.addEventListener('click', function () {
+                    setNavOpen(false);
+                });
+            }
+
+            nav.querySelectorAll('a').forEach(function (link) {
+                link.addEventListener('click', function () {
+                    setNavOpen(false);
+                });
+            });
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape') {
+                    setNavOpen(false);
+                }
+            });
+
+            window.matchMedia('(min-width: 769px)').addEventListener('change', function (event) {
+                if (event.matches) {
+                    setNavOpen(false);
+                }
+            });
+
+            let lastScrollY = window.scrollY;
+            window.addEventListener('scroll', function () {
+                if (window.innerWidth > 768 || header.classList.contains('nav-open')) {
+                    header.classList.remove('header--scroll-hidden');
+                    lastScrollY = window.scrollY;
+                    return;
+                }
+                const currentY = window.scrollY;
+                if (currentY > 72 && currentY > lastScrollY) {
+                    header.classList.add('header--scroll-hidden');
+                } else {
+                    header.classList.remove('header--scroll-hidden');
+                }
+                lastScrollY = currentY;
+            }, { passive: true });
+        })();
+
         // Add smooth scrolling for anchor links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {

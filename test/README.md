@@ -75,7 +75,15 @@ npm run test:mitre:headed
 # Run tests on specific browsers/devices
 npm run test:chrome          # Desktop Chrome only
 npm run test:mobile          # Mobile Chrome (Pixel 5)
+npm run test:mobile:all      # Mobile + tablet projects
 npm run test:tablet          # Tablet Chrome (iPad Pro)
+
+# Mobile accessibility (axe) — requires home-index at BASE_URL (default http://localhost:8080)
+npm run test:a11y            # axe on home (Pixel 5)
+npm run test:a11y:tablet     # axe on home (iPad Pro)
+
+# Lighthouse mobile audit (headless Chrome; set BASE_URL if not on :8080)
+npm run lighthouse:mobile
 
 # Run MITRE tests on specific devices
 npm run test:mitre:chrome    # MITRE tests on Desktop Chrome

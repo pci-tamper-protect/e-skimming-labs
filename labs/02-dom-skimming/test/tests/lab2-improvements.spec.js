@@ -5,6 +5,7 @@ const path = require('path')
 // Load environment configuration
 const testEnvPath = path.resolve(__dirname, '../../../../test/config/test-env.js')
 const { currentEnv, TEST_ENV } = require(testEnvPath)
+const { NAV_LABELS, formatNavLink } = require('../../../../config/nav-labels.cjs')
 
 // Get URLs for lab 2
 const lab2VulnerableUrl = currentEnv.lab2.vulnerable
@@ -47,35 +48,37 @@ test.describe('Lab 2: DOM-Based Skimming - UI Improvements', () => {
     console.log('✅ Navigation buttons are correctly positioned above lab tabs')
   })
 
-  test('should have Back and View Stolen Data buttons that work', async ({ page }) => {
+  test('should have Labs Home and Attack Server buttons that work', async ({ page }) => {
     console.log('🧪 Testing navigation buttons functionality...')
 
     await page.goto(`${lab2VulnerableUrl}/banking.html`)
     await page.waitForLoadState('networkidle')
 
-    // Check Back button exists and has correct href
+    // Check Labs Home button exists and has correct href
     const backButton = page.locator('#back-button.back-button')
     await expect(backButton).toBeVisible()
-    await expect(backButton).toHaveText(/Back to Labs/)
+    await expect(backButton).toHaveAttribute('aria-label', NAV_LABELS.labsHome.ariaLabel)
+    await expect(backButton).toHaveText(formatNavLink('labsHome'))
 
     const backButtonHref = await backButton.getAttribute('href')
     expect(backButtonHref).toBeTruthy()
     expect(backButtonHref).not.toBe('#')
-    console.log('✅ Back button found with href:', backButtonHref)
+    console.log('✅ Labs Home button found with href:', backButtonHref)
 
-    // Check View Stolen Data button exists and has correct href
-    const viewStolenButton = page.locator('#view-stolen-button.c2-button')
-    await expect(viewStolenButton).toBeVisible()
-    await expect(viewStolenButton).toHaveText(/View Stolen Data/)
+    // Check Attack Server button exists and has correct href
+    const attackServerButton = page.locator('#view-stolen-button.c2-button')
+    await expect(attackServerButton).toBeVisible()
+    await expect(attackServerButton).toHaveAttribute('aria-label', NAV_LABELS.attackServer.ariaLabel)
+    await expect(attackServerButton).toHaveText(formatNavLink('attackServer'))
 
-    const viewStolenHref = await viewStolenButton.getAttribute('href')
-    expect(viewStolenHref).toBeTruthy()
-    expect(viewStolenHref).not.toBe('#')
-    console.log('✅ View Stolen Data button found with href:', viewStolenHref)
+    const attackServerHref = await attackServerButton.getAttribute('href')
+    expect(attackServerHref).toBeTruthy()
+    expect(attackServerHref).not.toBe('#')
+    console.log('✅ Attack Server button found with href:', attackServerHref)
 
     // Check that buttons are clickable (not disabled)
     await expect(backButton).toBeEnabled()
-    await expect(viewStolenButton).toBeEnabled()
+    await expect(attackServerButton).toBeEnabled()
     console.log('✅ Both navigation buttons are enabled and clickable')
   })
 

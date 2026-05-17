@@ -435,6 +435,17 @@
       }
 
       @media (max-width: 768px) {
+        #header > div > div[style*='display: flex'] {
+          flex-wrap: wrap;
+          gap: 12px !important;
+        }
+
+        #header a[data-nav='labsHome'] {
+          padding: 8px 12px !important;
+          font-size: 14px;
+          white-space: nowrap;
+        }
+
         #controls {
           padding: 15px 20px;
           gap: 15px;
@@ -460,7 +471,8 @@
           <a
             href="#"
             id="back-btn"
-            aria-label="Back to Labs"
+            data-nav="labsHome"
+            aria-label="Labs Home"
             style="
               background: #51cf66;
               color: white;
@@ -474,7 +486,7 @@
               z-index: 1001;
               pointer-events: auto;
             "
-            >← Back to Labs</a
+            >← Labs Home</a
           >
           <div class="subtitle" style="flex: 1">
             Visualizing attack techniques, defenses, and detection strategies based on MITRE ATT&CK

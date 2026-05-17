@@ -56,6 +56,21 @@
             display: flex;
             align-items: center;
         }
+
+        @media (max-width: 768px) {
+            .navbar .menu {
+                flex-wrap: wrap;
+                justify-content: flex-end;
+                gap: 0.5rem;
+            }
+
+            .nav-btn {
+                margin-left: 0;
+                padding: 0.5rem 0.75rem;
+                font-size: 0.8125rem;
+                white-space: nowrap;
+            }
+        }
     </style>
 </head>
 
@@ -66,9 +81,9 @@
                 <span>TechGear</span>
             </div>
             <div class="menu">
-                <a href="/" class="nav-btn btn-back" aria-label="Back to Labs">← Back to Labs</a>
-                <a href="/lab4/c2" target="_blank" rel="noopener noreferrer" class="nav-btn btn-c2" aria-label="View stolen data">🕵️ View Stolen Data</a>
-                <a href="/lab-04-writeup" class="nav-btn btn-writeup" aria-label="Lab writeup">📖 Writeup</a>
+                <a href="/" class="nav-btn btn-back" data-nav="labsHome" aria-label="Labs Home">← Labs Home</a>
+                <a href="/lab4/c2" target="_blank" rel="noopener noreferrer" class="nav-btn btn-c2" data-nav="attackServer" aria-label="Attack Server">🕵️ Attack Server</a>
+                <a href="/lab-04-writeup" class="nav-btn btn-writeup" data-nav="writeup" aria-label="Lab Writeup">📖 Writeup</a>
             </div>
         </div>
     </nav>

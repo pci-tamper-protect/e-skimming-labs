@@ -878,6 +878,12 @@
           justify-content: center;
         }
 
+        .nav-btn.back-btn {
+          padding: 8px 12px;
+          font-size: 13px;
+          white-space: nowrap;
+        }
+
         /* Matrix responsive styles */
         .matrix-container {
           margin: 20px 0;
@@ -1006,7 +1012,7 @@
           attacks
         </p>
         <nav>
-          <a href="#" id="back-btn" class="nav-btn back-btn" aria-label="Back to Labs">← Back to Labs</a>
+          <a href="#" id="back-btn" class="nav-btn back-btn" data-nav="labsHome" aria-label="Labs Home">← Labs Home</a>
           <a href="#overview" class="nav-btn">Overview</a>
           <a href="#tactics" class="nav-btn">Tactics & Techniques</a>
           <a href="#detection" class="nav-btn">Detection</a>
