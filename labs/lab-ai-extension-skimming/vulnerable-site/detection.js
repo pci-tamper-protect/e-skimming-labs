@@ -81,7 +81,10 @@
     function containsInjection(text) {
         const lower = text.toLowerCase();
         const matches = CONFIG.injectionKeywords.filter(kw => lower.includes(kw));
-        return matches.length >= 2; // Require at least 2 keyword matches to reduce false positives
+        // Require at least 2 keyword matches to flag, but only auto-remove at 3+
+        // (severity HIGH/CRITICAL). This reduces false positives from legitimate
+        // accessibility or help text that may incidentally match a keyword or two.
+        return matches.length >= 2;
     }
 
     function getInjectionSeverity(text, matchCount) {
@@ -128,9 +131,16 @@
     }
 
     function neutralize(finding) {
-        if (CONFIG.autoRemove) {
+        // Only auto-remove HIGH and CRITICAL severity to reduce false positives.
+        // MEDIUM findings are logged but not removed — operator should review.
+        if (CONFIG.autoRemove && (finding.severity === 'CRITICAL' || finding.severity === 'HIGH')) {
             finding.element.remove();
             log('warn', `NEUTRALIZED: Removed injection element <${finding.tagName}> (${finding.severity})`, {
+                keywords: finding.matchedKeywords,
+                preview: finding.text
+            });
+        } else if (finding.severity === 'MEDIUM') {
+            log('info', `SUSPICIOUS (not removed): <${finding.tagName}> matched ${finding.matchedKeywords.length} keywords — review recommended`, {
                 keywords: finding.matchedKeywords,
                 preview: finding.text
             });

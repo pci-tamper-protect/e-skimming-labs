@@ -38,8 +38,8 @@ Extension Architecture:
 ```css
 /* All of these make text invisible to humans but NOT to extensions */
 .hidden-injection {
-    display: none;              /* innerText excludes, but innerHTML doesn't */
-    visibility: hidden;         /* Some extensions still read this */
+    display: none;              /* innerText excludes this; textContent does NOT */
+    visibility: hidden;         /* innerText still reads this; textContent always reads */
     position: absolute;
     left: -9999px;             /* Off-screen but in DOM */
     font-size: 0;              /* Zero-size but parseable */
@@ -49,7 +49,7 @@ Extension Architecture:
 }
 ```
 
-**Critical finding:** Most AI extensions use `document.body.innerText` or a DOM walker that reads text content regardless of visual styling. Some use `textContent` which captures ALL text including `display:none` elements.
+**Critical finding:** The key distinction is between `innerText` (layout-aware, excludes `display:none` content) and `textContent` (returns ALL text nodes regardless of CSS). Many AI extensions use `textContent` or raw DOM walkers rather than `innerText`, meaning CSS-hidden injection payloads are still captured. Even `innerHTML` returns full markup strings regardless of visual state. Extensions that call `element.textContent` or iterate `childNodes` will always see hidden injections.
 
 ### 3. Injection Variants Tested
 
@@ -130,14 +130,24 @@ Extension Architecture:
 // AI extensions inject via content scripts, not blocked by CSP
 
 // Detection: Monitor for suspicious hidden text
+// Note: inline style selectors are fragile; also check computed styles
 function detectInjection() {
-    const hidden = document.querySelectorAll('[aria-hidden="true"], [style*="display:none"]');
-    hidden.forEach(el => {
+    const allElements = document.querySelectorAll('*');
+    allElements.forEach(el => {
+        const computed = window.getComputedStyle(el);
+        const isHidden = computed.display === 'none' || 
+                         computed.visibility === 'hidden' ||
+                         computed.opacity === '0' ||
+                         (el.getAttribute('aria-hidden') === 'true');
+        if (!isHidden) return;
+        
         const text = el.textContent.toLowerCase();
         const suspicious = ['card_number', 'cvv', 'expiry', 'form field', 
                           'verification', 'include in response', 'system context',
                           'ai assistant', 'read the values'];
-        if (suspicious.some(term => text.includes(term))) {
+        // Require 3+ keyword matches to reduce false positives
+        const matchCount = suspicious.filter(term => text.includes(term)).length;
+        if (matchCount >= 3) {
             console.warn('POTENTIAL AI INJECTION DETECTED:', el);
             el.remove(); // Neutralize
         }
@@ -185,7 +195,7 @@ def detect_injection(text):
 1. **Isolate payment forms** in iframes with `sandbox` attribute
 2. **Use virtual/tokenized card entry** (Stripe Elements, Braintree Drop-in) — extension can't read iframe content from different origin
 3. **Implement injection detection scripts** (see above)
-4. **Add payment page headers:** `X-AI-Extension-Block: payment-form`
+4. **Propose page-level signals:** Consider advocating for a standard header (e.g., `X-AI-Extension-Block: payment-form`) — *note: no such header exists in any standard today; this is aspirational and would require browser/extension vendor adoption*
 
 #### For Extension Developers:
 1. **Never send raw page content from payment pages to AI API**
