@@ -13,7 +13,7 @@ async function setMobileViewport(page) {
  * @param {import('@playwright/test').Page} page
  */
 function labsHomeLink(page) {
-  return page.getByRole('link', { name: /^(Labs Home|Back to Labs)$/i })
+  return page.getByRole('link', { name: /Labs Home|Back to Labs/i })
 }
 
 /**

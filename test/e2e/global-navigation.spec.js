@@ -157,7 +157,7 @@ navigationTests('Global Navigation', () => {
     console.log('🔗 Clicking C2 Server link')
     const c2Link = page
       .getByRole('link', {
-        name: new RegExp(`${NAV_LABELS.attackServer.ariaLabel}|C2|Extension Server`, 'i'),
+        name: new RegExp(`${NAV_LABELS.attackServer.ariaLabel}|View Stolen Data|Stolen Data|C2|Extension Server`, 'i'),
       })
       .first()
     await expect(c2Link).toBeVisible()
@@ -246,7 +246,7 @@ navigationTests('Global Navigation', () => {
     console.log('🔗 Clicking C2 Server link')
     const c2Link = page
       .getByRole('link', {
-        name: new RegExp(`${NAV_LABELS.attackServer.ariaLabel}|C2|Extension Server`, 'i'),
+        name: new RegExp(`${NAV_LABELS.attackServer.ariaLabel}|View Stolen Data|Stolen Data|C2|Extension Server`, 'i'),
       })
       .first()
     await expect(c2Link).toBeVisible()
@@ -340,7 +340,7 @@ navigationTests('Global Navigation', () => {
     console.log('🔗 Clicking C2 Server link')
     const c2Link = page
       .getByRole('link', {
-        name: new RegExp(`${NAV_LABELS.attackServer.ariaLabel}|C2|Extension Server`, 'i'),
+        name: new RegExp(`${NAV_LABELS.attackServer.ariaLabel}|View Stolen Data|Stolen Data|C2|Extension Server`, 'i'),
       })
       .first()
 
@@ -442,7 +442,7 @@ navigationTests('Global Navigation', () => {
     console.log('🔗 Opening C2 dashboard')
     const c2Link = page
       .getByRole('link', {
-        name: new RegExp(`${NAV_LABELS.attackServer.ariaLabel}|C2|Extension Server`, 'i'),
+        name: new RegExp(`${NAV_LABELS.attackServer.ariaLabel}|View Stolen Data|Stolen Data|C2|Extension Server`, 'i'),
       })
       .first()
     await expect(c2Link).toBeVisible()
@@ -483,7 +483,7 @@ navigationTests('Global Navigation', () => {
     // Go back to C2 to test Home button
     console.log('🔗 Returning to C2 dashboard')
     const c2LinkAgain = c2Page
-      .getByRole('link', { name: new RegExp(`${NAV_LABELS.attackServer.ariaLabel}|C2`, 'i') })
+      .getByRole('link', { name: new RegExp(`${NAV_LABELS.attackServer.ariaLabel}|View Stolen Data|Stolen Data|C2`, 'i') })
       .first()
     await expect(c2LinkAgain).toBeVisible({ timeout: 10000 })
 
@@ -545,7 +545,7 @@ navigationTests('Global Navigation', () => {
     console.log('3️⃣  Lab 1 → C2')
     const c2Link = page
       .getByRole('link', {
-        name: new RegExp(`${NAV_LABELS.attackServer.ariaLabel}|C2|Extension Server`, 'i'),
+        name: new RegExp(`${NAV_LABELS.attackServer.ariaLabel}|View Stolen Data|Stolen Data|C2|Extension Server`, 'i'),
       })
       .first()
     const [c2Page] = await Promise.all([

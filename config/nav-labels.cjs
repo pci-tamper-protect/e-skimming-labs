@@ -51,7 +51,8 @@ function formatNavLink(key) {
  */
 function navLink(page, key) {
   if (key === 'labsHome') {
-    return page.getByRole('link', { name: /^(Labs Home|Back to Labs)$/i })
+    // Match aria-label or visible text (may include ← prefix)
+    return page.getByRole('link', { name: /Labs Home|Back to Labs/i })
   }
   return page.getByRole('link', { name: NAV_LABELS[key].ariaLabel })
 }
