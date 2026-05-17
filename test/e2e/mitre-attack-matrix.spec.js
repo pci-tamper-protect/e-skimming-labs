@@ -482,14 +482,13 @@ test.describe('MITRE ATT&CK Matrix - Environment Detection', () => {
     await page.waitForLoadState('networkidle')
 
     // Find the back button and check its href
-    const backButton = navLink(page, 'labsHome')
+    const backButton = navLink(page, 'labsHome').first()
+    await expect(backButton).toBeVisible()
 
-    // Get the actual href - should be "/" (relative URL, Traefik handles routing)
+    // Back button should use relative URL "/" once client script runs
+    await expect(backButton).toHaveAttribute('href', '/', { timeout: 10000 })
     const actualHref = await backButton.getAttribute('href')
     console.log('Back button href:', actualHref)
-
-    // Back button should use relative URL "/"
-    expect(actualHref).toBe('/')
 
     // Verify console log was generated (if captured)
     if (consoleLogText) {

@@ -50,6 +50,9 @@ function formatNavLink(key) {
  * @param {keyof typeof NAV_LABELS} key
  */
 function navLink(page, key) {
+  if (key === 'labsHome') {
+    return page.getByRole('link', { name: /^(Labs Home|Back to Labs)$/i })
+  }
   return page.getByRole('link', { name: NAV_LABELS[key].ariaLabel })
 }
 

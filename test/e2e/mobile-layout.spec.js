@@ -3,6 +3,7 @@ const { test, expect } = require('@playwright/test')
 const { currentEnv, TEST_ENV } = require('../config/test-env')
 const { handleDangerousWarning } = require('../utils/handle-dangerous-warning')
 const { skipIfAuthRedirect } = require('../utils/skip-if-auth-redirect')
+const { setMobileViewport } = require('../utils/nav')
 
 const mobileLayoutTests =
   TEST_ENV === 'stg' && process.env.USE_PROXY !== 'true' ? test.describe.skip : test.describe
@@ -18,6 +19,7 @@ mobileLayoutTests('Mobile layout (forms, tabs, tables)', () => {
       test.skip(true, 'Lab stack unavailable (is docker-compose running on :8080?)')
     }
     await handleDangerousWarning(page)
+    await setMobileViewport(page)
   })
 
   test('Lab 2 banking tabs scroll on narrow viewport', async ({ page }) => {
@@ -66,14 +68,12 @@ mobileLayoutTests('Mobile layout (forms, tabs, tables)', () => {
     await page.goto(`${currentEnv.lab1.c2}/`)
     await skipIfAuthRedirect(page, 'Lab 1 C2')
 
-    const preStyle = await page.locator('.stolen-record pre').first().evaluate((el) => {
-      if (!el) return null
-      return getComputedStyle(el).overflowX
-    })
-    if (preStyle) {
-      expect(['auto', 'scroll']).toContain(preStyle)
-    } else {
-      await expect(page.locator('.data-section, .container')).toBeVisible()
+    const pre = page.locator('.stolen-record pre').first()
+    if ((await pre.count()) === 0) {
+      await expect(page.locator('.data-section, .container').first()).toBeVisible()
+      return
     }
+    const preStyle = await pre.evaluate((el) => getComputedStyle(el).overflowX)
+    expect(['auto', 'scroll']).toContain(preStyle)
   })
 })

@@ -1381,11 +1381,12 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
 
         .footer a {
             color: var(--accent-blue);
-            text-decoration: none;
+            text-decoration: underline;
+            text-underline-offset: 2px;
         }
 
         .footer a:hover {
-            text-decoration: underline;
+            color: var(--accent-cyan);
         }
 
         /* Responsive */
