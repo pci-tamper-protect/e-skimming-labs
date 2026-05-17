@@ -169,11 +169,6 @@ http:
         prefixes:
           - "/lab4"
 
-    strip-lab4-c2-prefix:
-      stripPrefix:
-        prefixes:
-          - "/lab4/c2"
-
     # No-op strip used by shared-c2 routes to prevent the Traefik Cloud Run provider
     # from auto-injecting a real strip-prefix middleware. The prefix below never matches
     # any real path so requests pass through unchanged (full path preserved for shared-c2).
