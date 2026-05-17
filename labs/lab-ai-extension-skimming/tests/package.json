@@ -1,0 +1,24 @@
+{
+  "name": "ai-extension-skimming-tests",
+  "version": "1.0.0",
+  "description": "Playwright test harness demonstrating AI extension e-skimming via prompt injection",
+  "private": true,
+  "scripts": {
+    "test": "npx playwright test",
+    "test:headed": "npx playwright test --headed",
+    "test:debug": "npx playwright test --debug",
+    "test:report": "npx playwright show-report evidence/report",
+    "install:browsers": "npx playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "serve": "^14.2.0"
+  },
+  "keywords": [
+    "e-skimming",
+    "prompt-injection",
+    "ai-security",
+    "playwright",
+    "pci-dss"
+  ]
+}
