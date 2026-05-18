@@ -37,10 +37,12 @@ export default defineConfig({
     /* Capture screenshot on failure */
     screenshot: 'on',
     
-    /* Record HAR for every test */
+    /* Record HAR per test worker to avoid file collisions during parallel runs.
+     * Playwright creates one BrowserContext per test; the HAR is written when the
+     * context closes. Using a unique path per worker prevents overwrites. */
     contextOptions: {
       recordHar: {
-        path: path.join(__dirname, 'evidence', 'network-trace.har'),
+        path: path.join(__dirname, 'evidence', `network-trace-${process.pid}.har`),
         mode: 'full',
         content: 'embed'
       }

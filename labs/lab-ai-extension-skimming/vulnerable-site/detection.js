@@ -51,6 +51,16 @@
         }
     }
 
+    /**
+     * Determines if an element is visually hidden from users.
+     * 
+     * Note: Legitimate screen-reader-only (sr-only) patterns also match some of
+     * these checks (e.g., clip-rect, 1px overflow:hidden). This is intentional —
+     * the detection logic requires BOTH hidden + keyword matches to flag, so a
+     * legitimate sr-only element without injection keywords will never be removed.
+     * The dual requirement (hidden AND ≥2 injection keywords) prevents false
+     * positives against accessibility content.
+     */
     function isHiddenElement(el) {
         const style = window.getComputedStyle(el);
         const inlineStyle = el.getAttribute('style') || '';
@@ -78,6 +88,11 @@
         return false;
     }
 
+    /**
+     * Standalone injection check — used by external callers via window.__aiSkimDetect.
+     * The main scan path uses inline keyword matching in scanElement() for performance,
+     * but this function is exposed for integration testing and custom monitoring scripts.
+     */
     function containsInjection(text) {
         const lower = text.toLowerCase();
         const matches = CONFIG.injectionKeywords.filter(kw => lower.includes(kw));
@@ -110,7 +125,8 @@
             matchedKeywords: matches,
             severity: getInjectionSeverity(text, matches.length),
             tagName: el.tagName,
-            className: el.className,
+            // SVG elements have className as SVGAnimatedString; coerce to string safely
+            className: typeof el.className === 'string' ? el.className : (el.className?.baseVal || ''),
             id: el.id
         };
     }
@@ -120,8 +136,11 @@
         const findings = [];
         
         for (const el of allElements) {
-            // Skip script and style elements
-            if (['SCRIPT', 'STYLE', 'LINK', 'META'].includes(el.tagName)) continue;
+            // Skip non-rendered and metadata elements.
+            // NOSCRIPT content is inert when JS is enabled; TEMPLATE content is
+            // not rendered (lives in a DocumentFragment). Neither can be read by
+            // AI extensions in normal operation.
+            if (['SCRIPT', 'STYLE', 'LINK', 'META', 'NOSCRIPT', 'TEMPLATE'].includes(el.tagName)) continue;
             
             const result = scanElement(el);
             if (result) findings.push(result);
@@ -201,6 +220,9 @@
             for (const node of mutation.addedNodes) {
                 if (node.nodeType !== Node.ELEMENT_NODE) continue;
                 
+                // Skip non-rendered elements in dynamic additions too
+                if (['SCRIPT', 'STYLE', 'LINK', 'META', 'NOSCRIPT', 'TEMPLATE'].includes(node.tagName)) continue;
+                
                 // Scan the added node itself
                 const result = scanElement(node);
                 if (result) findings.push(result);
@@ -208,6 +230,7 @@
                 // Walk all descendants — injections are often nested inside wrapper divs
                 const descendants = node.querySelectorAll('*');
                 for (const descendant of descendants) {
+                    if (['SCRIPT', 'STYLE', 'LINK', 'META', 'NOSCRIPT', 'TEMPLATE'].includes(descendant.tagName)) continue;
                     const childResult = scanElement(descendant);
                     if (childResult) findings.push(childResult);
                 }
@@ -224,10 +247,18 @@
         }
     });
 
-    observer.observe(document.body, { childList: true, subtree: true });
+    // Guard against script loading in <head> before document.body exists.
+    // If body is null, defer observer setup to DOMContentLoaded.
+    if (document.body) {
+        observer.observe(document.body, { childList: true, subtree: true });
+    } else {
+        document.addEventListener('DOMContentLoaded', () => {
+            observer.observe(document.body, { childList: true, subtree: true });
+        });
+    }
 
-    // Expose for testing
-    window.__aiSkimDetect = { runScan, CONFIG };
+    // Expose for testing and external integration
+    window.__aiSkimDetect = { runScan, containsInjection, CONFIG };
     
     log('info', 'AI Extension Skimming Detection active. Monitoring for injections...');
 })();

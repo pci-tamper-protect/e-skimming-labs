@@ -49,7 +49,7 @@ Extension Architecture:
 }
 ```
 
-**Critical finding:** The key distinction is between `innerText` (layout-aware, excludes `display:none` content) and `textContent` (returns ALL text nodes regardless of CSS). Many AI extensions use `textContent` or raw DOM walkers rather than `innerText`, meaning CSS-hidden injection payloads are still captured. Even `innerHTML` returns full markup strings regardless of visual state. Extensions that call `element.textContent` or iterate `childNodes` will always see hidden injections.
+**Critical finding:** The key distinction is between `innerText` (layout-aware, excludes `display:none` content) and `textContent` (returns ALL text nodes regardless of CSS). Many AI extensions use `textContent` or raw DOM walkers rather than `innerText`, meaning CSS-hidden injection payloads are still captured. `innerHTML` returns the full markup string regardless of any CSS property. Extensions that call `element.textContent` or iterate `childNodes` will always see hidden injections regardless of how they are visually concealed.
 
 ### 3. Injection Variants Tested
 
@@ -129,8 +129,9 @@ Extension Architecture:
 // Content Security Policy header (limited effectiveness)
 // AI extensions inject via content scripts, not blocked by CSP
 
-// Detection: Monitor for suspicious hidden text
-// Note: inline style selectors are fragile; also check computed styles
+// Simplified detection example. For a production-grade implementation with
+// MutationObserver, computed-style checks, getBoundingClientRect off-screen
+// detection, SVG handling, and severity-tiered responses, see detection.js.
 function detectInjection() {
     const allElements = document.querySelectorAll('*');
     allElements.forEach(el => {

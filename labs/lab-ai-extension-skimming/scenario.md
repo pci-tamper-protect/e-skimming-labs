@@ -56,6 +56,6 @@ The card data is exfiltrated through the AI extension's own API calls:
 
 ## Impact Assessment
 - **Estimated vulnerable population:** Millions of users with AI extensions (based on combined Chrome Web Store install counts for ChatGPT, Claude, Monica, Merlin, Sider, and similar extensions as of May 2026; exact aggregate is difficult to pin down as stores show ranges like "1M+" per extension)
-- **Detection difficulty:** Extremely high (no malicious scripts, no suspicious network)
+- **Detection difficulty:** Extremely high (no malicious scripts, no suspicious network traffic)
 - **Attribution difficulty:** Near impossible (data goes through AI provider)
 - **Scale potential:** Any site compromised in any way becomes a skimming target
