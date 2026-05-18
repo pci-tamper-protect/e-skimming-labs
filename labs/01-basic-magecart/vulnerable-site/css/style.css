@@ -118,6 +118,42 @@ main {
   background: #2980b9;
 }
 
+@media (max-width: 768px) {
+  nav ul {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  nav li {
+    margin-right: 0;
+  }
+
+  .back-button,
+  .c2-button {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.875rem;
+    white-space: nowrap;
+    min-height: 44px;
+  }
+
+  main {
+    padding: 1rem 12px;
+  }
+
+  .products {
+    grid-template-columns: 1fr;
+  }
+
+  .btn {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
 .footer {
   background: #34495e;
   color: white;

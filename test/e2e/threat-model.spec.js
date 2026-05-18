@@ -1,6 +1,7 @@
 // @ts-check
 const { test, expect } = require('@playwright/test')
 const { currentEnv, TEST_ENV } = require('../config/test-env')
+const { navLink } = require('../utils/nav')
 
 test.describe('Threat Model Page', () => {
   // Configure tests to run in parallel for maximum speed
@@ -47,7 +48,7 @@ test.describe('Threat Model Page', () => {
 
   test('should have a functional back button with correct URL', async ({ page }) => {
     // Find the back button
-    const backButton = page.getByRole('link', { name: 'Back to Labs' })
+    const backButton = navLink(page, 'labsHome')
 
     // Check that the back button is visible
     await expect(backButton).toBeVisible()
@@ -129,7 +130,7 @@ test.describe('Threat Model Page', () => {
     ).toBeVisible()
 
     // Check that the back button is still visible and functional
-    const backButton = page.getByRole('link', { name: 'Back to Labs' })
+    const backButton = navLink(page, 'labsHome')
     await expect(backButton).toBeVisible()
 
     // Check that the visualization is still accessible
@@ -143,7 +144,7 @@ test.describe('Threat Model Page', () => {
     await expect(header).toBeVisible()
 
     // Check that the back button has proper styling
-    const backButton = page.getByRole('link', { name: 'Back to Labs' })
+    const backButton = navLink(page, 'labsHome')
     await expect(backButton).toBeVisible()
 
     // Check button styling
@@ -185,7 +186,7 @@ test.describe('Threat Model Page', () => {
 
   test('should have proper navigation flow', async ({ page }) => {
     // Test navigation from threat model to home and back
-    const backButton = page.getByRole('link', { name: 'Back to Labs' })
+    const backButton = navLink(page, 'labsHome')
 
     // Go back to home (force: true — D3 animation can block actionability on mobile)
     await backButton.scrollIntoViewIfNeeded()
@@ -240,7 +241,7 @@ test.describe('Threat Model Page - Environment Detection', () => {
     await page.waitForLoadState('networkidle')
 
     // Find the back button and check its href
-    const backButton = page.getByRole('link', { name: 'Back to Labs' })
+    const backButton = navLink(page, 'labsHome')
 
     // Get the actual href - should be "/" (relative URL, Traefik handles routing)
     const actualHref = await backButton.getAttribute('href')

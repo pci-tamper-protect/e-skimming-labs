@@ -22,7 +22,7 @@ const fsPromises = require('fs').promises
 const path = require('path')
 
 const app = express()
-const PORT = process.env.PORT || 3000
+const PORT = process.env.PORT || 8080
 
 // Trust the GFE/Cloud Run proxy so req.ip reflects X-Forwarded-For
 app.set('trust proxy', true)
@@ -286,6 +286,20 @@ app.get('/lab1/c2/health', (req, res) => {
   res.json({ status: 'operational', lab: 'lab1', timestamp: new Date().toISOString() })
 })
 
+const C2_DASHBOARD_MOBILE_CSS = `
+    .container { max-width: 1000px; margin: 0 auto; }
+    .data-section { margin: 20px 0; }
+    .tabs { display: flex; margin-bottom: 1rem; border-bottom: 1px solid #0f0; }
+    .tab { background: none; border: none; color: #9ca3af; padding: 0.75rem 1.5rem; cursor: default; }
+    .tab.active { color: #0f0; border-bottom: 2px solid #0f0; }
+    .stolen-record pre { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    @media (max-width: 768px) {
+      body { padding: 12px; }
+      .tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap; }
+      .tab { flex: 0 0 auto; white-space: nowrap; min-height: 44px; }
+      .stolen-record pre { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    }`
+
 function generateLab1Dashboard(records) {
   const recordsHtml = records.map((record, index) => {
     const validation = record.validation || { valid: false, issues: [] }
@@ -306,13 +320,15 @@ function generateLab1Dashboard(records) {
       </div>`
   }).join('')
 
-  return `<!DOCTYPE html><html><head><title>Lab 1 C2 Dashboard</title><meta charset="utf-8">
+  return `<!DOCTYPE html><html><head><title>Lab 1 C2 Dashboard</title><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>body{font-family:'Courier New',monospace;max-width:1000px;margin:0 auto;padding:20px;background:#1a1a1a;color:#0f0}
     h1{color:#0f0;text-align:center;border-bottom:2px solid #0f0;padding-bottom:10px}
     .stats{background:#2a2a2a;padding:15px;margin:20px 0;border-radius:5px;border:1px solid #0f0}
     .warning{background:#8b0000;color:#ffcccc;padding:15px;margin:20px 0;border-radius:5px;text-align:center;font-weight:bold}
     nav a{color:#0f0;margin-right:15px}
-    .c2-nav{margin-bottom:15px}.c2-nav a{display:inline-block;padding:8px 16px;margin-right:10px;border:1px solid #0f0;border-radius:4px;color:#0f0;text-decoration:none;font-weight:bold}.c2-nav a:hover{background:#2a2a2a}</style></head><body>
+    .c2-nav{margin-bottom:15px}.c2-nav a{display:inline-block;padding:8px 16px;margin-right:10px;border:1px solid #0f0;border-radius:4px;color:#0f0;text-decoration:none;font-weight:bold}.c2-nav a:hover{background:#2a2a2a}
+    ${C2_DASHBOARD_MOBILE_CSS}</style></head><body>
+    <div class="container">
     <h1>⚠️ LAB 1 — MAGECART C2 DASHBOARD ⚠️</h1>
     <div class="warning">🚨 EDUCATIONAL DEMONSTRATION ONLY 🚨<br>Simulates an attacker's card skimmer collection server</div>
     <div class="c2-nav"><a href="/lab1">← Back to Lab</a><a href="/">Home</a></div>
@@ -321,9 +337,12 @@ function generateLab1Dashboard(records) {
       <p><strong>Total Records:</strong> <span id="totalRecords">${records.length}</span></p>
       <p><strong>Valid Cards:</strong> ${records.filter(r => r.validation?.valid).length}</p>
     </div>
+    <div class="data-section">
     <h2>Stolen Credit Card Data</h2>
     <div id="stolenData">
     ${records.length === 0 ? '<p>No data collected yet.</p>' : recordsHtml}
+    </div>
+    </div>
     </div>
   </body></html>`
 }
@@ -555,14 +574,15 @@ function generateLab2Dashboard(records) {
       </div>`
   }).join('')
 
-  return `<!DOCTYPE html><html><head><title>Lab 2 C2 Dashboard</title><meta charset="utf-8">
+  return `<!DOCTYPE html><html><head><title>Lab 2 C2 Dashboard</title><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>body{font-family:'Courier New',monospace;max-width:1000px;margin:0 auto;padding:20px;background:#1a1a1a;color:#0f0}
     h1{color:#0f0;text-align:center;border-bottom:2px solid #0f0;padding-bottom:10px}
     .stats{background:#2a2a2a;padding:15px;margin:20px 0;border-radius:5px;border:1px solid #0f0}
     .warning{background:#8b0000;color:#ffcccc;padding:15px;margin:20px 0;border-radius:5px;text-align:center;font-weight:bold}
     nav a{color:#0f0;margin-right:15px}
     .c2-nav{margin-bottom:15px}.c2-nav a{display:inline-block;padding:8px 16px;margin-right:10px;border:1px solid #0f0;border-radius:4px;color:#0f0;text-decoration:none;font-weight:bold}.c2-nav a:hover{background:#2a2a2a}
-    table{width:100%;border-collapse:collapse}td,th{border:1px solid #0f0;padding:8px;text-align:left}th{background:#2a2a2a}</style></head><body>
+    table{width:100%;border-collapse:collapse}td,th{border:1px solid #0f0;padding:8px;text-align:left}th{background:#2a2a2a}
+    ${C2_DASHBOARD_MOBILE_CSS}</style></head><body>
     <h1>⚠️ LAB 2 — DOM SKIMMING C2 DASHBOARD ⚠️</h1>
     <div class="warning">🚨 EDUCATIONAL DEMONSTRATION ONLY 🚨<br>Simulates an attacker's DOM-based attack collection server</div>
     <div class="c2-nav"><a href="/lab2">← Back to Lab</a><a href="/">Home</a></div>
@@ -572,9 +592,15 @@ function generateLab2Dashboard(records) {
       <p><strong>Total Records:</strong> ${records.length}</p>
       ${Object.entries(attackCounts).map(([t, n]) => `<p><strong>${t}:</strong> ${n}</p>`).join('')}
     </div>
+    <div class="data-section">
     <h2>Captured Card Data</h2>
+    <div class="tabs">
+      <span class="tab active">Recent Attacks</span>
+      <span class="tab">Statistics</span>
+    </div>
     <div id="recentData">
     ${submissions.length === 0 ? '<p>No form submissions captured yet. Submit the banking form to see card data here.</p>' : submissionRows}
+    </div>
     </div>
     ${other.length > 0 ? `<h2>Other Events (${other.length})</h2>
     <table><tr><th>#</th><th>Time</th><th>Type</th><th>Severity</th></tr>

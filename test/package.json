@@ -16,7 +16,16 @@
     "test:mitre:headed": "playwright test mitre-attack-matrix.spec.js --headed",
     "test:chrome": "playwright test --project=chromium",
     "test:mobile": "playwright test --project=chrome-mobile",
+    "test:mobile:all": "playwright test --project=chrome-mobile --project=chrome-tablet",
     "test:tablet": "playwright test --project=chrome-tablet",
+    "test:a11y": "TEST_ENV=local playwright test e2e/mobile-a11y.spec.js --project=chrome-mobile",
+    "test:a11y:tablet": "TEST_ENV=local playwright test e2e/mobile-a11y.spec.js --project=chrome-tablet",
+    "test:a11y:all": "TEST_ENV=local playwright test e2e/mobile-a11y.spec.js --project=chrome-mobile --project=chrome-tablet",
+    "test:mobile:layout": "TEST_ENV=local playwright test e2e/mobile-layout.spec.js --project=chrome-mobile",
+    "test:ci-parity": "TEST_ENV=local playwright test e2e/mobile-layout.spec.js e2e/c2-dashboard-display.spec.js e2e/global-navigation.spec.js e2e/lab2-card-capture.spec.js --project=chromium",
+    "test:ci-parity:mobile": "TEST_ENV=local playwright test e2e/mobile-layout.spec.js e2e/c2-dashboard-display.spec.js e2e/global-navigation.spec.js e2e/lab2-card-capture.spec.js --project=chrome-mobile",
+    "test:prepush": "bash scripts/prepush-e2e.sh",
+    "lighthouse:mobile": "node scripts/lighthouse-mobile.js",
     "test:mitre:chrome": "playwright test mitre-attack-matrix.spec.js --project=chromium",
     "test:mitre:mobile": "playwright test mitre-attack-matrix.spec.js --project=chrome-mobile",
     "test:mitre:tablet": "playwright test mitre-attack-matrix.spec.js --project=chrome-tablet",
@@ -25,7 +34,10 @@
     "test:threat-model:mobile": "playwright test threat-model.spec.js --project=chrome-mobile"
   },
   "devDependencies": {
-    "@playwright/test": "^1.40.0"
+    "@axe-core/playwright": "^4.11.3",
+    "@playwright/test": "^1.40.0",
+    "axe-core": "^4.11.4",
+    "lighthouse": "^12.8.2"
   },
   "keywords": [
     "playwright",

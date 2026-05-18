@@ -167,6 +167,34 @@
       .success-message.show {
         display: block;
       }
+
+      @media (max-width: 768px) {
+        .main {
+          margin: 1rem auto;
+          padding: 1.25rem;
+        }
+
+        .container {
+          padding: 0 12px;
+        }
+
+        .card-row {
+          grid-template-columns: 1fr;
+        }
+
+        input[type='text'],
+        input[type='email'],
+        input[type='tel'],
+        select {
+          font-size: 16px;
+          min-height: 44px;
+        }
+
+        .submit-btn {
+          min-height: 44px;
+          font-size: 1rem;
+        }
+      }
     </style>
   </head>
   <body>
@@ -176,7 +204,8 @@
         <div style="float: right; margin-top: 5px">
           <a
             href="/"
-            aria-label="Go back to labs homepage"
+            data-nav="labsHome"
+            aria-label="Labs Home"
             class="back-button"
             style="
               color: white;
@@ -187,7 +216,7 @@
               margin-right: 10px;
             "
 
-            >← Back to Labs</a
+            >← Labs Home</a
           >
           <a
             href="#"
@@ -201,8 +230,9 @@
               margin-right: 10px;
             "
             class="c2-button"
-            aria-label="view stolen data tab"
-            >🕵️ View Stolen Data</a
+            data-nav="attackServer"
+            aria-label="Attack Server"
+            >🕵️ Attack Server</a
           >
           <a
             href="#"

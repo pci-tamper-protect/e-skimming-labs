@@ -29,6 +29,7 @@ labs/04-steganography-favicon/c2-data/master-log.jsonl
 
 **/playwright-report/*
 **/test-results/*
+test/lighthouse-reports/
 test/.auth/
 
 *.png

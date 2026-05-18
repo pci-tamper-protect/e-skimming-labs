@@ -312,6 +312,8 @@ services:
   shared-c2:
     build: deploy/shared-components/shared-c2-server
     container_name: e-skimming-labs-shared-c2
+    environment:
+      - PORT=8080
     networks:
       - labs-network
     volumes:
@@ -322,7 +324,7 @@ services:
     depends_on:
       - traefik
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:3000/health']
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:8080/health']
       interval: 10s
       timeout: 3s
       retries: 3
@@ -349,9 +351,9 @@ services:
       - "traefik.http.routers.lab2-c2-collect.service=shared-c2"
       # Dashboard & API (auth required)
       - "traefik.http.routers.lab2-c2.rule=PathPrefix(`/lab2/c2`)"
-      - "traefik.http.routers.lab2-c2.priority=300"
+      - "traefik.http.routers.lab2-c2.priority=400"
       - "traefik.http.routers.lab2-c2.entrypoints=web"
-      - "traefik.http.routers.lab2-c2.middlewares=lab2-auth-check@file"
+      - "traefik.http.routers.lab2-c2.middlewares=strip-passthrough-prefix@file,lab2-auth-check@file"
       - "traefik.http.routers.lab2-c2.service=shared-c2"
       # ── Lab 3 Extension routes ───────────────────────────────────────────────
       # Collect (no auth — extension posts from victim browser)
@@ -361,9 +363,9 @@ services:
       - "traefik.http.routers.lab3-c2-collect.service=shared-c2"
       # Dashboard & API (auth required)
       - "traefik.http.routers.lab3-extension.rule=PathPrefix(`/lab3/extension`)"
-      - "traefik.http.routers.lab3-extension.priority=300"
+      - "traefik.http.routers.lab3-extension.priority=400"
       - "traefik.http.routers.lab3-extension.entrypoints=web"
-      - "traefik.http.routers.lab3-extension.middlewares=lab3-auth-check@file"
+      - "traefik.http.routers.lab3-extension.middlewares=strip-passthrough-prefix@file,lab3-auth-check@file"
       - "traefik.http.routers.lab3-extension.service=shared-c2"
       # ── Lab 4 C2 routes ──────────────────────────────────────────────────────
       # Collect (no auth — skimmer posts from victim browser)
@@ -378,7 +380,7 @@ services:
       - "traefik.http.routers.lab4-c2.middlewares=lab4-auth-check@file"
       - "traefik.http.routers.lab4-c2.service=shared-c2"
       # ── Backend ──────────────────────────────────────────────────────────────
-      - "traefik.http.services.shared-c2.loadbalancer.server.port=3000"
+      - "traefik.http.services.shared-c2.loadbalancer.server.port=8080"
 
   # =============================================================================
   # LAB VARIANTS (Optional - Advanced Scenarios)

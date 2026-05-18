@@ -1,0 +1,42 @@
+/* Shared mobile tweaks for lab navigation button rows */
+@media (max-width: 768px) {
+  .nav-buttons-row .container,
+  .nav-buttons-row .header-content {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .nav-buttons-row .nav-button,
+  nav .back-button,
+  nav .c2-button,
+  nav .writeup-button,
+  .nav-btn.btn-back,
+  .nav-btn.btn-c2,
+  .nav-btn.btn-writeup {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    white-space: nowrap;
+    flex: 0 1 auto;
+    min-width: 0;
+    text-align: center;
+  }
+
+  nav ul {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  nav li {
+    margin-right: 0;
+  }
+
+  .navbar .menu {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+
+  .nav-btn {
+    margin-left: 0;
+  }
+}

@@ -10,6 +10,7 @@ COPY server.js ./
 # Create per-lab data directories
 RUN mkdir -p /app/data/lab1 /app/data/lab2 /app/data/lab3
 
-EXPOSE 3000
+ENV PORT=8080
+EXPOSE 8080
 
 CMD ["node", "server.js"]
