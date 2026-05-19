@@ -21,7 +21,7 @@ function labsHomeLink(page) {
  * @param {import('@playwright/test').Page} page
  */
 async function openHomeNavMenu(page) {
-  const menuButton = page.getByRole('button', { name: NAV_LABELS.homeMenuOpen.ariaLabel })
+  const menuButton = page.locator('[aria-controls="site-nav"]').first()
   if (!(await menuButton.isVisible())) {
     return
   }

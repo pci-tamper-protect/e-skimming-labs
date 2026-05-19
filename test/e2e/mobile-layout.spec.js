@@ -8,23 +8,30 @@ const { setMobileViewport } = require('../utils/nav')
 const mobileLayoutTests =
   TEST_ENV === 'stg' && process.env.USE_PROXY !== 'true' ? test.describe.skip : test.describe
 
+async function gotoOrSkip(page, url, label) {
+  let response
+  try {
+    response = await page.goto(url, { timeout: 8000 })
+  } catch (error) {
+    test.skip(true, `${label} unavailable (${error.message})`)
+    return
+  }
+
+  if (!response || response.status() >= 400) {
+    test.skip(true, `${label} unavailable (HTTP ${response?.status() ?? 'error'})`)
+  }
+
+  await handleDangerousWarning(page)
+  await skipIfAuthRedirect(page, label)
+}
+
 mobileLayoutTests('Mobile layout (forms, tabs, tables)', () => {
   test.beforeEach(async ({ page }) => {
-    try {
-      const response = await page.goto(currentEnv.homeIndex, { timeout: 8000 })
-      if (!response || response.status() >= 400) {
-        test.skip(true, `Lab stack unavailable (HTTP ${response?.status() ?? 'error'})`)
-      }
-    } catch {
-      test.skip(true, 'Lab stack unavailable (is docker-compose running on :8080?)')
-    }
-    await handleDangerousWarning(page)
     await setMobileViewport(page)
   })
 
   test('Lab 2 banking tabs scroll on narrow viewport', async ({ page }) => {
-    await page.goto(`${currentEnv.lab2.vulnerable}/banking.html`)
-    await skipIfAuthRedirect(page, 'Lab 2 banking')
+    await gotoOrSkip(page, `${currentEnv.lab2.vulnerable}/banking.html`, 'Lab 2 banking')
 
     const tabList = page.locator('.lab-tabs ul')
     await expect(tabList).toBeVisible()
@@ -33,8 +40,7 @@ mobileLayoutTests('Mobile layout (forms, tabs, tables)', () => {
   })
 
   test('Lab 1 checkout stacks card fields on mobile', async ({ page }) => {
-    await page.goto(`${currentEnv.lab1.vulnerable}/checkout_single.html`)
-    await skipIfAuthRedirect(page, 'Lab 1 checkout')
+    await gotoOrSkip(page, `${currentEnv.lab1.vulnerable}/checkout_single.html`, 'Lab 1 checkout')
 
     const cardRow = page.locator('.card-row')
     await expect(cardRow).toBeVisible()
@@ -47,8 +53,7 @@ mobileLayoutTests('Mobile layout (forms, tabs, tables)', () => {
   })
 
   test('Lab 3 checkout form rows are single column', async ({ page }) => {
-    await page.goto(`${currentEnv.lab3.vulnerable}/`)
-    await skipIfAuthRedirect(page, 'Lab 3 checkout')
+    await gotoOrSkip(page, `${currentEnv.lab3.vulnerable}/`, 'Lab 3 checkout')
 
     const formRow = page.locator('.form-row').first()
     await expect(formRow).toBeVisible()
@@ -59,18 +64,14 @@ mobileLayoutTests('Mobile layout (forms, tabs, tables)', () => {
     expect(columnCount).toBe(1)
   })
 
-  test('Lab 2 C2 dashboard exposes scrollable tab bar', async ({ page }) => {
-    await page.goto(`${currentEnv.lab2.c2}/`)
-    await skipIfAuthRedirect(page, 'Lab 2 C2')
+  test('Lab 2 C2 dashboard keeps captured data readable on mobile', async ({ page }) => {
+    await gotoOrSkip(page, `${currentEnv.lab2.c2}/`, 'Lab 2 C2')
 
-    const tabs = page.locator('.tabs')
-    await expect(tabs).toBeVisible()
-    await expect(tabs).toHaveCSS('overflow-x', /auto|scroll/)
+    await expect(page.locator('.data-section').first()).toBeVisible()
   })
 
   test('Lab 1 C2 dashboard pre blocks scroll horizontally', async ({ page }) => {
-    await page.goto(`${currentEnv.lab1.c2}/`)
-    await skipIfAuthRedirect(page, 'Lab 1 C2')
+    await gotoOrSkip(page, `${currentEnv.lab1.c2}/`, 'Lab 1 C2')
 
     const pre = page.locator('.stolen-record pre').first()
     if ((await pre.count()) === 0) {

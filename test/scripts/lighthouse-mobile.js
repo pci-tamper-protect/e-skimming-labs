@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * Run Lighthouse with mobile form factor against the home index.
+ * Run Lighthouse with mobile form factor against a configurable URL.
  *
  * Env:
  *   BASE_URL          - origin (default http://localhost:8080), same as test/config/test-env.js
  *   LIGHTHOUSE_PATH   - path to audit (default /)
- *   LIGHTHOUSE_OUTPUT - output basename (default lighthouse-reports/mobile)
+ *   LIGHTHOUSE_OUTPUT - output basename (default lighthouse-reports/mobile-<path>)
  */
 const { spawnSync } = require('child_process')
 const fs = require('fs')
@@ -14,10 +14,15 @@ const path = require('path')
 const baseUrl = (process.env.BASE_URL || 'http://localhost:8080').replace(/\/$/, '')
 const auditPath = process.env.LIGHTHOUSE_PATH || '/'
 const targetUrl = new URL(auditPath, `${baseUrl}/`).href
+const reportSlug = new URL(targetUrl).pathname
+  .replace(/^\/$/, 'home')
+  .replace(/^\/|\/$/g, '')
+  .replace(/[^a-z0-9]+/gi, '-')
+  .toLowerCase()
 
 const reportBasename =
   process.env.LIGHTHOUSE_OUTPUT ||
-  path.join(__dirname, '..', 'lighthouse-reports', 'mobile')
+  path.join(__dirname, '..', 'lighthouse-reports', `mobile-${reportSlug}`)
 
 const reportDir = path.dirname(reportBasename)
 fs.mkdirSync(reportDir, { recursive: true })

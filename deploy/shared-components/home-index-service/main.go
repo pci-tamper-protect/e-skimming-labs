@@ -1032,6 +1032,11 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
             background: var(--bg-hover);
         }
 
+        .nav-menu-toggle:focus-visible {
+            outline: 3px solid var(--accent-cyan);
+            outline-offset: 3px;
+        }
+
         .nav-menu-icon,
         .nav-menu-icon::before,
         .nav-menu-icon::after {
@@ -1423,10 +1428,10 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
             .nav-tabs {
                 display: none;
                 position: fixed;
-                top: 56px;
+                top: var(--header-height, 56px);
                 left: 0;
                 right: 0;
-                max-height: min(70vh, calc(100vh - 56px));
+                max-height: min(70vh, calc(100vh - var(--header-height, 56px)));
                 overflow-y: auto;
                 flex-direction: column;
                 align-items: stretch;
@@ -1685,7 +1690,12 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
                 return;
             }
 
+            function updateHeaderHeight() {
+                document.documentElement.style.setProperty('--header-height', header.offsetHeight + 'px');
+            }
+
             function setNavOpen(open) {
+                updateHeaderHeight();
                 header.classList.toggle('nav-open', open);
                 toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
                 toggle.setAttribute('aria-label', open ? 'Close navigation menu' : 'Open navigation menu');
@@ -1717,11 +1727,20 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
                 }
             });
 
-            window.matchMedia('(min-width: 769px)').addEventListener('change', function (event) {
+            const desktopQuery = window.matchMedia('(min-width: 769px)');
+            const handleDesktopChange = function (event) {
                 if (event.matches) {
                     setNavOpen(false);
                 }
-            });
+            };
+            if (desktopQuery.addEventListener) {
+                desktopQuery.addEventListener('change', handleDesktopChange);
+            } else if (desktopQuery.addListener) {
+                desktopQuery.addListener(handleDesktopChange);
+            }
+
+            updateHeaderHeight();
+            window.addEventListener('resize', updateHeaderHeight, { passive: true });
 
             let lastScrollY = window.scrollY;
             window.addEventListener('scroll', function () {
