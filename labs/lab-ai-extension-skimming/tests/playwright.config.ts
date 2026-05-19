@@ -90,6 +90,25 @@ export default defineConfig({
         baseURL: 'http://localhost:3119',
       },
     },
+    {
+      // Commercial extension project — tests real/commercial AI assistant extensions
+      // for prompt-injection susceptibility.
+      //
+      // Set COMMERCIAL_EXT_PATH to an unpacked extension folder before running:
+      //   export COMMERCIAL_EXT_PATH=/path/to/unpacked-extension
+      //   npx playwright test --project=commercial-ext
+      //
+      // Falls back to fixture-extension/ when COMMERCIAL_EXT_PATH is not set so
+      // the harness mechanics are always testable in CI.
+      //
+      // See COMMERCIAL-EXTENSION-TESTING.md for full setup instructions.
+      name: 'commercial-ext',
+      testMatch: '**/commercial-extension-proxy.spec.ts',
+      use: {
+        headless: false,        // Chrome extensions require headful mode
+        baseURL: 'http://localhost:3119',
+      },
+    },
   ],
 
   /* Run a local web server before starting the tests */

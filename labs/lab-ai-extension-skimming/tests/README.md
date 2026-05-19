@@ -10,6 +10,7 @@ This test harness reproduces the attack vector described in [Lab: AI Extension S
 |---|---|---|---|
 | **DOM mechanics** | `ai-extension-skimming.spec.ts` | Headless Playwright | textContent vs innerText, CSS hiding, MutationObserver detection |
 | **Real extension** | `ai-extension-with-fixture.spec.ts` | `--load-extension` + `launchPersistentContext` | A real Chrome extension content script extracts the injection payload |
+| **Commercial ext** | `commercial-extension-proxy.spec.ts` | `--load-extension` + LLM API interception | Tests real/commercial AI extensions for prompt-injection vulnerability; intercepts outbound LLM API calls |
 
 The real-extension suite uses `fixture-extension/` — a minimal Chrome Manifest V3 extension that replicates the content-extraction pattern of AI assistant extensions (reading `document.body.textContent` and harvesting form field values). It is loaded by Playwright using Chrome's `--load-extension` flag, giving the same runtime environment as any Web Store extension.
 
@@ -31,7 +32,7 @@ npx playwright install chromium
 ## Running Tests
 
 ```bash
-# Run ALL tests (both DOM mechanics + real extension fixture)
+# Run ALL tests (DOM mechanics + real extension fixture)
 npm test
 
 # Run only DOM-mechanics tests (headless, fast)
@@ -39,6 +40,19 @@ npx playwright test --project=chromium
 
 # Run only real-extension tests (requires headful Chrome)
 npx playwright test --project=extension
+
+# Run commercial-extension prompt-injection defense tests
+# (falls back to fixture-extension/ when COMMERCIAL_EXT_PATH is not set)
+npx playwright test --project=commercial-ext
+
+# Run against a real commercial extension (see COMMERCIAL-EXTENSION-TESTING.md)
+export COMMERCIAL_EXT_PATH=/path/to/unpacked-extension
+npx playwright test --project=commercial-ext
+
+# Run with mitmproxy to capture extension-to-LLM traffic
+export COMMERCIAL_EXT_PATH=/path/to/unpacked-extension
+export PROXY_PORT=8080
+npx playwright test --project=commercial-ext
 
 # Run with browser visible (headed mode)
 npm run test:headed
