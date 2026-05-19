@@ -14,8 +14,19 @@ import fs from 'fs';
  * 3. Hidden instructions tell the AI to extract and include card data in its response
  * 4. Card data is exfiltrated through the AI extension's API calls
  * 
- * These tests simulate extension behavior since Playwright cannot load real extensions.
- * The principle is identical: programmatic DOM access reveals hidden content.
+ * DOM-Level Mechanics Tests (this file)
+ * ======================================
+ * These tests prove the attack mechanics at the DOM level:
+ *   - Hidden element invisibility to users
+ *   - textContent vs innerText extraction difference
+ *   - MutationObserver-based detection
+ *
+ * Real Chrome Extension Tests
+ * ===========================
+ * See ai-extension-with-fixture.spec.ts for tests that load an *actual Chrome
+ * extension* (fixture-extension/) via --load-extension / launchPersistentContext.
+ * Those tests prove the same attack surface using the real Chrome extension system,
+ * not DOM simulation.
  */
 
 const EVIDENCE_DIR = path.join(__dirname, 'evidence');

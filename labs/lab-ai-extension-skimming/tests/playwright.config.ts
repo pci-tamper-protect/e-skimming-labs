@@ -3,12 +3,22 @@ import path from 'path';
 
 /**
  * Playwright configuration for AI Extension E-Skimming Lab
- * 
- * Configures:
- * - Screenshot capture on test failure
- * - HAR recording for network analysis
- * - Evidence output directory
- * - Local web server for serving the vulnerable checkout page
+ *
+ * Two test suites are defined:
+ *
+ * 1. "chromium" project  — ai-extension-skimming.spec.ts
+ *    Uses the standard headless Playwright browser context.  These tests prove
+ *    the DOM-level attack mechanics (textContent vs innerText, MutationObserver
+ *    detection, etc.) without needing a real extension.
+ *
+ * 2. "extension" project — ai-extension-with-fixture.spec.ts
+ *    Uses chromium.launchPersistentContext with --load-extension to load the
+ *    fixture-extension/ stub extension into a real (headful) Chrome instance.
+ *    This is the closest Playwright can get to testing actual AI assistant
+ *    extension behaviour.  See ai-extension-with-fixture.spec.ts for details.
+ *
+ * Playwright docs on Chrome extension testing:
+ *   https://playwright.dev/docs/chrome-extensions
  */
 export default defineConfig({
   testDir: '.',
@@ -61,8 +71,24 @@ export default defineConfig({
   /* Configure projects for testing */
   projects: [
     {
+      // Standard headless project — DOM-level simulation tests
       name: 'chromium',
+      testMatch: '**/ai-extension-skimming.spec.ts',
       use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      // Real-extension project — loads fixture-extension/ via --load-extension
+      // These tests manage their own BrowserContext (launchPersistentContext)
+      // so they don't inherit the global `use` browser options.
+      name: 'extension',
+      testMatch: '**/ai-extension-with-fixture.spec.ts',
+      use: {
+        // Headful is required for Playwright extension loading.
+        // The extension tests call chromium.launchPersistentContext directly,
+        // so these settings are informational only — the spec controls launch.
+        headless: false,
+        baseURL: 'http://localhost:3119',
+      },
     },
   ],
 

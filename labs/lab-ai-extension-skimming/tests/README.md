@@ -4,9 +4,16 @@ Automated test suite demonstrating how hidden prompt injection payloads in check
 
 ## Overview
 
-This test harness reproduces the attack vector described in [Lab: AI Extension Skimming](../README.md). It uses Playwright to simulate the behavior of AI browser extensions that read page content, demonstrating how invisible prompt injection payloads hidden via CSS can be extracted and used to steal card data.
+This test harness reproduces the attack vector described in [Lab: AI Extension Skimming](../README.md). It contains two complementary test suites:
 
-> **Note:** These tests simulate extension behavior programmatically. Playwright cannot control real browser extensions, but the DOM access patterns used here are identical to what extensions like AI assistants, summarizers, and copilots perform.
+| Suite | File | Method | What it proves |
+|---|---|---|---|
+| **DOM mechanics** | `ai-extension-skimming.spec.ts` | Headless Playwright | textContent vs innerText, CSS hiding, MutationObserver detection |
+| **Real extension** | `ai-extension-with-fixture.spec.ts` | `--load-extension` + `launchPersistentContext` | A real Chrome extension content script extracts the injection payload |
+
+The real-extension suite uses `fixture-extension/` — a minimal Chrome Manifest V3 extension that replicates the content-extraction pattern of AI assistant extensions (reading `document.body.textContent` and harvesting form field values). It is loaded by Playwright using Chrome's `--load-extension` flag, giving the same runtime environment as any Web Store extension.
+
+> **Playwright docs:** https://playwright.dev/docs/chrome-extensions
 
 ## Prerequisites
 
@@ -24,8 +31,14 @@ npx playwright install chromium
 ## Running Tests
 
 ```bash
-# Run all tests
+# Run ALL tests (both DOM mechanics + real extension fixture)
 npm test
+
+# Run only DOM-mechanics tests (headless, fast)
+npx playwright test --project=chromium
+
+# Run only real-extension tests (requires headful Chrome)
+npx playwright test --project=extension
 
 # Run with browser visible (headed mode)
 npm run test:headed
@@ -37,9 +50,70 @@ npm run test:debug
 npm run test:report
 ```
 
-## Test Structure
+> **Note:** The `extension` project tests open a visible Chrome window — this is required by Playwright when loading Chrome extensions via `--load-extension`.
 
-### Test 1: Hidden Injection Payload Analysis
+## Fixture Extension (`fixture-extension/`)
+
+A minimal Chrome Manifest V3 extension that replicates the content-extraction behaviour of real AI assistant browser extensions.
+
+```
+fixture-extension/
+├── manifest.json        # MV3 manifest — declares content_scripts + host_permissions
+├── content-script.js    # Runs at document_idle; reads textContent, innerText, form fields;
+│                        # stores results on window.__aiExtensionCapture; dispatches
+│                        # __aiExtensionCaptureReady CustomEvent
+└── background.js        # MV3 service worker (no-op stub; real extensions relay to LLM API)
+```
+
+Loaded by Playwright via:
+```ts
+chromium.launchPersistentContext(userDataDir, {
+  args: [
+    `--disable-extensions-except=${EXTENSION_PATH}`,
+    `--load-extension=${EXTENSION_PATH}`,
+  ],
+})
+```
+
+## Test Suites
+
+### Suite A — Extension fixture loads and captures page content
+
+**What it proves:** The fixture extension content script runs automatically at `document_idle` in Chrome's real extension system, populating `window.__aiExtensionCapture` with the full `textContent` extraction.
+
+**Evidence generated:**
+- `evidence/A1-extension-loaded.json` — Capture metadata
+- `evidence/A1-extension-active.png` — Screenshot with extension active
+- `evidence/A2-isolated-world.json` — Isolated-world execution proof
+
+### Suite B — Extension reads hidden injection payload
+
+**What it proves:** A real Chrome extension content script using `textContent` extracts the hidden prompt injection, while `innerText` does not. The extension's built-in keyword scanner flags it.
+
+**Evidence generated:**
+- `evidence/B1-extension-captures-injection.json` — Injection payload in extension capture
+- `evidence/B2-innerText-vs-textContent.json` — Safe vs unsafe extraction comparison
+- `evidence/B3-extension-self-detection.json` — Keyword detection results
+
+### Suite C — Full attack chain with payment form data
+
+**What it proves:** When a user fills in real card data with the AI extension active, the extension's extraction window contains both the injection instructions AND the live form values simultaneously — the complete attack chain.
+
+**Evidence generated:**
+- `evidence/C1-full-attack-chain.json` — Combined injection + card data capture
+- `evidence/C1-form-filled.png` — Form with test card data
+- `evidence/C1-exfiltration-complete.png` — Final state
+- `evidence/C2-extension-timing.json` — Extension fires before user interaction
+
+### Suite D — HAR / trace evidence
+
+**What it proves:** Playwright trace ZIP captures real browser activity with extension loaded.
+
+**Evidence generated:**
+- `evidence/D1-har-evidence.json` — Trace path + notes
+- `evidence/D1-har-session.png` — Screenshot
+
+### Test 1: Hidden Injection Payload Analysis (DOM suite)
 
 **What it proves:** The prompt injection element exists in the DOM but is completely invisible to users through multiple CSS hiding mechanisms (position off-screen, opacity 0, font-size 0, aria-hidden).
 
@@ -48,7 +122,7 @@ npm run test:report
 - `evidence/01-injection-keywords.json` — Injection keyword analysis
 - `evidence/01-page-appears-normal.png` — Screenshot showing normal-looking page
 
-### Test 2: AI Extension Content Extraction Simulation
+### Test 2: AI Extension Content Extraction — DOM Mechanics
 
 **What it proves:** The critical difference between `innerText` (safe, CSS-aware) and `textContent` (unsafe, CSS-unaware). Most AI extensions use `textContent` or direct DOM traversal, which extracts hidden content regardless of visibility.
 
@@ -134,23 +208,29 @@ Tests use Stripe's standard test card numbers (no real charges):
 
 ```
 tests/
-├── playwright.config.ts      # Test configuration (HAR, screenshots, local server)
-├── ai-extension-skimming.spec.ts  # Main test suite (11 tests)
-├── package.json              # Dependencies
-├── README.md                 # This file
-└── evidence/                 # Generated evidence (gitignored, created at runtime)
-    ├── *.json                # Structured findings
-    ├── *.png                 # Screenshots
-    ├── network-trace.har     # Network recording
-    └── report/               # HTML test report
+├── playwright.config.ts                  # Two projects: chromium (DOM) + extension (real ext)
+├── ai-extension-skimming.spec.ts         # DOM-mechanics tests (headless)
+├── ai-extension-with-fixture.spec.ts     # Real extension tests (--load-extension)
+├── fixture-extension/                    # Stub Chrome MV3 extension
+│   ├── manifest.json
+│   ├── content-script.js
+│   └── background.js
+├── package.json
+├── README.md
+└── evidence/                             # Generated evidence (gitignored, created at runtime)
+    ├── *.json                            # Structured findings
+    ├── *.png                             # Screenshots
+    ├── *.har                             # Network recordings
+    ├── *.zip                             # Playwright traces
+    └── report/                           # HTML test report
 ```
 
 ## Limitations
 
-- Cannot test actual browser extension behavior (Chrome extension APIs not available in Playwright)
-- Simulates DOM access patterns that extensions use rather than running real extension code
-- HAR captures page loads but not extension-to-API traffic (would require extension proxy)
-- Detection timing may vary slightly between runs
+- Cannot drive the **UI** of commercial AI extensions (e.g., sidebar chat, toolbar popups) — those require closed-source extension code
+- The fixture extension is a controlled stub; real extensions may use different extraction methods (e.g., `TreeWalker`, `Selection`, `getComputedStyle` filtering)
+- HAR captures page loads; extension-to-LLM API traffic would require a proxy intercepting the extension's background service worker
+- Tests must run headful (`headless: false`) when the `extension` project is active; some CI environments require `xvfb-run`
 
 ## References
 
