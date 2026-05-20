@@ -11,7 +11,7 @@
     return `${clean.slice(0, 4)} **** **** ${clean.slice(-4)}`
   }
 
-  const endpoint = window.location.pathname.startsWith('/lab5') ? '/lab5/c2/collect' : '/c2/collect'
+  const endpoint = '/lab5/c2/collect'
 
   form.addEventListener(
     'submit',
