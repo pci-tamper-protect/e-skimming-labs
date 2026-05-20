@@ -51,12 +51,7 @@
 
   function absRect(el) {
     const r = el.getBoundingClientRect()
-    return {
-      top: r.top + window.scrollY,
-      left: r.left + window.scrollX,
-      width: r.width,
-      height: r.height,
-    }
+    return { top: r.top, left: r.left, width: r.width, height: r.height }
   }
 
   function injectStyles() {
@@ -65,7 +60,7 @@
     s.id = 'xray-styles'
     s.textContent = `
       #xray-sheen {
-        position: absolute;
+        position: fixed;
         background: rgba(220, 38, 38, 0.07);
         border: 1.5px solid rgba(220, 38, 38, 0.35);
         border-radius: 4px;
