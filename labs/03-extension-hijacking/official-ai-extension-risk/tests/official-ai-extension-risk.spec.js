@@ -1,9 +1,10 @@
 // @ts-check
 const { test, expect } = require('@playwright/test')
 const path = require('path')
+const { pathToFileURL } = require('url')
 
 const fixturePath = path.resolve(__dirname, '../fixtures/checkout-prompt-injection.html')
-const fixtureUrl = `file://${fixturePath}`
+const fixtureUrl = pathToFileURL(fixturePath).href
 
 async function collectAsExtensionLikeContentScript(page) {
   return page.evaluate(() => {
