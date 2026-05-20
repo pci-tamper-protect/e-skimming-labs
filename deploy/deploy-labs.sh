@@ -421,6 +421,44 @@ deploy_lab04() {
 }
 
 # ============================================================================
+# LAB 5: 404 Error Page Injection
+# ============================================================================
+
+deploy_lab05() {
+  echo ""
+  echo "🔬 Deploying Lab 05: 404 Error Page Injection..."
+
+  echo "   📦 Building lab-05-404-error-page-injection-${ENVIRONMENT}..."
+  LAB5_IMAGE="${LABS_GAR_LOCATION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/05-404-error-page-injection:${IMAGE_TAG}"
+
+  build_and_push \
+    "lab-05-404-error-page-injection-${ENVIRONMENT}" \
+    "labs/05-404-error-page-injection" \
+    "Dockerfile" \
+    "$LAB5_IMAGE"
+
+  TRAEFIK_LABELS=$(get_lab_labels "lab5-vulnerable-site")
+
+  gcloud run deploy lab-05-404-error-page-injection-${ENVIRONMENT} \
+    --image="$LAB5_IMAGE" \
+    --region=${LABS_GAR_LOCATION} \
+    --platform=managed \
+    --project=${LABS_PROJECT_ID} \
+    --no-allow-unauthenticated \
+    --service-account=labs-runtime-sa@${LABS_PROJECT_ID}.iam.gserviceaccount.com \
+    --port=8080 \
+    --memory=512Mi \
+    --cpu=1 \
+    --min-instances=0 \
+    --max-instances=10 \
+    --set-env-vars="LAB_NAME=05-404-error-page-injection,ENVIRONMENT=${ENVIRONMENT},DOMAIN=${DOMAIN_PREFIX},HOME_URL=https://${DOMAIN_PREFIX},C2_URL=https://${DOMAIN_PREFIX}/lab5/c2" \
+    --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_STG:latest \
+    --labels="environment=${ENVIRONMENT},lab=05-404-error-page-injection,project=e-skimming-labs,${TRAEFIK_LABELS}"
+
+  echo "   ✅ Lab 5 Main deployed"
+}
+
+# ============================================================================
 # MAIN DEPLOYMENT LOGIC
 # ============================================================================
 
@@ -443,11 +481,15 @@ case "$LAB_NUMBER" in
   "04")
     deploy_lab04
     ;;
+  "05")
+    deploy_lab05
+    ;;
   "all")
     deploy_lab01
     deploy_lab02
     deploy_lab03
     deploy_lab04
+    deploy_lab05
     ;;
 esac
 
@@ -479,5 +521,8 @@ case "$LAB_NUMBER" in
   "04"|"all")
     echo "   - lab4-c2-${ENVIRONMENT}"
     echo "   - lab-04-steganography-${ENVIRONMENT}"
+    ;;&
+  "05"|"all")
+    echo "   - lab-05-404-error-page-injection-${ENVIRONMENT}"
     ;;
 esac

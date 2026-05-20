@@ -79,7 +79,7 @@ RUN mkdir -p ./docs/labs && \
     ls -la ./docs/labs/ && \
     echo "" && \
     echo "📄 Verifying all lab READMEs exist:" && \
-    for lab in 01-basic-magecart 02-dom-skimming 03-extension-hijacking; do \
+    for lab in 01-basic-magecart 02-dom-skimming 03-extension-hijacking 04-steganography-favicon 05-404-error-page-injection; do \
       if [ -f "./docs/labs/$lab/README.md" ]; then \
         echo "  ✅ $lab/README.md exists"; \
       else \

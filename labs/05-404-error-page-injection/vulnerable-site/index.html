@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lab 5 - 404 Error Page Injection</title>
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a href="/" class="home-link">E-Skimming Labs</a>
+      <nav>
+        <a href="/lab5/c2/">C2 Dashboard</a>
+        <a href="/lab-05-writeup">Writeup</a>
+      </nav>
+    </header>
+
+    <main class="shell">
+      <section class="brief">
+        <p class="eyebrow">Lab 5</p>
+        <h1>404 Error Page Injection</h1>
+        <p>
+          A missing analytics asset is rewritten by nginx to executable fallback JavaScript. The
+          fallback observes this demo checkout and sends only masked card details to the local
+          training C2 endpoint.
+        </p>
+      </section>
+
+      <section class="checkout-grid">
+        <div class="order-panel">
+          <span class="panel-label">Demo Order</span>
+          <h2>Noise-Canceling Headphones</h2>
+          <p>Training checkout for a local e-skimming simulation.</p>
+          <dl>
+            <div>
+              <dt>Subtotal</dt>
+              <dd>$129.00</dd>
+            </div>
+            <div>
+              <dt>Shipping</dt>
+              <dd>$0.00</dd>
+            </div>
+            <div>
+              <dt>Total</dt>
+              <dd>$129.00</dd>
+            </div>
+          </dl>
+          <p class="hint">Use fake card: 4111 1111 1111 1111, 12/30, 123.</p>
+        </div>
+
+        <form class="checkout-card" id="checkout-form" data-lab5-checkout>
+          <h2>Payment</h2>
+          <label>
+            Cardholder
+            <input name="cardholder" autocomplete="cc-name" value="Demo Shopper" required />
+          </label>
+          <label>
+            Card number
+            <input
+              name="cardNumber"
+              autocomplete="cc-number"
+              inputmode="numeric"
+              value="4111 1111 1111 1111"
+              required
+            />
+          </label>
+          <div class="row">
+            <label>
+              Expiry
+              <input name="expiry" autocomplete="cc-exp" value="12/30" required />
+            </label>
+            <label>
+              CVV
+              <input name="cvv" autocomplete="cc-csc" inputmode="numeric" value="123" required />
+            </label>
+          </div>
+          <button type="submit">Place demo order</button>
+          <p class="result" id="checkout-result" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+    </main>
+
+    <script src="/js/checkout.js"></script>
+    <script src="/js/vendor/analytics-cart.js"></script>
+  </body>
+</html>
