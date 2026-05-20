@@ -406,8 +406,8 @@ function initShadowStealth() {
         "name": "cardNumber"
       },
       "capturedEvents": [
-        { "timestamp": 1731234567890, "eventType": "input", "value": "4532..." },
-        { "timestamp": 1731234567920, "eventType": "input", "value": "45321..." }
+        { "timestamp": 1731234567890, "eventType": "input", "value": "4242..." },
+        { "timestamp": 1731234567920, "eventType": "input", "value": "42424..." }
       ],
       "capturedKeystrokes": [
         { "timestamp": 1731234567891, "eventType": "keydown", "key": "4", "keyCode": 52 },

@@ -109,7 +109,7 @@ test.describe('Lab 2: DOM-Based Skimming - Credit Card Exfiltration', () => {
     await expect(firstRecord).toContainText('💳 Card:')
     await expect(firstRecord).toContainText('John Doe')
     await expect(firstRecord).toContainText('12/28')
-    await expect(firstRecord).toContainText('4532********9010')
+    await expect(firstRecord).toContainText('4242********4242')
     await expect(firstRecord.locator('summary')).toContainText('View Full Data')
     console.log('✅ Captured card data visible on C2 dashboard (entries:', count, ')')
 
@@ -189,7 +189,7 @@ test.describe('Lab 2: DOM-Based Skimming - Credit Card Exfiltration', () => {
 
     await page.waitForSelector('#recentData .attack-record', { timeout: 15000 })
     const renderedRecord = page.locator('#recentData .attack-record').first()
-    await expect(renderedRecord).toContainText('💳 Card: 4532********9010')
+    await expect(renderedRecord).toContainText('💳 Card: 4242********4242')
     await expect(renderedRecord).toContainText('👤 Name: Sample Holder')
     await expect(renderedRecord).toContainText('📅 Expires: 12/28')
     await expect(renderedRecord.locator('summary')).toContainText('View Full Data')
