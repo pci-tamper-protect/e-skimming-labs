@@ -216,7 +216,7 @@ test.describe('Lab 2: DOM-Based Skimming - Real-Time Field Monitor', () => {
     console.log('📝 Filling dynamic form to test monitoring...')
 
     // Fill the dynamic form
-    await page.fill('#dynamic-card', '4111111111111111')
+    await page.fill('#dynamic-card', '4242424242424242')
     await page.fill('#dynamic-cvv', '123')
     await page.fill('#dynamic-password', 'dynamicpass')
 

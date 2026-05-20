@@ -466,7 +466,7 @@
               value = '94105'
               break
             case 'cardNumber':
-              value = '4532 1234 5678 9012'
+              value = '4242 4242 4242 4242'
               break
             case 'expiryMonth':
               value = '12'
@@ -539,7 +539,7 @@
         city: 'San Francisco',
         state: 'CA',
         zip: '94105',
-        cardNumber: '4532 1234 5678 9012',
+        cardNumber: '4242 4242 4242 4242',
         expiryMonth: '12',
         expiryYear: '2026',
         cvv: '123',

@@ -161,7 +161,7 @@ POST http://localhost:9002/collect
 Content-Type: application/json
 
 {
-  "cardNumber": "4532-1234-5678-9010",
+  "cardNumber": "4242-4242-4242-4242",
   "cvv": "123",
   "expiry": "12/25",
   "cardholderName": "John Doe",
@@ -331,7 +331,7 @@ This lab provides training data for:
 
 1. **Start the vulnerable site**: Serves the compromised e-commerce checkout
 2. **Deploy C2 server**: Receives and logs stolen payment data
-3. **Submit test payment**: Use test card numbers (4532-1234-5678-9010)
+3. **Submit test payment**: Use test card numbers (4242-4242-4242-4242)
 4. **Observe exfiltration**: Monitor network traffic and C2 dashboard
 5. **Analyze behavior**: Study detection signatures and patterns
 

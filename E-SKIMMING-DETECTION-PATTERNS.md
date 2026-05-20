@@ -83,7 +83,7 @@ Each lab demonstrates unique detection patterns that security analysts should id
 **Payload Structure:**
 ```json
 {
-  "cardNumber": "4532123456789010",
+  "cardNumber": "4242424242424242",
   "cvv": "123",
   "expiry": "12/25",
   "cardholderName": "Test User",

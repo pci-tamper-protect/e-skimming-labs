@@ -543,7 +543,7 @@ Content-Type: application/json
     {
       "type": "clipboard",
       "data": {
-        "content": "4532-1234-5678-9010",
+        "content": "4242-4242-4242-4242",
         "timestamp": 1704067795000
       }
     }

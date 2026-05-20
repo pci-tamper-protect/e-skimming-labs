@@ -58,7 +58,7 @@ test.describe('Lab 2: DOM-Based Skimming - Credit Card Exfiltration', () => {
 
     // Fill out credit card form
     console.log('📝 Filling out credit card form...')
-    await page.fill('#card-number', '4532123456789010')
+    await page.fill('#card-number', '4242424242424242')
     await page.fill('#card-holder-name', 'John Doe')
     await page.fill('#card-expiry', '12/28')
     await page.fill('#card-cvv-input', '123')
@@ -134,7 +134,7 @@ test.describe('Lab 2: DOM-Based Skimming - Credit Card Exfiltration', () => {
           fieldValues: {
             cardNumber: {
               fieldName: 'Card Number',
-              values: [{ value: '4532123456789010' }]
+              values: [{ value: '4242424242424242' }]
             },
             cardholderName: {
               fieldName: 'Cardholder Name',

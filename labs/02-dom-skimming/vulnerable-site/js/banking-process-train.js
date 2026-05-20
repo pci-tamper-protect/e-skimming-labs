@@ -98,10 +98,22 @@
   }
 
   function validateCardNumber(cardNumber) {
-    // Remove spaces and dashes for validation
     const cleaned = cardNumber.replace(/[\s-]/g, '')
-    // Must be 13-19 digits (standard credit card lengths)
-    return /^\d{13,19}$/.test(cleaned)
+    if (!/^\d{13,19}$/.test(cleaned)) return false
+
+    let sum = 0
+    let shouldDouble = false
+    for (let i = cleaned.length - 1; i >= 0; i--) {
+      let digit = parseInt(cleaned[i], 10)
+      if (shouldDouble) {
+        digit *= 2
+        if (digit > 9) digit -= 9
+      }
+      sum += digit
+      shouldDouble = !shouldDouble
+    }
+
+    return sum % 10 === 0
   }
 
   function validateCardExpiry(expiry) {
