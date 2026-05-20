@@ -49,8 +49,13 @@
           <option value="dom-monitor">DOM Monitor (Original - 10+ requests)</option>
           <option value="dom-monitor-optimized">DOM Monitor Optimized (1 request)</option>
           <option value="form-overlay">Form Overlay</option>
+          <option value="form-overlay-xray">Form Overlay (X-Ray)</option>
           <option value="shadow-skimmer">Shadow Skimmer</option>
         </select>
+        <label for="xray-opacity-slider" class="lab2-variant-label" id="xray-opacity-label" style="display:none">Overlay opacity:</label>
+        <input type="range" id="xray-opacity-slider" min="0" max="100" value="100"
+               aria-label="X-Ray overlay opacity"
+               style="display:none;width:80px;cursor:pointer;accent-color:#dc2626">
       </div>
     </div>
 
@@ -458,7 +463,7 @@
     <!-- Lab 2: load skimmer variant from URL ?variant= (user selector); default dom-monitor -->
     <script>
       (function () {
-        var VALID_VARIANTS = ['dom-monitor', 'dom-monitor-optimized', 'form-overlay', 'shadow-skimmer']
+        var VALID_VARIANTS = ['dom-monitor', 'dom-monitor-optimized', 'form-overlay', 'form-overlay-xray', 'shadow-skimmer']
         var params = new URLSearchParams(window.location.search)
         var variant = params.get('variant') || 'dom-monitor'
         if (VALID_VARIANTS.indexOf(variant) === -1) variant = 'dom-monitor'
@@ -470,6 +475,17 @@
             var base = window.location.pathname
             var next = base + '?variant=' + encodeURIComponent(select.value)
             window.location.href = next
+          })
+        }
+
+        // Show opacity slider only for x-ray variant
+        var slider = document.getElementById('xray-opacity-slider')
+        var sliderLabel = document.getElementById('xray-opacity-label')
+        if (variant === 'form-overlay-xray' && slider && sliderLabel) {
+          slider.style.display = 'inline-block'
+          sliderLabel.style.display = 'inline'
+          slider.addEventListener('input', function () {
+            if (window.xrayOverlay) window.xrayOverlay.setOpacity(slider.value / 100)
           })
         }
 
