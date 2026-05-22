@@ -8,6 +8,7 @@
  * Lab 1: /lab1/c2/*   — basic Magecart card skimmer
  * Lab 2: /lab2/c2/*   — DOM-based skimming
  * Lab 3: /lab3/extension/* — browser extension hijacking
+ * Lab 4: /lab4/c2/*   — steganography favicon skimmer
  * Lab 5: /lab5/c2/*   — 404 error-page injection
  *
  * Data persistence: GCS buckets when LAB*_BUCKET env vars are set;

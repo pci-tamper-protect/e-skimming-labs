@@ -304,10 +304,10 @@ services:
       - "traefik.http.services.lab3-vulnerable-site.loadbalancer.server.port=8080"
 
   # =============================================================================
-  # SHARED C2 SERVER (Labs 1-3)
+  # SHARED C2 SERVER (Labs 1-5)
   # =============================================================================
 
-  # Single C2 collection service for labs 1, 2, and 3.
+  # Single C2 collection service for labs 1 through 5.
   # Traefik sends the full path — no strip middleware — so shared-c2 can route by prefix.
   shared-c2:
     build: deploy/shared-components/shared-c2-server

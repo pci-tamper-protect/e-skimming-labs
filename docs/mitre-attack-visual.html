@@ -1125,7 +1125,7 @@
                 <tr class="technique-count">
                   <td>4 techniques</td>
                   <td>1 technique</td>
-                  <td>4 techniques</td>
+                  <td>5 techniques</td>
                   <td>3 techniques</td>
                   <td>9 techniques</td>
                   <td>4 techniques</td>
@@ -1196,6 +1196,11 @@
                       <a href="#custom-service-worker" class="technique-link">CUSTOM</a>
                       <span class="status-badge emerging">🟡 Emerging</span>
                       <span class="technique-name">Service Worker Man-in-the-Middle</span>
+                    </div>
+                    <div class="technique-item">
+                      <a href="#t1505-00x" class="technique-link">T1505.00X</a>
+                      <span class="status-badge lab">🔵 Lab-Only</span>
+                      <span class="technique-name">Web Server Resource Serving Abuse</span>
                     </div>
                   </td>
                   <td class="tactic-cell">
@@ -1790,6 +1795,42 @@ document.addEventListener('input', function(e) {
                 <span class="meta-value"
                   >Excessive permissions, unexpected updates, network traffic from background
                   scripts</span
+                >
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <span class="card-badge badge-technique">T1505.00X</span>
+              <span class="status-badge lab">🔵 Lab-Only</span>
+            </div>
+            <h4 class="card-title" id="t1505-00x">Web Server Resource Serving Abuse</h4>
+            <p class="card-description">
+              Abuse of web-server resource resolution rules to serve executable content from
+              paths that operators expect to 404.
+            </p>
+
+            <div class="card-meta">
+              <div class="meta-item">
+                <span class="meta-label">Examples:</span>
+                <span class="meta-value"
+                  >nginx try_files, Apache ErrorDocument, SPA catch-all routes, CDN fallback
+                  handlers</span
+                >
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Lab:</span>
+                <span class="meta-value"
+                  >Lab 5 rewrites missing /js/vendor/analytics-cart.js to an internal JavaScript
+                  fallback without modifying a tracked asset file</span
+                >
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Detection:</span>
+                <span class="meta-value"
+                  >Audit try_files and error_page rules; monitor JavaScript responses to URLs
+                  that should 404; compare served content hashes against expected script hashes</span
                 >
               </div>
             </div>

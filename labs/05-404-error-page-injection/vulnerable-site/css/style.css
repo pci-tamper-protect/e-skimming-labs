@@ -172,8 +172,6 @@ button {
 }
 
 @media (max-width: 760px) {
-  .topbar,
-  .topbar nav,
   .checkout-grid,
   .row {
     grid-template-columns: 1fr;
@@ -182,5 +180,9 @@ button {
   .topbar {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .topbar nav {
+    flex-wrap: wrap;
   }
 }

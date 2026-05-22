@@ -112,6 +112,11 @@ const environments = {
       c2:         `${LOCAL_BASE_URL}/lab4/c2`,
       writeup:    `${LOCAL_BASE_URL}/lab-04-writeup`,
     },
+    lab5: {
+      vulnerable: `${LOCAL_BASE_URL}/lab5`,
+      c2:         `${LOCAL_BASE_URL}/lab5/c2`,
+      writeup:    `${LOCAL_BASE_URL}/lab-05-writeup`,
+    },
   },
   stg: {
     // All URLs use path-based routing through Traefik (proxy or public stg domain).
@@ -138,6 +143,11 @@ const environments = {
       c2:         `${STG_BASE}/lab4/c2`,
       writeup:    `${STG_BASE}/lab-04-writeup`,
     },
+    lab5: {
+      vulnerable: `${STG_BASE}/lab5`,
+      c2:         `${STG_BASE}/lab5/c2`,
+      writeup:    `${STG_BASE}/lab-05-writeup`,
+    },
   },
   prd: {
     // All URLs use path-based routing through labs.pcioasis.com (Traefik).
@@ -163,6 +173,11 @@ const environments = {
       vulnerable: 'https://labs.pcioasis.com/lab4',
       c2:         'https://labs.pcioasis.com/lab4/c2',
       writeup:    'https://labs.pcioasis.com/lab-04-writeup',
+    },
+    lab5: {
+      vulnerable: 'https://labs.pcioasis.com/lab5',
+      c2:         'https://labs.pcioasis.com/lab5/c2',
+      writeup:    'https://labs.pcioasis.com/lab-05-writeup',
     },
   },
 }
@@ -202,6 +217,10 @@ if (currentEnv.firebaseProjectId) {
 }
 console.log(`📍 Lab 1 Vulnerable: ${currentEnv.lab1.vulnerable}`)
 console.log(`📍 Lab 1 C2: ${currentEnv.lab1.c2}`)
+if (currentEnv.lab5) {
+  console.log(`📍 Lab 5 Vulnerable: ${currentEnv.lab5.vulnerable}`)
+  console.log(`📍 Lab 5 C2: ${currentEnv.lab5.c2}`)
+}
 
 module.exports = {
   TEST_ENV,

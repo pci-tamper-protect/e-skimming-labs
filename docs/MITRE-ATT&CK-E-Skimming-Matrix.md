@@ -248,6 +248,38 @@ persistent access.
 
 ---
 
+#### T1505.00X: Web Server Resource Serving Abuse
+
+**Description**: Abuse of web-server resource resolution rules to serve
+executable content from paths that operators expect to 404.
+
+**E-Skimming Context**:
+
+- **Missing Script Fallbacks**: `try_files`, `error_page`, SPA catch-all routes,
+  or CDN fallback handlers return JavaScript for missing asset URLs.
+- **No Tracked File Modification**: The served payload can be introduced through
+  server configuration or edge routing rather than a changed application bundle.
+- **Checkout-Specific Triggering**: Payment pages include an expected analytics
+  or tag-manager URL that is absent from source control but resolves at runtime.
+
+**Lab Coverage**:
+
+- **Lab 05: 404 Error Page Injection** demonstrates nginx rewriting a missing
+  `/js/vendor/analytics-cart.js` asset to an internal executable fallback.
+
+**Detection**:
+
+- Audit nginx `try_files`, Apache `ErrorDocument`, CDN fallback handlers, and
+  SPA catch-all routes that can return JavaScript for missing asset paths.
+- Monitor JavaScript requests that return `200` when the source inventory says
+  the file should be absent or should return `404`.
+- Compare served content hashes against expected content hashes for every script
+  URL loaded by checkout pages.
+- Alert when fallback/error-handler responses access payment fields or post to
+  C2-like collection endpoints.
+
+---
+
 #### T1554: Compromise Client Software Binary
 
 **Description**: Modification of legitimate JavaScript files to include skimmer
