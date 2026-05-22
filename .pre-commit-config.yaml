@@ -61,4 +61,9 @@ repos:
         files: \.go$
         args: [./...]
 
-
+      - id: generate-lab-labels
+        name: Regenerate lab-labels.sh from docker-compose.yml
+        entry: ./deploy/traefik/generate-lab-labels.sh
+        language: system
+        files: ^docker-compose\.yml$
+        pass_filenames: false

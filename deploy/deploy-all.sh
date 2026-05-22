@@ -17,8 +17,8 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# Lab Traefik labels are generated from docker-compose.yml (single source of truth).
-# Re-run deploy/traefik/generate-lab-labels.sh to regenerate after docker-compose changes.
+# Regenerate Cloud Run labels from docker-compose.yml (single source of truth).
+"$SCRIPT_DIR/traefik/generate-lab-labels.sh"
 source "$SCRIPT_DIR/traefik/lab-labels.sh"
 
 source "$SCRIPT_DIR/check-credentials.sh"

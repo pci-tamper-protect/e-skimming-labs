@@ -1047,6 +1047,22 @@ jobs:
           done
           echo "✅ C2 GCS buckets ready"
 
+      - name: Validate lab-labels.sh is in sync with docker-compose.yml
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.6/yq_linux_amd64
+          echo "0c2b24e645b57d8e7c0566d18643a6d4f5580feeea3878127354a46f2a1e4598  /usr/local/bin/yq" | sha256sum -c
+          sudo chmod +x /usr/local/bin/yq
+          cp deploy/traefik/lab-labels.sh /tmp/lab-labels-committed.sh
+          ./deploy/traefik/generate-lab-labels.sh
+          if ! diff -q /tmp/lab-labels-committed.sh deploy/traefik/lab-labels.sh > /dev/null; then
+            echo "❌ deploy/traefik/lab-labels.sh is out of sync with docker-compose.yml"
+            echo "   Run: ./deploy/traefik/generate-lab-labels.sh"
+            echo "   Then commit the updated lab-labels.sh alongside your docker-compose.yml changes"
+            diff /tmp/lab-labels-committed.sh deploy/traefik/lab-labels.sh || true
+            exit 1
+          fi
+          echo "✅ lab-labels.sh is in sync with docker-compose.yml"
+
       - name: Deploy shared-c2 to Cloud Run
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
         run: |
@@ -1216,6 +1232,19 @@ jobs:
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.6/yq_linux_amd64
           echo "0c2b24e645b57d8e7c0566d18643a6d4f5580feeea3878127354a46f2a1e4598  /usr/local/bin/yq" | sha256sum -c
           sudo chmod +x /usr/local/bin/yq
+
+      - name: Validate lab-labels.sh is in sync with docker-compose.yml
+        run: |
+          cp deploy/traefik/lab-labels.sh /tmp/lab-labels-committed.sh
+          ./deploy/traefik/generate-lab-labels.sh
+          if ! diff -q /tmp/lab-labels-committed.sh deploy/traefik/lab-labels.sh > /dev/null; then
+            echo "❌ deploy/traefik/lab-labels.sh is out of sync with docker-compose.yml"
+            echo "   Run: ./deploy/traefik/generate-lab-labels.sh"
+            echo "   Then commit the updated lab-labels.sh alongside your docker-compose.yml changes"
+            diff /tmp/lab-labels-committed.sh deploy/traefik/lab-labels.sh || true
+            exit 1
+          fi
+          echo "✅ lab-labels.sh is in sync with docker-compose.yml"
 
       - name: Deploy to Cloud Run
         if: env.LABS_GCP_SA_KEY != '' && env.LABS_GCP_SA_KEY != null
