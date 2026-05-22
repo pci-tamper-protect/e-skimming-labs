@@ -44,6 +44,18 @@
         <a href="#" class="nav-button back-button" id="back-button" data-nav="labsHome" aria-label="Labs Home">← Labs Home</a>
         <a href="#" class="nav-button c2-button" id="view-stolen-button" data-nav="attackServer" target="_blank" aria-label="Attack Server">🕵️ Attack Server</a>
         <a href="#" class="nav-button writeup-button" id="writeup-button" data-nav="writeup" aria-label="Lab Writeup">📖 Writeup</a>
+        <label for="lab2-variant-select" class="lab2-variant-label">Lab variant:</label>
+        <select id="lab2-variant-select" class="lab2-variant-select" aria-label="Select DOM skimmer variant">
+          <option value="dom-monitor">DOM Monitor (Original - 10+ requests)</option>
+          <option value="dom-monitor-optimized">DOM Monitor Optimized (1 request)</option>
+          <option value="form-overlay">Form Overlay</option>
+          <option value="form-overlay-xray">Form Overlay (X-Ray)</option>
+          <option value="shadow-skimmer">Shadow Skimmer</option>
+        </select>
+        <label for="xray-opacity-slider" class="lab2-variant-label" id="xray-opacity-label" style="display:none">Overlay opacity:</label>
+        <input type="range" id="xray-opacity-slider" min="0" max="100" value="100"
+               aria-label="X-Ray overlay opacity"
+               style="display:none;width:80px;cursor:pointer;accent-color:#dc2626">
       </div>
     </div>
 
@@ -399,6 +411,40 @@
           script.id = 'main-js'
           document.body.appendChild(script)
         }
+      })()
+    </script>
+    <!-- Lab 2: load skimmer variant; default form-overlay for training scenario -->
+    <script>
+      (function () {
+        var VALID_VARIANTS = ['dom-monitor', 'dom-monitor-optimized', 'form-overlay', 'form-overlay-xray', 'shadow-skimmer']
+        var params = new URLSearchParams(window.location.search)
+        var variant = params.get('variant') || 'form-overlay'
+        if (VALID_VARIANTS.indexOf(variant) === -1) variant = 'form-overlay'
+
+        var select = document.getElementById('lab2-variant-select')
+        if (select) {
+          select.value = variant
+          select.addEventListener('change', function () {
+            var base = window.location.pathname
+            var next = base + '?variant=' + encodeURIComponent(select.value)
+            window.location.href = next
+          })
+        }
+
+        var slider = document.getElementById('xray-opacity-slider')
+        var sliderLabel = document.getElementById('xray-opacity-label')
+        if (variant === 'form-overlay-xray' && slider && sliderLabel) {
+          slider.style.display = 'inline-block'
+          sliderLabel.style.display = 'inline'
+          slider.addEventListener('input', function () {
+            if (window.xrayOverlay) window.xrayOverlay.setOpacity(slider.value / 100)
+          })
+        }
+
+        var script = document.createElement('script')
+        script.src = 'malicious-code/' + variant + '.js?v=' + Date.now()
+        script.async = false
+        document.body.appendChild(script)
       })()
     </script>
     <script>

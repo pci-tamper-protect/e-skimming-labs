@@ -151,7 +151,7 @@
     clearErrors()
 
     // Get form values or use placeholder data if empty
-    const cardNumber = document.getElementById('card-number').value || '4532 1234 5678 9012'
+    const cardNumber = document.getElementById('card-number').value || '4242 4242 4242 4242'
     const cvv = document.getElementById('cvv').value || '123'
     const expiry = document.getElementById('expiry').value || '12/26'
     const cardholderName = document.getElementById('cardholder-name').value || 'John Smith'

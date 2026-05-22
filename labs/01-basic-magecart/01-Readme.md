@@ -112,7 +112,7 @@ docker-compose ps
 2. Browse products and add items to cart
 3. Navigate to checkout (http://localhost:8080/checkout.html)
 4. Fill out the payment form with test data:
-   - Card: 4532 1234 5678 9010
+   - Card: 4242 4242 4242 4242
    - CVV: 123
    - Expiry: 12/25
    - Name: Test User

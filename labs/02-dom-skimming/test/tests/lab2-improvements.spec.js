@@ -180,6 +180,34 @@ test.describe('Lab 2: DOM-Based Skimming - UI Improvements', () => {
     console.log('✅ Add new card form is ready and waiting for user input')
   })
 
+  test('should reject card numbers that fail Luhn validation', async ({ page }) => {
+    console.log('🧪 Testing invalid Luhn card number validation...')
+
+    await page.goto('/banking.html', {
+      baseURL: 'http://localhost:8080'
+    })
+    await page.waitForLoadState('networkidle')
+
+    await page.waitForSelector('#cards.section.active', { timeout: 3000 })
+
+    await page.fill('#card-number', '4242424242424241')
+    await page.fill('#card-holder-name', 'John Doe')
+    await page.fill('#card-expiry', '12/28')
+    await page.fill('#card-cvv-input', '123')
+    await page.fill('#card-billing-zip', '12345')
+    await page.fill('#card-account-password', 'password123')
+
+    await page.click('#add-card-form button[type="submit"]')
+
+    await expect(page.locator('#card-number')).toHaveClass(/error/)
+    await expect(page.locator('#card-number').locator('..').locator('.field-error')).toHaveText(
+      'Please enter a valid credit card number'
+    )
+    await expect(page.locator('.message.success')).not.toBeVisible()
+
+    console.log('✅ Invalid Luhn card number is rejected')
+  })
+
   test('should not have Settings tab', async ({ page }) => {
     console.log('🧪 Testing Settings tab is removed...')
 
