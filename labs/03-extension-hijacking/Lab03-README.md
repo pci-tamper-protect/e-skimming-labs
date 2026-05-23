@@ -54,6 +54,16 @@ leverages:
 - Silent deployment to millions of users
 - Long-term persistent access for data harvesting
 
+### Scenario 4: Official AI Browser Assistant Prompt Injection
+
+- Trusted AI browser assistant receives untrusted checkout-page content
+- Hidden page instructions attempt to override the user's task
+- Assistant page-reading or browser-action powers create a skimming path
+- Guardrails are evaluated without installing or driving a real assistant
+
+See [Official AI Browser Assistants and Skimming Guardrails](ai-extension-guardrails.md)
+for a sourced guardrail matrix and safe simulated-lab checklist.
+
 ## ML Training Value
 
 This lab helps detection models learn to identify:
