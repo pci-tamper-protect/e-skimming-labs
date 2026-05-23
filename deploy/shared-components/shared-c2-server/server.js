@@ -1,13 +1,15 @@
 /**
  * SHARED C2 SERVER
  *
- * Single Express app serving C2 collection endpoints for labs 1-3.
+ * Single Express app serving C2 collection endpoints for the labs.
  * Routes are prefixed with /labN/ so Traefik can forward the full path
  * with no strip middleware — this server sees the complete path.
  *
  * Lab 1: /lab1/c2/*   — basic Magecart card skimmer
  * Lab 2: /lab2/c2/*   — DOM-based skimming
  * Lab 3: /lab3/extension/* — browser extension hijacking
+ * Lab 4: /lab4/c2/*   — steganography favicon skimmer
+ * Lab 5: /lab5/c2/*   — 404 error-page injection
  *
  * Data persistence: GCS buckets when LAB*_BUCKET env vars are set;
  * local filesystem otherwise (local development only).
@@ -36,10 +38,11 @@ const BUCKETS = {
   lab1: process.env.LAB1_BUCKET,
   lab2: process.env.LAB2_BUCKET,
   lab3: process.env.LAB3_BUCKET,
-  lab4: process.env.LAB4_BUCKET
+  lab4: process.env.LAB4_BUCKET,
+  lab5: process.env.LAB5_BUCKET
 }
 
-if (BUCKETS.lab1 || BUCKETS.lab2 || BUCKETS.lab3 || BUCKETS.lab4) {
+if (Object.values(BUCKETS).some(Boolean)) {
   const { Storage } = require('@google-cloud/storage')
   gcs = new Storage()
   console.log('GCS storage enabled:', BUCKETS)
@@ -74,10 +77,11 @@ const DATA_DIRS = {
   lab1: process.env.LAB1_DATA_DIR || '/app/data/lab1',
   lab2: process.env.LAB2_DATA_DIR || '/app/data/lab2',
   lab3: process.env.LAB3_DATA_DIR || '/app/data/lab3',
-  lab4: process.env.LAB4_DATA_DIR || '/app/data/lab4'
+  lab4: process.env.LAB4_DATA_DIR || '/app/data/lab4',
+  lab5: process.env.LAB5_DATA_DIR || '/app/data/lab5'
 }
 
-if (!useGCS('lab1') || !useGCS('lab2') || !useGCS('lab3') || !useGCS('lab4')) {
+if (Object.keys(DATA_DIRS).some(lab => !useGCS(lab))) {
   Object.entries(DATA_DIRS).forEach(([lab, dir]) => {
     if (!useGCS(lab) && !fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true })
@@ -989,6 +993,116 @@ function generateLab4Dashboard() {
 }
 
 // ============================================================
+// LAB 5 — 404 ERROR PAGE INJECTION C2
+// Receives masked demo capture events from a missing JavaScript
+// asset that nginx rewrites to an internal fallback script.
+// ============================================================
+
+let lab5Records = []
+let lab5Stats = { totalRecords: 0, startTime: Date.now() }
+const LAB5_MAX_RECORDS = 1000
+const LAB5_PRELOAD_LIMIT = 500
+
+async function lab5SaveRecord(record) {
+  if (useGCS('lab5')) {
+    await gcsSaveJSON('lab5', `records/${record.id}.json`, record)
+  } else {
+    await fsPromises.writeFile(
+      path.join(DATA_DIRS.lab5, `${record.id}.json`),
+      JSON.stringify(record, null, 2)
+    )
+  }
+}
+
+async function lab5Preload() {
+  if (!useGCS('lab5')) return
+  try {
+    const files = await gcsListJSON('lab5', 'records/', { maxResults: LAB5_PRELOAD_LIMIT })
+    const sortedFiles = files
+      .map(file => ({
+        file,
+        updated: Date.parse(file.metadata?.updated || file.metadata?.timeCreated || 0) || 0
+      }))
+      .sort((a, b) => b.updated - a.updated)
+      .slice(0, LAB5_PRELOAD_LIMIT)
+    const entries = await Promise.all(sortedFiles.map(f => gcsDownloadJSON(f.file).catch(() => null)))
+    lab5Records = entries.filter(Boolean)
+    if (lab5Records.length > LAB5_MAX_RECORDS) {
+      lab5Records = lab5Records.slice(-LAB5_MAX_RECORDS)
+    }
+    lab5Stats.totalRecords = lab5Records.length
+    console.log(`[Lab5-C2] Preloaded ${lab5Records.length} records from GCS`)
+  } catch (e) {
+    console.error('[Lab5-C2] Preload error:', e.message)
+  }
+}
+
+app.post('/lab5/c2/collect', async (req, res) => {
+  const body = req.body || {}
+  const record = {
+    id: `error-page-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    timestamp: new Date().toISOString(),
+    masked_card: sanitizeForLog(body.masked_card || '****'),
+    source: sanitizeForLog(body.source || '404-error-page-injection'),
+    page: sanitizeForLog(body.page || ''),
+    scriptPath: sanitizeForLog(body.scriptPath || ''),
+    expiry_present: Boolean(body.expiry_present),
+    cvv_present: Boolean(body.cvv_present),
+    cardholder_present: Boolean(body.cardholder_present)
+  }
+
+  lab5Records.push(record)
+  lab5Stats.totalRecords++
+  if (lab5Records.length > LAB5_MAX_RECORDS) {
+    lab5Records = lab5Records.slice(-LAB5_MAX_RECORDS)
+  }
+
+  try { await lab5SaveRecord(record) } catch (e) { console.error('[Lab5-C2] Save error:', e.message) }
+
+  res.status(200).json({ status: 'ok', id: record.id })
+})
+
+app.get(['/lab5/c2', '/lab5/c2/'], (req, res) => {
+  res.send(generateLab5Dashboard())
+})
+
+app.get('/lab5/c2/api/stolen', (req, res) => {
+  res.json({ success: true, count: lab5Records.length, records: lab5Records, stats: lab5Stats })
+})
+
+app.get('/lab5/c2/health', (req, res) => {
+  res.json({ status: 'healthy', lab: 'lab5', timestamp: new Date().toISOString() })
+})
+
+function generateLab5Dashboard() {
+  const recent = lab5Records.slice(-20).reverse()
+  const rows = recent.map((record, index) => `
+    <tr>
+      <td>${index + 1}</td>
+      <td>${escapeHTML(record.timestamp)}</td>
+      <td>${escapeHTML(record.masked_card)}</td>
+      <td>${escapeHTML(record.scriptPath)}</td>
+      <td>${escapeHTML(record.page)}</td>
+    </tr>`).join('')
+
+  return `<!DOCTYPE html><html><head><title>Lab 5 404 Injection C2</title><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>body{font-family:'Courier New',monospace;max-width:1000px;margin:0 auto;padding:20px;background:#101418;color:#d8f4e8}
+    h1{color:#71d2b4;text-align:center;border-bottom:2px solid #71d2b4;padding-bottom:10px}
+    .stats{background:#182127;padding:15px;margin:20px 0;border-radius:5px;border:1px solid #71d2b4;text-align:center}
+    .warning{background:#3f2618;color:#f9d6b3;padding:15px;margin:20px 0;border-radius:5px;text-align:center;font-weight:bold}
+    .c2-nav a{display:inline-block;padding:8px 16px;margin-right:10px;border:1px solid #71d2b4;border-radius:4px;color:#71d2b4;text-decoration:none;font-weight:bold;margin-bottom:15px}
+    table{width:100%;border-collapse:collapse}td,th{border:1px solid #71d2b4;padding:8px;text-align:left}th{background:#182127}</style></head>
+    <body>
+    <h1>LAB 5 — 404 ERROR PAGE INJECTION C2</h1>
+    <div class="warning">Educational local training endpoint. Stored records contain masked demo card data only.</div>
+    <div class="c2-nav"><a href="/lab5">Back to Lab</a><a href="/">Home</a><a href="/lab5/c2/api/stolen">JSON API</a></div>
+    <div class="stats"><h2>${lab5Stats.totalRecords}</h2><p>total masked captures</p></div>
+    ${recent.length === 0 ? '<p>No data yet. Submit the Lab 5 checkout form to create a masked demo capture.</p>' : `
+    <table><tr><th>#</th><th>Time</th><th>Masked Card</th><th>Fallback Script</th><th>Page</th></tr>${rows}</table>`}
+  </body></html>`
+}
+
+// ============================================================
 // SHARED HEALTH
 // ============================================================
 
@@ -996,7 +1110,7 @@ function generateLab4Dashboard() {
 // START
 // ============================================================
 
-Promise.all([lab3Preload(), lab4Preload()]).then(() => {
+Promise.all([lab3Preload(), lab4Preload(), lab5Preload()]).then(() => {
   app.listen(PORT, '0.0.0.0', () => {
     console.log('═══════════════════════════════════════════════════')
     console.log('🚨 SHARED C2 SERVER OPERATIONAL 🚨')
@@ -1006,6 +1120,7 @@ Promise.all([lab3Preload(), lab4Preload()]).then(() => {
     console.log('Lab 2 endpoints: /lab2/c2/*')
     console.log('Lab 3 endpoints: /lab3/extension/*')
     console.log('Lab 4 endpoints: /lab4/c2/*')
+    console.log('Lab 5 endpoints: /lab5/c2/*')
     console.log('Storage:', useGCS('lab1') ? 'GCS' : 'local filesystem')
     console.log('═══════════════════════════════════════════════════')
     console.log('⚠️  FOR EDUCATIONAL PURPOSES ONLY ⚠️')

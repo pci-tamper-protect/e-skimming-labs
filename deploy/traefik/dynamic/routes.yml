@@ -50,6 +50,14 @@ http:
         - web
       middlewares:
         - strip-lab4-prefix
+    lab5-health:
+      rule: "Path(`/lab5/health`)"
+      service: lab5-vulnerable-site
+      priority: 400
+      entryPoints:
+        - web
+      middlewares:
+        - strip-lab5-prefix
 
     # Traefik API and Dashboard routers (high priority to match before application routes)
     # These routes expose Traefik's internal API and dashboard on port 8080
@@ -168,6 +176,14 @@ http:
       stripPrefix:
         prefixes:
           - "/lab4"
+
+    # Lab 5 middlewares
+    # Note: lab5-auth-check is defined in local-auth-stubs.yml for local dev.
+
+    strip-lab5-prefix:
+      stripPrefix:
+        prefixes:
+          - "/lab5"
 
     # No-op strip used by shared-c2 routes to prevent the Traefik Cloud Run provider
     # from auto-injecting a real strip-prefix middleware. The prefix below never matches

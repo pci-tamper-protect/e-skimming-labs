@@ -211,7 +211,7 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
     // Each assertion maps directly to a specific tactic column
     await expect(countCells.nth(0)).toHaveText('4 techniques')  // Initial Access
     await expect(countCells.nth(1)).toHaveText('1 technique')   // Execution
-    await expect(countCells.nth(2)).toHaveText('4 techniques')  // Persistence
+    await expect(countCells.nth(2)).toHaveText('5 techniques')  // Persistence
     await expect(countCells.nth(3)).toHaveText('3 techniques')  // Privilege Escalation
     await expect(countCells.nth(4)).toHaveText('9 techniques')  // Defense Evasion
     await expect(countCells.nth(5)).toHaveText('4 techniques')  // Credential Access
@@ -254,6 +254,10 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
     const executionCell = matrixTable.locator('tbody tr td').nth(1)
     await expect(executionCell.getByText('T1059.007')).toBeVisible()
     await expect(executionCell.getByText('JavaScript Execution')).toBeVisible()
+
+    const persistenceCell = matrixTable.locator('tbody tr td').nth(2)
+    await expect(persistenceCell.getByText('T1505.00X')).toBeVisible()
+    await expect(persistenceCell.getByText('Web Server Resource Serving Abuse')).toBeVisible()
 
     // Check Collection techniques with sub-techniques (use .first() for duplicates)
     const collectionCell = matrixTable.locator('tbody tr td').nth(8)

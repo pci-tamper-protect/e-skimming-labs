@@ -276,6 +276,14 @@ func main() {
 			URL:         "/lab4/", // Always relative - Traefik routes to lab4 service
 			Status:      "Available",
 		},
+		{
+			ID:          "lab5-404-error-page-injection",
+			Name:        "404 Error Page Injection",
+			Description: "Study how missing JavaScript assets can be rewritten to executable fallback code by a compromised or misconfigured error handler. Learn to detect unexpected script responses, status/content-type mismatches, and checkout-field access from fallback routes.",
+			Difficulty:  "Intermediate",
+			URL:         "/lab5/", // Always relative - Traefik routes to lab5 service
+			Status:      "Available",
+		},
 	}
 
 	// Create home page data
@@ -305,6 +313,8 @@ func main() {
 			homeData.Labs[i].WriteupURL = "/lab-03-writeup"
 		case "lab4-steganography":
 			homeData.Labs[i].WriteupURL = "/lab-04-writeup"
+		case "lab5-404-error-page-injection":
+			homeData.Labs[i].WriteupURL = "/lab-05-writeup"
 		}
 	}
 
@@ -424,6 +434,10 @@ func main() {
 
 	mux.HandleFunc("/lab-04-writeup", func(w http.ResponseWriter, r *http.Request) {
 		serveLabWriteup(w, r, "04-steganography-favicon", homeData, authValidator)
+	})
+
+	mux.HandleFunc("/lab-05-writeup", func(w http.ResponseWriter, r *http.Request) {
+		serveLabWriteup(w, r, "05-404-error-page-injection", homeData, authValidator)
 	})
 	// Blog routes
 	mux.HandleFunc("/blog", func(w http.ResponseWriter, r *http.Request) {
@@ -914,6 +928,7 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
     <link rel="prefetch" href="/lab2/health">
     <link rel="prefetch" href="/lab3/health">
     <link rel="prefetch" href="/lab4/health">
+    <link rel="prefetch" href="/lab5/health">
 
     <!-- Open Graph -->
     <meta property="og:title" content="E-Skimming Labs - Interactive Training Platform">
@@ -2076,6 +2091,8 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, homeD
 		labBackURL = "/lab3/"
 	case "04-steganography-favicon":
 		labBackURL = "/lab4/"
+	case "05-404-error-page-injection":
+		labBackURL = "/lab5/"
 	default:
 		labBackURL = "/" // Fallback to home
 	}

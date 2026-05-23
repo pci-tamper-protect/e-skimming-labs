@@ -304,10 +304,10 @@ services:
       - "traefik.http.services.lab3-vulnerable-site.loadbalancer.server.port=8080"
 
   # =============================================================================
-  # SHARED C2 SERVER (Labs 1-3)
+  # SHARED C2 SERVER (Labs 1-5)
   # =============================================================================
 
-  # Single C2 collection service for labs 1, 2, and 3.
+  # Single C2 collection service for labs 1 through 5.
   # Traefik sends the full path — no strip middleware — so shared-c2 can route by prefix.
   shared-c2:
     build: deploy/shared-components/shared-c2-server
@@ -321,6 +321,7 @@ services:
       - ./labs/02-dom-skimming/c2-server/stolen-data:/app/data/lab2
       - ./labs/03-extension-hijacking/test-server/stolen-data:/app/data/lab3
       - ./labs/04-steganography-favicon/c2-data:/app/data/lab4
+      - ./labs/05-404-error-page-injection/c2-data:/app/data/lab5
     depends_on:
       - traefik
     healthcheck:
@@ -383,6 +384,19 @@ services:
       # No-op strip middleware prevents provider-side prefix stripping while preserving full C2 paths.
       - "traefik.http.routers.lab4-c2.middlewares=strip-passthrough-prefix@file,lab4-auth-check@file"
       - "traefik.http.routers.lab4-c2.service=shared-c2"
+      # ── Lab 5 C2 routes ──────────────────────────────────────────────────────
+      # Collect (no auth — injected error-page script posts from victim browser)
+      - "traefik.http.routers.lab5-c2-collect.rule=Path(`/lab5/c2/collect`)"
+      - "traefik.http.routers.lab5-c2-collect.priority=450"
+      - "traefik.http.routers.lab5-c2-collect.entrypoints=web"
+      - "traefik.http.routers.lab5-c2-collect.service=shared-c2"
+      # Dashboard & API (auth required)
+      - "traefik.http.routers.lab5-c2.rule=PathPrefix(`/lab5/c2`)"
+      - "traefik.http.routers.lab5-c2.priority=300"
+      - "traefik.http.routers.lab5-c2.entrypoints=web"
+      # No-op strip middleware prevents provider-side prefix stripping while preserving full C2 paths.
+      - "traefik.http.routers.lab5-c2.middlewares=strip-passthrough-prefix@file,lab5-auth-check@file"
+      - "traefik.http.routers.lab5-c2.service=shared-c2"
       # ── Backend ──────────────────────────────────────────────────────────────
       - "traefik.http.services.shared-c2.loadbalancer.server.port=8080"
 
@@ -524,6 +538,53 @@ services:
       - "traefik.http.routers.lab4-main.service=lab4-vulnerable-site"
       - "traefik.http.services.lab4-vulnerable-site.loadbalancer.server.port=8080"
 
+  # =============================================================================
+  # LAB 5: 404 ERROR PAGE INJECTION
+  # =============================================================================
+
+  lab5-vulnerable-site:
+    x-cloudrun:
+      service: lab-05-404-error-page-injection
+      image: 05-404-error-page-injection
+      c2-path: /lab5/c2
+      memory: 512Mi
+    build: ./labs/05-404-error-page-injection
+    container_name: lab5-404-error-page-injection
+    networks:
+      - labs-network
+    depends_on:
+      - traefik
+      - shared-c2
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:8080/health']
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    labels:
+      - "lab=lab5-404-error-page-injection"
+      - "component=vulnerable-site"
+      - "traefik.enable=true"
+      # Health check router (no auth)
+      - "traefik.http.routers.lab5-health.rule=Path(`/lab5/health`)"
+      - "traefik.http.routers.lab5-health.priority=400"
+      - "traefik.http.routers.lab5-health.entrypoints=web"
+      - "traefik.http.routers.lab5-health.middlewares=strip-lab5-prefix@file"
+      - "traefik.http.routers.lab5-health.service=lab5-vulnerable-site"
+      # Static files (no auth, higher priority than main)
+      - "traefik.http.routers.lab5-static.rule=PathPrefix(`/lab5/css/`) || PathPrefix(`/lab5/js/`) || PathPrefix(`/lab5/images/`) || PathPrefix(`/lab5/img/`) || PathPrefix(`/lab5/static/`) || PathPrefix(`/lab5/assets/`)"
+      - "traefik.http.routers.lab5-static.priority=250"
+      - "traefik.http.routers.lab5-static.entrypoints=web"
+      - "traefik.http.routers.lab5-static.middlewares=strip-lab5-prefix@file"
+      - "traefik.http.routers.lab5-static.service=lab5-vulnerable-site"
+      # Main router (with auth, routes /lab5/* to nginx after stripping /lab5)
+      - "traefik.http.routers.lab5-main.rule=PathPrefix(`/lab5`)"
+      - "traefik.http.routers.lab5-main.priority=200"
+      - "traefik.http.routers.lab5-main.entrypoints=web"
+      - "traefik.http.routers.lab5-main.middlewares=lab5-auth-check@file,strip-lab5-prefix@file"
+      - "traefik.http.routers.lab5-main.service=lab5-vulnerable-site"
+      - "traefik.http.services.lab5-vulnerable-site.loadbalancer.server.port=8080"
+
 # =============================================================================
 # NETWORKS
 # =============================================================================
@@ -531,4 +592,3 @@ networks:
   labs-network:
     driver: bridge
     name: e-skimming-labs-network
-
