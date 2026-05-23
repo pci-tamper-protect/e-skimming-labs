@@ -18,4 +18,5 @@ fi
 
 REPO_OWNER=pci-tamper-protect \
 REPO_NAME=e-skimming-labs \
+BYPASS_ACTORS_JSON='[{"actor_id":13101093,"actor_type":"Team","bypass_mode":"always"}]' \
 "$PRIMITIVE" "$@"
