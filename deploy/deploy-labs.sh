@@ -78,7 +78,8 @@ echo ""
 
 cd "$REPO_ROOT"
 
-# Source generated Cloud Run labels (from docker-compose.yml)
+# Regenerate and source Cloud Run labels (from docker-compose.yml)
+"$SCRIPT_DIR/traefik/generate-lab-labels.sh"
 source "$SCRIPT_DIR/traefik/lab-labels.sh"
 
 # Authenticate to Artifact Registry

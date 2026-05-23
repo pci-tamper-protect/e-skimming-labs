@@ -2,6 +2,29 @@
 
 This document describes all deployment scripts and their usage.
 
+## Build and Deploy Flow
+
+CI/CD deployments are driven by **GitHub Actions**, not by docker-compose.
+
+```
+GHA (.github/workflows/deploy_labs.yml)
+  └─ calls deploy/deploy-labs.sh stg|prd [lab-number|all]
+       └─ for each lab:
+            1. docker build  (using the lab's Dockerfile)
+            2. docker push   (to GCP Artifact Registry: us-central1-docker.pkg.dev/labs-{env}/e-skimming-labs/)
+            3. gcloud run deploy  (all service config hardcoded per lab in deploy_labNN() functions)
+```
+
+**docker-compose.yml** is for **local development only**. It starts all services in Docker on your machine and is never used by GHA or Cloud Run.
+
+**`x-cloudrun:` stanzas** in docker-compose.yml are inert Docker Compose extension fields (the `x-` prefix means Docker Compose ignores them). They document what the Cloud Run equivalent of each service looks like, but no script currently reads them. Issue [#259](https://github.com/pci-tamper-protect/e-skimming-labs/issues/259) tracks making `deploy-labs.sh` actually parse them so adding a new lab only requires a docker-compose entry.
+
+**`deploy/traefik/lab-labels.sh`** is the bridge between local Traefik config (docker-compose labels) and Cloud Run labels. It is used by `deploy-labs.sh` to pass Traefik routing labels to `gcloud run deploy`. Its header says "AUTO-GENERATED" but it is currently maintained by hand — see issue #259.
+
+### Adding a new lab (current state)
+
+Requires changes to 8 files — see [issue #259](https://github.com/pci-tamper-protect/e-skimming-labs/issues/259) for the plan to reduce this to 2.
+
 ## Quick Reference
 
 | Script | Purpose | Example |
