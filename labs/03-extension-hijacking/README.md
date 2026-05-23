@@ -54,6 +54,14 @@ leverages:
 - Silent deployment to millions of users
 - Long-term persistent access for data harvesting
 
+### Scenario 4: Official AI Extension Prompt Injection
+
+- Official AI assistant extension reads page context after user activation
+- Hidden DOM instructions attempt to turn page content into model instructions
+- Full cardholder data is exposed if checkout pages render PAN/CVV in DOM
+- Redaction, `activeTab`, user confirmation, and output filtering are compared in
+  `official-ai-extension-risk/`
+
 ## ML Training Value
 
 This lab helps detection models learn to identify:
