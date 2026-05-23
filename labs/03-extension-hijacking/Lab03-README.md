@@ -759,6 +759,10 @@ For ML training and security analysis, key detection patterns include:
    capabilities
 4. **User Education**: Training on extension risks and verification
 5. **Enterprise Controls**: Centralized extension management and allowlisting
+6. **AI Assistant Controls**: Review official AI browser assistants as
+   privileged page readers and action takers. See
+   [`AI_ASSISTANT_EXTENSION_THREAT_MODEL.md`](AI_ASSISTANT_EXTENSION_THREAT_MODEL.md)
+   for a defensive guardrail checklist.
 
 ## Comparison with Previous Labs
 
