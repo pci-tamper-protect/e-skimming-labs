@@ -14,7 +14,8 @@ const variantTestMap = {
   base: ['checkout.spec.js'],
   'obfuscated-base64': ['obfuscated-base64.spec.js'],
   'event-listener-variant': ['event-listener-variant.spec.js'],
-  'websocket-exfil': ['websocket-exfil.spec.js']
+  'websocket-exfil': ['websocket-exfil.spec.js'],
+  'google-analytics-csp-bypass': ['google-analytics-csp-bypass.spec.js']
 }
 
 // Get test pattern for current variant
@@ -72,9 +73,9 @@ module.exports = defineConfig({
   ],
 
   /* Run your local dev server before starting the tests (local only) */
-  webServer: TEST_ENV === 'local'
+  webServer: TEST_ENV === 'local' && !process.env.SKIP_LAB_DOCKER
     ? {
-        command: 'cd ../../.. && docker-compose up lab1-vulnerable-site lab1-c2-server',
+        command: 'cd ../../.. && docker compose up traefik lab1-vulnerable-site shared-c2',
         url: currentEnv.lab1.vulnerable,
         reuseExistingServer: !process.env.CI,
         timeout: 120 * 1000

