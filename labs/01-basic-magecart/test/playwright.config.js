@@ -75,7 +75,8 @@ module.exports = defineConfig({
   /* Run your local dev server before starting the tests (local only) */
   webServer: TEST_ENV === 'local' && !process.env.SKIP_LAB_DOCKER
     ? {
-        command: 'cd ../../.. && docker compose up traefik lab1-vulnerable-site shared-c2',
+        command:
+          'cd ../../.. && ((docker compose version >NUL 2>&1 && docker compose up traefik lab1-vulnerable-site shared-c2) || docker-compose up traefik lab1-vulnerable-site shared-c2)',
         url: currentEnv.lab1.vulnerable,
         reuseExistingServer: !process.env.CI,
         timeout: 120 * 1000

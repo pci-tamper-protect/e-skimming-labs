@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Checkout - TechGear Store</title>
-    <base href="/lab1/variants/google-analytics/" />
+    <base href="/lab1/variants/google-analytics-csp-bypass/" />
     <style>
       * {
         margin: 0;
@@ -190,7 +190,7 @@
         This page loads two JavaScript files:
         <ul style="margin-top: 0.5rem; margin-left: 1.5rem">
           <li><code>checkout.js</code> - Legitimate checkout code</li>
-          <li><code>checkout_compromised.js</code> - Malicious analytics-shaped skimmer</li>
+          <li><code>checkout-compromised.js</code> - Malicious analytics-shaped skimmer</li>
         </ul>
         <p style="margin-top: 0.5rem">
           <strong>Real-world scenario:</strong> Attacker added a new script tag via: <br />•
@@ -321,7 +321,7 @@
          - Supply chain attack on a CDN
          - Vulnerable CMS plugin
     -->
-    <script src="js/checkout_compromised.js"></script>
+    <script src="js/checkout-compromised.js"></script>
 
     <script>
       // Format card number with spaces as user types

