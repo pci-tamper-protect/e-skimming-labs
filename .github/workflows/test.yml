@@ -50,7 +50,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # For workflow_run: check out the PR/push SHA that triggered the deploy,
           # not the base branch (so new tests in the PR are included).
@@ -296,7 +296,7 @@ jobs:
           exit 1
 
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Download all test results
         if: always()
