@@ -200,6 +200,48 @@
       .nav-button.home-button:hover {
         background: #b91c1c;
       }
+
+      .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      @media (max-width: 768px) {
+        .header {
+          padding: 1rem;
+        }
+
+        .header h1 {
+          font-size: 1.25rem;
+        }
+
+        .container {
+          padding: 1rem;
+        }
+
+        .nav-buttons-row {
+          padding: 0.75rem 1rem;
+        }
+
+        .nav-buttons-container {
+          flex-wrap: wrap;
+        }
+
+        .nav-button {
+          min-height: 44px;
+          display: inline-flex;
+          align-items: center;
+        }
+
+        .refresh-btn {
+          min-height: 44px;
+        }
+
+        .stolen-record pre {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+      }
     </style>
   </head>
   <body>

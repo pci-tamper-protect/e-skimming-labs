@@ -75,7 +75,15 @@ npm run test:mitre:headed
 # Run tests on specific browsers/devices
 npm run test:chrome          # Desktop Chrome only
 npm run test:mobile          # Mobile Chrome (Pixel 5)
+npm run test:mobile:all      # Mobile + tablet projects
 npm run test:tablet          # Tablet Chrome (iPad Pro)
+
+# Mobile accessibility (axe) — requires home-index at BASE_URL (default http://localhost:8080)
+npm run test:a11y            # axe on home (Pixel 5)
+npm run test:a11y:tablet     # axe on home (iPad Pro)
+
+# Lighthouse mobile audit (headless Chrome; set BASE_URL if not on :8080)
+npm run lighthouse:mobile
 
 # Run MITRE tests on specific devices
 npm run test:mitre:chrome    # MITRE tests on Desktop Chrome
@@ -85,6 +93,28 @@ npm run test:mitre:tablet    # MITRE tests on Tablet Chrome
 # View test report
 npm run test:report
 ```
+
+### Pre-push / CI-parity E2E (C2 + navigation)
+
+These specs fail in CI when Traefik routes lab C2 traffic to the wrong backend.
+Run them locally against the same path-based stack CI uses in staging (`/lab1/c2`, `/lab2/c2`, `/lab3/extension` via **shared-c2**):
+
+```bash
+# From repo root — start Traefik + home-index + shared-c2 (full stack: ./docker-labs.sh start)
+docker compose up -d traefik home-index shared-c2 lab2-vulnerable-site lab3-vulnerable-site
+
+cd test
+npm install
+
+# Health check + chromium specs (matches CI shard 2/4 focus)
+npm run test:prepush
+
+# Or run directly without the curl guard:
+npm run test:ci-parity          # desktop chromium
+npm run test:ci-parity:mobile   # chrome-mobile (CI default project)
+```
+
+`playwright.config.js` uses `reuseExistingServer: true` — if Traefik is already on port 8080, Playwright will not start duplicate containers.
 
 ## Test Coverage
 

@@ -313,7 +313,7 @@ Content-Type: application/json
       {"field": "card-number", "value": "453", "timestamp": 1704067795200}
     ],
     "fieldValues": {
-      "card-number": "4532-1234-5678-9010",
+      "card-number": "4242-4242-4242-4242",
       "cvv": "123",
       "expiry": "12/25"
     }

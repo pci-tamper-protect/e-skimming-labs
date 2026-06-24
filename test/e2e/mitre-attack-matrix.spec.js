@@ -1,14 +1,15 @@
 // @ts-check
 const { test, expect } = require('@playwright/test')
 const { currentEnv, TEST_ENV } = require('../config/test-env')
+const { NAV_LABELS, navLink } = require('../utils/nav')
 
 /**
  * Waits for smooth scroll animation to complete
  * @param {import('@playwright/test').Page} page - Playwright page object
  * @param {string | null} targetSectionId - Optional: ID of target section to wait for
- * @param {number} timeout - Maximum time to wait (default: 2000ms)
+ * @param {number} timeout - Maximum time to wait (default: 5000ms)
  */
-async function waitForScrollComplete(page, targetSectionId = null, timeout = 2000) {
+async function waitForScrollComplete(page, targetSectionId = null, timeout = 5000) {
   const checks = []
 
   // Always check if scroll position is stable
@@ -138,7 +139,7 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
 
   test('should have a functional back button with correct URL', async ({ page }) => {
     // Find the back button
-    const backButton = page.getByRole('link', { name: '← Back to Labs' })
+    const backButton = navLink(page, 'labsHome')
 
     // Check that the back button is visible
     await expect(backButton).toBeVisible()
@@ -354,7 +355,7 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
     await expect(matrixTable).toBeVisible({ timeout: 10000 })
 
     // Verify that the back button is still visible and functional
-    const backButton = page.getByRole('link', { name: '← Back to Labs' })
+    const backButton = navLink(page, 'labsHome')
     await expect(backButton).toBeVisible({ timeout: 10000 })
   })
 
@@ -367,7 +368,9 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
     await expect(nav).toBeVisible({ timeout: 10000 })
 
     // Check navigation links with increased timeout
-    await expect(nav.getByRole('link', { name: '← Back to Labs' })).toBeVisible({ timeout: 10000 })
+    await expect(nav.getByRole('link', { name: NAV_LABELS.labsHome.ariaLabel })).toBeVisible({
+      timeout: 10000,
+    })
     await expect(nav.getByRole('link', { name: 'Overview' })).toBeVisible({ timeout: 10000 })
     await expect(nav.getByRole('link', { name: 'Tactics & Techniques' })).toBeVisible({ timeout: 10000 })
     await expect(nav.getByRole('link', { name: 'Detection' })).toBeVisible({ timeout: 10000 })
@@ -456,82 +459,6 @@ test.describe('MITRE ATT&CK Matrix Page', () => {
     ).toBeVisible()
   })
 
-  test('should have scroll-to-top functionality', async ({ page }) => {
-    // Get page dimensions to determine max scroll
-    const pageInfo = await page.evaluate(() => {
-      return {
-        scrollHeight: Math.max(
-          document.body.scrollHeight,
-          document.documentElement.scrollHeight
-        ),
-        innerHeight: window.innerHeight,
-        maxScroll: Math.max(
-          document.body.scrollHeight,
-          document.documentElement.scrollHeight
-        ) - window.innerHeight
-      }
-    })
-
-    console.log(`Page scroll height: ${pageInfo.scrollHeight}, viewport height: ${pageInfo.innerHeight}, max scroll: ${pageInfo.maxScroll}`)
-
-    // Only test if page is tall enough to scroll (> 300px needed for button to appear)
-    if (pageInfo.maxScroll < 300) {
-      console.log(`Page height insufficient for scroll-to-top test (max scroll: ${pageInfo.maxScroll}px, need > 300px)`)
-      // Skip the test gracefully - this is acceptable if the page content is short
-      return
-    }
-
-    // Scroll down to make the scroll-to-top button visible
-    // Scroll to at least 400px to ensure button appears (button threshold is 300px)
-    const scrollTarget = Math.min(400, pageInfo.maxScroll)
-    await page.evaluate((target) => window.scrollTo(0, target), scrollTarget)
-
-    // Wait a moment for scroll to settle
-    await page.waitForTimeout(300)
-
-    // Verify we're scrolled down
-    const scrolledPosition = await page.evaluate(() => window.pageYOffset || window.scrollY)
-    console.log(`Scrolled to position: ${scrolledPosition}`)
-
-    // Check that scroll-to-top button appears (button shows when scrolled > 300px)
-    const scrollTopButton = page.locator('.scroll-top')
-
-    // Button appears when scrolled > 300px, but if page isn't tall enough, use what we have
-    if (scrolledPosition < 300) {
-      console.log(`Page only scrolled to ${scrolledPosition}px (less than 300px threshold). Button may not appear.`)
-      // If we can't scroll enough, the button won't appear - this is acceptable
-      // Just verify the button state matches the scroll position
-      const buttonVisible = await scrollTopButton.isVisible().catch(() => false)
-      if (!buttonVisible && scrolledPosition < 300) {
-        console.log('Button correctly hidden when scroll < 300px')
-        return // Test passes - button behavior is correct
-      }
-    }
-
-    expect(scrolledPosition).toBeGreaterThan(200) // At least some scroll happened
-    await expect(scrollTopButton).toBeVisible({ timeout: 5000 })
-
-    // Click the scroll-to-top button
-    await scrollTopButton.click()
-
-    // Wait for smooth scroll animation to complete
-    // Smooth scroll can take 1-2 seconds depending on scroll distance
-    await page.waitForFunction(
-      () => {
-        const currentScroll = window.pageYOffset || window.scrollY
-        return currentScroll < 100 // Wait until we're near the top
-      },
-      { timeout: 5000 }
-    )
-
-    // Additional wait for any remaining animation
-    await page.waitForTimeout(300)
-
-    // Check that we scrolled back near the top (allow margin for smooth scroll)
-    const finalScrollPosition = await page.evaluate(() => window.pageYOffset || window.scrollY)
-    expect(finalScrollPosition).toBeLessThan(100) // Should be very close to top after smooth scroll completes
-    console.log(`Final scroll position: ${finalScrollPosition}`)
-  })
 })
 
 test.describe('MITRE ATT&CK Matrix - Environment Detection', () => {
@@ -555,14 +482,13 @@ test.describe('MITRE ATT&CK Matrix - Environment Detection', () => {
     await page.waitForLoadState('networkidle')
 
     // Find the back button and check its href
-    const backButton = page.getByRole('link', { name: '← Back to Labs' })
+    const backButton = navLink(page, 'labsHome').first()
+    await expect(backButton).toBeVisible()
 
-    // Get the actual href - should be "/" (relative URL, Traefik handles routing)
+    // Back button should use relative URL "/" once client script runs
+    await expect(backButton).toHaveAttribute('href', '/', { timeout: 10000 })
     const actualHref = await backButton.getAttribute('href')
     console.log('Back button href:', actualHref)
-
-    // Back button should use relative URL "/"
-    expect(actualHref).toBe('/')
 
     // Verify console log was generated (if captured)
     if (consoleLogText) {

@@ -3,10 +3,9 @@ package auth
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
-	"os"
+	"net/url"
 	"path"
 	"strings"
 )
@@ -109,16 +108,22 @@ func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 				return
 			}
 
-			// Extract token from various sources
-			token := extractToken(r)
-
-			// Validate token
-			userInfo, err := validator.ValidateToken(r.Context(), token)
+			// Try session cookie first (server-set HttpOnly, 5-day lifetime)
+			var userInfo *TokenInfo
+			var err error
+			if sc := ExtractSessionCookie(r); sc != "" {
+				userInfo, err = validator.ValidateSessionCookie(r.Context(), sc)
+			}
+			// Fall back to ID token (Authorization: Bearer or firebase_token cookie)
+			if userInfo == nil && err == nil {
+				token := extractToken(r)
+				userInfo, err = validator.ValidateToken(r.Context(), token)
+			}
 			if err != nil {
 				if validator.IsRequired() {
 					// Auth required but validation failed
 					log.Printf("❌ Authentication required but failed: %v", err)
-					respondAuthError(w, r, http.StatusUnauthorized, "Authentication required", validator.GetMainAppURL())
+					respondAuthError(w, r, http.StatusUnauthorized, "Authentication required")
 					return
 				}
 				// Auth optional, continue without user info
@@ -127,10 +132,10 @@ func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 				return
 			}
 
-			// If auth is required but no token provided
-			if validator.IsRequired() && token == "" {
+			// If auth is required but no credentials provided
+			if validator.IsRequired() && ExtractSessionCookie(r) == "" && extractToken(r) == "" {
 				log.Printf("❌ Authentication required but no token provided")
-				respondAuthError(w, r, http.StatusUnauthorized, "Authentication required", validator.GetMainAppURL())
+				respondAuthError(w, r, http.StatusUnauthorized, "Authentication required")
 				return
 			}
 
@@ -143,17 +148,7 @@ func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 					acceptHeader == "" ||
 					strings.Contains(acceptHeader, "*/*")
 				if isBrowserRequest {
-					// Use X-Forwarded-Host if available (when behind proxy like Traefik),
-					// otherwise use request's Host header to avoid container hostname issues
-					scheme := "http"
-					if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
-						scheme = "https"
-					}
-					host := r.Header.Get("X-Forwarded-Host")
-					if host == "" {
-						host = r.Host
-					}
-					redirectURL := fmt.Sprintf("%s://%s/sign-in?error=email_not_verified&email=%s", scheme, host, userInfo.Email)
+					redirectURL := "/sign-in?error=email_not_verified&email=" + url.QueryEscape(userInfo.Email)
 					http.Redirect(w, r, redirectURL, http.StatusFound)
 					return
 				}
@@ -179,10 +174,20 @@ func AuthMiddleware(validator *TokenValidator) func(http.Handler) http.Handler {
 	}
 }
 
-// extractToken extracts the Firebase token from the request
-// Checks: Authorization header, cookie, query parameter
+// ExtractSessionCookie returns the raw __session cookie value, or empty string.
+func ExtractSessionCookie(r *http.Request) string {
+	c, err := r.Cookie("__session")
+	if err == nil && c.Value != "" {
+		return c.Value
+	}
+	return ""
+}
+
+// extractToken extracts a Firebase ID token from the request.
+// Checks: Authorization header, firebase_token cookie, query parameter.
+// Does NOT check __session — session cookies are validated separately via ValidateSessionCookie.
 func extractToken(r *http.Request) string {
-	// 1. Check Authorization header (Bearer token)
+	// 1. Authorization: Bearer <firebase-ID-token>
 	authHeader := r.Header.Get("Authorization")
 	if authHeader != "" {
 		parts := strings.SplitN(authHeader, " ", 2)
@@ -191,13 +196,13 @@ func extractToken(r *http.Request) string {
 		}
 	}
 
-	// 2. Check cookie (for client-side token passing)
+	// 2. Legacy JS-set cookie (kept as fallback during transition)
 	cookie, err := r.Cookie("firebase_token")
 	if err == nil && cookie.Value != "" {
 		return cookie.Value
 	}
 
-	// 3. Check query parameter (for initial redirects)
+	// 3. Query parameter (for initial redirects)
 	token := r.URL.Query().Get("token")
 	if token != "" {
 		return token
@@ -217,7 +222,7 @@ func GetUserInfo(r *http.Request) *TokenInfo {
 // respondAuthError sends an authentication error response
 // For browser requests, redirects to sign-in page
 // For API requests, returns JSON error
-func respondAuthError(w http.ResponseWriter, r *http.Request, statusCode int, message string, mainAppURL string) {
+func respondAuthError(w http.ResponseWriter, r *http.Request, statusCode int, message string) {
 	// Check if this is a browser request (has Accept: text/html)
 	acceptHeader := r.Header.Get("Accept")
 	isBrowserRequest := strings.Contains(acceptHeader, "text/html") ||
@@ -225,28 +230,10 @@ func respondAuthError(w http.ResponseWriter, r *http.Request, statusCode int, me
 		strings.Contains(acceptHeader, "*/*")
 
 	if isBrowserRequest {
-		// Redirect browser requests to sign-in page (URL built from request; mainAppURL unused when empty)
-		// Use X-Forwarded-Host if available (when behind proxy like Traefik),
-		// otherwise use request's Host header to avoid container hostname issues
-		scheme := "http"
-		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
-			scheme = "https"
-		}
-		host := r.Header.Get("X-Forwarded-Host")
-		environment := os.Getenv("ENVIRONMENT")
-		if host == "" {
-			// In local environment, always use localhost:8080, never use r.Host (internal Docker hostname)
-			if environment == "local" {
-				host = "127.0.0.1:8080"
-			} else {
-				host = r.Host
-			}
-		} else if environment == "local" {
-			// Even if X-Forwarded-Host is set, in local environment ensure we use 127.0.0.1:8080
-			// X-Forwarded-Host might be set to internal hostname by Traefik
-			host = "127.0.0.1:8080"
-		}
-		redirectURL := fmt.Sprintf("%s://%s/sign-in?redirect=%s", scheme, host, r.URL.String())
+		// Use a relative redirect so the browser resolves it against the URL it
+		// was actually visiting — works correctly whether accessed via the gcloud
+		// proxy, Traefik, or directly (no host/scheme guessing needed).
+		redirectURL := "/sign-in?redirect=" + url.QueryEscape(r.URL.RequestURI())
 		http.Redirect(w, r, redirectURL, http.StatusFound)
 		return
 	}

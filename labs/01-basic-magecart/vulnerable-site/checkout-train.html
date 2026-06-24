@@ -135,6 +135,34 @@
       .success-message.show {
         display: block;
       }
+
+      @media (max-width: 768px) {
+        .main {
+          margin: 1rem auto;
+          padding: 1.25rem;
+        }
+
+        .container {
+          padding: 0 12px;
+        }
+
+        .card-row {
+          grid-template-columns: 1fr;
+        }
+
+        input[type='text'],
+        input[type='email'],
+        input[type='tel'],
+        select {
+          font-size: 16px;
+          min-height: 44px;
+        }
+
+        .submit-btn {
+          min-height: 44px;
+          font-size: 1rem;
+        }
+      }
     </style>
   </head>
   <body>
@@ -144,7 +172,8 @@
         <div style="float: right; margin-top: 5px">
           <a
             href="#"
-            aria-label="Go back to labs"
+            data-nav="labsHome"
+            aria-label="Labs Home"
             style="
               color: white;
               text-decoration: none;
@@ -153,12 +182,13 @@
               border-radius: 4px;
               margin-right: 10px;
             "
-            >← Back to Labs</a
+            >← Labs Home</a
           >
           <a
             href="#"
             target="_blank"
-            aria-label="View Stolen Data"
+            data-nav="attackServer"
+            aria-label="Attack Server"
             style="
               color: white;
               text-decoration: none;
@@ -166,7 +196,7 @@
               background: #e74c3c;
               border-radius: 4px;
             "
-            >🕵️ View Stolen Data</a
+            >🕵️ Attack Server</a
           >
           <a
             href="index.html"
@@ -191,7 +221,7 @@
         <p>Complete your purchase</p>
       </div>
 
-      <form id="payment-form">
+      <form id="payment-form" autocomplete="off">
         <!-- Payment Information -->
         <h3 style="margin-bottom: 1rem; color: #2c3e50">Payment Information</h3>
 
@@ -202,7 +232,7 @@
             id="card-number"
             name="cardNumber"
             autocomplete="cc-number"
-            placeholder="4532 1234 5678 9012"
+            placeholder="4242 4242 4242 4242"
             maxlength="19"
             required
             aria-label="Enter Card Number"
@@ -300,9 +330,9 @@
       ;(function () {
         const headerLinks = document.querySelectorAll('.header a')
         headerLinks.forEach(link => {
-          if (link.textContent.includes('Back to Labs')) {
+          if (link.dataset.nav === 'labsHome') {
             link.href = '/'
-          } else if (link.textContent.includes('View Stolen Data')) {
+          } else if (link.dataset.nav === 'attackServer') {
             link.href = '/lab1/c2'
           }
         })

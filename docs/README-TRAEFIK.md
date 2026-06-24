@@ -126,7 +126,6 @@ deploy/traefik/
 ### Docker Compose
 ```
 docker-compose.yml          # Default compose file (with Traefik)
-docker-compose.no-traefik.yml  # Legacy compose file (port-based routing)
 ```
 
 ### Terraform
@@ -283,11 +282,8 @@ If issues occur in production:
 
 2. **Full rollback:**
    ```bash
-   # Use old docker-compose locally
-   docker-compose -f docker-compose.no-traefik.yml up -d
-
    # Revert DNS changes
-   # Redeploy old services
+   # Redeploy old services via: ./deploy/deploy-all.sh stg
    ```
 
 For rollback procedures, see [Router Setup Guide](../deploy/TRAEFIK_ROUTER_SETUP.md).

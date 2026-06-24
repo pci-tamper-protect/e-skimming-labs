@@ -60,7 +60,7 @@ npm run test:ui
 
 ## Test Data Used
 
-- **Card Numbers**: Valid Luhn-checked test numbers (4532123456789010, etc.)
+- **Card Numbers**: Valid Luhn-checked test numbers (4242424242424242, etc.)
 - **Personal Info**: Fake test data (John Doe, test addresses, etc.)
 - **Never uses real payment information**
 

@@ -1,5 +1,6 @@
 // Simple test to verify threat model back button works
 // This will be run using MCP Playwright tools
+const { navLink } = require('./utils/nav')
 
 async function testThreatModelBackButton() {
   // Navigate to threat model page
@@ -9,7 +10,7 @@ async function testThreatModelBackButton() {
   await page.waitForLoadState('networkidle')
 
   // Find back button
-  const backButton = page.getByRole('link', { name: '← Back to Labs' })
+  const backButton = navLink(page, 'labsHome')
 
   // Check it's visible and has correct href
   console.log('Back button visible:', await backButton.isVisible())

@@ -42,8 +42,15 @@ test.describe('Lab 2: DOM-Based Skimming - Credit Card Exfiltration', () => {
     await page.goto(`${lab2VulnerableUrl}/banking.html`)
     await page.waitForLoadState('networkidle')
 
+    // Skip gracefully if auth is required and we're not authenticated
+    if (page.url().includes('/sign-in')) {
+      console.log('⏭️  Lab 2 redirected to sign-in — skipping (set TEST_USER_EMAIL_* to run with auth)')
+      test.skip()
+      return
+    }
+
     // Wait for cards section to be active (default)
-    await page.waitForSelector('#cards.section.active', { timeout: 3000 })
+    await page.waitForSelector('#cards.section.active', { timeout: 5000 })
 
     // Verify add card form is visible
     const addCardForm = page.locator('#add-card-form')
@@ -51,7 +58,7 @@ test.describe('Lab 2: DOM-Based Skimming - Credit Card Exfiltration', () => {
 
     // Fill out credit card form
     console.log('📝 Filling out credit card form...')
-    await page.fill('#card-number', '4532123456789010')
+    await page.fill('#card-number', '4242424242424242')
     await page.fill('#card-holder-name', 'John Doe')
     await page.fill('#card-expiry', '12/28')
     await page.fill('#card-cvv-input', '123')
@@ -72,32 +79,121 @@ test.describe('Lab 2: DOM-Based Skimming - Credit Card Exfiltration', () => {
     const stats = await c2StatsResponse.json()
     console.log('📊 C2 Server Stats:', stats)
 
-    // Verify attack was recorded
-    expect(stats.totalAttacks).toBeGreaterThan(0)
-    console.log('✅ Attack recorded in C2 server')
+    // totalRequests is incremented for every non-noisy event (e.g. form_submission)
+    expect(stats.totalRequests).toBeGreaterThan(0)
+    console.log('✅ Attack recorded in C2 server (totalRequests:', stats.totalRequests, ')')
 
-    // Get recent attacks to verify our data
-    const recentResponse = await page.request.get(`${lab2C2Url}/recent/10`)
-    expect(recentResponse.ok()).toBeTruthy()
-    
-    const recentAttacks = await recentResponse.json()
-    console.log('📊 Recent attacks:', recentAttacks.length)
-    
-    // Verify our test data is in the recent attacks
-    const testAttack = recentAttacks.find(attack => 
-      attack.data && 
-      (attack.data.cardNumber && attack.data.cardNumber.includes('4532123456789010') ||
-       attack.data.ccNumber && attack.data.ccNumber.includes('4532123456789010'))
-    )
-    
-    if (testAttack) {
-      console.log('✅ Test credit card data found in C2 server')
-      console.log('📋 Attack data:', JSON.stringify(testAttack, null, 2))
-    } else {
-      console.log('⚠️ Test data not immediately found, but attack was recorded')
-    }
+    // Verify stolen data is in the api/stolen endpoint
+    const stolenResponse = await page.request.get(`${lab2C2Url}/api/stolen`)
+    expect(stolenResponse.ok()).toBeTruthy()
+    const stolenData = await stolenResponse.json()
+    console.log('📊 Stolen data records:', stolenData.length)
+    expect(stolenData.length).toBeGreaterThan(0)
+
+    // Navigate to C2 dashboard and verify captured card data is displayed
+    console.log('🔍 Navigating to C2 dashboard to verify card display...')
+    await page.goto(lab2C2Url)
+    await page.waitForLoadState('networkidle')
+
+    // C2 dashboard should show the lab 2 header, not the lab page
+    await expect(page.locator('h1')).toContainText('LAB 2')
+    console.log('✅ C2 dashboard loaded correctly')
+
+    // Check that at least one captured card entry is displayed
+    await page.waitForSelector('#recentData .attack-record', { timeout: 10000 })
+    const captureEntries = page.locator('#recentData .attack-record')
+    const count = await captureEntries.count()
+    expect(count).toBeGreaterThan(0)
+    const firstRecord = captureEntries.first()
+    await expect(firstRecord).toBeVisible()
+    await expect(firstRecord).toContainText('💳 Card:')
+    await expect(firstRecord).toContainText('John Doe')
+    await expect(firstRecord).toContainText('12/28')
+    await expect(firstRecord).toContainText('4242********4242')
+    await expect(firstRecord.locator('summary')).toContainText('View Full Data')
+    console.log('✅ Captured card data visible on C2 dashboard (entries:', count, ')')
 
     console.log('🔍 Credit card exfiltration test completed')
+  })
+
+  test('dashboard renders masked card data when the API returns a full session', async ({ page }) => {
+    // This test stubs the C2 API and verifies the dashboard renders masked card data.
+    // The dashboard page itself still requires auth on non-local environments.
+    test.setTimeout(30000)
+
+    const baseTimestamp = Date.now()
+    const stubbedRecords = [
+      {
+        type: 'session_end',
+        timestamp: baseTimestamp,
+        metadata: {
+          startTime: baseTimestamp - 5000,
+          url: 'https://lab-02-dom-skimming/vulnerable/banking.html'
+        },
+        finalData: {
+          fieldValues: {
+            cardNumber: {
+              fieldName: 'Card Number',
+              values: [{ value: '4242424242424242' }]
+            },
+            cardholderName: {
+              fieldName: 'Cardholder Name',
+              values: [{ value: 'Sample Holder' }]
+            },
+            expiry: {
+              fieldName: 'Expiration Date',
+              values: [{ value: '12/28' }]
+            },
+            cvv: {
+              fieldName: 'CVV',
+              values: [{ value: '123' }]
+            },
+            billingZip: {
+              fieldName: 'Billing Zip',
+              values: [{ value: '12345' }]
+            }
+          }
+        }
+      }
+    ]
+    const stubbedStats = {
+      totalRequests: 1,
+      uniqueVictims: 1,
+      uptimeHours: 0.1
+    }
+
+    await page.route('**/lab2/c2/stats', route =>
+      route.fulfill({
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(stubbedStats)
+      })
+    )
+    await page.route('**/lab2/c2/api/stolen', route =>
+      route.fulfill({
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(stubbedRecords)
+      })
+    )
+
+    await page.goto(lab2C2Url)
+    await page.waitForLoadState('networkidle')
+
+    // Skip gracefully if auth is required and we're not authenticated
+    if (page.url().includes('/sign-in')) {
+      console.log('⏭️  Lab 2 C2 redirected to sign-in — skipping (set TEST_USER_EMAIL_* to run with auth)')
+      test.skip()
+      return
+    }
+
+    await page.waitForSelector('#recentData .attack-record', { timeout: 15000 })
+    const renderedRecord = page.locator('#recentData .attack-record').first()
+    await expect(renderedRecord).toContainText('💳 Card: 4242********4242')
+    await expect(renderedRecord).toContainText('👤 Name: Sample Holder')
+    await expect(renderedRecord).toContainText('📅 Expires: 12/28')
+    await expect(renderedRecord.locator('summary')).toContainText('View Full Data')
+    console.log('✅ Dashboard renders masked card metadata from API response')
   })
 })
 

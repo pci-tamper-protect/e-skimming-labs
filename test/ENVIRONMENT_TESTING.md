@@ -31,34 +31,7 @@ docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
 - Debugging with live code reloading
 - Local development workflow
 
-### 2. `docker-compose.local-traefik-only.yml` - Local Traefik with Cloud Run Provider
-
-**Purpose:** Testing local Traefik with Cloud Run provider while all labs and home services run in `labs-stg` or `labs-home-stg` Cloud Run environments.
-
-**Usage:**
-```bash
-# Mount ADC credentials for authentication
-docker-compose -f docker-compose.local-traefik-only.yml up
-```
-
-**Features:**
-- ✅ Traefik runs locally with Cloud Run provider
-- ✅ Mounts ADC (Application Default Credentials) instead of using Cloud Run service account
-- ✅ Routes to real Cloud Run services in staging
-- ✅ Debug logging enabled for Traefik
-- ✅ Similar to staging Traefik deployment but runs locally
-- ✅ All backend services run in Cloud Run (labs-stg, labs-home-stg)
-
-**Use Cases:**
-- Testing Traefik Cloud Run provider locally
-- Debugging routing issues with real Cloud Run services
-- Testing identity token injection to Cloud Run services
-- Validating Traefik configuration before deploying to staging
-- Debugging Traefik behavior with full access to logs and dashboard
-
-**Note:** This file should be created if it doesn't exist yet. It should configure Traefik to use the Cloud Run provider plugin while running locally.
-
-### 3. `docker-compose.auth.yml` - Authentication Testing
+### 2. `docker-compose.auth.yml` - Authentication Testing
 
 **Purpose:** Testing user authentication on top of the regular docker-compose local environment.
 
@@ -92,40 +65,7 @@ dotenvx run --env-file=.env.stg -- docker-compose -f docker-compose.yml -f docke
 - Sets `FIREBASE_API_KEY` and `FIREBASE_SERVICE_ACCOUNT_KEY`
 - Enables `ENABLE_AUTH=true` and `REQUIRE_AUTH=true`
 
-### 4. `docker-compose.stg-simulation.yml` - Staging Simulation
-
-**Purpose:** Testing label detection and processing of the Cloud Run provider using the Docker Compose provider to fetch labels. Simulates staging environment configuration.
-
-**Usage:**
-```bash
-docker-compose -f docker-compose.stg-simulation.yml up -d
-./deploy/traefik/test-stg-simulation.sh
-```
-
-**Features:**
-- ✅ Traefik configured like Cloud Run (file provider only)
-- ✅ Uses `traefik.cloudrun.yml` configuration
-- ✅ Mock services with Traefik labels (simulating Cloud Run labels)
-- ✅ Tests label-based route generation
-- ✅ Tests file provider configuration
-- ✅ Tests route discovery and middleware application
-- ✅ Docker socket mounted for querying services (testing only)
-
-**Use Cases:**
-- Testing Cloud Run provider label parsing
-- Validating route generation from labels
-- Testing middleware configuration
-- Debugging label-to-route mapping
-- Testing file provider behavior
-- Simulating staging environment locally
-
-**Architecture:**
-- Traefik uses file provider (like Cloud Run deployment)
-- Mock services simulate Cloud Run services with labels
-- Labels are processed by Docker provider for testing
-- Routes generated and written to file provider
-
-### 5. `docker-compose.yml` - Base Configuration
+### 4. `docker-compose.yml` - Base Configuration
 
 **Purpose:** Standard local development setup with all services running locally.
 
@@ -147,28 +87,6 @@ docker-compose up
 - Quick local testing
 - Base configuration for other variants
 
-### 6. `docker-compose.no-traefik.yml` - Direct Service Access
-
-**Purpose:** Running services without Traefik for direct port access.
-
-**Usage:**
-```bash
-docker-compose -f docker-compose.no-traefik.yml up
-```
-
-**Features:**
-- ✅ Services accessible directly on their ports
-- ✅ No reverse proxy
-- ✅ Home index on `:3000`
-- ✅ Labs on `:9001`, `:9003`, `:9005`
-- ✅ C2 servers on `:9002`, `:9004`, `:9006`
-
-**Use Cases:**
-- Testing services directly without routing
-- Debugging individual services
-- Bypassing Traefik for troubleshooting
-- Direct service-to-service testing
-
 ## Combining Compose Files
 
 You can combine multiple compose files:
@@ -176,9 +94,6 @@ You can combine multiple compose files:
 ```bash
 # Development with authentication
 docker-compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.auth.yml up
-
-# Staging simulation with authentication
-docker-compose -f docker-compose.stg-simulation.yml -f docker-compose.auth.yml up
 ```
 
 ## Quick Reference
@@ -187,10 +102,7 @@ docker-compose -f docker-compose.stg-simulation.yml -f docker-compose.auth.yml u
 |--------------|------------------|-------------------|------|------------|---------|
 | `docker-compose.yml` | Docker | Local | No | No | Base local dev |
 | `docker-compose.dev.yml` | Docker | Local | No | Yes | Development |
-| `docker-compose.local-traefik-only.yml` | Cloud Run | Cloud Run (stg) | No | No | Test Cloud Run provider locally |
 | `docker-compose.auth.yml` | N/A | N/A | Yes | N/A | Add auth to any setup |
-| `docker-compose.stg-simulation.yml` | File | Local (mock) | No | No | Test label processing |
-| `docker-compose.no-traefik.yml` | None | Local | No | No | Direct service access |
 
 ## Environments
 

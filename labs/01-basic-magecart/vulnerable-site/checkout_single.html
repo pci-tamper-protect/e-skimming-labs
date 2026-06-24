@@ -167,6 +167,34 @@
       .success-message.show {
         display: block;
       }
+
+      @media (max-width: 768px) {
+        .main {
+          margin: 1rem auto;
+          padding: 1.25rem;
+        }
+
+        .container {
+          padding: 0 12px;
+        }
+
+        .card-row {
+          grid-template-columns: 1fr;
+        }
+
+        input[type='text'],
+        input[type='email'],
+        input[type='tel'],
+        select {
+          font-size: 16px;
+          min-height: 44px;
+        }
+
+        .submit-btn {
+          min-height: 44px;
+          font-size: 1rem;
+        }
+      }
     </style>
   </head>
   <body>
@@ -176,7 +204,8 @@
         <div style="float: right; margin-top: 5px">
           <a
             href="/"
-            aria-label="Go back to labs homepage"
+            data-nav="labsHome"
+            aria-label="Labs Home"
             class="back-button"
             style="
               color: white;
@@ -187,7 +216,7 @@
               margin-right: 10px;
             "
 
-            >← Back to Labs</a
+            >← Labs Home</a
           >
           <a
             href="#"
@@ -201,8 +230,9 @@
               margin-right: 10px;
             "
             class="c2-button"
-            aria-label="view stolen data tab"
-            >🕵️ View Stolen Data</a
+            data-nav="attackServer"
+            aria-label="Attack Server"
+            >🕵️ Attack Server</a
           >
           <a
             href="#"
@@ -278,18 +308,17 @@
       >
         <strong>💳 VALID TEST CARD NUMBERS:</strong><br />
         <ul style="margin-top: 0.5rem; margin-left: 1.5rem; color: #27ae60">
-          <li><code>4532123456789010</code> - Visa (16 digits)</li>
+          <li><code>4242424242424242</code> - Visa (16 digits)</li>
           <li><code>4000000000000002</code> - Visa (16 digits)</li>
           <li><code>5555555555554444</code> - Mastercard (16 digits)</li>
           <li><code>378282246310005</code> - American Express (15 digits)</li>
         </ul>
         <p style="margin-top: 0.5rem; font-size: 0.9rem">
-          These numbers pass Luhn algorithm validation. Use any future expiry date (MM/YY) and any
-          3-4 digit CVV.
+          These numbers pass Luhn algorithm validation. Use any future expiry date (MM/YY) and a 3-digit CVV for Visa/Mastercard or 4-digit CVV for Amex.
         </p>
       </div>
 
-      <form id="payment-form">
+      <form id="payment-form" autocomplete="off">
         <!-- Payment Information -->
         <h3 style="margin-bottom: 1rem; color: #2c3e50">Payment Information</h3>
 
@@ -300,7 +329,7 @@
             id="card-number"
             name="cardNumber"
             autocomplete="cc-number"
-            placeholder="4532 1234 5678 9012"
+            placeholder="4242 4242 4242 4242"
             maxlength="19"
             required
             aria-label="input card number"

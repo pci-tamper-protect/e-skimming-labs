@@ -341,6 +341,27 @@ func main() {
 		os.Setenv("FIREBASE_API_KEY", "") //nolint:errcheck
 	}
 
+	// Startup validation: fail loudly if auth is enabled but required secrets are missing or
+	// still encrypted. This surfaces dotenvx decryption failures immediately at container
+	// start rather than silently serving a broken sign-in page.
+	if enableAuth {
+		type envCheck struct{ name, val string }
+		checks := []envCheck{
+			{"FIREBASE_PROJECT_ID", firebaseProjectID},
+			{"FIREBASE_SERVICE_ACCOUNT_KEY", firebaseServiceAccount},
+			{"FIREBASE_API_KEY", os.Getenv("FIREBASE_API_KEY")},
+		}
+		for _, c := range checks {
+			if c.val == "" {
+				log.Fatalf("❌ FATAL: %s is required when ENABLE_AUTH=true but was not set — check dotenvx decryption", c.name)
+			}
+			if strings.HasPrefix(strings.TrimSpace(c.val), "encrypted:") {
+				log.Fatalf("❌ FATAL: %s is still encrypted — dotenvx decryption failed (check DOTENVX_KEY secret)", c.name)
+			}
+		}
+		log.Printf("✅ All required auth env vars present and decrypted")
+	}
+
 	// MainAppURL is now empty (relative paths) - services always use relative URLs
 	// IMPORTANT: Traefik handles routing, so services don't need to know about proxy setup
 	// DO NOT add logic to detect environment or generate absolute URLs here
@@ -356,7 +377,10 @@ func main() {
 
 	authValidator, err := auth.NewTokenValidator(authConfig)
 	if err != nil {
-		log.Fatalf("Failed to initialize auth validator: %v", err)
+		log.Printf("⚠️  WARNING: Failed to initialize auth validator: %v", err)
+		log.Printf("   Auth will be disabled. Set ENABLE_AUTH=false to suppress this warning.")
+		disabledConfig := auth.Config{Enabled: false}
+		authValidator, _ = auth.NewTokenValidator(disabledConfig)
 	}
 
 	// Add auth info to home page data
@@ -420,12 +444,42 @@ func main() {
 		serveAuthValidate(w, r, authValidator)
 	})
 
+	// Session-cookie endpoint: validates a Firebase ID token from Authorization: Bearer
+	// and issues a long-lived HttpOnly __session cookie via Firebase Admin SDK.
+	// Called by the sign-in page JS immediately after Firebase auth succeeds.
+	mux.HandleFunc("/api/auth/session", func(w http.ResponseWriter, r *http.Request) {
+		serveAuthSession(w, r, authValidator)
+	})
+
 	mux.HandleFunc("/api/auth/sign-in-url", func(w http.ResponseWriter, r *http.Request) {
 		serveAuthSignInURL(w, r, homeData)
 	})
 
 	mux.HandleFunc("/api/auth/user", func(w http.ResponseWriter, r *http.Request) {
 		serveAuthUser(w, r, authValidator)
+	})
+
+	mux.HandleFunc("/api/auth/logout", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		isSecure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
+		sameSite := http.SameSiteLaxMode
+		if isSecure {
+			sameSite = http.SameSiteStrictMode
+		}
+		http.SetCookie(w, &http.Cookie{
+			Name:     "__session",
+			Value:    "",
+			Path:     "/",
+			MaxAge:   -1,
+			HttpOnly: true,
+			Secure:   isSecure,
+			SameSite: sameSite,
+		})
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]bool{"ok": true})
 	})
 
 	// Auth check endpoint for Traefik ForwardAuth middleware
@@ -533,26 +587,40 @@ func main() {
 			return
 		}
 
-		// Extract token from request
-		// Priority order:
-		// 1. Cookie header (Firebase token) - prioritized when using gcloud proxy (gcloud sets Authorization)
-		// 2. Authorization header (Firebase token) - for direct access
-		// 3. Parsed Cookie (fallback)
-		// 4. Query parameter (fallback)
+		// Extract credentials from request.
+		// Priority:
+		// 1. __session cookie  — server-set HttpOnly Firebase session cookie (5-day lifetime)
+		// 2. firebase_token cookie — legacy JS-set ID-token cookie (1-hr lifetime, kept for fallback)
+		// 3. Authorization: Bearer — Firebase ID token from JS fetch/XHR calls
 		var token string
-		
-		// Check Cookie header first (when using gcloud proxy, Authorization is set by gcloud, not user)
-		// This avoids trying to validate gcloud's GCP token as a Firebase token
+
+		// 1. Try __session cookie (HttpOnly, server-set, most reliable for navigation)
+		if sc := auth.ExtractSessionCookie(r); sc != "" {
+			log.Printf("🔍 __session cookie found, validating as Firebase session cookie")
+			userInfo, sessionErr := authValidator.ValidateSessionCookie(r.Context(), sc)
+			if sessionErr == nil && userInfo != nil {
+				log.Printf("✅ Session cookie validated (user: %s)", userInfo.Email)
+				w.Header().Set("X-User-Id", userInfo.UserID)
+				w.Header().Set("X-User-Email", userInfo.Email)
+				// Preserve Firebase token for downstream services that need it
+				if existing := r.Header.Get("Authorization"); existing != "" {
+					w.Header().Set("X-Authorization", existing)
+				}
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			log.Printf("⚠️ __session cookie invalid: %v — falling back to ID token", sessionErr)
+		}
+
+		// 2. Fall back to firebase_token cookie (legacy JS-set, 1-hr expiry)
 		cookieHeader := r.Header.Get("Cookie")
 		if cookieHeader != "" {
-			log.Printf("🔍 Cookie header received: %s", sanitizeToken(cookieHeader))
-			// Parse the Cookie header manually to extract firebase_token
 			cookies := strings.Split(cookieHeader, ";")
 			for _, c := range cookies {
 				c = strings.TrimSpace(c)
 				if strings.HasPrefix(c, "firebase_token=") {
 					token = strings.TrimPrefix(c, "firebase_token=")
-					log.Printf("🔍 Token extracted from Cookie header: %s", sanitizeToken(token))
+					log.Printf("🔍 firebase_token cookie found: %s", sanitizeToken(token))
 					break
 				}
 			}
@@ -651,15 +719,36 @@ func main() {
 		// Build absolute URL for redirects - ForwardAuth resolves relative URLs against its own address
 		// which causes browser to redirect to internal hostname (e.g., home-index:8080) instead of public hostname
 		buildRedirectURL := func(path string) string {
-			// Prefer an explicit public base URL if configured (e.g., https://labs.example.com)
-			if publicBase := os.Getenv("PUBLIC_BASE_URL"); publicBase != "" {
-				if u, err := url.Parse(publicBase); err == nil && u.Scheme != "" && u.Host != "" {
+			if rawBase := strings.TrimSpace(os.Getenv("PUBLIC_BASE_URL")); rawBase != "" {
+				normalized := strings.TrimRight(rawBase, "/")
+				if !strings.Contains(normalized, "://") {
+					normalized = "https://" + normalized
+				}
+				if u, err := url.Parse(normalized); err == nil && u.Scheme != "" && u.Host != "" {
 					return fmt.Sprintf("%s://%s%s", u.Scheme, u.Host, path)
 				}
+				log.Printf("⚠️ PUBLIC_BASE_URL invalid, falling back: %s", rawBase)
+			}
+
+			proxyHost := os.Getenv("PROXY_HOST")
+			proxyPort := os.Getenv("PROXY_PORT")
+			if proxyHost != "" && proxyPort != "" {
+				if proxyHost == "127.0.0.1" {
+					proxyHost = "localhost"
+				}
+				return fmt.Sprintf("http://%s:%s%s", proxyHost, proxyPort, path)
+			}
+
+			if envDomain := os.Getenv("DOMAIN"); envDomain != "" {
+				scheme := "https"
+				lowerDomain := strings.ToLower(envDomain)
+				if strings.Contains(lowerDomain, "localhost") || strings.HasPrefix(lowerDomain, "127.") {
+					scheme = "http"
+				}
+				return fmt.Sprintf("%s://%s%s", scheme, envDomain, path)
 			}
 
 			scheme := "http"
-			// X-Forwarded-Proto can be comma-separated (e.g., "https,http"); use the first value
 			if xfProto := r.Header.Get("X-Forwarded-Proto"); xfProto != "" {
 				firstProto := strings.TrimSpace(strings.SplitN(xfProto, ",", 2)[0])
 				if strings.EqualFold(firstProto, "https") {
@@ -669,19 +758,21 @@ func main() {
 				scheme = "https"
 			}
 
-			// Prefer X-Forwarded-Host when present, but fall back to r.Host
 			host := r.Header.Get("X-Forwarded-Host")
 			if host == "" {
 				host = r.Host
 			}
 
 			environment := os.Getenv("ENVIRONMENT")
-			// Treat hosts without a dot (e.g., "home-index:8080") as internal/invalid for redirects
 			isLikelyInternalHost := !strings.Contains(host, ".")
 			if environment == "local" || isLikelyInternalHost {
-				// In local environment, or when we detect an internal hostname, use localhost:8080
 				host = "localhost:8080"
 			}
+			if strings.HasPrefix(host, "127.0.0.1:") {
+				host = "localhost:" + strings.TrimPrefix(host, "127.0.0.1:")
+				scheme = "http"
+			}
+
 			return fmt.Sprintf("%s://%s%s", scheme, host, path)
 		}
 
@@ -818,6 +909,12 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
     <meta name="keywords" content="e-skimming, cybersecurity, training, labs, payment security">
     <link rel="canonical" href="{{.Scheme}}://{{.Domain}}/">
 
+    <!-- Prefetch lab health endpoints to pre-warm backends (no auth required) -->
+    <link rel="prefetch" href="/lab1/health">
+    <link rel="prefetch" href="/lab2/health">
+    <link rel="prefetch" href="/lab3/health">
+    <link rel="prefetch" href="/lab4/health">
+
     <!-- Open Graph -->
     <meta property="og:title" content="E-Skimming Labs - Interactive Training Platform">
     <meta property="og:description" content="Interactive e-skimming attack labs for cybersecurity training and awareness">
@@ -889,12 +986,19 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
             position: sticky;
             top: 0;
             z-index: 100;
+            transition: transform 0.2s ease;
         }
 
         .header-content {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 16px;
+        }
+
+        .header-brand {
+            flex: 1;
+            min-width: 0;
         }
 
         .logo {
@@ -902,11 +1006,86 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
             font-weight: 700;
             color: var(--accent-blue);
             text-decoration: none;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: inline-block;
+            max-width: 100%;
+        }
+
+        .nav-menu-toggle {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .nav-menu-toggle:hover {
+            background: var(--bg-hover);
+        }
+
+        .nav-menu-toggle:focus-visible {
+            outline: 3px solid var(--accent-cyan);
+            outline-offset: 3px;
+        }
+
+        .nav-menu-icon,
+        .nav-menu-icon::before,
+        .nav-menu-icon::after {
+            display: block;
+            width: 20px;
+            height: 2px;
+            background: currentColor;
+            border-radius: 1px;
+            position: relative;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+
+        .nav-menu-icon::before,
+        .nav-menu-icon::after {
+            content: '';
+            position: absolute;
+            left: 0;
+        }
+
+        .nav-menu-icon::before {
+            top: -6px;
+        }
+
+        .nav-menu-icon::after {
+            top: 6px;
+        }
+
+        .header.nav-open .nav-menu-icon {
+            background: transparent;
+        }
+
+        .header.nav-open .nav-menu-icon::before {
+            top: 0;
+            transform: rotate(45deg);
+        }
+
+        .header.nav-open .nav-menu-icon::after {
+            top: 0;
+            transform: rotate(-45deg);
+        }
+
+        .nav-menu-backdrop {
+            display: none;
         }
 
         .nav-tabs {
             display: flex;
             gap: 20px;
+            align-items: center;
         }
 
         .nav-tab {
@@ -1207,26 +1386,98 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
 
         .footer a {
             color: var(--accent-blue);
-            text-decoration: none;
+            text-decoration: underline;
+            text-underline-offset: 2px;
         }
 
         .footer a:hover {
-            text-decoration: underline;
+            color: var(--accent-cyan);
         }
 
         /* Responsive */
         @media (max-width: 768px) {
+            .header {
+                padding: 10px 0;
+            }
+
+            .header.header--scroll-hidden {
+                transform: translateY(-100%);
+            }
+
+            .logo {
+                font-size: 18px;
+                font-weight: 600;
+            }
+
+            .nav-menu-toggle {
+                display: inline-flex;
+            }
+
+            .nav-menu-backdrop {
+                display: block;
+                position: fixed;
+                inset: 0;
+                background: rgba(10, 14, 39, 0.65);
+                z-index: 90;
+            }
+
+            .nav-menu-backdrop[hidden] {
+                display: none;
+            }
+
+            .nav-tabs {
+                display: none;
+                position: fixed;
+                top: var(--header-height, 56px);
+                left: 0;
+                right: 0;
+                max-height: min(70vh, calc(100vh - var(--header-height, 56px)));
+                overflow-y: auto;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+                padding: 12px 20px 20px;
+                background: var(--bg-secondary);
+                border-bottom: 1px solid var(--border-color);
+                box-shadow: var(--shadow-lg);
+                z-index: 95;
+            }
+
+            .header.nav-open .nav-tabs {
+                display: flex;
+            }
+
+            .nav-tab,
+            .auth-btn {
+                width: 100%;
+                text-align: center;
+            }
+
+            .auth-buttons {
+                flex-direction: column;
+                width: 100%;
+                gap: 8px;
+            }
+
+            .user-email {
+                text-align: center;
+                padding: 0;
+            }
+
+            body.nav-menu-open {
+                overflow: hidden;
+            }
+
+            .hero {
+                padding: 48px 0;
+            }
+
             .hero h1 {
                 font-size: 36px;
             }
 
             .hero p {
                 font-size: 18px;
-            }
-
-            .nav-tabs {
-                flex-direction: column;
-                gap: 10px;
             }
 
             .labs-grid {
@@ -1240,11 +1491,16 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
     </style>
 </head>
 <body>
-    <header class="header">
+    <header class="header" id="site-header">
         <div class="container">
             <div class="header-content">
-                <a href="/" class="logo">E-Skimming Labs</a>
-                <nav class="nav-tabs">
+                <div class="header-brand">
+                    <a href="/" class="logo">E-Skimming Labs</a>
+                </div>
+                <button type="button" class="nav-menu-toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="site-nav">
+                    <span class="nav-menu-icon" aria-hidden="true"></span>
+                </button>
+                <nav class="nav-tabs" id="site-nav" aria-label="Site navigation">
                     <a href="/" class="nav-tab active">Home</a>
                     <a href="{{.MITREURL}}" class="nav-tab">MITRE ATT&CK</a>
                     <a href="{{.ThreatModelURL}}" class="nav-tab">Threat Model</a>
@@ -1259,6 +1515,7 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
                 </nav>
             </div>
         </div>
+        <div class="nav-menu-backdrop" hidden></div>
     </header>
 
     <main>
@@ -1360,7 +1617,13 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
                 })
                 .then(data => {
                     if (data.authenticated && data.user) {
-                        // User is logged in
+                        // User is logged in - refresh cookie so ForwardAuth has a current token
+                        const freshToken = sessionStorage.getItem('firebase_token');
+                        if (freshToken) {
+                            const isSecure = window.location.protocol === 'https:';
+                            const sameSiteAttr = isSecure ? 'SameSite=None; Secure' : 'SameSite=Lax';
+                            document.cookie = 'firebase_token=' + encodeURIComponent(freshToken) + '; path=/; max-age=3600; ' + sameSiteAttr;
+                        }
                         loginBtn.style.display = 'none';
                         logoutBtn.style.display = 'block';
                         if (userEmail) {
@@ -1406,12 +1669,11 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
             if (logoutBtn) {
                 logoutBtn.addEventListener('click', function() {
                     sessionStorage.removeItem('firebase_token');
-                    // Clear cookie - must include same SameSite attrs used when setting it
                     document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=None; Secure';
                     document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=Lax';
-                    updateAuthButtons();
-                    // Reload to clear any protected content
-                    window.location.reload();
+                    // __session is HttpOnly — must be cleared server-side
+                    fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+                        .finally(function() { window.location.reload(); });
                 });
             }
         });
@@ -1419,6 +1681,84 @@ func serveHomePage(w http.ResponseWriter, r *http.Request, data HomePageData, va
     {{end}}
 
     <script>
+        (function () {
+            const header = document.getElementById('site-header');
+            const toggle = document.querySelector('.nav-menu-toggle');
+            const nav = document.getElementById('site-nav');
+            const backdrop = document.querySelector('.nav-menu-backdrop');
+            if (!header || !toggle || !nav) {
+                return;
+            }
+
+            function updateHeaderHeight() {
+                document.documentElement.style.setProperty('--header-height', header.offsetHeight + 'px');
+            }
+
+            function setNavOpen(open) {
+                updateHeaderHeight();
+                header.classList.toggle('nav-open', open);
+                toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                toggle.setAttribute('aria-label', open ? 'Close navigation menu' : 'Open navigation menu');
+                if (backdrop) {
+                    backdrop.hidden = !open;
+                }
+                document.body.classList.toggle('nav-menu-open', open);
+            }
+
+            toggle.addEventListener('click', function () {
+                setNavOpen(!header.classList.contains('nav-open'));
+            });
+
+            if (backdrop) {
+                backdrop.addEventListener('click', function () {
+                    setNavOpen(false);
+                });
+            }
+
+            nav.querySelectorAll('a').forEach(function (link) {
+                link.addEventListener('click', function () {
+                    setNavOpen(false);
+                });
+            });
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape') {
+                    setNavOpen(false);
+                }
+            });
+
+            const desktopQuery = window.matchMedia('(min-width: 769px)');
+            const handleDesktopChange = function (event) {
+                if (event.matches) {
+                    setNavOpen(false);
+                }
+            };
+            if (desktopQuery.addEventListener) {
+                desktopQuery.addEventListener('change', handleDesktopChange);
+            } else if (desktopQuery.addListener) {
+                desktopQuery.addListener(handleDesktopChange);
+            }
+
+            updateHeaderHeight();
+            window.addEventListener('resize', updateHeaderHeight, { passive: true });
+
+            let lastScrollY = window.scrollY;
+            window.addEventListener('scroll', function () {
+                if (window.innerWidth > 768 || header.classList.contains('nav-open')) {
+                    header.classList.remove('header--scroll-hidden');
+                    lastScrollY = window.scrollY;
+                    return;
+                }
+                const currentY = window.scrollY;
+                if (currentY > 72 && currentY > lastScrollY) {
+                    header.classList.add('header--scroll-hidden');
+                } else {
+                    header.classList.remove('header--scroll-hidden');
+                }
+                lastScrollY = currentY;
+            }, { passive: true });
+        })();
+
         // Add smooth scrolling for anchor links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
@@ -1664,6 +2004,9 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, homeD
             </div>`
 	}
 
+	// Lab1 is public; other labs respect the global REQUIRE_AUTH setting.
+	writeupAuthRequired := homeData.AuthRequired && labID != "01-basic-magecart"
+
 	// Build auth scripts if enabled
 	authScripts := ""
 	if homeData.AuthEnabled {
@@ -1750,17 +2093,16 @@ func serveLabWriteup(w http.ResponseWriter, r *http.Request, labID string, homeD
 				if (logoutBtn) {
 					logoutBtn.addEventListener('click', function() {
 						sessionStorage.removeItem('firebase_token');
-						// Clear cookie - must include same SameSite attrs used when setting it
 						document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=None; Secure';
 						document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=Lax';
-						updateAuthButtons();
-						// Reload to clear any protected content
-						window.location.reload();
+						// __session is HttpOnly — must be cleared server-side
+						fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+							.finally(function() { window.location.reload(); });
 					});
 				}
 			});
 		</script>
-		`, homeData.AuthRequired, homeData.MainAppURL, homeData.FirebaseProjectID, homeData.MainAppURL)
+		`, writeupAuthRequired, homeData.MainAppURL, homeData.FirebaseProjectID, homeData.MainAppURL)
 	}
 
 	// Create HTML page
@@ -2029,6 +2371,50 @@ func serveAuthValidate(w http.ResponseWriter, r *http.Request, validator *auth.T
 	})
 }
 
+// serveAuthSession exchanges a Firebase ID token (from Authorization: Bearer) for a
+// long-lived HttpOnly __session cookie via Firebase Admin SDK.
+// Called by sign-in page JS immediately after Firebase authentication succeeds.
+// The session cookie is valid for 5 days and is verified server-side on every
+// ForwardAuth check, making it safe even if the ID token's 1-hour window passes.
+func serveAuthSession(w http.ResponseWriter, r *http.Request, validator *auth.TokenValidator) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+		http.Error(w, "Authorization: Bearer token required", http.StatusBadRequest)
+		return
+	}
+	idToken := strings.TrimPrefix(authHeader, "Bearer ")
+
+	sessionCookie, err := validator.CreateSessionCookie(r.Context(), idToken)
+	if err != nil {
+		log.Printf("❌ Failed to create session cookie: %v", err)
+		http.Error(w, "Invalid token or session creation failed", http.StatusUnauthorized)
+		return
+	}
+
+	isSecure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
+	sameSite := http.SameSiteLaxMode
+	if isSecure {
+		sameSite = http.SameSiteStrictMode
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     "__session",
+		Value:    sessionCookie,
+		Path:     "/",
+		MaxAge:   int(auth.SessionCookieDuration.Seconds()),
+		HttpOnly: true,
+		Secure:   isSecure,
+		SameSite: sameSite,
+	})
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+}
+
 // serveAuthSignInURL returns the sign-in URL for the main app
 // IMPORTANT: This function MUST NOT contain routing logic. All routing belongs to Traefik.
 // Always uses relative URLs (/sign-in) - Traefik handles routing.
@@ -2049,35 +2435,45 @@ func serveAuthUser(w http.ResponseWriter, r *http.Request, validator *auth.Token
 	// First try to get user info from context (if request went through auth middleware)
 	userInfo := auth.GetUserInfo(r)
 
-	// If not in context, extract and validate token directly (for public endpoint)
+	// If not in context, validate directly (for public endpoint)
 	if userInfo == nil {
-		// Extract token from request
-		token := extractTokenFromRequest(r)
-		if token == "" {
-			// Log for debugging
-			log.Printf("🔍 /api/auth/user - No token found (cookies: %v)", r.Cookies())
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"authenticated": false,
-			})
-			return
+		// 1. Try __session cookie (HttpOnly, 5-day server-set cookie — survives firebase_token expiry)
+		if sessionCookie, err := r.Cookie("__session"); err == nil && sessionCookie.Value != "" {
+			if info, err := validator.ValidateSessionCookie(r.Context(), sessionCookie.Value); err == nil && info != nil {
+				userInfo = info
+				log.Printf("🔍 /api/auth/user - authenticated via __session cookie")
+			} else {
+				log.Printf("🔍 /api/auth/user - __session invalid: %v", err)
+			}
 		}
 
-		// Log token for debugging (sanitized)
-		log.Printf("🔍 /api/auth/user - Token found: %s", sanitizeToken(token))
-
-		// Validate token
-		var err error
-		userInfo, err = validator.ValidateToken(r.Context(), token)
-		if err != nil || userInfo == nil {
-			log.Printf("❌ /api/auth/user - Token validation failed: %v", err)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"authenticated": false,
-			})
-			return
+		// 2. Fall back to short-lived firebase_token (Authorization header or cookie)
+		if userInfo == nil {
+			token := extractTokenFromRequest(r)
+			if token == "" {
+				cookieNames := make([]string, 0, len(r.Cookies()))
+			for _, c := range r.Cookies() {
+				cookieNames = append(cookieNames, c.Name)
+			}
+			log.Printf("🔍 /api/auth/user - No token found (cookie names: %v)", cookieNames)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"authenticated": false,
+				})
+				return
+			}
+			var err error
+			userInfo, err = validator.ValidateToken(r.Context(), token)
+			if err != nil || userInfo == nil {
+				log.Printf("❌ /api/auth/user - Token validation failed: %v", err)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"authenticated": false,
+				})
+				return
+			}
 		}
 	}
 
@@ -2231,12 +2627,11 @@ func injectAuthButtons(html string, homeData HomePageData, authRequired bool) st
 				if (logoutBtn) {
 					logoutBtn.addEventListener('click', function() {
 						sessionStorage.removeItem('firebase_token');
-						// Clear cookie - must include same SameSite attrs used when setting it
 						document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=None; Secure';
 						document.cookie = 'firebase_token=; path=/; max-age=0; SameSite=Lax';
-						updateAuthButtons();
-						// Reload to clear any protected content
-						window.location.reload();
+						// __session is HttpOnly — must be cleared server-side
+						fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+							.finally(function() { window.location.reload(); });
 					});
 				}
 			});
@@ -2335,18 +2730,14 @@ func serveAuthJS(w http.ResponseWriter, r *http.Request, homeData HomePageData) 
     const token = urlParams.get('token');
 
     if (token) {
-        // Store token in both sessionStorage (for client-side) and cookie (for server-side)
+        // Legacy URL token flow: store in sessionStorage and exchange for session cookie
         sessionStorage.setItem('firebase_token', token);
-        // Set cookie that will be sent with all requests
-        // Cookie expires in 1 hour (3600 seconds)
-        // Use SameSite=None; Secure for HTTPS (allows cross-site), SameSite=Lax for HTTP (local dev)
-        const isSecure = window.location.protocol === 'https:';
-        const sameSiteAttr = isSecure ? 'SameSite=None; Secure' : 'SameSite=Lax';
-        document.cookie = 'firebase_token=' + encodeURIComponent(token) + '; path=/; max-age=3600; ' + sameSiteAttr;
+        fetch('/api/auth/session', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } })
+            .catch(() => {});
         // Remove token from URL for security
         const newUrl = window.location.pathname + (window.location.search.replace(/[?&]token=[^&]*/, '').replace(/^&/, '?') || '');
         window.history.replaceState({}, '', newUrl);
-        console.log('✅ Token extracted from URL and stored in cookie (legacy flow)');
+        console.log('✅ Token extracted from URL, sessionStorage set, session cookie requested');
     }
 
     // Function to initialize auth - prevent multiple initializations
@@ -2377,6 +2768,13 @@ func serveAuthJS(w http.ResponseWriter, r *http.Request, homeData HomePageData) 
             .then(response => {
                 if (response.ok) {
                     console.log('✅ Authentication validated');
+                    // Refresh cookie from sessionStorage so ForwardAuth has a fresh token
+                    const freshToken = sessionStorage.getItem('firebase_token');
+                    if (freshToken) {
+                        const isSecure = window.location.protocol === 'https:';
+                        const sameSiteAttr = isSecure ? 'SameSite=None; Secure' : 'SameSite=Lax';
+                        document.cookie = 'firebase_token=' + encodeURIComponent(freshToken) + '; path=/; max-age=3600; ' + sameSiteAttr;
+                    }
                     return response.json();
                 } else {
                     // Token invalid, clear it
@@ -2827,19 +3225,28 @@ func serveSignInPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
                     tokenPrefix: token ? token.substring(0, 20) + '...' : 'none'
                 });
 
-                // Store token in cookie (for server-side auth) and sessionStorage (for client-side)
-                // Cookie expires in 1 hour (3600 seconds)
-                // Use SameSite=None; Secure for HTTPS (allows cross-site), SameSite=Lax for HTTP (local dev)
-                // Set cookie with path=/ to ensure it's sent for all routes
-                // No domain specified = cookie is set for current domain
-                const isSecure = window.location.protocol === 'https:';
-                const sameSiteAttr = isSecure ? 'SameSite=None; Secure' : 'SameSite=Lax';
-                document.cookie = 'firebase_token=' + encodeURIComponent(token) + '; path=/; max-age=3600; ' + sameSiteAttr;
-                console.log('🔍 Cookie set:', document.cookie.split(';').find(c => c.trim().startsWith('firebase_token=')));
+                // Store ID token in sessionStorage for JS API calls (Authorization: Bearer)
                 sessionStorage.setItem('firebase_token', token);
-                logInfo('✅ Token stored in cookie and sessionStorage');
+                logInfo('✅ Token stored in sessionStorage for API calls');
 
-                // Redirect without token in URL (token is now in cookie)
+                // Exchange ID token for a server-set HttpOnly __session cookie (5-day lifetime).
+                // The session cookie is what Traefik ForwardAuth will use to authenticate
+                // navigation requests — it survives the proxy chain unlike JS-set cookies.
+                try {
+                    const sessionResp = await fetch('/api/auth/session', {
+                        method: 'POST',
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (sessionResp.ok) {
+                        logInfo('✅ Session cookie created (HttpOnly, 5-day lifetime)');
+                    } else {
+                        logInfo('⚠️ Session cookie creation failed — lab navigation may require re-login');
+                    }
+                } catch (sessionErr) {
+                    logInfo('⚠️ Session cookie fetch error: ' + sessionErr.message);
+                }
+
+                // Redirect without token in URL (session cookie is set via Set-Cookie header above)
                 const redirectPath = '%s';
                 // Handle both absolute (https://...) and relative (/path) redirect values
                 const redirectUrl = /^https?:\/\//.test(redirectPath) ? redirectPath : window.location.origin + redirectPath;
@@ -2946,19 +3353,28 @@ func serveSignInPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
                     tokenPrefix: token ? token.substring(0, 20) + '...' : 'none'
                 });
 
-                // Store token in cookie (for server-side auth) and sessionStorage (for client-side)
-                // Cookie expires in 1 hour (3600 seconds)
-                // Use SameSite=None; Secure for HTTPS (allows cross-site), SameSite=Lax for HTTP (local dev)
-                // Set cookie with path=/ to ensure it's sent for all routes
-                // No domain specified = cookie is set for current domain
-                const isSecure = window.location.protocol === 'https:';
-                const sameSiteAttr = isSecure ? 'SameSite=None; Secure' : 'SameSite=Lax';
-                document.cookie = 'firebase_token=' + encodeURIComponent(token) + '; path=/; max-age=3600; ' + sameSiteAttr;
-                console.log('🔍 Cookie set:', document.cookie.split(';').find(c => c.trim().startsWith('firebase_token=')));
+                // Store ID token in sessionStorage for JS API calls (Authorization: Bearer)
                 sessionStorage.setItem('firebase_token', token);
-                logInfo('✅ Token stored in cookie and sessionStorage');
+                logInfo('✅ Token stored in sessionStorage for API calls');
 
-                // Redirect without token in URL (token is now in cookie)
+                // Exchange ID token for a server-set HttpOnly __session cookie (5-day lifetime).
+                // The session cookie is what Traefik ForwardAuth will use to authenticate
+                // navigation requests — it survives the proxy chain unlike JS-set cookies.
+                try {
+                    const sessionResp = await fetch('/api/auth/session', {
+                        method: 'POST',
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (sessionResp.ok) {
+                        logInfo('✅ Session cookie created (HttpOnly, 5-day lifetime)');
+                    } else {
+                        logInfo('⚠️ Session cookie creation failed — lab navigation may require re-login');
+                    }
+                } catch (sessionErr) {
+                    logInfo('⚠️ Session cookie fetch error: ' + sessionErr.message);
+                }
+
+                // Redirect without token in URL (session cookie is set via Set-Cookie header above)
                 const redirectPath = '%s';
                 // Handle both absolute (https://...) and relative (/path) redirect values
                 const redirectUrl = /^https?:\/\//.test(redirectPath) ? redirectPath : window.location.origin + redirectPath;
@@ -3294,18 +3710,20 @@ func serveSignUpPage(w http.ResponseWriter, r *http.Request, homeData HomePageDa
                 const result = await auth.signInWithPopup(provider);
                 const token = await result.user.getIdToken();
 
-                // Store token in cookie (for server-side auth) and sessionStorage (for client-side)
-                // Cookie expires in 1 hour (3600 seconds)
-                // Use SameSite=None; Secure for HTTPS (allows cross-site), SameSite=Lax for HTTP (local dev)
-                // Set cookie with path=/ to ensure it's sent for all routes
-                // No domain specified = cookie is set for current domain
-                const isSecure = window.location.protocol === 'https:';
-                const sameSiteAttr = isSecure ? 'SameSite=None; Secure' : 'SameSite=Lax';
-                document.cookie = 'firebase_token=' + encodeURIComponent(token) + '; path=/; max-age=3600; ' + sameSiteAttr;
-                console.log('🔍 Cookie set:', document.cookie.split(';').find(c => c.trim().startsWith('firebase_token=')));
                 sessionStorage.setItem('firebase_token', token);
+                try {
+                    const sessionResp = await fetch('/api/auth/session', {
+                        method: 'POST',
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (!sessionResp.ok) {
+                        console.warn('⚠️ Session cookie creation failed');
+                    }
+                } catch (sessionErr) {
+                    console.warn('⚠️ Session cookie fetch error:', sessionErr.message);
+                }
 
-                // Redirect without token in URL (token is now in cookie)
+                // Redirect without token in URL (session cookie is set via Set-Cookie header above)
                 const redirectPath = '%s';
                 // Handle both absolute (https://...) and relative (/path) redirect values
                 const redirectUrl = /^https?:\/\//.test(redirectPath) ? redirectPath : window.location.origin + redirectPath;
@@ -3417,7 +3835,7 @@ func checkServiceHealth(environment string) ([]ServiceStatus, bool, bool) {
 					// Don't block on Analytics service
 				}
 
-				if serviceMap["lab1@docker"] == "up" {
+				if serviceMap["lab1-vulnerable-site@docker"] == "up" {
 					services[4].Status = "up"
 				} else {
 					services[4].Status = "down"

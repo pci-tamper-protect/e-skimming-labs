@@ -1,18 +1,25 @@
 #!/bin/bash
 # Deploy all pre-built services to Cloud Run
 # Usage: ./deploy/deploy-all.sh [stg|prd] [image-tag] [--only service1,service2]
-#        image-tag: tag of pre-built images (default: current git SHA)
+#        image-tag: tag of pre-built images (default: auto-detected from registry)
 #        --only: Comma-separated list of services to deploy (e.g. --only home-index,traefik)
-#                Services: home-seo, home-index, labs-analytics, labs-index,
-#                          lab1-c2, lab2-c2, lab3-extension,
-#                          lab-01-basic-magecart, lab-02-dom-skimming, lab-03-extension-hijacking,
-#                          traefik
+#                Fixed services: home-seo, home-index, labs-analytics, labs-index, shared-c2, traefik
+#                Lab services:   read from docker-compose.yml x-cloudrun.service fields
+#                                (e.g. lab-01-basic-magecart, lab-02-dom-skimming, ...)
 #        Called by build-deploy-all.sh after images are built, or standalone
 #        when images already exist in Artifact Registry.
+#
+# Lab metadata (service name, image name, C2 path) is the single source of truth in
+# docker-compose.yml via x-cloudrun extension fields. To add a new lab, add an
+# x-cloudrun block to its service entry — no changes needed here.
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Lab Traefik labels are generated from docker-compose.yml (single source of truth).
+# Re-run deploy/traefik/generate-lab-labels.sh to regenerate after docker-compose changes.
+source "$SCRIPT_DIR/traefik/lab-labels.sh"
 
 source "$SCRIPT_DIR/check-credentials.sh"
 if ! check_credentials; then
@@ -40,6 +47,27 @@ for arg in "$@"; do
   fi
 done
 
+# Guard: catch service names accidentally passed as the image-tag positional arg.
+# Image tags look like git SHAs (hex), "latest", or version strings (v1.2.3).
+# Service names contain word-hyphens like "shared-c2", "home-seo", "lab-01-basic-magecart".
+# Heuristic: tags never start with a known service prefix.
+KNOWN_SERVICES="home-seo home-index labs-analytics labs-index shared-c2 traefik"
+for svc in $KNOWN_SERVICES; do
+  if [ "$IMAGE_TAG" = "$svc" ]; then
+    echo "❌ ERROR: '$IMAGE_TAG' looks like a service name, not an image tag."
+    echo "   To deploy a specific service use: --only $IMAGE_TAG"
+    echo "   Example: $0 ${ENVIRONMENT:-prd} --only $IMAGE_TAG"
+    exit 1
+  fi
+done
+# Also catch lab service names (lab-NN-* pattern)
+if echo "$IMAGE_TAG" | grep -qE '^lab-[0-9]'; then
+  echo "❌ ERROR: '$IMAGE_TAG' looks like a lab service name, not an image tag."
+  echo "   To deploy a specific service use: --only $IMAGE_TAG"
+  echo "   Example: $0 ${ENVIRONMENT:-prd} --only $IMAGE_TAG"
+  exit 1
+fi
+
 # Helper: returns 0 (true) if the service should be deployed
 should_run() {
   local svc="$1"
@@ -66,7 +94,25 @@ else
   DOMAIN_PREFIX="labs.stg.pcioasis.com"
 fi
 
-IMAGE_TAG="${IMAGE_TAG:-$(git rev-parse --short HEAD 2>/dev/null || echo 'latest')}"
+# Resolve IMAGE_TAG: prefer explicit arg, then short SHA, then full SHA (used by CI), then latest.
+# CI tags images with the full github.sha; local builds use the short SHA.
+if [ -z "$IMAGE_TAG" ]; then
+  SHORT_SHA=$(git rev-parse --short HEAD 2>/dev/null || true)
+  FULL_SHA=$(git rev-parse HEAD 2>/dev/null || true)
+  # Probe Artifact Registry for a known service image to find which tag format was pushed.
+  PROBE_REPO="${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/shared-c2"
+  if [ -n "$SHORT_SHA" ] && gcloud artifacts docker tags list "$PROBE_REPO" \
+       --project="${LABS_PROJECT_ID}" --filter="tag=$SHORT_SHA" --format="value(tag)" 2>/dev/null | grep -q .; then
+    IMAGE_TAG="$SHORT_SHA"
+  elif [ -n "$FULL_SHA" ] && gcloud artifacts docker tags list "$PROBE_REPO" \
+       --project="${LABS_PROJECT_ID}" --filter="tag=$FULL_SHA" --format="value(tag)" 2>/dev/null | grep -q .; then
+    IMAGE_TAG="$FULL_SHA"
+  else
+    echo "⚠️  WARNING: No image found for short SHA ($SHORT_SHA) or full SHA ($FULL_SHA) in Artifact Registry."
+    echo "   Falling back to 'latest' — this may deploy a stale image. Run CI first or pass an explicit tag."
+    IMAGE_TAG="latest"
+  fi
+fi
 
 echo "🚀 Deploying all services to ${ENVIRONMENT}..."
 echo "   Image tag: $IMAGE_TAG"
@@ -80,23 +126,105 @@ echo ""
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
+# Enable required APIs on both GCP projects before any deployment.
+# identitytoolkit.googleapis.com must be enabled on the CALLING project (labs-home-*)
+# because Google checks API quota/enablement against the service account's project,
+# not the Firebase project. Without this, CreateSessionCookie returns 403.
+ensure_service_enabled() {
+  local project_id=$1
+  shift
+  local service
+  for service in "$@"; do
+    if gcloud services list \
+      --project="${project_id}" \
+      --filter="config.name=${service}" \
+      --limit=1 \
+      --format="value(config.name)" \
+      | grep -q "${service}"; then
+      echo "   ✔ ${service} already enabled on ${project_id}"
+    else
+      echo "   🔧 Enabling ${service} on ${project_id}..."
+      gcloud services enable "${service}" --project="${project_id}" --quiet
+      echo "   ✅ ${service} enabled"
+    fi
+  done
+}
+
+echo "🔧 Ensuring required APIs are enabled..."
+ensure_service_enabled "${HOME_PROJECT_ID}" \
+  identitytoolkit.googleapis.com \
+  run.googleapis.com \
+  artifactregistry.googleapis.com
+ensure_service_enabled "${LABS_PROJECT_ID}" \
+  run.googleapis.com \
+  artifactregistry.googleapis.com \
+  storage.googleapis.com
+echo ""
+echo ""
+
+# GCS bucket names for shared-c2 per-lab storage
+C2_BUCKET_LAB1="labs-c2-lab1-${ENVIRONMENT}"
+C2_BUCKET_LAB2="labs-c2-lab2-${ENVIRONMENT}"
+C2_BUCKET_LAB3="labs-c2-lab3-${ENVIRONMENT}"
+C2_BUCKET_LAB4="labs-c2-lab4-${ENVIRONMENT}"
+C2_SA="labs-runtime-sa@${LABS_PROJECT_ID}.iam.gserviceaccount.com"
+
+# Ensure C2 GCS buckets exist with correct IAM (idempotent)
+ensure_c2_buckets() {
+  for bucket in "$C2_BUCKET_LAB1" "$C2_BUCKET_LAB2" "$C2_BUCKET_LAB3" "$C2_BUCKET_LAB4"; do
+    if ! gcloud storage buckets describe "gs://${bucket}" --project="${LABS_PROJECT_ID}" &>/dev/null; then
+      echo "   Creating bucket gs://${bucket}..."
+      gcloud storage buckets create "gs://${bucket}" \
+        --project="${LABS_PROJECT_ID}" \
+        --location="${REGION}" \
+        --uniform-bucket-level-access \
+        --quiet
+    fi
+    gcloud storage buckets add-iam-policy-binding "gs://${bucket}" \
+      --member="serviceAccount:${C2_SA}" \
+      --role="roles/storage.objectAdmin" \
+      --quiet 2>/dev/null || true
+  done
+  echo "   ✅ C2 GCS buckets ready"
+}
+
+if should_run "shared-c2"; then
+  echo "🪣 Ensuring C2 GCS buckets..."
+  ensure_c2_buckets
+  echo ""
+fi
+
 grant_iam_access() {
   local service_name=$1
   local project_id=$2
+  local max_attempts=5
 
-  gcloud run services add-iam-policy-binding "${service_name}" \
-    --region="${REGION}" \
-    --project="${project_id}" \
-    --member="group:2025-interns@pcioasis.com" \
-    --role="roles/run.invoker" \
-    --quiet || echo "     ⚠️  Failed to grant access to 2025-interns (may already exist)"
-
-  gcloud run services add-iam-policy-binding "${service_name}" \
-    --region="${REGION}" \
-    --project="${project_id}" \
-    --member="group:core-eng@pcioasis.com" \
-    --role="roles/run.invoker" \
-    --quiet || echo "     ⚠️  Failed to grant access to core-eng (may already exist)"
+  for member in "group:2025-interns@pcioasis.com" "group:core-eng@pcioasis.com"; do
+    local attempt=0
+    local success=false
+    while [ $attempt -lt $max_attempts ]; do
+      attempt=$((attempt + 1))
+      if gcloud run services add-iam-policy-binding "${service_name}" \
+          --region="${REGION}" \
+          --project="${project_id}" \
+          --member="${member}" \
+          --role="roles/run.invoker" \
+          --quiet 2>&1; then
+        success=true
+        break
+      fi
+      local code=$?
+      # Retry only on concurrent-modification (ABORTED) errors
+      if [ $attempt -lt $max_attempts ]; then
+        local delay=$(( 2 ** attempt ))
+        echo "     ⚠️  IAM binding conflict for ${member}, retrying in ${delay}s (attempt ${attempt}/${max_attempts})..."
+        sleep $delay
+      fi
+    done
+    if [ "$success" = false ]; then
+      echo "     ⚠️  Failed to grant ${member} access to ${service_name} after ${max_attempts} attempts (may already exist)"
+    fi
+  done
 }
 
 # ============================================================================
@@ -209,141 +337,74 @@ if should_run "labs-index"; then
   echo ""
 fi
 
-if should_run "lab1-c2"; then
-  echo "5️⃣  Deploying lab1-c2-${ENVIRONMENT}..."
-  LAB1_C2_TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab1-c2_rule_id=lab1-c2,traefik_http_routers_lab1-c2_priority=300,traefik_http_routers_lab1-c2_entrypoints=web,traefik_http_routers_lab1-c2_middlewares=strip-lab1-c2-prefix-file,traefik_http_routers_lab1-c2_service=lab1-c2-server,traefik_http_services_lab1-c2-server_lb_port=8080"
-  gcloud run deploy lab1-c2-${ENVIRONMENT} \
-    --image=${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/lab1-c2:${IMAGE_TAG} \
+if should_run "shared-c2"; then
+  echo "5️⃣  Deploying shared-c2-${ENVIRONMENT}..."
+  SHARED_C2_TRAEFIK_LABELS=$(get_lab_labels "shared-c2")
+  # shared-c2 stays private; Traefik forwards only the intended /lab*/c2 routes
+  gcloud run deploy shared-c2-${ENVIRONMENT} \
+    --image=${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/shared-c2:${IMAGE_TAG} \
     --region=${REGION} \
     --platform=managed \
     --project=${LABS_PROJECT_ID} \
     --no-allow-unauthenticated \
     --service-account=labs-runtime-sa@${LABS_PROJECT_ID}.iam.gserviceaccount.com \
-    --port=8080 \
-    --memory=256Mi \
-    --cpu=1 \
-    --min-instances=0 \
-    --max-instances=5 \
-    --set-env-vars="ENVIRONMENT=${ENVIRONMENT}" \
-    --labels="environment=${ENVIRONMENT},component=c2,lab=01-basic-magecart,project=e-skimming-labs,${LAB1_C2_TRAEFIK_LABELS}"
-  grant_iam_access "lab1-c2-${ENVIRONMENT}" "${LABS_PROJECT_ID}"
-  echo "   ✅ Lab 1 C2 deployed"
-  echo ""
-fi
-
-if should_run "lab2-c2"; then
-  echo "6️⃣  Deploying lab2-c2-${ENVIRONMENT}..."
-  LAB2_C2_TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab2-c2_rule_id=lab2-c2,traefik_http_routers_lab2-c2_priority=300,traefik_http_routers_lab2-c2_entrypoints=web,traefik_http_routers_lab2-c2_middlewares=strip-lab2-c2-prefix-file,traefik_http_routers_lab2-c2_service=lab2-c2-server,traefik_http_services_lab2-c2-server_lb_port=8080"
-  gcloud run deploy lab2-c2-${ENVIRONMENT} \
-    --image=${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/lab2-c2:${IMAGE_TAG} \
-    --region=${REGION} \
-    --platform=managed \
-    --project=${LABS_PROJECT_ID} \
-    --no-allow-unauthenticated \
-    --service-account=labs-runtime-sa@${LABS_PROJECT_ID}.iam.gserviceaccount.com \
-    --port=8080 \
-    --memory=256Mi \
-    --cpu=1 \
-    --min-instances=0 \
-    --max-instances=5 \
-    --set-env-vars="ENVIRONMENT=${ENVIRONMENT},C2_STANDALONE=true" \
-    --labels="environment=${ENVIRONMENT},component=c2,lab=02-dom-skimming,project=e-skimming-labs,${LAB2_C2_TRAEFIK_LABELS}"
-  grant_iam_access "lab2-c2-${ENVIRONMENT}" "${LABS_PROJECT_ID}"
-  echo "   ✅ Lab 2 C2 deployed"
-  echo ""
-fi
-
-if should_run "lab3-extension"; then
-  echo "7️⃣  Deploying lab3-extension-${ENVIRONMENT}..."
-  LAB3_EXT_TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab3-extension_rule_id=lab3-extension,traefik_http_routers_lab3-extension_priority=300,traefik_http_routers_lab3-extension_entrypoints=web,traefik_http_routers_lab3-extension_middlewares=strip-lab3-extension-prefix-file,traefik_http_routers_lab3-extension_service=lab3-extension-server,traefik_http_services_lab3-extension-server_lb_port=8080"
-  gcloud run deploy lab3-extension-${ENVIRONMENT} \
-    --image=${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/lab3-extension:${IMAGE_TAG} \
-    --region=${REGION} \
-    --platform=managed \
-    --project=${LABS_PROJECT_ID} \
-    --no-allow-unauthenticated \
-    --service-account=labs-runtime-sa@${LABS_PROJECT_ID}.iam.gserviceaccount.com \
-    --port=8080 \
-    --memory=256Mi \
-    --cpu=1 \
-    --min-instances=0 \
-    --max-instances=5 \
-    --set-env-vars="ENVIRONMENT=${ENVIRONMENT}" \
-    --labels="environment=${ENVIRONMENT},component=extension,lab=03-extension-hijacking,project=e-skimming-labs,${LAB3_EXT_TRAEFIK_LABELS}"
-  grant_iam_access "lab3-extension-${ENVIRONMENT}" "${LABS_PROJECT_ID}"
-  echo "   ✅ Lab 3 extension deployed"
-  echo ""
-fi
-
-if should_run "lab-01-basic-magecart"; then
-  echo "8️⃣  Deploying lab-01-basic-magecart-${ENVIRONMENT}..."
-  # lab1: no sign-in (PRD); lab2/lab3 require sign-in
-  LAB1_TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab1-static_rule_id=lab1-static,traefik_http_routers_lab1-static_priority=250,traefik_http_routers_lab1-static_entrypoints=web,traefik_http_routers_lab1-static_middlewares=strip-lab1-prefix-file,traefik_http_routers_lab1-static_service=lab1,traefik_http_routers_lab1_rule_id=lab1,traefik_http_routers_lab1_priority=200,traefik_http_routers_lab1_entrypoints=web,traefik_http_routers_lab1_middlewares=strip-lab1-prefix-file,traefik_http_routers_lab1_service=lab1,traefik_http_services_lab1_lb_port=8080"
-  gcloud run deploy lab-01-basic-magecart-${ENVIRONMENT} \
-    --image=${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/01-basic-magecart:${IMAGE_TAG} \
-    --region=${REGION} \
-    --platform=managed \
-    --project=${LABS_PROJECT_ID} \
-    --no-allow-unauthenticated \
-    --service-account=labs-runtime-sa@${LABS_PROJECT_ID}.iam.gserviceaccount.com \
-    --port=8080 \
+    --port=3000 \
     --memory=512Mi \
+    --cpu=1 \
+    --min-instances=1 \
+    --max-instances=5 \
+    --set-env-vars="ENVIRONMENT=${ENVIRONMENT},LAB1_BUCKET=${C2_BUCKET_LAB1},LAB2_BUCKET=${C2_BUCKET_LAB2},LAB3_BUCKET=${C2_BUCKET_LAB3},LAB4_BUCKET=${C2_BUCKET_LAB4}" \
+    --labels="environment=${ENVIRONMENT},component=shared-c2,project=e-skimming-labs,${SHARED_C2_TRAEFIK_LABELS}"
+  echo "   ✅ Shared C2 deployed"
+  echo ""
+fi
+
+# Deploy labs — metadata read from docker-compose.yml x-cloudrun fields (single source of truth).
+# To add a new lab: add an x-cloudrun block to its service in docker-compose.yml.
+if ! command -v yq &>/dev/null; then
+  echo "❌ yq is required for lab discovery. Install: brew install yq"
+  exit 1
+fi
+
+COMPOSE_FILE="${REPO_ROOT}/docker-compose.yml"
+mapfile -t LAB_COMPOSE_SVCS < <(yq -r '.services | to_entries[] | select(.value["x-cloudrun"] != null) | .key' "$COMPOSE_FILE")
+
+for compose_svc in "${LAB_COMPOSE_SVCS[@]}"; do
+  cr_service=$(yq -r ".services[\"${compose_svc}\"][\"x-cloudrun\"].service" "$COMPOSE_FILE")
+  image=$(yq -r ".services[\"${compose_svc}\"][\"x-cloudrun\"].image" "$COMPOSE_FILE")
+  c2_path=$(yq -r ".services[\"${compose_svc}\"][\"x-cloudrun\"][\"c2-path\"]" "$COMPOSE_FILE")
+  memory=$(yq -r ".services[\"${compose_svc}\"][\"x-cloudrun\"].memory // \"512Mi\"" "$COMPOSE_FILE")
+  [ -z "$cr_service" ] || [ "$cr_service" = "null" ] && { echo "❌ Missing x-cloudrun.service for ${compose_svc}"; exit 1; }
+  [ -z "$image" ]      || [ "$image"      = "null" ] && { echo "❌ Missing x-cloudrun.image for ${compose_svc}"; exit 1; }
+  [ -z "$c2_path" ]    || [ "$c2_path"    = "null" ] && { echo "❌ Missing x-cloudrun.c2-path for ${compose_svc}"; exit 1; }
+  [ -z "$memory" ]                                   && memory="512Mi"
+  lab_name="${cr_service#lab-}"
+
+  if ! should_run "${cr_service}"; then
+    continue
+  fi
+
+  echo "   Deploying ${cr_service}-${ENVIRONMENT}..."
+  TRAEFIK_LABELS=$(get_lab_labels "${compose_svc}")
+  gcloud run deploy "${cr_service}-${ENVIRONMENT}" \
+    --image=${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/${image}:${IMAGE_TAG} \
+    --region=${REGION} \
+    --platform=managed \
+    --project=${LABS_PROJECT_ID} \
+    --no-allow-unauthenticated \
+    --service-account=labs-runtime-sa@${LABS_PROJECT_ID}.iam.gserviceaccount.com \
+    --port=8080 \
+    --memory=${memory} \
     --cpu=1 \
     --min-instances=0 \
     --max-instances=10 \
-    --set-env-vars="LAB_NAME=01-basic-magecart,ENVIRONMENT=${ENVIRONMENT},DOMAIN=${DOMAIN_PREFIX},HOME_URL=https://${DOMAIN_PREFIX},C2_URL=https://${DOMAIN_PREFIX}/lab1/c2" \
+    --set-env-vars="LAB_NAME=${lab_name},ENVIRONMENT=${ENVIRONMENT},DOMAIN=${DOMAIN_PREFIX},HOME_URL=https://${DOMAIN_PREFIX},C2_URL=https://${DOMAIN_PREFIX}${c2_path}" \
     --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_${ENV_UPPER}:latest \
-    --labels="environment=${ENVIRONMENT},lab=01-basic-magecart,project=e-skimming-labs,${LAB1_TRAEFIK_LABELS}"
-  grant_iam_access "lab-01-basic-magecart-${ENVIRONMENT}" "${LABS_PROJECT_ID}"
-  echo "   ✅ Lab 1 deployed"
+    --labels="environment=${ENVIRONMENT},lab=${lab_name},project=e-skimming-labs,${TRAEFIK_LABELS}"
+  grant_iam_access "${cr_service}-${ENVIRONMENT}" "${LABS_PROJECT_ID}"
+  echo "   ✅ ${cr_service} deployed"
   echo ""
-fi
-
-if should_run "lab-02-dom-skimming"; then
-  echo "9️⃣  Deploying lab-02-dom-skimming-${ENVIRONMENT}..."
-  LAB2_TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab2-static_rule_id=lab2-static,traefik_http_routers_lab2-static_priority=250,traefik_http_routers_lab2-static_entrypoints=web,traefik_http_routers_lab2-static_middlewares=strip-lab2-prefix-file,traefik_http_routers_lab2-static_service=lab2-vulnerable-site,traefik_http_routers_lab2-main_rule_id=lab2-main,traefik_http_routers_lab2-main_priority=200,traefik_http_routers_lab2-main_entrypoints=web,traefik_http_routers_lab2-main_middlewares=lab2-auth-check-file__strip-lab2-prefix-file,traefik_http_services_lab2-vulnerable-site_lb_port=8080"
-  gcloud run deploy lab-02-dom-skimming-${ENVIRONMENT} \
-    --image=${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/02-dom-skimming:${IMAGE_TAG} \
-    --region=${REGION} \
-    --platform=managed \
-    --project=${LABS_PROJECT_ID} \
-    --no-allow-unauthenticated \
-    --service-account=labs-runtime-sa@${LABS_PROJECT_ID}.iam.gserviceaccount.com \
-    --port=8080 \
-    --memory=512Mi \
-    --cpu=1 \
-    --min-instances=0 \
-    --max-instances=10 \
-    --set-env-vars="LAB_NAME=02-dom-skimming,ENVIRONMENT=${ENVIRONMENT},DOMAIN=${DOMAIN_PREFIX},HOME_URL=https://${DOMAIN_PREFIX},C2_URL=https://${DOMAIN_PREFIX}/lab2/c2" \
-    --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_${ENV_UPPER}:latest \
-    --labels="environment=${ENVIRONMENT},lab=02-dom-skimming,project=e-skimming-labs,${LAB2_TRAEFIK_LABELS}"
-  grant_iam_access "lab-02-dom-skimming-${ENVIRONMENT}" "${LABS_PROJECT_ID}"
-  echo "   ✅ Lab 2 deployed"
-  echo ""
-fi
-
-if should_run "lab-03-extension-hijacking"; then
-  echo "🔟 Deploying lab-03-extension-hijacking-${ENVIRONMENT}..."
-  LAB3_TRAEFIK_LABELS="traefik_enable=true,traefik_http_routers_lab3-static_rule_id=lab3-static,traefik_http_routers_lab3-static_priority=250,traefik_http_routers_lab3-static_entrypoints=web,traefik_http_routers_lab3-static_middlewares=strip-lab3-prefix-file,traefik_http_routers_lab3-static_service=lab3-vulnerable-site,traefik_http_routers_lab3-main_rule_id=lab3-main,traefik_http_routers_lab3-main_priority=200,traefik_http_routers_lab3-main_entrypoints=web,traefik_http_routers_lab3-main_middlewares=lab3-auth-check-file__strip-lab3-prefix-file,traefik_http_services_lab3-vulnerable-site_lb_port=8080"
-  gcloud run deploy lab-03-extension-hijacking-${ENVIRONMENT} \
-    --image=${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/03-extension-hijacking:${IMAGE_TAG} \
-    --region=${REGION} \
-    --platform=managed \
-    --project=${LABS_PROJECT_ID} \
-    --no-allow-unauthenticated \
-    --service-account=labs-runtime-sa@${LABS_PROJECT_ID}.iam.gserviceaccount.com \
-    --port=8080 \
-    --memory=512Mi \
-    --cpu=1 \
-    --min-instances=0 \
-    --max-instances=10 \
-    --set-env-vars="LAB_NAME=03-extension-hijacking,ENVIRONMENT=${ENVIRONMENT},DOMAIN=${DOMAIN_PREFIX},HOME_URL=https://${DOMAIN_PREFIX},C2_URL=https://${DOMAIN_PREFIX}/lab3/extension" \
-    --update-secrets=/etc/secrets/dotenvx-key=DOTENVX_KEY_${ENV_UPPER}:latest \
-    --labels="environment=${ENVIRONMENT},lab=03-extension-hijacking,project=e-skimming-labs,${LAB3_TRAEFIK_LABELS}"
-  grant_iam_access "lab-03-extension-hijacking-${ENVIRONMENT}" "${LABS_PROJECT_ID}"
-  echo "   ✅ Lab 3 deployed"
-  echo ""
-fi
+done
 
 # ============================================================================
 # TRAEFIK (sidecar architecture - build + deploy handled by dedicated script)
@@ -379,15 +440,13 @@ gcloud run services describe labs-analytics-${ENVIRONMENT} \
 gcloud run services describe labs-index-${ENVIRONMENT} \
   --region=${REGION} --project=${LABS_PROJECT_ID} \
   --format="value(status.url)" 2>/dev/null | sed 's/^/   Labs Index: /' || echo "   Labs Index: (not available)"
-gcloud run services describe lab-01-basic-magecart-${ENVIRONMENT} \
-  --region=${REGION} --project=${LABS_PROJECT_ID} \
-  --format="value(status.url)" 2>/dev/null | sed 's/^/   Lab 1: /' || echo "   Lab 1: (not available)"
-gcloud run services describe lab-02-dom-skimming-${ENVIRONMENT} \
-  --region=${REGION} --project=${LABS_PROJECT_ID} \
-  --format="value(status.url)" 2>/dev/null | sed 's/^/   Lab 2: /' || echo "   Lab 2: (not available)"
-gcloud run services describe lab-03-extension-hijacking-${ENVIRONMENT} \
-  --region=${REGION} --project=${LABS_PROJECT_ID} \
-  --format="value(status.url)" 2>/dev/null | sed 's/^/   Lab 3: /' || echo "   Lab 3: (not available)"
+for compose_svc in "${LAB_COMPOSE_SVCS[@]}"; do
+  cr_service=$(yq -r ".services[\"${compose_svc}\"][\"x-cloudrun\"].service" "$COMPOSE_FILE")
+  label="${cr_service#lab-}"
+  gcloud run services describe "${cr_service}-${ENVIRONMENT}" \
+    --region=${REGION} --project=${LABS_PROJECT_ID} \
+    --format="value(status.url)" 2>/dev/null | sed "s|^|   ${label}: |" || echo "   ${label}: (not available)"
+done
 gcloud run services describe traefik-${ENVIRONMENT} \
   --region=${REGION} --project=${LABS_PROJECT_ID} \
   --format="value(status.url)" 2>/dev/null | sed 's/^/   Traefik: /' || echo "   Traefik: (not available)"

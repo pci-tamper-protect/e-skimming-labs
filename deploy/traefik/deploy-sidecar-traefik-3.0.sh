@@ -13,8 +13,8 @@
 # - Provider sidecar: generates routes.yml into shared volume
 # - Dashboard sidecar: serves dashboard UI (separate service, Traefik v3.0)
 #
-# Version: Uses Traefik v3.0 (latest features)
-# For Traefik v2.10 (stable), use deploy-sidecar.sh
+# Version: Uses Traefik v3.0. Both this script and deploy-sidecar.sh build v3.0.
+# For the archived v2.10 path see deploy/traefik/deprecated-v2/.
 
 set -e
 
@@ -85,9 +85,9 @@ echo "📦 Building and pushing Docker images (Traefik v3.0)..."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Repo root is e-skimming-labs (parent of deploy)
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-# traefik-cloudrun-provider is a sibling of e-skimming-labs
-PROVIDER_DIR="${REPO_ROOT}/../traefik-cloudrun-provider"
 TRAEFIK_DEPLOY_DIR="${REPO_ROOT}/deploy/traefik"
+PROVIDER_GITHUB="git@github.com:pci-tamper-protect/traefik-cloudrun-provider.git"
+PROVIDER_CLONE_DIR="${TRAEFIK_DEPLOY_DIR}/.traefik-cloudrun-provider-clone"
 
 # Verify directories exist
 if [ ! -d "${TRAEFIK_DEPLOY_DIR}" ]; then
@@ -95,10 +95,28 @@ if [ ! -d "${TRAEFIK_DEPLOY_DIR}" ]; then
   exit 1
 fi
 
-if [ ! -d "${PROVIDER_DIR}" ]; then
-  echo "❌ ERROR: traefik-cloudrun-provider directory not found: ${PROVIDER_DIR}"
-  echo "   Make sure traefik-cloudrun-provider is a sibling directory of e-skimming-labs"
-  exit 1
+# Resolve provider source directory (in priority order):
+#   1. deploy/traefik/src/github.com/pci-tamper-protect/traefik-cloudrun-provider
+#      (standard Traefik localPlugins path — symlink or dir, create with:
+#      ln -s ../../../traefik-cloudrun-provider deploy/traefik/src/github.com/pci-tamper-protect/traefik-cloudrun-provider)
+#   2. ../traefik-cloudrun-provider (sibling repo, local dev default)
+#   3. Clone from GitHub into a temporary directory (CI/CD fallback)
+PROVIDER_DIR=""
+if [ -d "${TRAEFIK_DEPLOY_DIR}/src/github.com/pci-tamper-protect/traefik-cloudrun-provider" ]; then
+  PROVIDER_DIR="${TRAEFIK_DEPLOY_DIR}/src/github.com/pci-tamper-protect/traefik-cloudrun-provider"
+  echo "   Using provider from localPlugins path: ${PROVIDER_DIR}"
+elif [ -d "${REPO_ROOT}/traefik-cloudrun-provider" ]; then
+  PROVIDER_DIR="${REPO_ROOT}/traefik-cloudrun-provider"
+  echo "   Using provider from repo-local checkout: ${PROVIDER_DIR}"
+elif [ -d "${REPO_ROOT}/../traefik-cloudrun-provider" ]; then
+  PROVIDER_DIR="${REPO_ROOT}/../traefik-cloudrun-provider"
+  echo "   Using provider from sibling repo: ${PROVIDER_DIR}"
+else
+  echo "   Provider not found locally — cloning from GitHub..."
+  rm -rf "${PROVIDER_CLONE_DIR}"
+  git clone --depth=1 "${PROVIDER_GITHUB}" "${PROVIDER_CLONE_DIR}"
+  PROVIDER_DIR="${PROVIDER_CLONE_DIR}"
+  echo "   Using provider from GitHub clone: ${PROVIDER_DIR}"
 fi
 
 # Build main Traefik 3.0 image

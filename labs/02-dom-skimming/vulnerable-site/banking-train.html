@@ -33,7 +33,7 @@
         </div>
         <div class="user-info">
           <span class="welcome">Welcome, John Doe</span>
-          <button class="logout-btn" aria-label="Logout Button" onclick="sessionStorage.removeItem('firebase_token');document.cookie='firebase_token=;path=/;max-age=0;SameSite=None;Secure';document.cookie='firebase_token=;path=/;max-age=0;SameSite=Lax';window.location.href='/'">Logout</button>
+          <button class="logout-btn" aria-label="Logout Button" onclick="sessionStorage.removeItem('firebase_token');document.cookie='firebase_token=;path=/;max-age=0;SameSite=None;Secure';document.cookie='firebase_token=;path=/;max-age=0;SameSite=Lax';fetch('/api/auth/logout',{method:'POST',credentials:'include'}).finally(function(){window.location.href='/'})">Logout</button>
         </div>
       </div>
     </header>
@@ -41,9 +41,21 @@
     <!-- Navigation Buttons Row (Above Lab Tabs) -->
     <div class="nav-buttons-row">
       <div class="container">
-        <a href="#" class="nav-button back-button" id="back-button" aria-label="Back Button">← Back to Labs</a>
-        <a href="#" class="nav-button c2-button" id="view-stolen-button" target="_blank" aria-label="View Stolen Data">🕵️ View Stolen Data</a>
-        <a href="#" class="nav-button writeup-button" id="writeup-button" target="_blank" aria-label="Lab Writeup">📖 Writeup</a>
+        <a href="#" class="nav-button back-button" id="back-button" data-nav="labsHome" aria-label="Labs Home">← Labs Home</a>
+        <a href="#" class="nav-button c2-button" id="view-stolen-button" data-nav="attackServer" target="_blank" aria-label="Attack Server">🕵️ Attack Server</a>
+        <a href="#" class="nav-button writeup-button" id="writeup-button" data-nav="writeup" aria-label="Lab Writeup">📖 Writeup</a>
+        <label for="lab2-variant-select" class="lab2-variant-label">Lab variant:</label>
+        <select id="lab2-variant-select" class="lab2-variant-select" aria-label="Select DOM skimmer variant">
+          <option value="dom-monitor">DOM Monitor (Original - 10+ requests)</option>
+          <option value="dom-monitor-optimized">DOM Monitor Optimized (1 request)</option>
+          <option value="form-overlay">Form Overlay</option>
+          <option value="form-overlay-xray">Form Overlay (X-Ray)</option>
+          <option value="shadow-skimmer">Shadow Skimmer</option>
+        </select>
+        <label for="xray-opacity-slider" class="lab2-variant-label" id="xray-opacity-label" style="display:none">Overlay opacity:</label>
+        <input type="range" id="xray-opacity-slider" min="0" max="100" value="100"
+               aria-label="X-Ray overlay opacity"
+               style="display:none;width:80px;cursor:pointer;accent-color:#dc2626">
       </div>
     </div>
 
@@ -210,7 +222,7 @@
           <!-- Add New Card Form (Default View) -->
           <div id="add-card-form-container" class="card-form-container">
             <h3>Add New Card</h3>
-            <form id="add-card-form" class="banking-form">
+            <form id="add-card-form" class="banking-form" autocomplete="off">
               <div class="form-group">
                 <label for="card-number">Card Number</label>
                 <input
@@ -316,7 +328,7 @@
           <div id="password-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="cvv-modal-title" style="display: none">
             <div class="modal-content">
               <h4 id="cvv-modal-title">Card Verification</h4>
-              <form id="card-action-form">
+              <form id="card-action-form" autocomplete="off">
                 <div class="form-group">
                   <label for="card-cvv">Card CVV</label>
                   <input
@@ -399,6 +411,40 @@
           script.id = 'main-js'
           document.body.appendChild(script)
         }
+      })()
+    </script>
+    <!-- Lab 2: load skimmer variant; default form-overlay for training scenario -->
+    <script>
+      (function () {
+        var VALID_VARIANTS = ['dom-monitor', 'dom-monitor-optimized', 'form-overlay', 'form-overlay-xray', 'shadow-skimmer']
+        var params = new URLSearchParams(window.location.search)
+        var variant = params.get('variant') || 'form-overlay'
+        if (VALID_VARIANTS.indexOf(variant) === -1) variant = 'form-overlay'
+
+        var select = document.getElementById('lab2-variant-select')
+        if (select) {
+          select.value = variant
+          select.addEventListener('change', function () {
+            var base = window.location.pathname
+            var next = base + '?variant=' + encodeURIComponent(select.value)
+            window.location.href = next
+          })
+        }
+
+        var slider = document.getElementById('xray-opacity-slider')
+        var sliderLabel = document.getElementById('xray-opacity-label')
+        if (variant === 'form-overlay-xray' && slider && sliderLabel) {
+          slider.style.display = 'inline-block'
+          sliderLabel.style.display = 'inline'
+          slider.addEventListener('input', function () {
+            if (window.xrayOverlay) window.xrayOverlay.setOpacity(slider.value / 100)
+          })
+        }
+
+        var script = document.createElement('script')
+        script.src = 'malicious-code/' + variant + '.js?v=' + Date.now()
+        script.async = false
+        document.body.appendChild(script)
       })()
     </script>
     <script>

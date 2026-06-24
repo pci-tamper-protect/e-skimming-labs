@@ -97,14 +97,14 @@ build_and_push() {
   local build_args="${5:-}"
 
   echo "📦 Building $service_name..."
-  
+
   if [ "$FORCE_REBUILD" = true ] || ! docker image inspect "$image" &>/dev/null; then
     docker build \
       -f "$build_dir/$dockerfile" \
       -t "$image" \
       $build_args \
       "$build_dir"
-    
+
     echo "📤 Pushing $image..."
     docker push "$image"
   else
@@ -243,11 +243,12 @@ deploy_lab02() {
     --no-allow-unauthenticated \
     --service-account=labs-runtime-sa@${LABS_PROJECT_ID}.iam.gserviceaccount.com \
     --port=8080 \
-    --memory=256Mi \
+    --memory=512Mi \
     --cpu=1 \
     --min-instances=0 \
     --max-instances=5 \
-    --set-env-vars="ENVIRONMENT=${ENVIRONMENT},C2_STANDALONE=true" \
+    --concurrency=80 \
+    --set-env-vars="ENVIRONMENT=${ENVIRONMENT},C2_STANDALONE=true,STORAGE_MODE=cloud,LAB_ID=lab2-dom-skimming,C2_STORAGE_BUCKET=e-skimming-labs-c2-data-${ENVIRONMENT},GOOGLE_CLOUD_PROJECT=${LABS_PROJECT_ID}" \
     --labels="environment=${ENVIRONMENT},component=c2,lab=02-dom-skimming,project=e-skimming-labs,${LAB2_C2_TRAEFIK_LABELS}"
 
   echo "   ✅ Lab 2 C2 deployed"

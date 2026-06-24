@@ -1,0 +1,93 @@
+# Docker Compose configuration with volume mounts for persistent storage
+version: '3.8'
+
+services:
+  # Lab 2 C2 Server with volume-mounted storage
+  lab2-c2-persistent:
+    build:
+      context: .
+      dockerfile: Dockerfile.enhanced
+    container_name: lab2-c2-persistent
+    environment:
+      - STORAGE_MODE=local
+      - C2_STANDALONE=true
+      - PORT=8080
+      - LAB_ID=lab2-dom-skimming
+    ports:
+      - "8080:8080"
+    volumes:
+      # Mount persistent storage for stolen data
+      - lab2_stolen_data:/app/stolen-data
+      - lab2_analysis:/app/analysis
+      # Optional: mount logs directory
+      - lab2_logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.lab2-c2.rule=PathPrefix(`/lab2/c2`)"
+      - "traefik.http.middlewares.lab2-c2-strip.stripPrefix.prefixes=/lab2/c2"
+      - "traefik.http.routers.lab2-c2.middlewares=lab2-c2-strip"
+
+  # Alternative: Cloud Storage mode (for testing Cloud Run behavior locally)
+  lab2-c2-cloud:
+    build:
+      context: .
+      dockerfile: Dockerfile.enhanced
+    container_name: lab2-c2-cloud
+    environment:
+      - STORAGE_MODE=cloud
+      - C2_STANDALONE=true
+      - PORT=8081
+      - LAB_ID=lab2-dom-skimming-local
+      - C2_STORAGE_BUCKET=e-skimming-labs-local-test
+      - GOOGLE_CLOUD_PROJECT=your-project-id
+      # Mount service account key for local development
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/secrets/service-account.json
+    ports:
+      - "8081:8081"
+    volumes:
+      # Mount GCP service account key (create this file)
+      - ./secrets:/app/secrets:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    profiles:
+      - cloud-testing
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.lab2-c2-cloud.rule=PathPrefix(`/lab2-cloud/c2`)"
+
+volumes:
+  # Named volumes for persistent storage
+  lab2_stolen_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/stolen-data
+  lab2_analysis:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/analysis
+  lab2_logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/logs
+
+networks:
+  default:
+    name: e-skimming-labs

@@ -665,6 +665,17 @@ body {
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .nav-buttons-row .header-content {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .nav-button {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    white-space: nowrap;
+  }
+
   .checkout-content {
     grid-template-columns: 1fr;
     gap: 1rem;
@@ -696,6 +707,36 @@ body {
 
   .checkout-content {
     padding: 1rem;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    font-size: 16px;
+    min-height: 44px;
+  }
+
+  .btn {
+    min-height: 44px;
+  }
+
+  .modal {
+    overflow-y: auto;
+    padding: 1rem 0;
+  }
+
+  .modal-content {
+    margin: 1rem auto;
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+  }
+
+  .modal-close {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 

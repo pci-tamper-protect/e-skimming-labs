@@ -248,3 +248,32 @@ footer {
     color: var(--text-secondary);
     font-size: 0.875rem;
 }
+
+@media (max-width: 768px) {
+    .main-content {
+        padding: 1rem 0.75rem;
+    }
+
+    .banner-attack > div {
+        flex-direction: column !important;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+        font-size: 16px;
+        min-height: 44px;
+    }
+
+    .pay-btn {
+        min-height: 44px;
+        font-size: 1rem;
+    }
+
+    .card-body {
+        padding: 1.25rem;
+    }
+}

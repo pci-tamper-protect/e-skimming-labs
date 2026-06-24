@@ -57,7 +57,7 @@ test.describe('Lab 3: Extension Hijacking - Credit Card Exfiltration', () => {
 
     // Fill out credit card form
     console.log('📝 Filling out credit card form...')
-    await page.fill('#cardNumber', '4532123456789010')
+    await page.fill('#cardNumber', '4242424242424242')
     await page.selectOption('#expiryMonth', '12')
     await page.selectOption('#expiryYear', '2028')
     await page.fill('#cvv', '123')
@@ -103,7 +103,7 @@ test.describe('Lab 3: Extension Hijacking - Credit Card Exfiltration', () => {
 
     // Verify our test data is in the collected records
     const testRecord = collectedData.find(record =>
-      record.cardNumber && record.cardNumber.includes('4532123456789010')
+      record.cardNumber && record.cardNumber.includes('4242424242424242')
     )
 
     if (testRecord) {

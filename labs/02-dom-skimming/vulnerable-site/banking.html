@@ -33,7 +33,7 @@
         </div>
         <div class="user-info">
           <span class="welcome">Welcome, John Doe</span>
-          <button class="logout-btn" aria-label="Logout Button" onclick="sessionStorage.removeItem('firebase_token');document.cookie='firebase_token=;path=/;max-age=0;SameSite=None;Secure';document.cookie='firebase_token=;path=/;max-age=0;SameSite=Lax';window.location.href='/'">Logout</button>
+          <button class="logout-btn" aria-label="Logout Button" onclick="sessionStorage.removeItem('firebase_token');document.cookie='firebase_token=;path=/;max-age=0;SameSite=None;Secure';document.cookie='firebase_token=;path=/;max-age=0;SameSite=Lax';fetch('/api/auth/logout',{method:'POST',credentials:'include'}).finally(function(){window.location.href='/'})">Logout</button>
         </div>
       </div>
     </header>
@@ -41,26 +41,32 @@
     <!-- Navigation Buttons Row (Above Lab Tabs) -->
     <div class="nav-buttons-row">
       <div class="container">
-        <a href="#" class="nav-button back-button" id="back-button" aria-label="Back Button">← Back to Labs</a>
-        <a href="#" class="nav-button c2-button" id="view-stolen-button" target="_blank" aria-label="View Stolen Data">🕵️ View Stolen Data</a>
-        <a href="#" class="nav-button writeup-button" id="writeup-button" target="_blank" aria-label="Lab Writeup">📖 Writeup</a>
+        <a href="#" class="nav-button back-button" id="back-button" data-nav="labsHome" aria-label="Labs Home">← Labs Home</a>
+        <a href="#" class="nav-button c2-button" id="view-stolen-button" data-nav="attackServer" target="_blank" aria-label="Attack Server">🕵️ Attack Server</a>
+        <a href="#" class="nav-button writeup-button" id="writeup-button" data-nav="writeup" aria-label="Lab Writeup">📖 Writeup</a>
         <label for="lab2-variant-select" class="lab2-variant-label">Lab variant:</label>
         <select id="lab2-variant-select" class="lab2-variant-select" aria-label="Select DOM skimmer variant">
-          <option value="dom-monitor">DOM Monitor</option>
+          <option value="dom-monitor">DOM Monitor (Original - 10+ requests)</option>
+          <option value="dom-monitor-optimized">DOM Monitor Optimized (1 request)</option>
           <option value="form-overlay">Form Overlay</option>
+          <option value="form-overlay-xray">Form Overlay (X-Ray)</option>
           <option value="shadow-skimmer">Shadow Skimmer</option>
         </select>
+        <label for="xray-opacity-slider" class="lab2-variant-label" id="xray-opacity-label" style="display:none">Overlay opacity:</label>
+        <input type="range" id="xray-opacity-slider" min="0" max="100" value="100"
+               aria-label="X-Ray overlay opacity"
+               style="display:none;width:80px;cursor:pointer;accent-color:#dc2626">
       </div>
     </div>
 
     <!-- Lab Page Tabs -->
-    <nav class="lab-tabs">
+    <nav class="lab-tabs" role="tablist" aria-label="Banking sections">
       <div class="container">
         <ul>
-          <li><a href="#" class="tab-link" data-section="dashboard">Dashboard</a></li>
-          <li><a href="#" class="tab-link" data-section="transfer">Transfer</a></li>
-          <li><a href="#" class="tab-link" data-section="payments">Bill Pay</a></li>
-          <li><a href="#" class="tab-link active" data-section="cards">Cards</a></li>
+          <li><a href="#" class="tab-link" data-section="dashboard" role="tab" aria-selected="false" aria-controls="dashboard">Dashboard</a></li>
+          <li><a href="#" class="tab-link" data-section="transfer" role="tab" aria-selected="false" aria-controls="transfer">Transfer</a></li>
+          <li><a href="#" class="tab-link" data-section="payments" role="tab" aria-selected="false" aria-controls="payments">Bill Pay</a></li>
+          <li><a href="#" class="tab-link active" data-section="cards" role="tab" aria-selected="true" aria-controls="cards">Cards</a></li>
         </ul>
       </div>
     </nav>
@@ -153,7 +159,7 @@
                 <input type="text" id="transfer-memo" name="memo" placeholder="What's this for?" />
               </div>
 
-              <button type="submit" class="submit-btn">Transfer Money</button>
+              <button type="submit" class="submit-btn" aria-label="Transfer money">Transfer Money</button>
             </form>
           </div>
         </section>
@@ -204,7 +210,7 @@
                 <input type="date" id="payment-date" name="paymentDate" required />
               </div>
 
-              <button type="submit" class="submit-btn">Schedule Payment</button>
+              <button type="submit" class="submit-btn" aria-label="Schedule payment">Schedule Payment</button>
             </form>
           </div>
         </section>
@@ -224,10 +230,13 @@
             This page uses DOM manipulation attacks that intercept form data:
             <ul style="margin-top: 0.5rem; margin-left: 1.5rem">
               <li>
-                <code style="background: #34495e; color: #ecf0f1; padding: 0.2rem 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace;">Form Overlay Attack</code> - Invisible overlay captures keystrokes
+                <code style="background: #34495e; color: #ecf0f1; padding: 0.2rem 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace;">DOM Monitor</code> - Real-time field monitoring (10+ C2 requests)
               </li>
               <li>
-                <code style="background: #34495e; color: #ecf0f1; padding: 0.2rem 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace;">DOM Monitoring</code> - Watches for form field changes
+                <code style="background: #34495e; color: #ecf0f1; padding: 0.2rem 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace;">DOM Monitor Optimized</code> - Form submission-based (1 C2 request)
+              </li>
+              <li>
+                <code style="background: #34495e; color: #ecf0f1; padding: 0.2rem 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace;">Form Overlay Attack</code> - Invisible overlay captures keystrokes
               </li>
               <li>
                 <code style="background: #34495e; color: #ecf0f1; padding: 0.2rem 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace;">Shadow DOM Attack</code> - Uses Shadow DOM to hide malicious code
@@ -245,21 +254,20 @@
           <div style="background: #e8f5e8; border: 2px solid #27ae60; padding: 1rem; margin-bottom: 2rem; border-radius: 4px;">
             <strong>💳 VALID TEST CARD NUMBERS:</strong><br />
             <ul style="margin-top: 0.5rem; margin-left: 1.5rem; color: #27ae60">
-              <li><code style="background: #34495e; color: #ecf0f1; padding: 0.2rem 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace;">4532123456789010</code> - Visa (16 digits)</li>
+              <li><code style="background: #34495e; color: #ecf0f1; padding: 0.2rem 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace;">4242424242424242</code> - Visa (16 digits)</li>
               <li><code style="background: #34495e; color: #ecf0f1; padding: 0.2rem 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace;">4000000000000002</code> - Visa (16 digits)</li>
               <li><code style="background: #34495e; color: #ecf0f1; padding: 0.2rem 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace;">5555555555554444</code> - Mastercard (16 digits)</li>
               <li><code style="background: #34495e; color: #ecf0f1; padding: 0.2rem 0.5rem; border-radius: 3px; font-family: 'Courier New', monospace;">378282246310005</code> - American Express (15 digits)</li>
             </ul>
             <p style="margin-top: 0.5rem; font-size: 0.9rem">
-              These numbers pass Luhn algorithm validation. Use any future expiry date (MM/YY) and any
-              3-4 digit CVV.
+              These numbers pass Luhn algorithm validation. Use any future expiry date (MM/YY) and a 3-digit CVV for Visa/Mastercard or 4-digit CVV for Amex.
             </p>
           </div>
 
           <!-- Add New Card Form (Default View) -->
           <div id="add-card-form-container" class="card-form-container">
             <h3>Add New Card</h3>
-            <form id="add-card-form" class="banking-form">
+            <form id="add-card-form" class="banking-form" autocomplete="off">
               <div class="form-group">
                 <label for="card-number">Card Number</label>
                 <input
@@ -351,8 +359,8 @@
 
             <div class="card-actions">
               <h4>Card Services</h4>
-              <button class="action-btn" onclick="showAddCardForm()">Add New Card</button>
-              <button class="action-btn" onclick="showPasswordPrompt('activate')">
+              <button class="action-btn" onclick="showAddCardForm()" aria-label="Add New Card">Add New Card</button>
+              <button class="action-btn" onclick="showPasswordPrompt('activate')" aria-label="Activate New Card">
                 Activate New Card
               </button>
               <button class="action-btn" onclick="showPasswordPrompt('freeze')" aria-label="Freeze Card">Freeze Card</button>
@@ -365,7 +373,7 @@
           <div id="password-modal" class="modal" style="display: none">
             <div class="modal-content">
               <h4>Card Verification</h4>
-              <form id="card-action-form">
+              <form id="card-action-form" autocomplete="off">
                 <div class="form-group">
                   <label for="card-cvv">Card CVV</label>
                   <input
@@ -454,7 +462,7 @@
     <!-- Lab 2: load skimmer variant from URL ?variant= (user selector); default dom-monitor -->
     <script>
       (function () {
-        var VALID_VARIANTS = ['dom-monitor', 'form-overlay', 'shadow-skimmer']
+        var VALID_VARIANTS = ['dom-monitor', 'dom-monitor-optimized', 'form-overlay', 'form-overlay-xray', 'shadow-skimmer']
         var params = new URLSearchParams(window.location.search)
         var variant = params.get('variant') || 'dom-monitor'
         if (VALID_VARIANTS.indexOf(variant) === -1) variant = 'dom-monitor'
@@ -469,8 +477,19 @@
           })
         }
 
+        // Show opacity slider only for x-ray variant
+        var slider = document.getElementById('xray-opacity-slider')
+        var sliderLabel = document.getElementById('xray-opacity-label')
+        if (variant === 'form-overlay-xray' && slider && sliderLabel) {
+          slider.style.display = 'inline-block'
+          sliderLabel.style.display = 'inline'
+          slider.addEventListener('input', function () {
+            if (window.xrayOverlay) window.xrayOverlay.setOpacity(slider.value / 100)
+          })
+        }
+
         var script = document.createElement('script')
-        script.src = 'malicious-code/' + variant + '.js'
+        script.src = 'malicious-code/' + variant + '.js?v=' + Date.now()
         script.async = false
         document.body.appendChild(script)
       })()
@@ -480,25 +499,25 @@
        * ============================================================================
        * ROUTING ARCHITECTURE PRINCIPLE - DO NOT REGRESS
        * ============================================================================
-       * 
+       *
        * **CRITICAL**: Client-side code MUST NOT contain routing logic. All routing belongs to Traefik.
-       * 
+       *
        * Services should ALWAYS use relative URLs for navigation:
        *   - Home: /
        *   - C2: /lab2/c2
        *   - Writeup: /lab-02-writeup
-       * 
+       *
        * Traefik handles all routing based on path prefixes.
-       * 
+       *
        * **DO NOT** add logic to:
        *   - Detect environment (localhost vs staging vs production)
        *   - Conditionally use relative vs absolute URLs
        *   - Check hostname for routing decisions
        *   - Generate different URLs based on environment
-       * 
+       *
        * If you find yourself adding routing logic, STOP and ask:
        * "Why can't Traefik handle this routing?"
-       * 
+       *
        * ============================================================================
        */
       // TODO: Simplify to always use relative URLs - remove environment detection

@@ -5,8 +5,9 @@
 #        --force-rebuild: Rebuild even if content hash matches
 #        --only: Comma-separated list of services to build+deploy (e.g. --only home-index,traefik)
 #                Services: home-seo, home-index, labs-analytics, labs-index,
-#                          lab1-c2, lab2-c2, lab3-extension,
+#                          shared-c2,
 #                          lab-01-basic-magecart, lab-02-dom-skimming, lab-03-extension-hijacking,
+#                          lab-04-steganography,
 #                          traefik
 
 set -e
@@ -233,22 +234,10 @@ should_run "labs-index" && build_and_push_if_needed "labs-index" \
   "$LABS_PROJECT_ID" \
   "--build-arg ENVIRONMENT=$ENVIRONMENT"
 
-should_run "lab1-c2" && build_and_push_if_needed "lab1-c2" \
-  "labs/01-basic-magecart/malicious-code/c2-server" \
-  "labs/01-basic-magecart/malicious-code/c2-server/Dockerfile" \
-  "${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/lab1-c2:${IMAGE_TAG}" \
-  "$LABS_PROJECT_ID"
-
-should_run "lab2-c2" && build_and_push_if_needed "lab2-c2" \
-  "labs/02-dom-skimming/c2-server" \
-  "labs/02-dom-skimming/c2-server/Dockerfile" \
-  "${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/lab2-c2:${IMAGE_TAG}" \
-  "$LABS_PROJECT_ID"
-
-should_run "lab3-extension" && build_and_push_if_needed "lab3-extension" \
-  "labs/03-extension-hijacking/test-server" \
-  "labs/03-extension-hijacking/test-server/Dockerfile" \
-  "${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/lab3-extension:${IMAGE_TAG}" \
+should_run "shared-c2" && build_and_push_if_needed "shared-c2" \
+  "deploy/shared-components/shared-c2-server" \
+  "deploy/shared-components/shared-c2-server/Dockerfile" \
+  "${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/shared-c2:${IMAGE_TAG}" \
   "$LABS_PROJECT_ID"
 
 should_run "lab-01-basic-magecart" && build_and_push_if_needed "lab-01-basic-magecart" \
@@ -267,6 +256,12 @@ should_run "lab-03-extension-hijacking" && build_and_push_if_needed "lab-03-exte
   "labs/03-extension-hijacking" \
   "labs/03-extension-hijacking/Dockerfile" \
   "${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/03-extension-hijacking:${IMAGE_TAG}" \
+  "$LABS_PROJECT_ID"
+
+should_run "lab-04-steganography" && build_and_push_if_needed "lab-04-steganography" \
+  "labs/04-steganography-favicon/vulnerable-site" \
+  "labs/04-steganography-favicon/vulnerable-site/Dockerfile" \
+  "${REGION}-docker.pkg.dev/${LABS_PROJECT_ID}/${LABS_REPOSITORY}/04-steganography:${IMAGE_TAG}" \
   "$LABS_PROJECT_ID"
 
 echo ""

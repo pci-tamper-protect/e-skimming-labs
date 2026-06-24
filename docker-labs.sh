@@ -47,9 +47,10 @@ show_usage() {
     echo ""
     echo "Service Groups:"
     echo "  home                Labs-home services (home-index, home-seo, labs-analytics)"
-    echo "  lab1                Lab 1: Basic Magecart Attack"
-    echo "  lab2                Lab 2: DOM-Based Skimming"
-    echo "  lab3                Lab 3: Browser Extension Hijacking"
+    echo "  lab1                Lab 1: Basic Magecart Attack (combined nginx+C2)"
+    echo "  lab2                Lab 2: DOM-Based Skimming (combined nginx+C2)"
+    echo "  lab3                Lab 3: Browser Extension Hijacking (combined nginx+extension)"
+    echo "  lab4                Lab 4: Steganography / Favicon Trojan (combined nginx+C2)"
     echo "  variants            Lab variants (advanced scenarios)"
     echo ""
     echo "Examples:"
@@ -75,15 +76,19 @@ start_services() {
                 ;;
             lab1)
                 print_header "Starting Lab 1: Basic Magecart Attack"
-                docker-compose up -d lab1-vulnerable-site lab1-c2-server
+                docker-compose up -d lab1-vulnerable-site
                 ;;
             lab2)
                 print_header "Starting Lab 2: DOM-Based Skimming"
-                docker-compose up -d lab2-vulnerable-site lab2-c2-server
+                docker-compose up -d lab2-vulnerable-site
                 ;;
             lab3)
                 print_header "Starting Lab 3: Browser Extension Hijacking"
-                docker-compose up -d lab3-vulnerable-site lab3-extension-server
+                docker-compose up -d lab3-vulnerable-site
+                ;;
+            lab4)
+                print_header "Starting Lab 4: Steganography / Favicon Trojan"
+                docker-compose up -d lab4-vulnerable-site
                 ;;
             variants)
                 print_header "Starting Lab Variants"
@@ -112,13 +117,16 @@ stop_services() {
                 docker-compose stop home-index home-seo labs-analytics
                 ;;
             lab1)
-                docker-compose stop lab1-vulnerable-site lab1-c2-server
+                docker-compose stop lab1-vulnerable-site
                 ;;
             lab2)
-                docker-compose stop lab2-vulnerable-site lab2-c2-server
+                docker-compose stop lab2-vulnerable-site
                 ;;
             lab3)
-                docker-compose stop lab3-vulnerable-site lab3-extension-server
+                docker-compose stop lab3-vulnerable-site
+                ;;
+            lab4)
+                docker-compose stop lab4-vulnerable-site
                 ;;
             variants)
                 docker-compose stop lab1-event-listener-variant lab1-obfuscated-variant lab1-websocket-variant
@@ -145,13 +153,16 @@ restart_services() {
                 docker-compose restart home-index home-seo labs-analytics
                 ;;
             lab1)
-                docker-compose restart lab1-vulnerable-site lab1-c2-server
+                docker-compose restart lab1-vulnerable-site
                 ;;
             lab2)
-                docker-compose restart lab2-vulnerable-site lab2-c2-server
+                docker-compose restart lab2-vulnerable-site
                 ;;
             lab3)
-                docker-compose restart lab3-vulnerable-site lab3-extension-server
+                docker-compose restart lab3-vulnerable-site
+                ;;
+            lab4)
+                docker-compose restart lab4-vulnerable-site
                 ;;
             variants)
                 docker-compose restart lab1-event-listener-variant lab1-obfuscated-variant lab1-websocket-variant

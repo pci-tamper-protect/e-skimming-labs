@@ -2,6 +2,7 @@
 
 // Simple manual test for threat model back button
 const { chromium } = require('playwright')
+const { navLink } = require('./utils/nav')
 
 async function testThreatModelBackButton() {
   console.log('🚀 Starting threat model back button test...')
@@ -19,7 +20,7 @@ async function testThreatModelBackButton() {
     await page.waitForLoadState('networkidle')
 
     console.log('🔍 Looking for back button...')
-    const backButton = page.getByRole('link', { name: '← Back to Labs' })
+    const backButton = navLink(page, 'labsHome')
 
     const isVisible = await backButton.isVisible()
     console.log('✅ Back button visible:', isVisible)

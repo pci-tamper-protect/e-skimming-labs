@@ -67,7 +67,6 @@ I've successfully designed and implemented a complete Traefik-based routing solu
 ```
 e-skimming-labs/
 ├── docker-compose.yml                      # Default compose file (with Traefik)
-├── docker-compose.no-traefik.yml          # Legacy compose file (port-based)
 ├── deploy/
 │   ├── traefik/
 │   │   ├── README.md                       # Traefik usage guide

@@ -19,6 +19,12 @@ check_credentials() {
   local verbose="${1:-true}"
   local errors=0
 
+  # In CI, credentials are managed by the GHA auth action — skip local checks.
+  if [[ "${GITHUB_ACTIONS:-}" == "true" || "${CI:-}" == "true" ]]; then
+    echo "⏭️  Skipping credential check (running in CI)"
+    return 0
+  fi
+
   # 1. Check gcloud auth
   if [ "$verbose" = "true" ]; then
     echo "🔐 Checking Google Cloud credentials..."

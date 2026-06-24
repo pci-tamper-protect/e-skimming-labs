@@ -20,6 +20,9 @@ const app = express()
 const PORT = process.env.PORT || 3000
 const DATA_DIR = path.join(__dirname, 'stolen-data')
 
+// Trust the GFE/Cloud Run proxy so req.ip reflects X-Forwarded-For
+app.set('trust proxy', true)
+
 // Middleware
 app.use(cors()) // Allow cross-origin requests (for demo only)
 app.use(express.json())

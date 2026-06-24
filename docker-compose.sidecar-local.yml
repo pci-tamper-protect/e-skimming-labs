@@ -28,7 +28,7 @@ services:
   traefik:
     build:
       context: ./deploy/traefik
-      dockerfile: Dockerfile.cloudrun.sidecar
+      dockerfile: Dockerfile.cloudrun.sidecar.traefik-3.0
     container_name: e-skimming-labs-traefik-sidecar-local
     restart: unless-stopped
     ports:
@@ -104,7 +104,7 @@ services:
   traefik-dashboard:
     build:
       context: ./deploy/traefik
-      dockerfile: Dockerfile.dashboard-sidecar
+      dockerfile: Dockerfile.dashboard-sidecar.traefik-3.0
     container_name: e-skimming-labs-traefik-dashboard-sidecar-local
     restart: unless-stopped
     ports:

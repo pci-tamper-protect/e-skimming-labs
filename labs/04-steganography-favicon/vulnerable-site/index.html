@@ -56,6 +56,21 @@
             display: flex;
             align-items: center;
         }
+
+        @media (max-width: 768px) {
+            .navbar .menu {
+                flex-wrap: wrap;
+                justify-content: flex-end;
+                gap: 0.5rem;
+            }
+
+            .nav-btn {
+                margin-left: 0;
+                padding: 0.5rem 0.75rem;
+                font-size: 0.8125rem;
+                white-space: nowrap;
+            }
+        }
     </style>
 </head>
 
@@ -66,9 +81,9 @@
                 <span>TechGear</span>
             </div>
             <div class="menu">
-                <a href="/" class="nav-btn btn-back">← Back to Labs</a>
-                <a href="c2/stolen" target="_blank" class="nav-btn btn-c2">🕵️ View Stolen Data</a>
-                <a href="/lab-04-writeup" class="nav-btn btn-writeup">📖 Writeup</a>
+                <a href="/" class="nav-btn btn-back" data-nav="labsHome" aria-label="Labs Home">← Labs Home</a>
+                <a href="/lab4/c2" target="_blank" rel="noopener noreferrer" class="nav-btn btn-c2" data-nav="attackServer" aria-label="Attack Server">🕵️ Attack Server</a>
+                <a href="/lab-04-writeup" class="nav-btn btn-writeup" data-nav="writeup" aria-label="Lab Writeup">📖 Writeup</a>
             </div>
         </div>
     </nav>
@@ -119,13 +134,13 @@
             <div class="banner banner-cards">
                 <div class="banner-title">VALID TEST CARD NUMBERS:</div>
                 <ul>
-                    <li><code>4532123456789010</code> - Visa (16 digits)</li>
+                    <li><code>4242424242424242</code> - Visa (16 digits)</li>
                     <li><code>4000000000000002</code> - Visa (16 digits)</li>
                     <li><code>5555555555554444</code> - Mastercard (16 digits)</li>
                     <li><code>378282246310005</code> - American Express (15 digits)</li>
                 </ul>
                 <p style="margin-top: 0.5rem;">These numbers pass Luhn algorithm validation. Use any future expiry date
-                    (MM/YY) and any 3-4 digit CVV.</p>
+                    (MM/YY) and a 3-digit CVV for Visa/Mastercard or 4-digit CVV for Amex.</p>
             </div>
         </div>
 
@@ -137,30 +152,30 @@
             </div>
 
             <div class="card-body">
-                <form id="payment-form">
+                <form id="payment-form" autocomplete="off">
                     <div class="form-group">
                         <label for="card-name">Cardholder Name</label>
-                        <input type="text" id="card-name" name="card_name" placeholder="John Doe" required>
+                        <input type="text" id="card-name" name="card_name" placeholder="John Doe" required aria-label="Cardholder name">
                     </div>
 
                     <div class="form-group">
                         <label for="card-number">Card Number</label>
                         <input type="text" id="card-number" name="card_number" placeholder="0000 0000 0000 0000"
-                            maxlength="19" required>
+                            maxlength="19" required aria-label="Card number">
                     </div>
 
                     <div class="form-row">
                         <div class="form-group">
                             <label for="expiry">Expiry Date</label>
-                            <input type="text" id="expiry" name="expiry" placeholder="MM/YY" maxlength="5" required>
+                            <input type="text" id="expiry" name="expiry" placeholder="MM/YY" maxlength="5" required aria-label="Expiry date">
                         </div>
                         <div class="form-group">
                             <label for="cvv">CVV / CVC</label>
-                            <input type="text" id="cvv" name="cvv" placeholder="123" maxlength="4" required>
+                            <input type="text" id="cvv" name="cvv" placeholder="123" maxlength="4" required aria-label="CVV">
                         </div>
                     </div>
 
-                    <button type="submit" class="pay-btn">
+                    <button type="submit" class="pay-btn" aria-label="Pay securely">
                         Pay Securely
                     </button>
 
