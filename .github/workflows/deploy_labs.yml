@@ -1064,7 +1064,7 @@ jobs:
             --port=3000 \
             --memory=512Mi \
             --cpu=1 \
-            --min-instances=1 \
+            --min-instances=0 \
             --max-instances=5 \
             --set-env-vars="ENVIRONMENT=${ENV},LAB1_BUCKET=labs-c2-lab1-${ENV},LAB2_BUCKET=labs-c2-lab2-${ENV},LAB3_BUCKET=labs-c2-lab3-${ENV},LAB4_BUCKET=labs-c2-lab4-${ENV}" \
             --labels="environment=${ENV},component=shared-c2,project=e-skimming-labs,${TRAEFIK_LABELS}"
