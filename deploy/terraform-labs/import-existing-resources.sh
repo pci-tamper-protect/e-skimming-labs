@@ -122,22 +122,6 @@ fi
 
 echo ""
 
-# Import VPC connector
-echo "🔌 Importing VPC connector..."
-if terraform state show google_vpc_access_connector.labs_connector >/dev/null 2>&1; then
-    echo "   ✅ Already in state"
-else
-    # VPC connector import format: projects/{project}/locations/{region}/connectors/{name}
-    CONNECTOR_ID="projects/$PROJECT_ID/locations/$REGION/connectors/labs-connector"
-    if terraform import google_vpc_access_connector.labs_connector "$CONNECTOR_ID" 2>&1; then
-        echo "   ✅ Imported: $CONNECTOR_ID"
-    else
-        echo "   ⚠️  Failed to import VPC connector"
-    fi
-fi
-
-echo ""
-
 # Cloud Run Services - NOT imported (managed by GitHub Actions, not Terraform)
 # See TERRAFORM_SCOPE.md for architectural details
 echo ""

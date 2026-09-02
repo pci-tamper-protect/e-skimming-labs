@@ -102,12 +102,6 @@ import_resource "storage_bucket" "google_storage_bucket.labs_data" \
 import_resource "storage_bucket" "google_storage_bucket.labs_logs" \
     "${PROJECT_ID}-labs-logs"
 
-# VPC Connector
-echo ""
-echo -e "${BLUE}=== VPC Connector ===${NC}"
-import_resource "vpc_access_connector" "google_vpc_access_connector.labs_connector" \
-    "projects/${PROJECT_ID}/locations/${REGION}/connectors/labs-connector"
-
 # Cloud Run Services - NOT imported (managed by GitHub Actions, not Terraform)
 # See TERRAFORM_SCOPE.md for architectural details
 echo ""
