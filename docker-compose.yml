@@ -336,6 +336,7 @@ services:
       - "traefik.http.routers.lab1-c2-collect.rule=Path(`/lab1/c2/collect`)"
       - "traefik.http.routers.lab1-c2-collect.priority=450"
       - "traefik.http.routers.lab1-c2-collect.entrypoints=web"
+      - "traefik.http.routers.lab1-c2-collect.middlewares=rate-limit@file"
       - "traefik.http.routers.lab1-c2-collect.service=shared-c2"
       # Dashboard & API (auth required)
       - "traefik.http.routers.lab1-c2.rule=PathPrefix(`/lab1/c2`)"
@@ -349,6 +350,7 @@ services:
       - "traefik.http.routers.lab2-c2-collect.rule=Path(`/lab2/c2/collect`)"
       - "traefik.http.routers.lab2-c2-collect.priority=450"
       - "traefik.http.routers.lab2-c2-collect.entrypoints=web"
+      - "traefik.http.routers.lab2-c2-collect.middlewares=rate-limit@file"
       - "traefik.http.routers.lab2-c2-collect.service=shared-c2"
       # Dashboard & API (auth required)
       - "traefik.http.routers.lab2-c2.rule=PathPrefix(`/lab2/c2`)"
@@ -362,6 +364,7 @@ services:
       - "traefik.http.routers.lab3-c2-collect.rule=Path(`/lab3/extension/stolen-data`)"
       - "traefik.http.routers.lab3-c2-collect.priority=450"
       - "traefik.http.routers.lab3-c2-collect.entrypoints=web"
+      - "traefik.http.routers.lab3-c2-collect.middlewares=rate-limit@file"
       - "traefik.http.routers.lab3-c2-collect.service=shared-c2"
       # Dashboard & API (auth required)
       - "traefik.http.routers.lab3-extension.rule=PathPrefix(`/lab3/extension`)"
@@ -375,6 +378,7 @@ services:
       - "traefik.http.routers.lab4-c2-collect.rule=Path(`/lab4/c2/collect`)"
       - "traefik.http.routers.lab4-c2-collect.priority=450"
       - "traefik.http.routers.lab4-c2-collect.entrypoints=web"
+      - "traefik.http.routers.lab4-c2-collect.middlewares=rate-limit@file"
       - "traefik.http.routers.lab4-c2-collect.service=shared-c2"
       # Dashboard & API (auth required)
       - "traefik.http.routers.lab4-c2.rule=PathPrefix(`/lab4/c2`)"
