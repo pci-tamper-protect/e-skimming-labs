@@ -87,16 +87,3 @@ resource "google_storage_bucket" "home_assets" {
 
   depends_on = [google_project_service.required_apis]
 }
-
-# Create VPC connector for Cloud Run (if needed for private services)
-resource "google_vpc_access_connector" "home_connector" {
-  name          = "home-connector"
-  region        = var.region
-  ip_cidr_range = "10.8.0.0/28"
-  network       = "default"
-  min_instances = 2
-  max_instances = 3
-
-  depends_on = [google_project_service.required_apis]
-}
-

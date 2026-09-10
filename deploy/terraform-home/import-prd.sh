@@ -120,18 +120,6 @@ fi
 
 echo ""
 
-# Import VPC Connector (if exists)
-echo -e "${GREEN}=== Importing VPC Connector ===${NC}"
-CONNECTOR_NAME="home-connector"
-if gcloud compute networks vpc-access connectors describe "${CONNECTOR_NAME}" \
-  --region="${REGION}" \
-  --project="${PROJECT_ID}" &>/dev/null; then
-  import_resource "google_vpc_access_connector" "home_connector" \
-    "projects/${PROJECT_ID}/locations/${REGION}/connectors/${CONNECTOR_NAME}"
-else
-  echo -e "${YELLOW}   ⚠️  VPC connector ${CONNECTOR_NAME} does not exist, skipping${NC}"
-fi
-
 echo ""
 
 # Import Cloud Run Services
