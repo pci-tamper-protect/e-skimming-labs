@@ -1,0 +1,14 @@
+{
+  "name": "lab3-official-ai-extension-harness",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Playwright harness for Lab 3 official AI extension prompt-injection risk",
+  "scripts": {
+    "test": "playwright test",
+    "test:extension": "playwright test tests/chromium-extension-fixture.spec.js --project=chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  }
+}
+

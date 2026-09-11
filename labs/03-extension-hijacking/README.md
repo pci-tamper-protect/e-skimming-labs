@@ -47,6 +47,13 @@ leverages:
 - Persistent monitoring across banking and e-commerce sites
 - Data exfiltration through extension's privileged network access
 
+### Scenario 2b: Official AI Assistant Prompt Injection
+
+- A legitimate AI browser assistant is granted page-reading access.
+- Hidden checkout-page text injects instructions into the assistant's page context.
+- The assistant or extension content script can read DOM text and payment fields if raw PAN/CVV values are present in the merchant page.
+- See `official-ai-extension-harness/` for a reproducible Playwright harness with a real Manifest V3 Chromium fixture extension and cross-browser DOM-surface checks.
+
 ### Scenario 3: Extension Supply Chain Attack
 
 - Compromise of extension developer account

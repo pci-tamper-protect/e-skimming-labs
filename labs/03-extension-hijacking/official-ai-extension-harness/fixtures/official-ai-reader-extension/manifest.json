@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Lab 3 Official AI Reader Fixture",
+  "version": "1.0.0",
+  "description": "Educational fixture that models an AI assistant extension reading page content.",
+  "host_permissions": ["<all_urls>"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["reader.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
