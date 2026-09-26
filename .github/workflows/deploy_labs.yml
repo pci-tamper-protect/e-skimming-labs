@@ -15,6 +15,9 @@ on:
       - 'labs/**'
       # Common files that affect all
       - '.github/workflows/deploy_labs.yml'
+      # Traefik routing/middleware config (lab-labels.sh is generated from docker-compose.yml)
+      - 'docker-compose.yml'
+      - 'deploy/traefik/**'
   push:
     branches:
       - 'stg'
@@ -30,6 +33,9 @@ on:
       - 'labs/**'
       # Common files that affect all
       - '.github/workflows/deploy_labs.yml'
+      # Traefik routing/middleware config (lab-labels.sh is generated from docker-compose.yml)
+      - 'docker-compose.yml'
+      - 'deploy/traefik/**'
   workflow_dispatch:
     inputs:
       environment:
