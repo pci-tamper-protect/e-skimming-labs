@@ -68,7 +68,10 @@ async function gcsDownloadJSON(file) {
 
 // Dashboards and APIs download every object they load, so cap them to the newest
 // records — otherwise leftover test data makes the C2 pages slower on every load.
-const C2_RECORD_LIMIT = parseInt(process.env.C2_RECORD_LIMIT, 10) || 100
+// Anything other than a positive integer falls back to the default (a negative
+// value would make slice(-limit) drop from the front instead of capping).
+const parsedRecordLimit = parseInt(process.env.C2_RECORD_LIMIT, 10)
+const C2_RECORD_LIMIT = parsedRecordLimit > 0 ? parsedRecordLimit : 100
 
 // Newest `limit` JSON files under prefix, returned oldest-first
 async function gcsListRecentJSON(lab, prefix, limit = C2_RECORD_LIMIT) {
