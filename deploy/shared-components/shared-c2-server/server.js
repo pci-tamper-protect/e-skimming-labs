@@ -66,6 +66,23 @@ async function gcsDownloadJSON(file) {
   return JSON.parse(content.toString())
 }
 
+// Dashboards and APIs download every object they load, so cap them to the newest
+// records — otherwise leftover test data makes the C2 pages slower on every load.
+// Anything other than a positive integer falls back to the default (a negative
+// value would make slice(-limit) drop from the front instead of capping).
+const parsedRecordLimit = parseInt(process.env.C2_RECORD_LIMIT, 10)
+const C2_RECORD_LIMIT = parsedRecordLimit > 0 ? parsedRecordLimit : 100
+
+// Newest `limit` JSON files under prefix, returned oldest-first
+async function gcsListRecentJSON(lab, prefix, limit = C2_RECORD_LIMIT) {
+  const files = await gcsListJSON(lab, prefix)
+  return files
+    .map(file => ({ file, created: Date.parse(file.metadata?.timeCreated || 0) || 0 }))
+    .sort((a, b) => a.created - b.created)
+    .slice(-limit)
+    .map(f => f.file)
+}
+
 // ============================================================
 // LOCAL FILE STORAGE (fallback for local dev)
 // ============================================================
@@ -169,7 +186,7 @@ async function lab1SaveRecord(data) {
 
 async function lab1LoadAllRecords() {
   if (useGCS('lab1')) {
-    const files = await gcsListJSON('lab1', 'records/')
+    const files = await gcsListRecentJSON('lab1', 'records/')
     const records = await Promise.all(files.map(f => gcsDownloadJSON(f).catch(() => null)))
     return records.filter(Boolean)
   }
@@ -420,7 +437,7 @@ async function lab2SaveAttackRecord(attackType, data) {
 
 async function lab2LoadAllRecords() {
   if (useGCS('lab2')) {
-    const files = await gcsListJSON('lab2', 'submissions/')
+    const files = await gcsListRecentJSON('lab2', 'submissions/')
     const records = await Promise.all(files.map(f => gcsDownloadJSON(f).catch(() => null)))
     return records.filter(Boolean)
   }
@@ -695,7 +712,7 @@ async function lab3SaveEntry(dataEntry) {
 async function lab3Preload() {
   if (!useGCS('lab3')) return
   try {
-    const files = await gcsListJSON('lab3', 'sessions/')
+    const files = await gcsListRecentJSON('lab3', 'sessions/')
     const entries = await Promise.all(files.map(f => gcsDownloadJSON(f).catch(() => null)))
     lab3CollectedData = entries.filter(Boolean)
     console.log(`[Lab3-C2] Preloaded ${lab3CollectedData.length} sessions from GCS`)

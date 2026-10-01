@@ -1044,6 +1044,13 @@ jobs:
               --member="serviceAccount:${C2_SA}" \
               --role="roles/storage.objectAdmin" \
               --quiet 2>/dev/null || true
+            # stg only: expire captured records after 30 days so E2E/test data doesn't pile up
+            if [ "${ENV}" = "stg" ]; then
+              echo '{"rule":[{"action":{"type":"Delete"},"condition":{"age":30}}]}' > /tmp/c2-lifecycle.json
+              gcloud storage buckets update "gs://${bucket}" \
+                --lifecycle-file=/tmp/c2-lifecycle.json \
+                --quiet || echo "⚠️  Could not set lifecycle rule on gs://${bucket}"
+            fi
           done
           echo "✅ C2 GCS buckets ready"
 
