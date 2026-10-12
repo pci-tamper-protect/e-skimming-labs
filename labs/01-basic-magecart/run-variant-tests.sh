@@ -2,7 +2,7 @@
 
 # Helper script to run tests for different skimmer variants
 # Usage: ./run-variant-tests.sh [variant]
-# Where variant is one of: base, obfuscated-base64, event-listener, websocket
+# Where variant is one of: base, obfuscated-base64, event-listener, websocket, ga
 
 set -e
 
@@ -26,6 +26,10 @@ case "$VARIANT" in
     SKIMMER_VARIANT="websocket-exfil"
     VARIANT_PATH="./variants/websocket-exfil/vulnerable-site"
     ;;
+  google-analytics|google-analytics-csp-bypass|ga|analytics)
+    SKIMMER_VARIANT="google-analytics-csp-bypass"
+    VARIANT_PATH="./variants/google-analytics-csp-bypass/vulnerable-site"
+    ;;
   *)
     echo "❌ Unknown variant: $VARIANT"
     echo ""
@@ -36,6 +40,7 @@ case "$VARIANT" in
     echo "  obfuscated-base64   - Base64 obfuscated skimmer"
     echo "  event-listener      - Event listener-based skimmer"
     echo "  websocket           - WebSocket exfiltration skimmer"
+    echo "  ga                  - Google Analytics CSP bypass skimmer"
     exit 1
     ;;
 esac

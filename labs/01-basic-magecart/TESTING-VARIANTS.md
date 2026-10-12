@@ -54,6 +54,7 @@ The `test/playwright.config.js` automatically filters tests based on the
 | `obfuscated-base64`      | `obfuscated-base64.spec.js`      |
 | `event-listener-variant` | `event-listener-variant.spec.js` |
 | `websocket-exfil`        | `websocket-exfil.spec.js`        |
+| `google-analytics-csp-bypass` | `google-analytics-csp-bypass.spec.js` |
 
 ### 3. Environment Files
 
