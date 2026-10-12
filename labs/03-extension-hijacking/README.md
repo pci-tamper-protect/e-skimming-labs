@@ -54,6 +54,47 @@ leverages:
 - Silent deployment to millions of users
 - Long-term persistent access for data harvesting
 
+### Scenario 4: Official AI Extension Prompt Injection
+
+Official browser AI assistants create a related but different Lab 3 risk: the
+extension may be intentionally allowed to read the active page, run JavaScript,
+or use the current tab as model context. Anthropic's Claude in Chrome safety
+guide documents that browser-using AI tools face prompt injection risk, that
+JavaScript-enabled access can see data available to the browser on that page,
+and that output filters are not a security boundary:
+https://support.claude.com/en/articles/12902428-using-claude-in-chrome-safely
+
+The reproducible harness added for this scenario models the control properties
+rather than relying on live AI credentials:
+
+- The checkout page contains visible and hidden prompt-injection text.
+- A Playwright content-script-equivalent collector reads page text and payment
+  input values.
+- A naive assistant follows the injected page instruction and leaks test card
+  data.
+- A guarded assistant treats page content as untrusted, ignores the injected
+  instruction, and redacts PAN/CVV before model or output use.
+
+Browser result interpretation:
+
+- Chromium: vulnerable when an AI extension has active-tab or host permission
+  and includes checkout DOM/form state in model context.
+- Firefox: same risk for extension or assistant contexts with granted page
+  access.
+- WebKit/Safari: same risk for granted content-script or automation contexts;
+  official product availability and permission prompts are vendor-specific.
+- Not vulnerable by default when the assistant has no page access, only receives
+  explicit user-selected text that excludes payment fields, or enforces
+  redaction before page context reaches the model/output.
+
+Guardrail decision table for official AI extensions:
+
+| Extension class | Documented controls | Lab 3 decision |
+| --- | --- | --- |
+| Claude in Chrome | Per-domain JavaScript permission, site blocklists, action confirmations, model training, content classifiers, and output filters. Anthropic documents that prompt-injection risk remains non-zero and that output filters are not a security boundary. | Do not treat as safe for raw checkout PAN/CVV unless the extension or page redacts payment fields before model/output use. |
+| Official search/default-search extensions | No page-reading assistant context is required for search-provider behavior. | Not affected by this Lab 3 scenario unless the extension also receives active-page DOM/form context. |
+| Any AI sidebar/agent extension without public prompt-injection, permission, and PII-redaction controls | Controls cannot be verified from documentation alone. | Not enough guardrail evidence; run this harness and require redaction/refusal before allowing checkout pages. |
+
 ## ML Training Value
 
 This lab helps detection models learn to identify:
@@ -263,6 +304,19 @@ npm start
 # In another terminal, run tests
 node test-automation.js
 ```
+
+### Official AI Extension Prompt Injection Harness
+
+```bash
+cd ../../test
+npm install
+npm run test:lab3:official-ai
+```
+
+This Playwright harness runs against Chromium, Firefox, and WebKit without
+calling any live model provider. It uses only test card values and records
+per-browser annotations showing whether a content-script-equivalent context can
+read checkout inputs and prompt-injection text.
 
 ### Manual Testing
 

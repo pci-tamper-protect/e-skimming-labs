@@ -31,7 +31,8 @@
     "test:mitre:tablet": "playwright test mitre-attack-matrix.spec.js --project=chrome-tablet",
     "test:threat-model": "playwright test threat-model.spec.js",
     "test:threat-model:chrome": "playwright test threat-model.spec.js --project=chromium",
-    "test:threat-model:mobile": "playwright test threat-model.spec.js --project=chrome-mobile"
+    "test:threat-model:mobile": "playwright test threat-model.spec.js --project=chrome-mobile",
+    "test:lab3:official-ai": "playwright test e2e/lab3-official-ai-extension-prompt-injection.spec.js --config lab3-official-ai-extension.config.js"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.3",
