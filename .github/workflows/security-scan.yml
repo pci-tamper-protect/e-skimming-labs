@@ -74,18 +74,18 @@ jobs:
 
       - name: Initialize CodeQL
         if: steps.check-changes.outputs.changed == 'true'
-        uses: github/codeql-action/init@v4
+        uses: github/codeql-action/init@v4.37.3
         with:
           languages: ${{ matrix.language }}
           queries: security-extended,security-and-quality
 
       - name: Autobuild
         if: steps.check-changes.outputs.changed == 'true'
-        uses: github/codeql-action/autobuild@v4
+        uses: github/codeql-action/autobuild@v4.37.3
 
       - name: Perform CodeQL Analysis
         if: steps.check-changes.outputs.changed == 'true'
-        uses: github/codeql-action/analyze@v4
+        uses: github/codeql-action/analyze@v4.37.3
         with:
           category: "/language:${{ matrix.language }}"
 
@@ -364,7 +364,7 @@ jobs:
 
       - name: Upload Trivy results to GitHub Security
         if: steps.check-changes.outputs.changed == 'true' && steps.check-trivy-results.outputs.exists == 'true'
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@v4.37.3
         with:
           sarif_file: 'trivy-results-${{ matrix.image_name }}.sarif'
           category: "container-${{ matrix.image_name }}"
@@ -437,7 +437,7 @@ jobs:
       - name: Upload tfsec results to GitHub Security
         # 'check-tfsec' already checks for changes; here we only verify that results exist
         if: steps.check-tfsec.outputs.exists == 'true'
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@v4.37.3
         with:
           sarif_file: 'tfsec-results.sarif'
           category: 'terraform'
